@@ -23,13 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show staking rewards by calendar year beside History's export: native claimed, and Sozu's grown while held and taken out by unstaking, in DUSK and in the wallet's currency where asked
 - Say on mainnet what a payment request comes to in your currency, with the price's time, and what a payment comes to in the payer's on Send and its review, the link still asking DUSK
 - Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
+- Give a request's Share and Copy a line above its link, as the extension does: "sofiadesign.dusk asks you to pay 0.03 DUSK · Factura 71", then "Pay here:" and the link
+- Check your recovery words: three of them, chosen at random, typed as written down, right after a wallet's words are shown, with Skip for now, and in Settings behind the password, the words shown again where one doesn't match
+- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History, muted and in quotes, with "From an address not in your contacts" or the sender's .dusk name
 
 ### Changed
 
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 - Let the Dusk app on Android open the wallet's payment request links where it's installed, and lead a request's page there with the way that works in the browser, with the Dusk app and Firefox after it
 - Count what unstaking took out of Sozu at average cost with the deposit fees included in staking rewards by year, as the line under them says, and show a loss as one
+- Count what grew while held with Sozu at the same cost as what unstaking took out, deposit fees included, so the one is part of the other and a loss shows in both
 - Start the gas price from the network's median up to five times the lowest, by the same rule as the extension, saying under the fee when the network is busy and the price can be raised, and read it again as Send or Staking opens
+- Start the gas price from the lowest while what waits in the node's mempool fits in the next block, as the extension does, so one transaction waiting at a higher price, as Sozu's after a stake, no longer raises every fee
+- Read the gas price again every half minute while Send, Staking, Shield or the Bridge shows, so a Review opens with what the network asks then, as the extension's does
+- Show the .dusk name a payment request pays whole on the page its link opens, with where it points, or that it isn't registered, as Send does
+- Bridge testnet's DUSK to and from a BSC test chain, in place of Sepolia's routes, now retired
 
 ### Removed
 
@@ -166,6 +174,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
 - Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
 - Show the offer to be told when a transfer arrives without a scroll on a phone on its side
+- Say a send whose browser died once it was handed to the network went out, as the chain says once the wallet opens again, or that it may have, to check in History before sending it again, never that it wasn't sent
+- Take a send that wasn't sent to Send's review with Send it now, to send it from there, and keep saying it wasn't sent until it's handed to the network or you choose Don't send
+- Give no value in a currency to test DUSK in History's export or the staking rewards by year, saying where it's asked that test DUSK has no value
+- Keep the focus in the name field when a contact's name asks "Is this someone else?", so a second Enter asks again and only Yes, save it saves
+- Refuse a profile name with a .dusk name registered to another account, saying so, and take one registered to the profile as its own without asking
+- Ask about a contact's name, and refuse a profile's, that reads as another's with a digit for a letter or v for y, as Dav1d for David or Wendv for Wendy
+- Ask "Is that 2.1250 or 2125?" with a button for each reading wherever an amount could be either of two, on Send, Request, Staking and the Bridge, and of a link's amount=2.125 as of one typed
+- Say on Home's total, balances and stake that they may be out of date as soon as the network leaves a request unanswered for 10 seconds, the total naming both, not the stake alone at first
+- Say a send went through in History as soon as the node takes it out of its queue and its balance moves, also with its screen left, not Pending until the network's history has it
 
 ## [2.0.0] - 2026-11-06
 

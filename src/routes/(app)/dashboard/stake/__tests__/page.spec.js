@@ -9,7 +9,10 @@ import {
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
-import { settingsStore, walletStore } from "$lib/stores";
+import { getGasSettings } from "$lib/contracts";
+import { formatFee } from "$lib/dusk/currency";
+import { gasPriceStore, settingsStore, walletStore } from "$lib/stores";
+import nodeNetworkStore from "$lib/stores/networkStore";
 
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 
@@ -326,7 +329,7 @@ describe("Staking", () => {
         "0 DUSK",
       ]);
       expect(container).toHaveTextContent(
-        "Taken out by unstaking is part of grown while held: what came back, less that stDUSK's average cost, deposit fees included."
+        "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included."
       );
       expect(whole).toHaveBeenCalledOnce();
     } finally {
@@ -949,6 +952,116 @@ describe("Staking", () => {
 
       expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
     });
+  });
+
+  describe("gas price", () => {
+    /** Sozu's activation after a stake, waiting alone at 2. */
+    const SOZU_ACTIVATION = [{ gasLimit: 6_000_000, gasPrice: "2" }];
+
+    /** More than the next block takes, each at 900. */
+    const BUSY = Array.from({ length: 1_000 }, () => ({
+      gasLimit: 2_500_000,
+      gasPrice: "900",
+    }));
+
+    /**
+     * What waits in the node's mempool, as its GraphQL lists it, read.
+     *
+     * @param {Array<{ gasLimit: number, gasPrice: string }>} mempoolTxs
+     */
+    const nodeHolds = async (mempoolTxs) => {
+      vi.spyOn(nodeNetworkStore, "connect").mockResolvedValue(
+        /** @type {any} */ ({ query: async () => ({ mempoolTxs }) })
+      );
+      await gasPriceStore.refresh();
+    };
+
+    afterEach(async () => {
+      // The lowest again, as the other tests start from.
+      await nodeHolds([]);
+    });
+
+    it.each(
+      /** @type {const} */ ([
+        ["a native stake", "?flow=native", "stake", "Stake amount", "1000"],
+        [
+          "a stake with Sozu",
+          "?flow=liquid&action=stake",
+          "liquid-stake",
+          "Stake amount",
+          "100",
+        ],
+        [
+          "an unstake from Sozu",
+          "?flow=liquid&action=unstake",
+          "liquid-unstake",
+          "Unstake amount",
+          "100",
+        ],
+        ["a native unstake", "?flow=unstake", "unstake", "Amount", "100"],
+      ])
+    )(
+      "prices %s's Review from what waits in the mempool: the lowest with Sozu's activation alone at 2, five times it with a busy block",
+      async (_, search, operation, label, value) => {
+        for (const [mempool, price] of /** @type {const} */ ([
+          [SOZU_ACTIVATION, 1n],
+          [BUSY, 5n],
+        ])) {
+          await nodeHolds([...mempool]);
+          open(search);
+
+          if (operation !== "unstake") {
+            withoutStake(1_483n);
+          }
+
+          await act(() =>
+            sozu.store?.update((s) => ({
+              ...s,
+              status: {
+                ...SOZU_STATUS,
+                position: {
+                  balance: 200_000_000_000n,
+                  stDusk: 200_000_000_000n,
+                },
+              },
+            }))
+          );
+          sozu.check.mockResolvedValue(SOZU_STATUS);
+
+          const { container, getByRole } = render(Staking);
+
+          await fireEvent.input(getByRole("textbox", { name: label }), {
+            target: { value },
+          });
+          await fireEvent.click(
+            getByRole("button", {
+              name: operation === "unstake" ? "Next" : "Review",
+            })
+          );
+
+          const { gasLimit } = getGasSettings(
+            operation,
+            { customGasLimit: null, customGasPrice: null },
+            price
+          );
+
+          // On its Review.
+          if (operation === "unstake") {
+            expect(textOf(container)).toContain("Network fee (at most)");
+          } else {
+            expect(
+              container.querySelector(".stake-flow--review")
+            ).not.toBeNull();
+          }
+
+          expect(textOf(container)).toContain(
+            formatFee(gasLimit * price, "en", { max: true })
+          );
+
+          cleanup();
+        }
+      }
+    );
   });
 
   it("shows what's held with Sozu on its form, from the whole history, asked for as it opens and for no other flow", async () => {

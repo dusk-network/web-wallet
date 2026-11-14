@@ -1,5 +1,6 @@
 export { default as AddressPicker } from "./AddressPicker/AddressPicker.svelte";
 export { default as AmountInCurrency } from "./AmountInCurrency/AmountInCurrency.svelte";
+export { default as AmountQuestion } from "./AmountQuestion/AmountQuestion.svelte";
 export { default as Allocate } from "./Allocate/Allocate.svelte";
 export { default as AppAnchor } from "./AppAnchor/AppAnchor.svelte";
 export { default as AppAnchorButton } from "./AppAnchorButton/AppAnchorButton.svelte";
@@ -27,6 +28,7 @@ export { default as OperationResult } from "./OperationResult/OperationResult.sv
 export { default as PaymentRequests } from "./Receive/PaymentRequests.svelte";
 export { default as Receive } from "./Receive/Receive.svelte";
 export { default as RequestPayment } from "./Receive/RequestPayment.svelte";
+export { default as RecoveryWordsCheck } from "./RecoveryWordsCheck/RecoveryWordsCheck.svelte";
 export { default as ReviewAmount } from "./ReviewAmount/ReviewAmount.svelte";
 export { default as ReviewWallet } from "./ReviewWallet/ReviewWallet.svelte";
 export { default as Send } from "./Send/Send.svelte";

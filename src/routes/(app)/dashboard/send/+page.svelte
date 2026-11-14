@@ -62,10 +62,9 @@
 
   const BEP20_BRIDGE_ADDRESS = import.meta.env.VITE_BEP20_BRIDGE_ADDRESS;
 
-  // The gas price as the network asks it now, for what's sent from here.
-  onMount(() => {
-    gasPriceStore.readAgain();
-  });
+  // The gas price as the network asks it now, for what's sent from here:
+  // read again while the form shows, so its Review opens with it.
+  onMount(() => gasPriceStore.keepFresh());
 
   // What this page sends, it sends from the wallet it was drawn for.
   const send = walletStore.forThisWallet()(executeSend);

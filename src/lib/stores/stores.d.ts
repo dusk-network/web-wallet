@@ -11,6 +11,7 @@ type GasStoreContent = {
 type GasStore = Readable<GasStoreContent>;
 
 type GasPriceStore = Readable<bigint> & {
+  keepFresh: () => () => void;
   readAgain: (maxAge?: number) => Promise<void>;
   refresh: () => Promise<void>;
   rule: Readable<import("@dusk-network/app-core/gas").DefaultGasPrice>;

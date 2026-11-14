@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { networks } from "@dusk-network/networks";
 
+import routesStopped from "$lib/test-helpers/routesStopped";
+
 import {
   cardRoutes,
   choosePair,
@@ -41,8 +43,14 @@ describe("the Bridge card's routes", () => {
       "bsc-to-dusk",
       "ethereum-to-dusk",
     ]);
-    // Testnet's, from Sepolia, isn't running.
-    expect(migrationRoutes(cardRoutes(networks.testnet))).toStrictEqual([]);
+    // Testnet's is from its BSC test chain.
+    expect(
+      migrationRoutes(cardRoutes(networks.testnet)).map(ids)
+    ).toStrictEqual(["bsc-to-dusk"]);
+    // One that isn't running is none.
+    expect(
+      migrationRoutes(cardRoutes(routesStopped(networks.testnet)))
+    ).toStrictEqual([]);
   });
 
   it("offer each way that runs, and say why another can't be picked", () => {
@@ -73,16 +81,12 @@ describe("the Bridge card's routes", () => {
     expect(ids(choosePair(list, "duskDs", "ethereum"))).toBe("dusk-to-bsc");
   });
 
-  it("list testnet's Sepolia routes as not running, and open on DuskEVM", () => {
+  it("list testnet's routes, to and from its BSC test chain and DuskEVM, and open on DuskEVM", () => {
     const list = cardRoutes(networks.testnet);
 
     expect(ids(openingRoute(list))).toBe("dusk-to-dusk-evm");
     expect(fromChoices(list, "duskDs", networks.testnet)).toStrictEqual([
-      {
-        disabled: "Not running on testnet right now",
-        id: "ethereum",
-        name: "Sepolia",
-      },
+      { id: "bsc", name: "BSC test chain" },
       { id: "duskDs", name: "Dusk" },
       { id: "duskEvm", name: "DuskEVM" },
     ]);
@@ -91,15 +95,43 @@ describe("the Bridge card's routes", () => {
         ({ disabled = "", id }) => [id, disabled]
       )
     ).toStrictEqual([
-      ["ethereum", "Not running on testnet right now"],
+      ["bsc", ""],
       ["duskDs", "It's where it comes from"],
       ["duskEvm", ""],
     ]);
-    // A link to one still opens it, to say so.
+    expect(ids(openingRoute(list, "bsc-to-dusk"))).toBe("bsc-to-dusk");
+    // A link to a route retired, as Sepolia's, opens on DuskEVM.
     expect(ids(openingRoute(list, "ethereum-to-dusk"))).toBe(
-      "ethereum-to-dusk"
+      "dusk-to-dusk-evm"
     );
     expect(ids(flipRoute(list, openingRoute(list)))).toBe("dusk-evm-to-dusk");
+  });
+
+  it("list a route that isn't running as not running, and open it from a link to it, to say so", () => {
+    const net = routesStopped(networks.testnet);
+    const list = cardRoutes(net);
+
+    expect(ids(openingRoute(list))).toBe("dusk-to-dusk-evm");
+    expect(fromChoices(list, "duskDs", net)).toStrictEqual([
+      {
+        disabled: "Not running on testnet right now",
+        id: "bsc",
+        name: "BSC test chain",
+      },
+      { id: "duskDs", name: "Dusk" },
+      { id: "duskEvm", name: "DuskEVM" },
+    ]);
+    expect(
+      toChoices(list, "duskDs", "duskEvm", net).map(({ disabled = "", id }) => [
+        id,
+        disabled,
+      ])
+    ).toStrictEqual([
+      ["bsc", "Not running on testnet right now"],
+      ["duskDs", "It's where it comes from"],
+      ["duskEvm", ""],
+    ]);
+    expect(ids(openingRoute(list, "bsc-to-dusk"))).toBe("bsc-to-dusk");
   });
 
   it("are none on a chain without a file", () => {

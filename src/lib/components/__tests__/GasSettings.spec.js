@@ -79,11 +79,20 @@ describe("GasSettings", () => {
       "The network is busy. You can raise the gas price for it to go out sooner.";
     const connect = vi.spyOn(networkStore, "connect");
 
-    /** @param {bigint} median */
+    /**
+     * A block's worth waiting in the node's mempool, each at `median`.
+     *
+     * @param {bigint} median
+     */
     const nodeAsks = async (median) => {
       connect.mockResolvedValue(
         /** @type {any} */ ({
-          blocks: { gasPrice: Promise.resolve({ median }) },
+          query: async () => ({
+            mempoolTxs: Array.from({ length: 1_000 }, () => ({
+              gasLimit: 2_500_000,
+              gasPrice: String(median),
+            })),
+          }),
         })
       );
       await gasPriceStore.refresh();

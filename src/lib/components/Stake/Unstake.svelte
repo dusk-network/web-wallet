@@ -1,7 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import { createEventDispatcher, onMount } from "svelte";
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
@@ -322,7 +323,17 @@
           /> DUSK
         </p>
         <div id="{id}-check">
-          {#if check.error}
+          {#if readAmount(amountText, language).question}
+            <!-- Either of two: a tap on one puts it in the field. -->
+            <AmountQuestion
+              {language}
+              on:choose={(event) => {
+                amountText = event.detail;
+                isAmountChosen = true;
+              }}
+              text={amountText}
+            />
+          {:else if check.error}
             <p class="operation__error" role="alert">
               <strong>{check.error}</strong>
             </p>

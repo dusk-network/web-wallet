@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   /**
    * The Bridge card on a migration into Dusk, from BNB Smart Chain or
    * Ethereum: the connected EVM wallet, on the route's chain, pays the
@@ -51,6 +51,7 @@
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import AddDusk from "./AddDusk.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
@@ -898,7 +899,19 @@
         >
       </span>
     </div>
-    {#if problem}
+    {#if readAmount(amount, language).question}
+      <!-- Either of two: a tap on one puts it in the field. -->
+      <AmountQuestion
+        className="swap-error"
+        {language}
+        on:choose={(event) => {
+          note = "";
+          amount = event.detail;
+          isMaxAmount = false;
+        }}
+        text={amount}
+      />
+    {:else if problem}
       <p class="swap-error" role="alert">{problem}</p>
     {/if}
     {#if isConnected && chainId === route.chain.chainId && balanceLux === 0n}

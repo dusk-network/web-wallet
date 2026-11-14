@@ -313,7 +313,8 @@ declare module "@dusk/w3sper" {
   class AccountSyncer extends EventTarget {
     constructor(network: Network);
 
-    balances(profiles: Profile[]): Promise<AccountBalance[]>;
+    // An account's balance by its profile, or by its account in Base58.
+    balances(profiles: Array<Profile | string>): Promise<AccountBalance[]>;
 
     stakes(profiles: Profile[]): Promise<Readonly<StakeInfo>[]>;
   }

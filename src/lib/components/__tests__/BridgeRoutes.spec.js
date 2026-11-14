@@ -19,7 +19,7 @@ import {
 } from "$lib/security/sendPassword";
 import { settingsStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
-import { stubWalletNetwork } from "$lib/test-helpers";
+import { routesStopped, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
 import { forgetDuskAdded } from "$lib/web3/addDusk";
@@ -2604,12 +2604,13 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
-  it("says testnet's Sepolia routes aren't running, as a link to one opens it", async () => {
-    setNodeNetwork(networks.testnet);
+  it("says a route isn't running, as a link to one opens it", async () => {
+    // Testnet's routes to its BSC test chain stopped.
+    setNodeNetwork(routesStopped(networks.testnet));
 
     const { container, getByRole } = render(Bridge, {
       ...props,
-      linkedRoute: "ethereum-to-dusk",
+      linkedRoute: "bsc-to-dusk",
     });
 
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
@@ -2619,7 +2620,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       getByRole("button", { name: "Not running right now" })
     ).toBeDisabled();
     expect(
-      getByRole("textbox", { name: "Amount, in ERC20 DUSK" })
+      getByRole("textbox", { name: "Amount, in BEP20 DUSK" })
     ).toBeDisabled();
   });
 });

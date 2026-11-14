@@ -14,10 +14,20 @@ import vault from "$lib/vault";
 import Setup from "../+page.svelte";
 import { load } from "../+page.js";
 
-// The name the account a request pays goes by, as the chain says.
+// The name the account a request pays goes by, as the chain says, and what
+// a .dusk name is, as the name service says it: Sofía's, and no other.
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   getPrimaryName: vi.fn(async () => "sofia.dusk"),
+  resolveDuskName: vi.fn(async (/** @type {string} */ name) =>
+    name === "sofiadesign.dusk"
+      ? {
+          account:
+            "sEeMSo7oiV2rxo6aZD3H75XGFZD95BtrmgFD3AezyUkC5W9bUyRwqFr6VuybvuvmvX5kTRt4STaSKbE6FEeMGoPDZNaX1LL82rGzN6BDbajY8qJcweu1mp7m1budNv9kgd7",
+          name,
+        }
+      : { error: "not-registered", name }
+  ),
 }));
 
 describe("Setup", () => {
@@ -45,6 +55,28 @@ describe("Setup", () => {
       expect(asked).toHaveTextContent("Create or restore a wallet to pay it.");
       expect(await findByText("sofia.dusk")).toBeInTheDocument();
       expect(asked).toHaveTextContent(shortenAddress(TO));
+    });
+
+    it("should show a .dusk name it pays whole, and where it points, or that it isn't registered, as one that looks like it does", async () => {
+      setNodeNetwork(networks.testnet);
+
+      for (const [to, said] of [
+        ["sofiadesign.dusk", "Points to sEeMSo…v9kgd7"],
+        ["sofiadmarekn.dusk", "sofiadmarekn.dusk isn't registered."],
+      ]) {
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${to}&amount=0.01&memo=marek-r6-h51&network=testnet`,
+        });
+
+        const { findByText, getByRole } = render(Setup, {});
+        const asked = getByRole("region", { name: "Payment request" });
+
+        expect(await findByText(said)).toBeInTheDocument();
+        expect(asked).toHaveTextContent(`To ${to} ${said}`);
+        expect(asked).not.toHaveTextContent("…n.dusk");
+        cleanup();
+      }
     });
 
     it("should say when it's for another network or says two amounts, and nothing for a page that asks for nothing", () => {
@@ -178,9 +210,12 @@ describe("Setup", () => {
     it("should ask what Send asks of an amount that could be either of two, as 1.000, never settling it, and hand it on to another network's wallet as written", () => {
       setNodeNetwork(networks.testnet);
 
+      // The question alone: there's no field to write in here.
       for (const [amount, question] of [
-        ["1.000", "Is that 1 or 1000? Write the one you mean."],
-        ["10.000", "Is that 10 or 10000? Write the one you mean."],
+        ["1.000", "Is that 1 or 1000?"],
+        ["10.000", "Is that 10 or 10000?"],
+        // As typed 2.125 is, in Send too.
+        ["2.125", "Is that 2.1250 or 2125?"],
       ]) {
         keepPlace({
           pathname: "/some-base-path/dashboard/send/",
@@ -192,6 +227,7 @@ describe("Setup", () => {
         });
 
         expect(asked).toHaveTextContent(`Amount ${amount} DUSK ${question}`);
+        expect(asked).not.toHaveTextContent("Write the one you mean");
         expect(asked).not.toHaveTextContent(/Amount 10? DUSK/);
         cleanup();
       }

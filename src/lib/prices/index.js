@@ -7,9 +7,19 @@
  */
 
 import { readable } from "svelte/store";
+import { networks } from "@dusk-network/networks";
 import { PRICE_MAX_AGE_MS, duskPrice } from "@dusk-network/app-core/prices";
 
 export { inCurrency } from "@dusk-network/app-core/prices";
+
+/**
+ * Whether DUSK has a price on `network`: on mainnet alone, as test DUSK has
+ * no value.
+ *
+ * @param {import("@dusk-network/networks").Network | null | undefined} network
+ */
+export const hasPrice = (network) =>
+  network?.chainId === networks.mainnet.chainId;
 
 /** How soon a price that couldn't be read is asked for again. */
 const RETRY_MS = 30_000;

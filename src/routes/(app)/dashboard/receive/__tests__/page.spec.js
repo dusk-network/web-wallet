@@ -230,6 +230,14 @@ describe("Receive", () => {
         target: { value },
       });
 
+    /**
+     * The link in what Copy or Share gave: a line saying what's asked, then
+     * "Pay here: " and the link.
+     *
+     * @param {string | undefined} text
+     */
+    const linkIn = (text) => String(text).split("\nPay here: ")[1] ?? "";
+
     /** What the QR code on screen holds, as the library was asked to draw it. */
     const qrAlt = () => screen.getByRole("img", { name: /^QR code for your/ });
 
@@ -253,10 +261,14 @@ describe("Receive", () => {
 
       const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
 
-      expect(copied).toMatch(
+      // What it asks in a line, as the extension gives it, then the link.
+      expect(copied.split("\n")[0]).toBe(
+        "You're asked to pay 0.15 DUSK on Testnet · Factura 33"
+      );
+      expect(linkIn(copied)).toMatch(
         /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/
       );
-      expect(parsePaymentLink(copied)).toMatchObject({
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
         amountDusk: "0.15",
         chainId: "dusk:2",
         memo: "Factura 33",
@@ -280,7 +292,8 @@ describe("Receive", () => {
           JSON.stringify({
             market_data: {
               current_price: { eur: 0.5 },
-              last_updated: "2026-11-13T12:03:00.000Z",
+              // Today's: a day's time says its day too.
+              last_updated: new Date().toISOString(),
             },
           }),
       }));
@@ -324,7 +337,9 @@ describe("Receive", () => {
           .mocked(navigator.clipboard.writeText)
           .mock.calls.at(-1) ?? [""];
 
-        expect(parsePaymentLink(copied)).toMatchObject({ amountDusk: "2" });
+        expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+          amountDusk: "2",
+        });
         expect(copied).not.toMatch(/eur|€/i);
       } finally {
         vi.unstubAllGlobals();
@@ -348,6 +363,34 @@ describe("Receive", () => {
       expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
         null
       );
+    });
+
+    it("should ask which amount is meant of one that could be either of two, with a button for each, and make the request for the one picked", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "2.125");
+      await vi.runAllTimersAsync();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /^Is that 2\.1250 or 2125\?/
+      );
+      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
+        null
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "2.1250 DUSK" })
+      );
+      await vi.runAllTimersAsync();
+
+      expect(
+        screen.getByRole("textbox", { name: "Amount (optional)" })
+      ).toHaveValue("2.1250");
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Copy request link" })
+      ).toBeInTheDocument();
     });
 
     it("should show a memo with a hidden character as a payer's wallet will, with its codes, before its link is copied", async () => {
@@ -387,7 +430,9 @@ describe("Receive", () => {
       const copied = vi.mocked(navigator.clipboard.writeText).mock
         .lastCall?.[0];
 
-      expect(parsePaymentLink(copied)).toMatchObject({ to: expectedAddress });
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+        to: expectedAddress,
+      });
     });
 
     it("should offer Share only where the browser has a share sheet, sending the address, or the request's link once there is one, and keep that request", async () => {
@@ -418,7 +463,16 @@ describe("Receive", () => {
       await fireEvent.click(screen.getByRole("button", { name: "Share" }));
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(parsePaymentLink(share.mock.lastCall?.[0].text)).toMatchObject({
+      // The request in a line, then its link, as text alone.
+      expect(share.mock.lastCall?.[0]).toStrictEqual({
+        text: expect.stringMatching(
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+        ),
+        title: "Dusk payment request",
+      });
+      expect(
+        parsePaymentLink(linkIn(share.mock.lastCall?.[0].text))
+      ).toMatchObject({
         amountDusk: "2",
         to: ACCOUNT,
       });

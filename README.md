@@ -221,11 +221,10 @@ the release key, and until it's there the file is a 404. To serve a build the sa
 run `deploy/node_modules/.bin/wrangler dev --env testnet`, with Wrangler from
 `npm ci --ignore-scripts --prefix deploy`.
 
-The Deploy workflow does it: a push to a `deploy/web-wallet-testnet*` branch
-goes to testnet, built with the site's settings in `deployments.json`. That
-branch is `main` with what only testnet takes, as a network's file. Its
-Cloudflare token is a secret of the `cloudflare` environment, which only those
-branches can use.
+The Deploy workflow does it: a push to `main`, or a run of it on `main`, goes
+to testnet, built with the site's settings in `deployments.json`, and its
+build's attestation names `main`. Its Cloudflare token is a secret of the
+`cloudflare` environment, which only `main` and `web-wallet-v*` tags can use.
 
 Mainnet and devnet stay on DigitalOcean for now; mainnet moves with the
 wallet's v2. The workflow deploys a `web-wallet-v*` tag to mainnet only once

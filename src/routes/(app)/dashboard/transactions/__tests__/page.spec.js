@@ -434,10 +434,22 @@ describe("History", () => {
       `You have a contact called Shop (old phone), at ${shortAddress(OLD_PHONE)}. Is this someone else?`
     );
 
-    await fireEvent.click(getByRole("button", { name: "Save" }));
+    // Typed, Enter, Enter: the question never takes the focus, so the
+    // second Enter asks it again, and saves nothing.
+    const field = /** @type {HTMLInputElement} */ (
+      getByRole("textbox", { name: "Contact name" })
+    );
+
+    field.focus();
+    await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
 
     expect(listContacts()).toHaveLength(1);
-    expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+    expect(field).toHaveFocus();
+    expect(getByRole("button", { name: "Yes, save it" })).not.toHaveFocus();
+
+    await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
+
+    expect(listContacts()).toHaveLength(1);
 
     await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
 
@@ -527,6 +539,7 @@ describe("History", () => {
     afterEach(() => {
       vi.restoreAllMocks();
       mocks.whole.mockReset();
+      setNodeNetwork(null);
     });
 
     /** Opens Export, and gives the page's controls. */
@@ -860,6 +873,9 @@ describe("History", () => {
     });
 
     it("asks CoinGecko only when euros are asked for, in euros as the wallet's amounts are, for no more than times", async () => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(
@@ -906,6 +922,9 @@ describe("History", () => {
     });
 
     it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency as asked under them, saving nothing", async () => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       // Mid-year, whatever the device's time zone: one a year and a half
       // ago, past CoinGecko's year, and the rest this year.
       const year = new Date(NOW).getUTCFullYear();
@@ -946,9 +965,10 @@ describe("History", () => {
 
       // Lena's: 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK at
       // 1.995 DUSK each; half of them gave back 5.25 DUSK at 2.1, and the
-      // rest is worth 5.5 DUSK now, at 2.2. Grown while held: 0.775 DUSK,
-      // all Sozu says the stake earned; taken out by unstaking: 0.25, what
-      // came back less what that half cost with its fee, 5 DUSK.
+      // rest is worth 5.5 DUSK now, at 2.2. Grown while held: 0.75 DUSK,
+      // all Sozu says the stake earned, 0.775, less its fee; taken out by
+      // unstaking: 0.25, what came back less what that half cost with its
+      // fee, 5 DUSK. Both at that cost, the fee in it.
       mocks.whole.mockResolvedValue({
         rows: [
           rowOf("e1"),
@@ -1002,7 +1022,7 @@ describe("History", () => {
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
             [`${year - 1}`, "1 DUSK", "0 DUSK", "0 DUSK"],
-            [`${year}`, "2 DUSK", "0.775 DUSK", "0.25 DUSK"],
+            [`${year}`, "2 DUSK", "0.75 DUSK", "0.25 DUSK"],
           ])
         );
         expect(
@@ -1018,7 +1038,7 @@ describe("History", () => {
         ]);
         // How what unstaking took out is counted, under them.
         expect(container).toHaveTextContent(
-          "Taken out by unstaking is part of grown while held: what came back, less that stDUSK's average cost, deposit fees included."
+          "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included."
         );
         expect(prices).not.toHaveBeenCalled();
 
@@ -1046,7 +1066,8 @@ describe("History", () => {
             [
               `${year}`,
               "2 DUSK · €1.00",
-              "0.775 DUSK · €0.39",
+              // The stake's fee, when CoinGecko has no price, has none.
+              "0.75 DUSK · €0.39, 1 with no euro value",
               "0.25 DUSK · €0.13",
             ],
           ])
@@ -1068,7 +1089,7 @@ describe("History", () => {
             [
               `${year}`,
               "•••• hidden DUSK · •••• hidden",
-              "•••• hidden DUSK · •••• hidden",
+              "•••• hidden DUSK · •••• hidden, 1 with no euro value",
               "•••• hidden DUSK · •••• hidden",
             ],
           ])
@@ -1095,7 +1116,7 @@ describe("History", () => {
             [
               `${year}`,
               "2 DUSK · ¥1",
-              "0.775 DUSK · under ¥1",
+              "0.75 DUSK · under ¥1, 1 with no Japanese yen value",
               "0.25 DUSK · under ¥1",
             ],
           ])
@@ -1129,6 +1150,9 @@ describe("History", () => {
         "euros",
       ],
     ])("gives the values in %s", async (_, currency, language, words) => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       const code =
         { euros: "EUR", "Indian rupees": "INR", "Singapore dollars": "SGD" }[
           words
@@ -1166,6 +1190,79 @@ describe("History", () => {
       expect(await blobs[0].text()).toContain(`,${code},`);
       settingsStore.reset();
       vi.unstubAllGlobals();
+    });
+
+    it("gives no value in a currency on testnet, whose DUSK has none, saying so where it's asked, and asks CoinGecko nothing", async () => {
+      const prices = vi.fn((/** @type {string} */ url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prices: String(url).includes("coingecko")
+                ? [[NOW - 60_000, 0.25]]
+                : [],
+            })
+          )
+        )
+      );
+
+      vi.stubGlobal("fetch", prices);
+      setNodeNetwork(networks.testnet);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
+
+      try {
+        const { container, getByRole, getByText } = await openExport();
+        const fileValues = getByRole("checkbox", {
+          name: /^Add each payment's value in euros/,
+        });
+
+        expect(fileValues).toBeDisabled();
+        expect(fileValues).not.toBeChecked();
+        expect(getByText("Test DUSK has no value.")).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+        await vi.waitFor(() => expect(names).toHaveLength(1));
+
+        expect(await blobs[0].text()).not.toContain(",EUR,");
+
+        // Nor the staking rewards by year beside it: a reward claimed.
+        mocks.whole.mockResolvedValue({
+          rows: rowsOf([
+            {
+              amount: "1000000000",
+              blockHeight: 4_000_000,
+              direction: "in",
+              hash: "e1".repeat(32),
+              kind: "withdraw_reward",
+              status: "executed",
+              timestamp: NOW - 86_400_000,
+            },
+          ]),
+          shieldedWaiting: false,
+        });
+        await fireEvent.click(getByRole("button", { name: "Export" }));
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+
+        const rewardValues = await vi.waitFor(() =>
+          getByRole("checkbox", {
+            name: "Add each reward's value in euros, from CoinGecko's prices",
+          })
+        );
+
+        expect(rewardValues).toBeDisabled();
+        expect(
+          container.querySelector(
+            ".rewards-by-year__option + .rewards-by-year__note"
+          )
+        ).toHaveTextContent("Test DUSK has no value.");
+        expect(
+          prices.mock.calls.filter(([url]) => String(url).includes("coingecko"))
+        ).toStrictEqual([]);
+      } finally {
+        settingsStore.reset();
+        vi.unstubAllGlobals();
+      }
     });
   });
 

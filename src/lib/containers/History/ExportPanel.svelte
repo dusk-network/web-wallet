@@ -30,6 +30,7 @@
   } from "$lib/activity/exportAddresses";
   import { activityState } from "$lib/activity";
   import { RewardsByYear } from "$lib/components";
+  import { hasPrice } from "$lib/prices";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import { Button, Select, Textbox } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
@@ -298,6 +299,7 @@
       {
         currency,
         fiat: rewardsValued,
+        net: $nodeNetwork,
         session:
           /** @type {NonNullable<ReturnType<typeof walletStore.startHistory>>} */ (
             walletStore.startHistory()
@@ -338,6 +340,11 @@
   }
   // As the wallet's amounts are, in Settings' currency.
   $: currency = exportCurrency($settingsStore.currency, navigator.language);
+  // Test DUSK has no value: no value is asked in a currency.
+  $: priced = hasPrice($nodeNetwork);
+  $: if (!priced && fiat) {
+    fiat = false;
+  }
   // Where DUSK could come over from another chain, the gas it took there
   // is the person's from their EVM addresses: which, said.
   $: hasMigrations = Boolean(
@@ -423,10 +430,18 @@
     Add my contact names
   </label>
   <label class="export-panel__option">
-    <input bind:checked={fiat} class="dusk-checkbox" type="checkbox" />
+    <input
+      bind:checked={fiat}
+      class="dusk-checkbox"
+      disabled={!priced}
+      type="checkbox"
+    />
     Add each payment's value in {currencyWords(currency).many}, from CoinGecko's
     prices (the past year)
   </label>
+  {#if !priced}
+    <p class="export-panel__note">Test DUSK has no value.</p>
+  {/if}
   <label class="export-panel__option">
     <input bind:checked={excel} class="dusk-checkbox" type="checkbox" />
     For Excel: keep accents as it opens
@@ -527,6 +542,7 @@
         exact
         locale={$settingsStore.language}
         on:valued={showRewards}
+        {priced}
         {rewards}
       />
     {/if}

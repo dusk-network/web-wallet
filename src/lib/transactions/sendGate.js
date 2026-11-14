@@ -37,11 +37,19 @@ const ANSWER_WITHIN = 10_000;
  */
 
 /**
+ * The transaction handed over: its hash, and its nonce, "" for one that has
+ * none, as a shielded transfer.
+ *
+ * @typedef {{ hash: string, nonce: string }} HandedOver
+ */
+
+/**
  * @typedef {{
  *   cancel: (reason?: Error) => boolean,
  *   cancelled: Promise<never>,
  *   check: () => void,
- *   handOver: () => void,
+ *   handOver: (sent?: HandedOver) => Promise<void>,
+ *   keepFirst: (keep: (sent: HandedOver) => Promise<void>) => void,
  *   subscribe: import("svelte/store").Readable<SendGateState>["subscribe"],
  *   untilHandedOver: <T>(attempt: () => Promise<T>, answers: (signal: AbortSignal) => Promise<unknown>) => Promise<T>,
  *   waitsForNetwork: import("svelte/store").Readable<boolean>,
@@ -50,10 +58,12 @@ const ANSWER_WITHIN = 10_000;
  *   for `reason`, as a lock: whether it did; `cancelled` rejects with why
  *   as it's called off; `check` throws it once it is, for the steps before
  *   the broadcast; `handOver` passes it on to the node, and throws it
- *   instead where it was called off; `untilHandedOver` makes what comes
- *   before that again while it couldn't reach the network, once the network
- *   answers what `answers` asks; `waitsForNetwork` says whether it waits for
- *   that, until it's handed over or called off.
+ *   instead where it was called off: it's done once what's kept of it says
+ *   so (`keepFirst`), and only then may the node be asked to broadcast it,
+ *   never where it rejects; `untilHandedOver` makes what comes before that
+ *   again while it couldn't reach the network, once the network answers what
+ *   `answers` asks; `waitsForNetwork` says whether it waits for that, until
+ *   it's handed over or called off.
  */
 
 /** @returns {SendGate} */
@@ -64,6 +74,13 @@ export function sendGate() {
 
   /** Why it was called off. */
   let why = /** @type {Error} */ (new SendCancelledError());
+
+  /**
+   * What keeps it as handed over before the node is asked to broadcast it.
+   *
+   * @type {Array<(sent: HandedOver) => Promise<void>>}
+   */
+  const keepers = [];
 
   /** Stops what it waits on before it asks the network again. */
   const stopWaiting = new AbortController();
@@ -156,9 +173,14 @@ export function sendGate() {
     },
     cancelled,
     check,
-    handOver() {
+    handOver(sent = { hash: "", nonce: "" }) {
       check();
       set("handed-over");
+
+      return Promise.all(keepers.map((keep) => keep(sent))).then(() => {});
+    },
+    keepFirst(keep) {
+      keepers.push(keep);
     },
     subscribe: state.subscribe,
     async untilHandedOver(attempt, answers) {

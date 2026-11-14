@@ -3,7 +3,9 @@
  * it's sent until the node is asked to broadcast it, it's called off, or it
  * ends. Home says each waits, with Cancel (sendGate). One kept on this device
  * meanwhile ($lib/transactions/unsentSends) stays kept where it never went
- * out and nothing said so: as its page closed, reloaded or locked first.
+ * out and nothing said so: as its page closed, reloaded or locked first. It's
+ * kept as handed over, with its transaction's hash and nonce, before the node
+ * is asked to broadcast it, and until it ends: its page may go before then.
  */
 
 import { writable } from "svelte/store";
@@ -77,12 +79,16 @@ const isKeptAfter = (why, isSaid) =>
  * open: one that ends without going out, as its page closes, reloads or
  * locks, stays kept, and is said once the wallet opens again, unless the
  * person called it off or its own screen said how it ended (`kept.isSaid`).
+ * Before the node is asked to broadcast it, it's kept as handed over, and
+ * it goes out only once it is: one whose page goes from then on may have
+ * gone out, and is never said as one that didn't. It's forgotten as it ends.
+ * One sent again from what's kept of it takes its place (`kept.id`).
  *
  * @param {{
  *   address?: string,
  *   from?: string,
  *   gate: import("./sendGate").SendGate,
- *   kept?: { account: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
+ *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
  *   lux: bigint,
  *   maxFee?: bigint,
  *   memo?: string,
@@ -101,16 +107,19 @@ export function keepWaiting({
   operation,
   to,
 }) {
-  const id = crypto.randomUUID();
+  const id = kept?.id || crypto.randomUUID();
   const at = Date.now();
   let isWaiting = true;
+
+  /** Whether the node may have been asked to broadcast it. */
+  let isHandedOver = false;
 
   /** @type {Array<() => void>} */
   let stops = [];
 
   const stopFollowing = () => stops.forEach((stop) => stop());
 
-  const end = kept
+  const keeping = kept
     ? keepUnsent({
         account: kept.account,
         at,
@@ -122,7 +131,21 @@ export function keepWaiting({
         to: address,
         typed: kept.typed,
       })
-    : () => {};
+    : null;
+
+  // Kept as handed over before it can go out, or it doesn't.
+  if (keeping) {
+    gate.keepFirst((sent) => keeping.handOver(sent));
+  }
+
+  /** No longer waiting: gone out, called off or ended. */
+  const leave = () => {
+    if (isWaiting) {
+      isWaiting = false;
+      sends.update((list) => list.filter((each) => each.id !== id));
+      stopFollowing();
+    }
+  };
 
   /**
    * Ended: kept, as one that never went out, or not.
@@ -130,13 +153,8 @@ export function keepWaiting({
    * @param {boolean} keep
    */
   const done = (keep) => {
-    end(keep);
-
-    if (isWaiting) {
-      isWaiting = false;
-      sends.update((list) => list.filter((each) => each.id !== id));
-      stopFollowing();
-    }
+    keeping?.end(keep);
+    leave();
   };
 
   sends.update((list) => [
@@ -157,8 +175,10 @@ export function keepWaiting({
   stops = [
     gate.subscribe((state) => {
       if (state === "handed-over") {
-        // It may go out from now on: History shows it.
-        done(false);
+        // It may go out from now on: History shows it. What's kept of it
+        // says so until it ends.
+        isHandedOver = true;
+        leave();
       } else if (state === "cancelled") {
         let why;
 
@@ -187,9 +207,11 @@ export function keepWaiting({
     stopFollowing();
   }
 
+  // Once handed over, its own screen and History say what became of it.
   operation.then(
     () => done(false),
-    (error) => done(isKeptAfter(error, () => kept?.isSaid() ?? true))
+    (error) =>
+      done(!isHandedOver && isKeptAfter(error, () => kept?.isSaid() ?? true))
   );
 }
 

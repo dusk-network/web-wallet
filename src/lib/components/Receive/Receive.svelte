@@ -19,6 +19,7 @@
   import { formatDuskExact, formatDuskPlain } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { requestText } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
@@ -50,6 +51,12 @@
    * @type {{ dusk: string, link: string, lux?: bigint | null, memo?: string } | null}
    */
   export let request = null;
+
+  /**
+   * Whose request it is, as Share says it: the profile's verified .dusk
+   * name, else the name given it here, "" for none.
+   */
+  export let requestName = "";
 
   /**
    * Called as the request leaves the wallet, by Share or Download QR, with
@@ -102,8 +109,16 @@
     const used = { address, request };
 
     try {
+      // A request in a line, then its link, all as text: some targets would
+      // add a separate link twice.
       await navigator.share({
-        text: used.request?.link ?? used.address,
+        text: used.request
+          ? requestText(used.request, {
+              language: $settingsStore.language,
+              name: requestName,
+              net: $nodeNetwork,
+            })
+          : used.address,
         title: used.request ? "Dusk payment request" : "My Dusk address",
       });
       onUse(used);

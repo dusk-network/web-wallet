@@ -33,11 +33,12 @@ export default class SendingNetwork extends Network {
   #broadcasts = new WeakSet();
 
   /**
-   * What each transaction does as the node is asked to broadcast it, by its
-   * bytes: its gate lets it go on, and none goes that was called off before
-   * (sendGate), and whoever asked is told it may go out from then on.
+   * What each transaction does before the node is asked to broadcast it, by
+   * its bytes: its gate lets it go on, and none goes that was called off
+   * before, or that couldn't be kept as handed over (sendGate). Whoever
+   * asked is told it may go out from then on.
    *
-   * @type {WeakMap<object, () => void>}
+   * @type {WeakMap<object, () => Promise<void>>}
    */
   #handOvers = new WeakMap();
 
@@ -60,9 +61,10 @@ export default class SendingNetwork extends Network {
     const { transactions } = this;
     const propagate = transactions.propagate.bind(transactions);
 
-    transactions.propagate = (/** @type {any} */ tx) => {
-      // Called off before this, it never reaches the node.
-      handOvers.get(tx)?.();
+    transactions.propagate = async (/** @type {any} */ tx) => {
+      // Called off before this, it never reaches the node; kept, it's kept
+      // as handed over first.
+      await handOvers.get(tx)?.();
       broadcasts.add(tx);
       asked.update((count) => count + 1);
 
@@ -116,8 +118,9 @@ export default class SendingNetwork extends Network {
   /**
    * Builds, checks and broadcasts a transaction, as w3sper does: with a
    * `gate`, only while it isn't called off, which it checks once it's built,
-   * and as the node is asked to broadcast it. As it is, `onHandOver` is told
-   * its hash, whatever the node answers, or if no answer comes.
+   * and as it's handed over, with its hash and nonce, before the node is
+   * asked to broadcast it. As it is, `onHandOver` is told its hash, whatever
+   * the node answers, or if no answer comes.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
@@ -137,15 +140,19 @@ export default class SendingNetwork extends Network {
         if (property === "build" && typeof value === "function") {
           return async (/** @type {unknown} */ network) => {
             const made = await value.call(target, network);
+            const hash = String(made.hash ?? "");
 
             built = made;
             gate?.check();
-            handOvers.set(made.buffer, () => {
-              gate?.handOver();
+            handOvers.set(made.buffer, async () => {
+              await gate?.handOver({
+                hash,
+                nonce: made.nonce === undefined ? "" : String(made.nonce),
+              });
 
               // Whoever's told can't stop it going out.
               try {
-                onHandOver?.(String(made.hash ?? ""));
+                onHandOver?.(hash);
               } catch {
                 // Nothing to do: it goes out all the same.
               }

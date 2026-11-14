@@ -25,13 +25,20 @@ vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
   generateProfile: (await import("$lib/test-helpers/distinctProfile")).default,
 }));
 
-// The `.dusk` names the node gives, by public account.
-const dusk = vi.hoisted(() => ({ names: new Map() }));
+// The `.dusk` names the node gives, by public account, and what the name
+// service says of a name looked up, by name: none, as on a network without
+// names, unless a test says.
+const dusk = vi.hoisted(() => ({ names: new Map(), resolved: new Map() }));
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   getPrimaryName: async (/** @type {string} */ account) =>
     dusk.names.get(account) ?? "",
+}));
+
+vi.mock("$lib/dusk-domains/resolveDuskName", () => ({
+  default: async (/** @type {string} */ name) =>
+    dusk.resolved.get(name) ?? { error: "unsupported-network", name },
 }));
 
 const PASSWORD = "password123";
@@ -140,6 +147,7 @@ describe("Settings › Profiles", () => {
     localStorage.clear();
     toasts.length = 0;
     dusk.names.clear();
+    dusk.resolved.clear();
     logoutSpy.mockClear();
   });
 
@@ -507,7 +515,47 @@ describe("Settings › Profiles", () => {
     }
   });
 
-  it("refuses a profile name that reads as a contact's with letters in pairs, as VVendy for Wendy and Davicl for David", async () => {
+  it("refuses a profile name with a .dusk name another account has, as the name service says, and takes this profile's own with no question", async () => {
+    await vault.setUp(A, PASSWORD);
+    await unlockWallets(PASSWORD);
+
+    const own = String(get(walletStore).profiles[1].account);
+
+    // Sofía's, registered to her account; and Profile 2's own.
+    dusk.resolved.set("sofiadesign.dusk", {
+      account:
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi",
+      name: "sofiadesign.dusk",
+    });
+    dusk.resolved.set("marek.dusk", { account: own, name: "marek.dusk" });
+
+    const settings = render(Settings);
+    const field = settings.getByRole("textbox", { name: "Profile 2 name" });
+
+    for (const name of ["sofiadesign.dusk", "Mi cliente (sofiadesign.dusk)"]) {
+      await nameProfile(settings, 2, name, "enter");
+
+      await vi.waitFor(() =>
+        expect(field).toHaveAccessibleDescription(
+          "sofiadesign.dusk belongs to another account. Choose another name."
+        )
+      );
+      expect(
+        settings.queryByRole("button", { name: "Yes, save it" })
+      ).toBeNull();
+    }
+
+    expect(toasts).toEqual([]);
+    expect(get(openProfileNames)[1] ?? "").toBe("");
+
+    // Its own: saved, with nothing to ask.
+    await nameProfile(settings, 2, "marek.dusk", "enter");
+    await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+
+    expect(get(openProfileNames)[1]).toBe("marek.dusk");
+  });
+
+  it("refuses a profile name that reads as a contact's with letters in pairs or a digit for a letter, as VVendy for Wendy and Dav1d for David", async () => {
     const { openTestContacts } = await import("$lib/test-helpers");
     const { removeContact, saveContact } = await import("$lib/contacts");
 
@@ -533,6 +581,9 @@ describe("Settings › Profiles", () => {
       for (const [name, words] of [
         ["VVendy", "That looks like your contact Wendy. Choose another name."],
         ["Davicl", "That looks like your contact David. Choose another name."],
+        // A digit for a letter, and v for y.
+        ["Dav1d", "That looks like your contact David. Choose another name."],
+        ["Wendv", "That looks like your contact Wendy. Choose another name."],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 

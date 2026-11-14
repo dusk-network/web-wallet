@@ -114,6 +114,7 @@ describe("The wallet's Content-Security-Policy", () => {
         "https://testnet.dusk.domains",
         "https://rpc.testnet.evm.dusk.network",
         "https://explorer.testnet.evm.dusk.network",
+        "https://anvil.testnet.dusk.network",
         "https://ethereum-sepolia-rpc.publicnode.com",
         "https://api.coingecko.com",
         "https://api.web3modal.org",

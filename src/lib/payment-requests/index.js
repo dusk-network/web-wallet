@@ -12,6 +12,7 @@ import {
   makePaymentLink,
   parsePaymentLink,
   readPaymentLink as readLink,
+  requestMessage,
 } from "@dusk-network/app-core/payment-links";
 import { networkFor } from "@dusk-network/networks";
 import { isDuskName } from "@duskdomains/sdk/names";
@@ -157,6 +158,68 @@ export function readPaymentLink(text, net, language) {
       };
 }
 
+/** Said of pasted text with more than one payment link in it. */
+export const LINK_SEVERAL =
+  "That has more than one payment link. Paste just the one to pay.";
+
+/** Said of pasted text with words after its link, which may be part of it. */
+export const LINK_UNCLEAR =
+  "The words after that link may be part of it. Paste the link alone.";
+
+/**
+ * What pasted text refused for `problem` asks: nothing.
+ *
+ * @param {string} problem
+ * @returns {LinkAsked}
+ */
+const refused = (problem) => ({
+  amount: "",
+  elsewhere: null,
+  memo: "",
+  problem,
+  to: "",
+});
+
+/**
+ * What pasted text asks of Send. A link, as the text starts with one, is
+ * read whole, spaces and all, as `readPaymentLink` reads a link: refused
+ * where what's in it can't be read, as it always was. Else, where it's what
+ * Share and Copy give of a request, a line saying what it asks, then "Pay
+ * here:" and the link (`requestText`), its one payment link, its last
+ * words, read alone; text with more than one, or with words after it, which
+ * may be part of it, fills in nothing, and says so. Null for text with
+ * none, as an address or a name.
+ *
+ * @param {string} text
+ * @param {import("@dusk-network/networks").Network | null} net The wallet's network
+ * @param {string} [language] The language the amount field reads
+ * @returns {LinkAsked | null}
+ */
+export function readPastedLink(text, net, language) {
+  const pasted = text.trim();
+
+  if (/^(dusk:|https?:\/\/)/i.test(pasted)) {
+    return readPaymentLink(pasted, net, language);
+  }
+
+  const words = pasted.split(/\s+/);
+  const links = words.filter((word) =>
+    readLink(word, { network: net ?? undefined, walletUrl: ownWalletUrl() })
+  );
+
+  if (links.length > 1) {
+    return refused(LINK_SEVERAL);
+  }
+
+  if (!links.length) {
+    return readPaymentLink(pasted, net, language);
+  }
+
+  return words.at(-1) === links[0]
+    ? readPaymentLink(links[0], net, language)
+    : refused(LINK_UNCLEAR);
+}
+
 /**
  * The links asking for a payment, as `makePaymentLink` makes them: the https
  * link is to the network's web wallet, or this one where it has none named.
@@ -169,4 +232,23 @@ export const makeRequestLink = (request, net) =>
     ...request,
     network: net,
     ...(net?.apps?.wallet ? {} : { walletUrl: ownWalletUrl() }),
+  });
+
+/**
+ * What Share and Copy give of a request, as both wallets say it
+ * (`requestMessage`): "<name> asks you to pay <amount> DUSK · <memo>", on a
+ * test network its name too, then "Pay here: <link>". `name` is the
+ * profile's verified .dusk name, else the name given it here, "" for none.
+ *
+ * @param {{ link: string, lux?: bigint | null, memo?: string }} request
+ * @param {{ language: string, name: string, net: import("@dusk-network/networks").Network | null }} said
+ */
+export const requestText = ({ link, lux, memo }, { language, name, net }) =>
+  requestMessage({
+    language,
+    link,
+    lux: lux ?? null,
+    memo: memo || null,
+    name: name || null,
+    network: net && net.name !== "mainnet" ? net.label : null,
   });

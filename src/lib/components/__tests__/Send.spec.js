@@ -26,6 +26,7 @@ import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
 import {
   cancelWaitingSends,
+  dropUnsent,
   keepWaiting,
   outcomeUnknown,
   sendGate,
@@ -44,6 +45,8 @@ import {
 } from "$lib/contacts";
 import { networkStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { LINK_SEVERAL, requestText } from "$lib/payment-requests";
+import { LINK_BAD_AMOUNT } from "@dusk-network/app-core/payment-links";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
@@ -305,6 +308,66 @@ describe("Send", () => {
         );
       }
     );
+
+    it.each([
+      ["a dusk: link", duskLink],
+      ["an https link to the web wallet's Send", httpsLink],
+    ])(
+      "should fill in the recipient, the amount and the memo from what Copy gives of a request with %s, pasted into To, as from its link alone",
+      async (_, link) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(
+          fields,
+          requestText(
+            { link, lux: 150_000_000n, memo: "Factura 33" },
+            { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+          )
+        );
+
+        expect(filled(fields)).toStrictEqual([
+          otherAccount,
+          "0.15",
+          "Factura 33",
+        ]);
+        expect(getByText(/^Filled in from the link/)).toBeInTheDocument();
+
+        await sendIt(fields);
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          otherAccount,
+          150_000_000n,
+          "Factura 33",
+          gasPrice,
+          gasLimit,
+          undefined,
+          aGate
+        );
+      }
+    );
+
+    it("should read a link pasted alone whole, refusing one with a space in its amount, as it always did, not filling in what comes before the space", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, httpsLink.replace("amount=0.15", "amount=1 000"));
+
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+      expect(fields.review()).toBeDisabled();
+    });
+
+    it("should refuse pasted text with two payment links in it, filling in nothing, as which is meant can't be told", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, `Pay here: ${httpsLink}\nOr here: ${duskLink}`);
+
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("alert")).toHaveTextContent(LINK_SEVERAL);
+      expect(fields.review()).toBeDisabled();
+    });
 
     it("should refuse a link whose amount in lux isn't the one it says, filling in nothing", async () => {
       const { getByRole, getByText } = render(Send, baseProps);
@@ -1148,13 +1211,20 @@ describe("Send", () => {
 
       expect(amount()).toBe("1,000.5 DUSK");
 
-      // A lone comma before three digits could mean 1 or 1000.
+      // A lone comma before three digits could mean 1 or 1000: asked, with
+      // a button for each, which puts that one in the field.
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "Is that 1 or 1000? Write the one you mean."
+        /^Is that 1 or 1000\?\s*1 DUSK\s*1000 DUSK$/
       );
       expect(fields.review()).toBeDisabled();
+
+      await fireEvent.click(getByRole("button", { name: "1 DUSK" }));
+
+      expect(fields.amount()).toHaveValue("1");
+      expect(queryByRole("alert")).toBeNull();
+      expect(fields.review()).toBeEnabled();
 
       await fireEvent.input(fields.amount(), {
         target: { value: "0,0000000001" },
@@ -1262,9 +1332,13 @@ describe("Send", () => {
           target: { value: "1.001" },
         });
 
+        expect(getByText("Is that 1,0010 or 1001?")).toBeTruthy();
         expect(
-          getByText("Is that 1,0010 or 1001? Write the one you mean.")
-        ).toBeTruthy();
+          [
+            getByRole("button", { name: "1,0010 DUSK" }),
+            getByRole("button", { name: "1001 DUSK" }),
+          ].every(Boolean)
+        ).toBe(true);
 
         await fireEvent.input(fieldsOf(getByRole).amount(), {
           target: { value: "ten" },
@@ -1377,10 +1451,13 @@ describe("Send", () => {
       // Typed, a lone point before three digits asks, as a comma does.
       await fireEvent.input(fields.amount(), { target: { value: "1.000" } });
 
-      expect(getByRole("alert")).toHaveTextContent(
-        "Is that 1 or 1000? Write the one you mean."
-      );
+      expect(getByRole("alert")).toHaveTextContent(/^Is that 1 or 1000\?/);
       expect(fields.review()).toBeDisabled();
+
+      await fireEvent.click(getByRole("button", { name: "1 DUSK" }));
+
+      expect(fields.amount()).toHaveValue("1");
+      expect(fields.review()).toBeEnabled();
     });
 
     it("should never show a Total at Max that reads more than the balance", async () => {
@@ -2001,7 +2078,7 @@ describe("Send", () => {
       }
     });
 
-    it("should fill the form in with a send that never went out, asked from where it's said, and send it only from the review", async () => {
+    it("should take a send that never went out to its review, filled in with it, as asked from where it's said, and send it from there in its place", async () => {
       const { networkName } = get(networkStore);
       const unsent = {
         account: publicAddress,
@@ -2021,30 +2098,34 @@ describe("Send", () => {
           to: otherAccount,
         },
       };
+      const execute = vi.fn(() => new Promise(() => {}));
 
-      // Asked before Send opens.
+      // Asked before Send opens: its review, as it was.
       sendUnsentAgain(unsent);
 
-      const { getByRole, getByText } = render(Send, baseProps);
-      const fields = fieldsOf(getByRole);
-      const filled = () =>
-        [fields.to(), fields.amount(), fields.memo()].map(
-          (field) => /** @type {HTMLInputElement} */ (field).value
-        );
+      const { container, getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        execute,
+      });
 
-      expect(filled()).toStrictEqual([otherAccount, "0.0019", "tab dropped 1"]);
-      expect(
-        getByText(
-          "Filled in from the send that didn't go out. Check it before you send."
-        )
-      ).toBeInTheDocument();
-      expect(baseProps.execute).not.toHaveBeenCalled();
+      await vi.waitFor(() =>
+        expect(container.querySelector(".send")).toHaveClass("send--review")
+      );
 
-      await fireEvent.click(fields.review());
+      expect(queryByRole("button", { name: "Review" })).toBeNull();
+      expect(getSummary(container)).toStrictEqual([
+        ["From", `Your public account ${shortenAddress(publicAddress)}`],
+        ["To", otherAccount],
+        ["Amount", "0.0019 DUSK"],
+        ["Memo", "tab dropped 1"],
+        ["Total", "Up to 0.0219 DUSK"],
+      ]);
+      expect(execute).not.toHaveBeenCalled();
+
       await afterConfirmDelay();
-      await fireEvent.click(fields.send());
+      await fireEvent.click(fieldsOf(getByRole).send());
 
-      expect(baseProps.execute).toHaveBeenCalledWith(
+      expect(execute).toHaveBeenCalledWith(
         otherAccount,
         1_900_000n,
         "tab dropped 1",
@@ -2053,6 +2134,16 @@ describe("Send", () => {
         undefined,
         aGate
       );
+
+      // In its place: the wallet locks as it waits, and it's the one kept.
+      cancelWaitingSends(new WalletChangedError());
+
+      await vi.waitFor(() =>
+        expect(get(unsentSends)).toStrictEqual([
+          expect.objectContaining({ id: "unsent-1", memo: "tab dropped 1" }),
+        ])
+      );
+      dropUnsent("unsent-1");
       cleanup();
 
       // Asked while the form shows, over what's typed there.
@@ -2066,13 +2157,18 @@ describe("Send", () => {
         memo: "",
         typed: { ...unsent.typed, memo: "" },
       });
-      await tick();
 
-      expect(
-        [typed.to(), typed.amount(), typed.memo()].map(
-          (field) => /** @type {HTMLInputElement} */ (field).value
+      await vi.waitFor(() =>
+        expect(open.container.querySelector(".send")).toHaveClass(
+          "send--review"
         )
-      ).toStrictEqual([otherAccount, "0.0019", ""]);
+      );
+      expect(getSummary(open.container)).toStrictEqual([
+        ["From", `Your public account ${shortenAddress(publicAddress)}`],
+        ["To", otherAccount],
+        ["Amount", "0.0019 DUSK"],
+        ["Total", "Up to 0.0219 DUSK"],
+      ]);
 
       // Another profile's isn't this form's to fill in.
       sendUnsentAgain({ ...unsent, account: otherAccount, id: "unsent-3" });
@@ -2083,6 +2179,45 @@ describe("Send", () => {
       expect(
         /** @type {HTMLInputElement} */ (fieldsOf(another.getByRole).to()).value
       ).toBe("");
+    });
+
+    it("should keep a send that never went out on the form, filled in with it, where the form can't send it as it was", async () => {
+      const { networkName } = get(networkStore);
+
+      sendUnsentAgain({
+        account: publicAddress,
+        at: Date.now() - 60_000,
+        id: "unsent-4",
+        label: "Lena",
+        lux: "1900000",
+        memo: "too much now",
+        network: networkName,
+        to: otherAccount,
+        typed: {
+          amount: "0.0019",
+          memo: "too much now",
+          to: otherAccount,
+        },
+      });
+
+      const { container, getByRole, getByText } = render(Send, {
+        ...baseProps,
+        availableBalance: 1_000_000n,
+      });
+
+      await tick();
+
+      expect(container.querySelector(".send")).not.toHaveClass("send--review");
+      expect(
+        [fieldsOf(getByRole).to(), fieldsOf(getByRole).amount()].map(
+          (field) => /** @type {HTMLInputElement} */ (field).value
+        )
+      ).toStrictEqual([otherAccount, "0.0019"]);
+      expect(
+        getByText(
+          "Filled in from the send that didn't go out. Check it before you send."
+        )
+      ).toBeInTheDocument();
     });
 
     it("should keep a send until it goes out, and say no more of one that never went out once the same is sent again", async () => {
@@ -2141,7 +2276,8 @@ describe("Send", () => {
         JSON.stringify({
           market_data: {
             current_price: { usd: 0.5 },
-            last_updated: "2026-11-13T12:03:00.000Z",
+            // Today's: a day's time says its day too.
+            last_updated: new Date().toISOString(),
           },
         }),
     }));
@@ -4244,10 +4380,22 @@ describe("Send", () => {
           )
         ).toBeInTheDocument();
 
-        await fireEvent.click(getByRole("button", { name: "Save" }));
+        // Typed, Enter, Enter: the question never takes the focus, so the
+        // second Enter asks it again, and saves nothing.
+        const field = /** @type {HTMLInputElement} */ (
+          getByRole("textbox", { name: "Contact name" })
+        );
+
+        field.focus();
+        await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
 
         expect(findContact(otherAccount)).toBeNull();
-        expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+        expect(field).toHaveFocus();
+        expect(getByRole("button", { name: "Yes, save it" })).not.toHaveFocus();
+
+        await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
+
+        expect(findContact(otherAccount)).toBeNull();
 
         await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
 

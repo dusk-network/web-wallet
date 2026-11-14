@@ -3,6 +3,7 @@ import { networks } from "@dusk-network/networks";
 import { base } from "$app/paths";
 
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import routesStopped from "$lib/test-helpers/routesStopped";
 
 import { load } from "../+page.js";
 
@@ -30,11 +31,17 @@ describe("Migrate", () => {
       location: `${base}/dashboard/bridge?route=bsc-to-dusk`,
       status: 307,
     });
+
+    // Testnet's, from its BSC test chain.
+    setNodeNetwork(networks.testnet);
+
+    expect(sentTo()?.location).toBe(
+      `${base}/dashboard/bridge?route=bsc-to-dusk`
+    );
   });
 
   it("opens the Bridge with no route where no migration is running, or there is none", () => {
-    // Testnet's, from Sepolia, isn't running.
-    setNodeNetwork(networks.testnet);
+    setNodeNetwork(routesStopped(networks.testnet));
 
     expect(sentTo()?.location).toBe(`${base}/dashboard/bridge`);
 

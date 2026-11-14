@@ -84,6 +84,57 @@ describe("A send that can be called off", () => {
     });
   });
 
+  it("is broadcast only once what's kept of it says it's handed over, with its hash and nonce, and never where that can't be", async () => {
+    const network = new SendingNetwork(new URL("https://nodes.example/"));
+    const asked = get(broadcastsAsked);
+    const kept = Promise.withResolvers();
+    const keep = vi.fn(() => kept.promise);
+    const gate = sendGate();
+
+    gate.keepFirst(keep);
+
+    const sent = network.execute(
+      /** @type {any} */ ({
+        build: async () => ({
+          buffer: new Uint8Array([7]),
+          hash: "ab".repeat(32),
+          nonce: 107n,
+        }),
+      }),
+      { gate }
+    );
+
+    await vi.waitFor(() =>
+      expect(keep).toHaveBeenCalledWith({ hash: "ab".repeat(32), nonce: "107" })
+    );
+
+    // It can't be called off now, and isn't broadcast until it's kept.
+    expect(get(gate)).toBe("handed-over");
+    expect(gate.cancel()).toBe(false);
+    expect(get(broadcastsAsked)).toBe(asked);
+
+    kept.resolve(undefined);
+    await sent;
+
+    expect(get(broadcastsAsked)).toBe(asked + 1);
+
+    // Where it can't be kept as handed over, it never goes, and nothing went
+    // out: it can be tried again.
+    const refused = sendGate();
+
+    refused.keepFirst(() => Promise.reject(new Error("QuotaExceededError")));
+
+    const error = await network
+      .execute(/** @type {any} */ (builder()), { gate: refused })
+      .catch((/** @type {unknown} */ reason) => reason);
+
+    expect(error).toEqual(new Error("QuotaExceededError"));
+    expect(get(broadcastsAsked)).toBe(asked + 1);
+    expect(describeFailure(/** @type {Error} */ (error))).toMatchObject({
+      canRetry: true,
+    });
+  });
+
   it("goes out as ever, past calling off, once the node was asked to broadcast it", async () => {
     const network = new SendingNetwork(new URL("https://nodes.example/"));
     const asked = get(broadcastsAsked);

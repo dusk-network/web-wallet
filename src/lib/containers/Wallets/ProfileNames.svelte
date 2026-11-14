@@ -7,13 +7,15 @@
    * first. A name is saved as its field is left, or with Enter: at most 40
    * characters, on one line, said once the field holds that many, and never
    * cut short; empty, the profile goes by its number again. One with what
-   * can't be seen in it, which can read as another name, is refused. One
-   * that asks a question, as any `.dusk` name in it, is saved only once the
-   * person answers it.
+   * can't be seen in it, which can read as another name, is refused, as is
+   * one with a `.dusk` name the name service says is another account's. One
+   * that asks a question, as any other `.dusk` name in it, is saved only once
+   * the person answers it.
    */
   import { mdiAlertOutline, mdiCheck } from "@mdi/js";
   import {
     NAME_SAVE_YES,
+    nameDuskNames,
     profileNameCheck,
   } from "@dusk-network/app-core/names";
 
@@ -22,8 +24,10 @@
   import { shortenAddress } from "$lib/dusk/string";
   import { FieldLimit, SectionHead } from "$lib/components";
   import { listContacts } from "$lib/contacts";
+  import { nameOwners } from "$lib/dusk-domains";
   import { WalletChangedError } from "$lib/errors";
   import { networkStore, walletStore } from "$lib/stores";
+  import { nodeBaseUrl } from "$lib/url";
   import profileLabel from "$lib/wallet/profileLabel";
   import { profilesHere } from "$lib/wallets/accountNames";
   import {
@@ -99,7 +103,7 @@
   /**
    * Saves a profile's name as its field holds it, unless it asks a question
    * not answered yet (`answered`): then the question waits for its answer,
-   * which saves it.
+   * which saves it. Its `.dusk` names are looked up first.
    *
    * @param {number} index
    * @param {boolean} [answered]
@@ -123,18 +127,34 @@
       return;
     }
 
+    const isAsked = Boolean(name) && !(answered && askedOf[index] === name);
+    // Its .dusk names, looked up first: whose they are.
+    const owners =
+      isAsked && nameDuskNames(name).length
+        ? await nameOwners(name, $networkStore.networkName, nodeBaseUrl())
+        : undefined;
+
+    // Typed on, or saved, meanwhile: that's for the save that follows.
+    if (
+      typedWalletName(drafts[index]) !== name ||
+      name === (saving[index] ?? normalizeWalletName($openProfileNames[index]))
+    ) {
+      return;
+    }
+
     // Empty, it goes by its number: no other's name, and nothing to ask.
-    // Another profile's or a contact's name, or one like it, is refused; one
-    // with a .dusk name in it, or that starts as a contact's name, is asked
-    // about, and saved only once the answer says so.
-    const said =
-      name && !(answered && askedOf[index] === name)
-        ? profileNameCheck(name, {
-            contacts: listContacts(),
-            profiles: everyProfile,
-            self: String(profiles[index].account),
-          })
-        : null;
+    // Another profile's or a contact's name, or one like it, is refused, as
+    // is a .dusk name another account's; one with another .dusk name in it,
+    // or that starts as a contact's name, is asked about, and saved only once
+    // the answer says so.
+    const said = isAsked
+      ? profileNameCheck(name, {
+          contacts: listContacts(),
+          owners,
+          profiles: everyProfile,
+          self: String(profiles[index].account),
+        })
+      : null;
 
     if (said?.refused) {
       refused[index] = said.words;

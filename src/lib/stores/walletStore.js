@@ -19,6 +19,7 @@ import {
   getShieldedHistory,
   isHistoryEnabled,
   isToAnotherProfile,
+  noteSentOutcome,
   stopActivity,
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
@@ -32,6 +33,7 @@ import {
 } from "$lib/security/sendPassword";
 import { unconfirmedHash } from "$lib/transactions/describeFailure";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
+import transactionInBlock from "$lib/transactions/transactionInBlock";
 import { cancelWaitingSends } from "$lib/transactions/waitingSends";
 import { nodeBaseUrl } from "$lib/url";
 import WalletTreasury from "$lib/wallet-treasury";
@@ -559,9 +561,36 @@ const sendAs = (
       }),
   });
 
+  /**
+   * History says what the block that took it says, as the balances read
+   * from then do, not once that block is final: true once it's said, false
+   * where no block has it, or another wallet opened.
+   *
+   * @param {TransactionInfo} txInfo
+   * @returns {Promise<boolean>}
+   */
+  const sayInBlock = (txInfo) =>
+    networkStore
+      .connect()
+      .then((network) => transactionInBlock(network, txInfo.hash))
+      .then(async (inBlock) => {
+        if (!inBlock || session !== walletSession) {
+          return false;
+        }
+
+        await noteSentOutcome(txInfo.hash, inBlock);
+
+        return true;
+      })
+      .catch(() => false);
+
   /** @param {TransactionInfo} txInfo */
   const followRemoval = (txInfo) => {
     const after = syncNumber;
+
+    /** Whether History said it as it left the node's queue: not yet. */
+    let saidInBlock = Promise.resolve(true);
+
     // Its nonce, kept for the next to take the one after, goes with it: not
     // once another wallet opened, or after a lock, as the nonce kept then is
     // another send's.
@@ -569,10 +598,18 @@ const sendAs = (
       if ("nonce" in txInfo && session === walletSession) {
         treasury.forgetSentNonce(profile, txInfo.nonce);
       }
+
+      // Out of the node's queue: History says it as the balances read now.
+      saidInBlock = sayInBlock(txInfo);
     });
 
-    // Background sync errors are reported in syncStatus.
-    refreshed.catch(() => {});
+    // Background sync errors are reported in syncStatus. A block the node
+    // didn't have yet as it took it out of its queue, it has once the
+    // balances are read.
+    refreshed
+      .catch(() => {})
+      .then(() => saidInBlock)
+      .then((isSaid) => isSaid || sayInBlock(txInfo));
 
     if (staking) {
       holdStaking(profile, txInfo.hash, after, refreshed);

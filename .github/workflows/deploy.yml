@@ -1,14 +1,14 @@
 name: Deploy
 
-# A deploy/web-wallet-testnet* branch goes to testnet: main, with what only
-# testnet takes, as a network's file. A release tag goes to mainnet, which
-# stays on DigitalOcean until the wallet's v2: only once the DEPLOY_MAINNET
+# main goes to testnet, as it's pushed or the workflow is run on it: the
+# attestation names main. A release tag goes to mainnet, which stays on
+# DigitalOcean until the wallet's v2: only once the DEPLOY_MAINNET
 # repository variable is "true", and the cloudflare environment takes
 # web-wallet-v* tags. Each is built with its site's settings in
 # deployments.json, as scripts/verify-build.js rebuilds it.
 on:
   push:
-    branches: ["deploy/web-wallet-testnet*"]
+    branches: ["main"]
     tags: ["web-wallet-v*"]
   workflow_dispatch:
 
@@ -23,15 +23,14 @@ jobs:
   deploy:
     name: Deploy to ${{ github.ref_type == 'tag' && 'mainnet' || 'testnet' }}
     if: >-
-      (github.ref_type == 'branch' &&
-      startsWith(github.ref_name, 'deploy/web-wallet-testnet')) ||
+      (github.ref_type == 'branch' && github.ref_name == 'main') ||
       (github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'web-wallet-v') &&
       vars.DEPLOY_MAINNET == 'true')
     # GitHub-hosted, for a clean machine around the Cloudflare token.
     runs-on: ubuntu-latest
-    # The token is this environment's, which only deploy/web-wallet-testnet*
-    # branches can use.
+    # The token is this environment's, which only main and web-wallet-v*
+    # tags can use.
     environment: cloudflare
     # GitHub signs the build manifest's attestation with this workflow's own
     # identity, for this commit: no key to keep.
@@ -54,7 +53,7 @@ jobs:
         with:
           node-version-file: "./.nvmrc"
 
-      # A deploy branch's own commits have been through no pull request's CI.
+      # The Cloudflare CLI's lockfile too, which no pull request's CI checks.
       - name: Validate package release ages
         run: |
           node scripts/verify-package-release-ages.js --days 0.5

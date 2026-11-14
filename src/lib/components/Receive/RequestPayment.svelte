@@ -8,17 +8,19 @@
    * which opens the web wallet's Send, filled in.
    */
   import { mdiChevronDown } from "@mdi/js";
+  import { readAmount } from "@dusk-network/app-core/amounts";
   import { displayText, numbersNote } from "@dusk-network/app-core/text";
 
   import { CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formatDusk } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { formDraft } from "$lib/navigation";
-  import { makeRequestLink } from "$lib/payment-requests";
+  import { makeRequestLink, requestText } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
   import AmountInCurrency from "../AmountInCurrency/AmountInCurrency.svelte";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
   /** The account or shielded address that's paid. */
@@ -36,6 +38,12 @@
   /** Called as the request leaves the wallet. */
   /** @type {() => void} */
   export let onUse = () => {};
+
+  /**
+   * Whose request it is, as Copy says it: the profile's verified .dusk name,
+   * else the name given it here, "" for none.
+   */
+  export let requestName = "";
 
   const id = randomUUID();
   const draft = formDraft("request");
@@ -102,7 +110,18 @@
         />
         <span aria-hidden="true" class="request__unit">DUSK</span>
       </div>
-      {#if made.problems.amount}
+      {#if readAmount(amount, language).question}
+        <!-- Either of two: a tap on one puts it in the field. -->
+        <AmountQuestion
+          className="request__error"
+          id="{id}-amount-error"
+          {language}
+          on:choose={(event) => {
+            amount = event.detail;
+          }}
+          text={amount}
+        />
+      {:else if made.problems.amount}
         <p class="request__error" id="{id}-amount-error" role="alert">
           {made.problems.amount}
         </p>
@@ -140,12 +159,17 @@
           ? ""
           : " The link opens the web wallet's Send, filled in."}
       </p>
+      <!-- What it asks in a line, then its link. -->
       <CopyButton
         className="request__copy"
         name="request link"
         onCopied={onUse}
         text="Copy request link"
-        value={request.link}
+        value={requestText(request, {
+          language,
+          name: requestName,
+          net: $nodeNetwork,
+        })}
         variant="secondary"
       />
     {/if}

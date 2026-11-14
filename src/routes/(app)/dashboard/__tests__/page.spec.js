@@ -6,6 +6,7 @@ import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
+import routesStopped from "$lib/test-helpers/routesStopped";
 
 import Dashboard from "../+page.svelte";
 import { networks } from "@dusk-network/networks";
@@ -379,10 +380,27 @@ describe("Dashboard", () => {
     );
     unmount();
 
-    // Testnet's migration, from Sepolia, isn't running: no line.
+    // Testnet's from its BSC test chain.
     network.store?.set({
       connected: true,
       net: networks.testnet,
+      networkName: "testnet",
+    });
+
+    const testnet = render(Dashboard, props);
+
+    expect(
+      testnet.getByRole("link", { name: "Migrate it to Dusk" })
+    ).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/bridge?route=bsc-to-dusk"
+    );
+    testnet.unmount();
+
+    // A migration that isn't running: no line.
+    network.store?.set({
+      connected: true,
+      net: routesStopped(networks.testnet),
       networkName: "testnet",
     });
 

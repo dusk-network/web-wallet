@@ -60,7 +60,7 @@ describe("RewardsByYear", () => {
 
     expect(
       getByText(
-        "Taken out by unstaking is part of grown while held: what came back, less that stDUSK's average cost, deposit fees included."
+        "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included."
       )
     ).toBeInTheDocument();
 
@@ -77,6 +77,35 @@ describe("RewardsByYear", () => {
       "0 DUSK · €0.00",
       "0.000002 DUSK · under €0.01",
       "−1.5 DUSK · −€0.48",
+    ]);
+  });
+
+  it("shows a loss in what grew while held as in what unstaking took out, as one cost basis gives both", () => {
+    const { container } = render(RewardsByYear, {
+      currency: "EUR",
+      locale: "en",
+      rewards: {
+        currency: "EUR",
+        shieldedWaiting: false,
+        years: [
+          // Nandini's: a stake and its unstake at one rate, its fee lost.
+          {
+            claimed: sum(0n, "0"),
+            sozu: sum(-500_000n, "-0.0002"),
+            sozuGrown: sum(-500_000n, "-0.0002"),
+            reading: 0,
+            year: 2026,
+          },
+        ],
+      },
+      valued: true,
+    });
+
+    expect(rowOf(container, 2026)).toStrictEqual([
+      "2026",
+      "0 DUSK · €0.00",
+      "−0.0005 DUSK · a loss under €0.01",
+      "−0.0005 DUSK · a loss under €0.01",
     ]);
   });
 });

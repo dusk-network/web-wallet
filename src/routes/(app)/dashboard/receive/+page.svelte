@@ -11,6 +11,7 @@
   import { ExclusiveChoice } from "$lib/dusk/components";
   import { PageCard } from "$lib/containers/Cards";
   import { nodeBaseUrl } from "$lib/url";
+  import { openProfileNames } from "$lib/wallets";
 
   let addressToShow = "public";
   let isMounted = false;
@@ -45,9 +46,29 @@
     }
   }
 
+  /** The verified .dusk name of the profile shown, once looked up: "" for none. */
+  let verifiedName = "";
+
+  /**
+   * Takes the name a lookup gives, unless another was asked for since.
+   *
+   * @param {string | Promise<string>} asked
+   */
+  function takeName(asked) {
+    verifiedName = "";
+    Promise.resolve(asked).then(
+      (found) => {
+        if (asked === name) {
+          verifiedName = found || "";
+        }
+      },
+      () => {}
+    );
+  }
+
   /** @type {"account" | "address"} */
   $: addressProp = addressToShow === "public" ? "account" : "address";
-  $: ({ currentProfile } = $walletStore);
+  $: ({ currentProfile, profiles } = $walletStore);
   $: ({ networkName } = $networkStore);
   $: currentAddress = currentProfile
     ? currentProfile[addressProp].toString()
@@ -64,6 +85,14 @@
           addressProp === "address" ? currentAddress : undefined
         )
       : "";
+  $: takeName(name);
+  // Whose a request is, as Share and Copy say it: the verified .dusk name,
+  // else the name given the profile here, none for one known by its number.
+  $: requestName =
+    verifiedName ||
+    (currentProfile
+      ? ($openProfileNames[profiles.indexOf(currentProfile)] ?? "")
+      : "");
 </script>
 
 <PageCard gap="medium" heading="Receive">
@@ -74,8 +103,14 @@
     {name}
     onUse={keepRequest}
     {request}
+    {requestName}
   >
-    <RequestPayment address={currentAddress} bind:request onUse={keepRequest} />
+    <RequestPayment
+      address={currentAddress}
+      bind:request
+      onUse={keepRequest}
+      {requestName}
+    />
     {#if currentProfile}
       <PaymentRequests
         addresses={[

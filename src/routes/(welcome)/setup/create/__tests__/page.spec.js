@@ -78,6 +78,27 @@ describe("Create", async () => {
     target: document.body,
   };
 
+  /**
+   * Types the three words the check asks for, as written down, and presses
+   * Check.
+   *
+   * @param {(role: string, options: object) => HTMLElement} getByRole
+   */
+  async function checkWords(getByRole) {
+    const words = mnemonic.split(" ");
+
+    for (const label of document.querySelectorAll(".recovery-check__word")) {
+      const n = Number(label.textContent?.replace(/\D/g, ""));
+
+      await fireInput(
+        asInput(/** @type {HTMLElement} */ (label.querySelector("input"))),
+        words[n - 1]
+      );
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+  }
+
   vi.mocked(SvelteKit.error).mockImplementation(() => {
     throw new Error("SvelteKit Error Simulation");
   });
@@ -193,7 +214,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(
-      getByText("Tap the words in the order you wrote them down.")
+      getByText(/^Type words \d+, \d+ and \d+ as you wrote them down\.$/)
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/mnemonic/i);
   });
@@ -280,76 +301,86 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
   });
 
-  it("doesn't let the user proceed if they have entered mismatching Mnemonic", async () => {
-    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
+  it("asks for three of the words as written down, with Check, and Skip for now until they match, showing the words again where one doesn't", async () => {
+    const { container, getAllByRole, getByRole, getByText } = render(
+      Create,
+      baseOptions
+    );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
-
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const wordButtonsWrapper = container.getElementsByClassName(
-      "dusk-mnemonic__validate-actions-wrapper"
-    )[0];
+    const boxes = /** @type {HTMLInputElement[]} */ (
+      Array.from(container.querySelectorAll(".recovery-check__word input"))
+    );
+    const asked = Array.from(
+      container.querySelectorAll(".recovery-check__word"),
+      (label) => Number(label.textContent?.replace(/\D/g, ""))
+    );
 
-    const wordButtons = Array.from(wordButtonsWrapper.children);
+    // Three, in order, each its own box, as Import's take words.
+    expect(boxes).toHaveLength(3);
+    expect(asked).toStrictEqual([...asked].sort((a, b) => a - b));
+    expect(new Set(asked).size).toBe(3);
 
-    wordButtons.forEach(async (button) => {
-      await fireEvent.click(button);
-    });
+    for (const box of boxes) {
+      expect(box).toHaveAttribute("autocomplete", "off");
+      expect(box).toHaveAttribute("autocorrect", "off");
+      expect(box).toHaveAttribute("autocapitalize", "none");
+      expect(box).toHaveAttribute("spellcheck", "false");
+    }
 
-    await tick();
+    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
 
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    // One wrong: said, with the words again.
+    const words = mnemonic.split(" ");
+
+    await fireInput(boxes[0], words[asked[0] - 1]);
+    await fireInput(boxes[1], "wrong");
+    await fireInput(boxes[2], words[asked[2] - 1]);
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+
+    expect(getByRole("alert")).toHaveTextContent(
+      `Word ${asked[1]} doesn't match. Your words:`
+    );
+    expect(
+      Array.from(
+        container.querySelectorAll(".recovery-check__mismatch li"),
+        (word) => word.textContent
+      )
+    ).toStrictEqual(words);
+    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+
+    // Right: they match, and Next goes on.
+    await fireInput(boxes[1], ` ${words[asked[1] - 1].toUpperCase()} `);
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+
+    expect(getByText("They match.")).toBeInTheDocument();
+    expect(container.querySelector(".recovery-check__mismatch")).toBeNull();
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Set a password"
+    );
   });
 
-  it("lets the user proceed if they have entered a matching Mnemonic", async () => {
-    const { getByRole, getAllByRole } = render(Create, baseOptions);
+  it("goes on past the check with Skip for now, the words never checked", async () => {
+    const { getAllByRole, getByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
-
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Skip for now" }));
 
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
-
-    await tick();
-
-    expect(getByRole("button", { name: "Next" })).toBeEnabled();
-  });
-
-  it("ensures that the Undo button on the Mnemonic Validate step works as expected", async () => {
-    const { getByRole, getAllByRole } = render(Create, baseOptions);
-
-    await fireEvent.click(getByRole("button", { name: "Accept" }));
-
-    await fireEvent.click(getAllByRole("checkbox")[0]);
-    await fireEvent.click(getAllByRole("checkbox")[1]);
-
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
-
-    await tick();
-
-    await fireEvent.click(getByRole("button", { name: "Undo" }));
-
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Set a password"
+    );
   });
 
   it("ensures the Password step renders as expected", async () => {
@@ -363,11 +394,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
+    await checkWords(getByRole);
 
     await tick();
 
@@ -391,11 +418,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -425,9 +448,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    for (const word of mnemonic.split(" ")) {
-      await fireEvent.click(getByRole("button", { name: word }));
-    }
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -454,9 +475,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    for (const word of mnemonic.split(" ")) {
-      await fireEvent.click(getByRole("button", { name: word }));
-    }
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
@@ -494,11 +513,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -526,11 +541,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Validate step
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
@@ -583,9 +594,7 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      for (const word of mnemonic.split(" ")) {
-        await fireEvent.click(getByRole("button", { name: word }));
-      }
+      await checkWords(getByRole);
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("switch"));
@@ -657,11 +666,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Validate step
-    const mnemonicSplit = mnemonic.split(" ");
-
-    mnemonicSplit.forEach(async (word) => {
-      await fireEvent.click(getByRole("button", { name: word }));
-    });
+    await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 

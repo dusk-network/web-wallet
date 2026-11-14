@@ -1,7 +1,8 @@
 <script>
+  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
   import { displayText } from "@dusk-network/app-core/text";
-  import { createEventDispatcher, onMount, tick } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import {
     mdiAlertCircleOutline,
     mdiCheck,
@@ -69,6 +70,15 @@
   /** @type {{ address: string, label: string } | null} */
   export let account = null;
 
+  /**
+   * Whom a memo that came in isn't the sender's own words from: the
+   * profiles here and the contacts (`@dusk-network/app-core/activity`'s
+   * sendersMemo).
+   *
+   * @type {{ contacts?: ReadonlyArray<{ address?: unknown }>, profiles?: ReadonlyArray<{ account?: unknown, address?: unknown }> }}
+   */
+  export let memoAmong = {};
+
   /** Looks a public transaction's nonce up. */
   /** @type {(hash: string) => Promise<string | null>} */
   export let loadNonce = (hash) => fetchTxNonce(archiveAt(nodeBaseUrl()), hash);
@@ -109,7 +119,7 @@
    *
    * @param {boolean} [answered]
    */
-  async function saveCounterparty(answered = false) {
+  function saveCounterparty(answered = false) {
     const name = contactName.trim();
 
     if (
@@ -121,12 +131,10 @@
       return;
     }
 
+    // Its Yes answers it, with a click or a tap: the question never takes
+    // the focus, so Enter in the name, again, asks it again.
     if (contactNameIssue && !answered) {
       contactAskedOf = contactName;
-      await tick();
-      /** @type {HTMLElement | null} */ (
-        document.querySelector("button.tx-detail__save-yes")
-      )?.focus();
 
       return;
     }
@@ -594,11 +602,20 @@
         <dd>{p.privacy}</dd>
       </div>
       {#if row.memo}
+        {@const theirs = sendersMemo(row, memoAmong)}
         <div>
           <dt>Memo</dt>
           <!-- Anyone can send a memo, and hidden characters would show it out
-            of order, as "exe.png" for "gnp.exe". -->
-          <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
+            of order, as "exe.png" for "gnp.exe". A stranger's is theirs: in
+            quotes, muted, with whom it came from. -->
+          {#if theirs}
+            <dd class="tx-detail__memo tx-detail__memo--theirs">
+              “<MemoText text={theirs.memo} />”
+              <span class="tx-detail__memo-from">{theirs.from}</span>
+            </dd>
+          {:else}
+            <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
+          {/if}
         </div>
       {/if}
       <div>
@@ -999,6 +1016,16 @@
 
   .tx-detail__memo {
     overflow-wrap: anywhere;
+  }
+
+  .tx-detail__memo--theirs {
+    color: var(--calm-muted);
+    font-weight: 400;
+  }
+
+  .tx-detail__memo-from {
+    display: block;
+    font-size: 0.8125rem;
   }
 
   .tx-detail__error {

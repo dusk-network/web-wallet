@@ -1,7 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import { browser } from "$app/environment";
   import { onMount } from "svelte";
   import {
@@ -909,7 +910,17 @@
           >
         </p>
       {/if}
-      {#if problem}
+      {#if readAmount(amount, language).question}
+        <!-- Either of two: a tap on one puts it in the field. -->
+        <AmountQuestion
+          className="swap-error"
+          {language}
+          on:choose={(event) => {
+            amount = event.detail;
+          }}
+          text={amount}
+        />
+      {:else if problem}
         <p class="swap-error" role="alert">{problem}</p>
       {:else if leavesTooLittle}
         <p class="swap-error" role="status">

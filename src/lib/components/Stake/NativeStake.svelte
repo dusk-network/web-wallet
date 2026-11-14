@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import {
@@ -37,6 +37,7 @@
     reviewStep,
   } from "$lib/navigation";
 
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import TransactionResult from "../TransactionResult/TransactionResult.svelte";
@@ -318,7 +319,17 @@
         </p>
       {/if}
       <div id="{id}-error">
-        {#if check.error}
+        {#if readAmount(amountText, language).question}
+          <!-- Either of two: a tap on one puts it in the field. -->
+          <AmountQuestion
+            {language}
+            on:choose={(event) => {
+              amountText = event.detail;
+              isMaxAmount = false;
+            }}
+            text={amountText}
+          />
+        {:else if check.error}
           <div class="native-stake__error" role="alert">
             <Icon path={mdiAlertCircleOutline} />
             <div>

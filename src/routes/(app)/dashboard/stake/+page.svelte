@@ -25,6 +25,7 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
+  import { hasPrice } from "$lib/prices";
   import { readSozuGrowth, sozuStore } from "$lib/sozu";
   import { followTransaction } from "$lib/transactions";
   import { readNativeRewards, readProvisioners } from "$lib/staking/rewardRate";
@@ -139,10 +140,9 @@
    */
   let native;
 
-  // The gas price as the network asks it now, for what's sent from here.
-  onMount(() => {
-    gasPriceStore.readAgain();
-  });
+  // The gas price as the network asks it now, for what's sent from here:
+  // read again while the form shows, so its Review opens with it.
+  onMount(() => gasPriceStore.keepFresh());
 
   onMount(() => {
     networkStore
@@ -214,6 +214,7 @@
       {
         currency: rewardsCurrency,
         fiat: rewardsValued,
+        net: get(networkStore).net,
         session,
         sozuStatus: () => sozuStore.check(),
       },
@@ -504,6 +505,7 @@
       {publicBalance}
       {rewards}
       {rewardsCurrency}
+      rewardsPriced={hasPrice($networkStore.net)}
       bind:rewardsValued
       sozu={$sozuStore}
       {stakeInfo}

@@ -125,6 +125,30 @@ describe("Send page", () => {
       expect(fieldsAre(getByRole)).toStrictEqual([OTHER, "0.15", "Factura 33"]);
     });
 
+    it("should ask of a link's amount what typing it asks, as 2.125, with a button for each reading", async () => {
+      setNodeNetwork(networks.testnet);
+      openLink(`to=${OTHER}&amount=2.125&memo=Factura+34&network=testnet`);
+
+      const { getByRole } = render(SendPage);
+
+      expect(fieldsAre(getByRole)).toStrictEqual([
+        OTHER,
+        "2.125",
+        "Factura 34",
+      ]);
+      expect(getByRole("alert")).toHaveTextContent(
+        /^Is that 2\.1250 or 2125\?/
+      );
+
+      await fireEvent.click(getByRole("button", { name: "2.1250 DUSK" }));
+
+      expect(fieldsAre(getByRole)).toStrictEqual([
+        OTHER,
+        "2.1250",
+        "Factura 34",
+      ]);
+    });
+
     it("should say a link for another network is one, and fill in nothing", () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=mainnet`);
@@ -351,34 +375,65 @@ describe("Send page", () => {
     );
   });
 
-  it("should start from the gas price both wallets pick, the network's median up to five times the lowest, and say the network is busy over it", async () => {
+  describe("gas price", () => {
     const BUSY =
       "The network is busy. You can raise the gas price for it to go out sooner.";
-    const connect = vi.spyOn(networkStore, "connect");
 
-    /** @param {bigint} median */
-    const nodeAsks = async (median) => {
-      connect.mockResolvedValue(
-        /** @type {any} */ ({
-          blocks: { gasPrice: Promise.resolve({ median }) },
-        })
+    /** Sozu's activation after a stake, waiting alone at 2. */
+    const SOZU_ACTIVATION = [{ gasLimit: 6_000_000, gasPrice: "2" }];
+
+    /**
+     * A block's worth waiting in the node's mempool, each at `median`.
+     *
+     * @param {bigint} median
+     */
+    const blockFull = (median) =>
+      Array.from({ length: 1_000 }, () => ({
+        gasLimit: 2_500_000,
+        gasPrice: String(median),
+      }));
+
+    /**
+     * What waits in the node's mempool from now, as its GraphQL lists it.
+     *
+     * @param {Array<{ gasLimit: number, gasPrice: string }>} mempoolTxs
+     */
+    const nodeHolds = (mempoolTxs) =>
+      vi
+        .spyOn(networkStore, "connect")
+        .mockResolvedValue(
+          /** @type {any} */ ({ query: async () => ({ mempoolTxs }) })
+        );
+
+    /** @param {HTMLElement} container */
+    const reviewFee = (container) =>
+      container.querySelector(".gas-fee__amount-value")?.textContent;
+
+    /** @param {bigint} price */
+    const feeAt = (price) =>
+      formatDuskPlain(
+        getGasSettings("public-transfer", get(settingsStore), price).gasLimit *
+          price
       );
-      await gasPriceStore.refresh();
-    };
 
-    try {
-      for (const [median, price, isBusy] of /** @type {const} */ ([
-        [900n, 5n, true],
-        [2n, 2n, false],
+    afterEach(async () => {
+      // The lowest again, as the other tests start from.
+      nodeHolds([]);
+      await gasPriceStore.refresh();
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    it("should start from the price both wallets pick: the lowest while what waits fits in the next block, as Sozu's activation alone at 2, else the median up to five times the lowest, saying the network is busy over it", async () => {
+      for (const [mempool, price, isBusy] of /** @type {const} */ ([
+        [blockFull(900n), 5n, true],
+        [blockFull(2n), 2n, false],
+        [SOZU_ACTIVATION, 1n, false],
       ])) {
-        await nodeAsks(median);
+        nodeHolds([...mempool]);
+        await gasPriceStore.refresh();
 
         const { container, getByRole, queryByText } = render(SendPage);
-        const { gasLimit } = getGasSettings(
-          "public-transfer",
-          get(settingsStore),
-          get(gasPriceStore)
-        );
 
         await fireEvent.input(getByRole("textbox", { name: "To" }), {
           target: { value: OTHER },
@@ -388,9 +443,7 @@ describe("Send page", () => {
         });
         await fireEvent.click(getByRole("button", { name: "Review" }));
 
-        expect(
-          container.querySelector(".gas-fee__amount-value")
-        ).toHaveTextContent(formatDuskPlain(gasLimit * price));
+        expect(reviewFee(container)).toBe(feeAt(price));
 
         if (isBusy) {
           expect(queryByText(BUSY)).toBeInTheDocument();
@@ -400,11 +453,33 @@ describe("Send page", () => {
 
         cleanup();
       }
-    } finally {
-      // The lowest again, as the other tests start from.
-      await nodeAsks(1n);
-      connect.mockRestore();
-    }
+    });
+
+    it("should open its Review with the price read within the last half minute, reading it again while the form shows, as the extension does as a Review opens", async () => {
+      nodeHolds(SOZU_ACTIVATION);
+      await gasPriceStore.refresh();
+      vi.useFakeTimers({
+        toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"],
+      });
+
+      const { container, getByRole, queryByText } = render(SendPage);
+
+      await fireEvent.input(getByRole("textbox", { name: "To" }), {
+        target: { value: OTHER },
+      });
+      await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
+        target: { value: "1" },
+      });
+
+      // The mempool fills while the form shows: read again within half a
+      // minute, and the form takes it.
+      nodeHolds(blockFull(900n));
+      await act(() => vi.advanceTimersByTimeAsync(30_000));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(reviewFee(container)).toBe(feeAt(5n));
+      expect(queryByText(BUSY)).toBeInTheDocument();
+    });
   });
 
   it("should start a transfer from the default gas limit of its recipient", async () => {
