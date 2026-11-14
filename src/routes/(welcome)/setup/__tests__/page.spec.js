@@ -14,10 +14,20 @@ import vault from "$lib/vault";
 import Setup from "../+page.svelte";
 import { load } from "../+page.js";
 
-// The name the account a request pays goes by, as the chain says.
+// The name the account a request pays goes by, as the chain says, and what
+// a .dusk name is, as the name service says it: Sofía's, and no other.
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   getPrimaryName: vi.fn(async () => "sofia.dusk"),
+  resolveDuskName: vi.fn(async (/** @type {string} */ name) =>
+    name === "sofiadesign.dusk"
+      ? {
+          account:
+            "sEeMSo7oiV2rxo6aZD3H75XGFZD95BtrmgFD3AezyUkC5W9bUyRwqFr6VuybvuvmvX5kTRt4STaSKbE6FEeMGoPDZNaX1LL82rGzN6BDbajY8qJcweu1mp7m1budNv9kgd7",
+          name,
+        }
+      : { error: "not-registered", name }
+  ),
 }));
 
 describe("Setup", () => {
@@ -45,6 +55,28 @@ describe("Setup", () => {
       expect(asked).toHaveTextContent("Create or restore a wallet to pay it.");
       expect(await findByText("sofia.dusk")).toBeInTheDocument();
       expect(asked).toHaveTextContent(shortenAddress(TO));
+    });
+
+    it("should show a .dusk name it pays whole, and where it points, or that it isn't registered, as one that looks like it does", async () => {
+      setNodeNetwork(networks.testnet);
+
+      for (const [to, said] of [
+        ["sofiadesign.dusk", "Points to sEeMSo…v9kgd7"],
+        ["sofiadmarekn.dusk", "sofiadmarekn.dusk isn't registered."],
+      ]) {
+        keepPlace({
+          pathname: "/some-base-path/dashboard/send/",
+          search: `?to=${to}&amount=0.01&memo=marek-r6-h51&network=testnet`,
+        });
+
+        const { findByText, getByRole } = render(Setup, {});
+        const asked = getByRole("region", { name: "Payment request" });
+
+        expect(await findByText(said)).toBeInTheDocument();
+        expect(asked).toHaveTextContent(`To ${to} ${said}`);
+        expect(asked).not.toHaveTextContent("…n.dusk");
+        cleanup();
+      }
     });
 
     it("should say when it's for another network or says two amounts, and nothing for a page that asks for nothing", () => {

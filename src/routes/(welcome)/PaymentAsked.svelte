@@ -4,8 +4,10 @@
   /**
    * What a payment link asks, before a wallet opens to pay it: the amount, the
    * account it pays, by its verified .dusk name where it has one, and the
-   * memo, as Send reads them. Nothing for a page that isn't a request, and
-   * of one Send refuses, only why.
+   * memo, as Send reads them. A .dusk name it pays shows whole, as its middle
+   * tells it from one that looks like it, and is looked up: where it points,
+   * or that it isn't registered, as Send and the extension say. Nothing for
+   * a page that isn't a request, and of one Send refuses, only why.
    */
   import {
     linkAmount,
@@ -19,9 +21,10 @@
 
   import { MemoText } from "$lib/components";
   import { AnchorButton, Button } from "$lib/dusk/components";
-  import { getPrimaryName } from "$lib/dusk-domains";
+  import { getPrimaryName, resolveDuskName } from "$lib/dusk-domains";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
+  import { isDuskName } from "@duskdomains/sdk/names";
   import { peekPlace } from "$lib/navigation";
   import {
     LINK_BAD_ADDRESS,
@@ -102,6 +105,23 @@
     };
   });
 
+  /**
+   * What a lookup of a .dusk name says where it found no address, in Send's
+   * words.
+   *
+   * @param {DuskNameError} error
+   * @param {string} shown
+   */
+  const nameSaid = (error, shown) =>
+    ({
+      expired: `${shown} has expired.`,
+      invalid: `${shown} isn't a valid name.`,
+      "lookup-failed": `Couldn't look up ${shown}.`,
+      "no-address": `${shown} has no address to send to.`,
+      "not-registered": `${shown} isn't registered.`,
+      "unsupported-network": ".dusk names aren't available on this network.",
+    })[error];
+
   async function hand() {
     if (extension) {
       handed = await openInExtension(extension, opened);
@@ -128,6 +148,15 @@
   // it: the amount, or the question Send asks of one that could be either of
   // two, as 1.000. Never settled here.
   $: amount = asked ? linkAmount(asked, language) : null;
+  // A .dusk name it pays, as written: looked up, as Send looks it up.
+  $: duskName = asked && isDuskName(asked.to) ? asked.to : "";
+  $: lookup = duskName
+    ? resolveDuskName(
+        duskName,
+        String($networkStore.networkName),
+        nodeBaseUrl()
+      ).catch(() => null)
+    : Promise.resolve(null);
   // The name the account it pays goes by, as the chain says: none for a
   // shielded address, or where the lookup fails.
   $: name =
@@ -195,14 +224,32 @@
         <div>
           <dt>To</dt>
           <dd>
-            {#await name then found}
-              {#if found}
-                <span class="payment-asked__name">{found}</span>
-              {/if}
-            {/await}
-            <span class="payment-asked__code" title={asked.to}
-              >{shortenAddress(asked.to)}</span
-            >
+            {#if duskName}
+              <!-- Whole: the middle tells it from one that looks like it. -->
+              <span class="payment-asked__name">{duskName}</span>
+              {#await lookup then found}
+                {#if found?.account || found?.address}
+                  <span class="payment-asked__code"
+                    >Points to {shortenAddress(
+                      found.account ?? found.address ?? ""
+                    )}</span
+                  >
+                {:else if found?.error}
+                  <span class="payment-asked__question" role="status"
+                    >{nameSaid(found.error, duskName)}</span
+                  >
+                {/if}
+              {/await}
+            {:else}
+              {#await name then found}
+                {#if found}
+                  <span class="payment-asked__name">{found}</span>
+                {/if}
+              {/await}
+              <span class="payment-asked__code" title={asked.to}
+                >{shortenAddress(asked.to)}</span
+              >
+            {/if}
           </dd>
         </div>
         {#if asked.memo}
