@@ -1,6 +1,6 @@
 <script>
   import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
-  import { createEventDispatcher, onMount, tick } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { mdiClose, mdiInformationOutline } from "@mdi/js";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { FieldLimit, FullAddress, SectionHead } from "$lib/components";
@@ -89,19 +89,17 @@
 
   /**
    * Saves it, unless its name asks a question not answered yet: then the
-   * question waits for its answer, which saves it.
+   * question waits for its answer, a click or a tap on its Yes, which saves
+   * it. The question never takes the focus: Enter in the name, again, asks
+   * it again and saves nothing.
    */
-  async function trySave() {
+  function trySave() {
     if (!isValid || isTaken) {
       return;
     }
 
     if (nameProblem && !nameProblem.refused) {
       askedOf = name;
-      await tick();
-      /** @type {HTMLElement | null | undefined} */ (
-        form?.querySelector("button.contact-form__yes")
-      )?.focus();
 
       return;
     }

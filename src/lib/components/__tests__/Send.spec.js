@@ -4304,10 +4304,22 @@ describe("Send", () => {
           )
         ).toBeInTheDocument();
 
-        await fireEvent.click(getByRole("button", { name: "Save" }));
+        // Typed, Enter, Enter: the question never takes the focus, so the
+        // second Enter asks it again, and saves nothing.
+        const field = /** @type {HTMLInputElement} */ (
+          getByRole("textbox", { name: "Contact name" })
+        );
+
+        field.focus();
+        await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
 
         expect(findContact(otherAccount)).toBeNull();
-        expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+        expect(field).toHaveFocus();
+        expect(getByRole("button", { name: "Yes, save it" })).not.toHaveFocus();
+
+        await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
+
+        expect(findContact(otherAccount)).toBeNull();
 
         await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
 

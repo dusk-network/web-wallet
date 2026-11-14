@@ -171,6 +171,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say a send whose browser died once it was handed to the network went out, as the chain says once the wallet opens again, or that it may have, to check in History before sending it again, never that it wasn't sent
 - Take a send that wasn't sent to Send's review with Send it now, to send it from there, and keep saying it wasn't sent until it's handed to the network or you choose Don't send
 - Give no value in a currency to test DUSK in History's export or the staking rewards by year, saying where it's asked that test DUSK has no value
+- Keep the focus in the name field when a contact's name asks "Is this someone else?", so a second Enter asks again and only Yes, save it saves
+- Refuse a profile name with a .dusk name registered to another account, saying so, and take one registered to the profile as its own without asking
+- Ask about a contact's name, and refuse a profile's, that reads as another's with a digit for a letter or v for y, as Dav1d for David or Wendv for Wendy
 
 ## [2.0.0] - 2026-11-06
 

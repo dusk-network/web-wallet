@@ -1,7 +1,7 @@
 <script>
   import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
   import { displayText } from "@dusk-network/app-core/text";
-  import { createEventDispatcher, onMount, tick } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import {
     mdiAlertCircleOutline,
     mdiCheck,
@@ -109,7 +109,7 @@
    *
    * @param {boolean} [answered]
    */
-  async function saveCounterparty(answered = false) {
+  function saveCounterparty(answered = false) {
     const name = contactName.trim();
 
     if (
@@ -121,12 +121,10 @@
       return;
     }
 
+    // Its Yes answers it, with a click or a tap: the question never takes
+    // the focus, so Enter in the name, again, asks it again.
     if (contactNameIssue && !answered) {
       contactAskedOf = contactName;
-      await tick();
-      /** @type {HTMLElement | null} */ (
-        document.querySelector("button.tx-detail__save-yes")
-      )?.focus();
 
       return;
     }

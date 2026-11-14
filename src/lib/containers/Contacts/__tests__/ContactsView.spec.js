@@ -611,10 +611,23 @@ describe("ContactsView", () => {
       ).toBeInTheDocument();
       expect(queryByRole("button", { name: "Yes, save it" })).toBeNull();
 
-      await fireEvent.click(save());
+      // Typed, Enter, Enter: the question never takes the focus, so the
+      // second Enter asks it again, and saves nothing.
+      const field = /** @type {HTMLInputElement} */ (
+        getByRole("textbox", { name: "Name" })
+      );
+
+      field.focus();
+      await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
 
       expect(saved).not.toHaveBeenCalled();
-      expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+      expect(field).toHaveFocus();
+      expect(getByRole("button", { name: "Yes, save it" })).not.toHaveFocus();
+
+      await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
+
+      expect(saved).not.toHaveBeenCalled();
+      expect(getByRole("button", { name: "Yes, save it" })).toBeInTheDocument();
 
       // Typed again: asked again at Save.
       await name("Lucas ");
@@ -840,7 +853,9 @@ describe("ContactsView", () => {
     const { getByRole, getByText, queryByText } = render(ContactForm, {
       resolveName,
     });
-    const field = getByRole("textbox", { name: "Name" });
+    const field = /** @type {HTMLInputElement} */ (
+      getByRole("textbox", { name: "Name" })
+    );
 
     expect(field).toHaveAttribute("maxlength", "40");
 

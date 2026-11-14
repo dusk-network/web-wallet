@@ -926,11 +926,13 @@
   /**
    * Saves the recipient to the contacts: never one of the wallet's own
    * accounts, nor with a profile's name; with a name that asks a question,
-   * only once it's answered (`answered`).
+   * only once it's answered (`answered`), with a click or a tap on its Yes:
+   * the question never takes the focus, so Enter in the name, again, asks
+   * it again and saves nothing.
    *
    * @param {boolean} [answered]
    */
-  async function saveRecipient(answered = false) {
+  function saveRecipient(answered = false) {
     const name = contactName.trim();
 
     if (!name || own || isFalseContactName || contactNameIssue?.refused) {
@@ -939,10 +941,6 @@
 
     if (contactNameIssue && !answered) {
       contactAskedOf = contactName;
-      await tick();
-      /** @type {HTMLElement | null} */ (
-        document.querySelector("button.send__save-yes")
-      )?.focus();
 
       return;
     }

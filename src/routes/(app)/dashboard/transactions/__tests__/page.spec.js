@@ -434,10 +434,22 @@ describe("History", () => {
       `You have a contact called Shop (old phone), at ${shortAddress(OLD_PHONE)}. Is this someone else?`
     );
 
-    await fireEvent.click(getByRole("button", { name: "Save" }));
+    // Typed, Enter, Enter: the question never takes the focus, so the
+    // second Enter asks it again, and saves nothing.
+    const field = /** @type {HTMLInputElement} */ (
+      getByRole("textbox", { name: "Contact name" })
+    );
+
+    field.focus();
+    await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
 
     expect(listContacts()).toHaveLength(1);
-    expect(getByRole("button", { name: "Yes, save it" })).toHaveFocus();
+    expect(field).toHaveFocus();
+    expect(getByRole("button", { name: "Yes, save it" })).not.toHaveFocus();
+
+    await fireEvent.submit(/** @type {HTMLFormElement} */ (field.form));
+
+    expect(listContacts()).toHaveLength(1);
 
     await fireEvent.click(getByRole("button", { name: "Yes, save it" }));
 
