@@ -178,9 +178,12 @@ describe("Setup", () => {
     it("should ask what Send asks of an amount that could be either of two, as 1.000, never settling it, and hand it on to another network's wallet as written", () => {
       setNodeNetwork(networks.testnet);
 
+      // The question alone: there's no field to write in here.
       for (const [amount, question] of [
-        ["1.000", "Is that 1 or 1000? Write the one you mean."],
-        ["10.000", "Is that 10 or 10000? Write the one you mean."],
+        ["1.000", "Is that 1 or 1000?"],
+        ["10.000", "Is that 10 or 10000?"],
+        // As typed 2.125 is, in Send too.
+        ["2.125", "Is that 2.1250 or 2125?"],
       ]) {
         keepPlace({
           pathname: "/some-base-path/dashboard/send/",
@@ -192,6 +195,7 @@ describe("Setup", () => {
         });
 
         expect(asked).toHaveTextContent(`Amount ${amount} DUSK ${question}`);
+        expect(asked).not.toHaveTextContent("Write the one you mean");
         expect(asked).not.toHaveTextContent(/Amount 10? DUSK/);
         cleanup();
       }

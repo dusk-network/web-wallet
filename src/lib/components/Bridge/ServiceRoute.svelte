@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   /**
    * The Bridge card on a transfer out to another chain, as BNB Smart Chain:
    * a public transfer to the route's account, which pays the amount less its
@@ -43,6 +43,7 @@
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
   import NetworkMark from "../NetworkPicker/NetworkMark.svelte";
@@ -382,7 +383,19 @@
         >
       </span>
     </div>
-    {#if problem}
+    {#if readAmount(amount, language).question}
+      <!-- Either of two: a tap on one puts it in the field. -->
+      <AmountQuestion
+        className="swap-error"
+        {language}
+        on:choose={(event) => {
+          note = "";
+          amount = event.detail;
+          isMaxAmount = false;
+        }}
+        text={amount}
+      />
+    {:else if problem}
       <p class="swap-error" role="alert">{problem}</p>
     {:else if leavesTooLittle}
       <p class="swap-error" role="status">

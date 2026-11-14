@@ -174,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep the focus in the name field when a contact's name asks "Is this someone else?", so a second Enter asks again and only Yes, save it saves
 - Refuse a profile name with a .dusk name registered to another account, saying so, and take one registered to the profile as its own without asking
 - Ask about a contact's name, and refuse a profile's, that reads as another's with a digit for a letter or v for y, as Dav1d for David or Wendv for Wendy
+- Ask "Is that 2.1250 or 2125?" with a button for each reading wherever an amount could be either of two, on Send, Request, Staking and the Bridge, and of a link's amount=2.125 as of one typed
 
 ## [2.0.0] - 2026-11-06
 

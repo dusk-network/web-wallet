@@ -351,6 +351,34 @@ describe("Receive", () => {
       );
     });
 
+    it("should ask which amount is meant of one that could be either of two, with a button for each, and make the request for the one picked", async () => {
+      render(Receive);
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "2.125");
+      await vi.runAllTimersAsync();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /^Is that 2\.1250 or 2125\?/
+      );
+      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
+        null
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "2.1250 DUSK" })
+      );
+      await vi.runAllTimersAsync();
+
+      expect(
+        screen.getByRole("textbox", { name: "Amount (optional)" })
+      ).toHaveValue("2.1250");
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Copy request link" })
+      ).toBeInTheDocument();
+    });
+
     it("should show a memo with a hidden character as a payer's wallet will, with its codes, before its link is copied", async () => {
       render(Receive);
       await vi.runAllTimersAsync();

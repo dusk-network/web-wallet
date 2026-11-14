@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { onDestroy, onMount, tick } from "svelte";
   import { get } from "svelte/store";
   import { page } from "$app/stores";
@@ -40,6 +40,7 @@
   import { ratePercent } from "$lib/staking/rewardRate";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
 
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import AppAnchor from "../AppAnchor/AppAnchor.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import Banner from "../Banner/Banner.svelte";
@@ -930,6 +931,17 @@
               <strong>Sozu's deposits couldn't be checked.</strong> Staking stays
               off until they can be. Unstaking still works.
             </p>
+          {:else if readAmount(amountText, language).question}
+            <!-- Either of two: a tap on one puts it in the field. -->
+            <AmountQuestion
+              {language}
+              on:choose={(event) => {
+                forgetTerms();
+                amountText = event.detail;
+                isMaxAmount = false;
+              }}
+              text={amountText}
+            />
           {:else if check.error || stranded}
             <p class="liquid-stake__error" role="alert">
               <strong>{check.error || stranded}</strong>

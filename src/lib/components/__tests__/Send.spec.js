@@ -1149,13 +1149,20 @@ describe("Send", () => {
 
       expect(amount()).toBe("1,000.5 DUSK");
 
-      // A lone comma before three digits could mean 1 or 1000.
+      // A lone comma before three digits could mean 1 or 1000: asked, with
+      // a button for each, which puts that one in the field.
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "Is that 1 or 1000? Write the one you mean."
+        /^Is that 1 or 1000\?\s*1 DUSK\s*1000 DUSK$/
       );
       expect(fields.review()).toBeDisabled();
+
+      await fireEvent.click(getByRole("button", { name: "1 DUSK" }));
+
+      expect(fields.amount()).toHaveValue("1");
+      expect(queryByRole("alert")).toBeNull();
+      expect(fields.review()).toBeEnabled();
 
       await fireEvent.input(fields.amount(), {
         target: { value: "0,0000000001" },
@@ -1263,9 +1270,13 @@ describe("Send", () => {
           target: { value: "1.001" },
         });
 
+        expect(getByText("Is that 1,0010 or 1001?")).toBeTruthy();
         expect(
-          getByText("Is that 1,0010 or 1001? Write the one you mean.")
-        ).toBeTruthy();
+          [
+            getByRole("button", { name: "1,0010 DUSK" }),
+            getByRole("button", { name: "1001 DUSK" }),
+          ].every(Boolean)
+        ).toBe(true);
 
         await fireEvent.input(fieldsOf(getByRole).amount(), {
           target: { value: "ten" },
@@ -1378,10 +1389,13 @@ describe("Send", () => {
       // Typed, a lone point before three digits asks, as a comma does.
       await fireEvent.input(fields.amount(), { target: { value: "1.000" } });
 
-      expect(getByRole("alert")).toHaveTextContent(
-        "Is that 1 or 1000? Write the one you mean."
-      );
+      expect(getByRole("alert")).toHaveTextContent(/^Is that 1 or 1000\?/);
       expect(fields.review()).toBeDisabled();
+
+      await fireEvent.click(getByRole("button", { name: "1 DUSK" }));
+
+      expect(fields.amount()).toHaveValue("1");
+      expect(fields.review()).toBeEnabled();
     });
 
     it("should never show a Total at Max that reads more than the balance", async () => {

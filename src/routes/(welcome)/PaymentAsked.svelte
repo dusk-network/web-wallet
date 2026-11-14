@@ -180,8 +180,11 @@
           <dt>Amount</dt>
           <dd>
             {#if amount?.problem}
+              <!-- No field here: the question alone, Send asks it after. -->
               <span>{amount.field} DUSK</span>
-              <span class="payment-asked__question">{amount.problem}</span>
+              <span class="payment-asked__question"
+                >{amount.question ?? amount.problem}</span
+              >
             {:else}
               {amount?.lux
                 ? `${formatDuskExact(amount.lux, language)} DUSK`

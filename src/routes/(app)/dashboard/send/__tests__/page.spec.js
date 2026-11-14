@@ -125,6 +125,30 @@ describe("Send page", () => {
       expect(fieldsAre(getByRole)).toStrictEqual([OTHER, "0.15", "Factura 33"]);
     });
 
+    it("should ask of a link's amount what typing it asks, as 2.125, with a button for each reading", async () => {
+      setNodeNetwork(networks.testnet);
+      openLink(`to=${OTHER}&amount=2.125&memo=Factura+34&network=testnet`);
+
+      const { getByRole } = render(SendPage);
+
+      expect(fieldsAre(getByRole)).toStrictEqual([
+        OTHER,
+        "2.125",
+        "Factura 34",
+      ]);
+      expect(getByRole("alert")).toHaveTextContent(
+        /^Is that 2\.1250 or 2125\?/
+      );
+
+      await fireEvent.click(getByRole("button", { name: "2.1250 DUSK" }));
+
+      expect(fieldsAre(getByRole)).toStrictEqual([
+        OTHER,
+        "2.1250",
+        "Factura 34",
+      ]);
+    });
+
     it("should say a link for another network is one, and fill in nothing", () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=mainnet`);

@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { amountForField } from "@dusk-network/app-core/amounts";
+  import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import {
     mdiAlertOutline,
@@ -83,6 +83,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import {
     AmountInCurrency,
+    AmountQuestion,
     AppAnchor,
     BalanceValue,
     Banner,
@@ -2197,7 +2198,20 @@
             {keepForLater.why}.
           </p>
         {/if}
-        {#if amountError && (isBalanceSufficientForGas || sendAmountInLux > availableBalance || parsedAmount === null)}
+        {#if readAmount(sendAmount, language).question}
+          <!-- Either of two: a tap on one puts it in the field. -->
+          <AmountQuestion
+            className="send__error"
+            id="{id}-amount-error"
+            {language}
+            on:choose={(event) => {
+              sendAmount = event.detail;
+              isMaxAmount = false;
+              isOwnAmount = false;
+            }}
+            text={sendAmount}
+          />
+        {:else if amountError && (isBalanceSufficientForGas || sendAmountInLux > availableBalance || parsedAmount === null)}
           <p class="send__error" id="{id}-amount-error" role="alert">
             {amountError}
           </p>

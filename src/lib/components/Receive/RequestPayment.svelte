@@ -8,6 +8,7 @@
    * which opens the web wallet's Send, filled in.
    */
   import { mdiChevronDown } from "@mdi/js";
+  import { readAmount } from "@dusk-network/app-core/amounts";
   import { displayText, numbersNote } from "@dusk-network/app-core/text";
 
   import { CopyButton, Icon, Textbox } from "$lib/dusk/components";
@@ -19,6 +20,7 @@
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
   import AmountInCurrency from "../AmountInCurrency/AmountInCurrency.svelte";
+  import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
   /** The account or shielded address that's paid. */
@@ -102,7 +104,18 @@
         />
         <span aria-hidden="true" class="request__unit">DUSK</span>
       </div>
-      {#if made.problems.amount}
+      {#if readAmount(amount, language).question}
+        <!-- Either of two: a tap on one puts it in the field. -->
+        <AmountQuestion
+          className="request__error"
+          id="{id}-amount-error"
+          {language}
+          on:choose={(event) => {
+            amount = event.detail;
+          }}
+          text={amount}
+        />
+      {:else if made.problems.amount}
         <p class="request__error" id="{id}-amount-error" role="alert">
           {made.problems.amount}
         </p>

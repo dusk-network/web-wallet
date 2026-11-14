@@ -405,6 +405,21 @@ describe("NativeStake", () => {
     expect(getByRole("button", { name: "Stake 1,000.5 DUSK" })).toBeEnabled();
   });
 
+  it("asks which amount is meant of one that could be either of two, as Send does, with a button for each", async () => {
+    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
+
+    await fireEvent.input(getByLabelText("Stake amount"), {
+      target: { value: "1,000" },
+    });
+
+    expect(getByRole("alert")).toHaveTextContent(/^Is that 1 or 1000\?/);
+
+    await fireEvent.click(getByRole("button", { name: "1000 DUSK" }));
+
+    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
+  });
+
   it("adds to a stake there is: no minimum, and the lock on what is added", async () => {
     const { container, getByLabelText, getByRole, queryByRole } = render(
       NativeStake,
