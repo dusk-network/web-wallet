@@ -122,16 +122,22 @@ describe("What's pasted of a request", () => {
       problem: LINK_SEVERAL,
       to: "",
     });
-    // Back to back, read whole as one: refused all the same.
-    expect(
-      readPastedLink(`${duskLink} ${httpsLink}`, networks.testnet, "en")
-    ).toStrictEqual({
-      amount: "",
-      elsewhere: null,
-      memo: "",
-      problem: expect.any(String),
-      to: "",
-    });
+    // Back to back, or a second where the first's memo would carry it, as
+    // all three wallets read what's pasted (app-core's readPastedLink):
+    // read whole, the first would pay its recipient with the second in its
+    // memo.
+    for (const pasted of [
+      `${duskLink} ${httpsLink}`,
+      `${duskLink.replace("Factura+71", "x")} dusk:public-sofiadesign.dusk`,
+    ]) {
+      expect(readPastedLink(pasted, networks.testnet, "en")).toStrictEqual({
+        amount: "",
+        elsewhere: null,
+        memo: "",
+        problem: LINK_SEVERAL,
+        to: "",
+      });
+    }
     expect(readPastedLink(account, networks.testnet, "en")).toBeNull();
     expect(
       readPastedLink("sofiadesign.dusk", networks.testnet, "en")

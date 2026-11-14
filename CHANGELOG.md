@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse pasted text with a second payment link in it, also where it starts with a link
 - Say "Sending" of a waiting send on Home as it goes out, and "Not sent yet" only while it waits for the network, not both at once
 - Mark what may be out of date within about 10 seconds of the network going silent
 - Say "Sent" and its block in a "Not confirmed" notice's place once its send is found, as the total and History change with it
