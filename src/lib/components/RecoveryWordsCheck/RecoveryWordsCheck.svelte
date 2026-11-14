@@ -5,13 +5,19 @@
    * Checks the recovery words as they were written down: three of them,
    * chosen at random as it opens, each typed in its own box, as Import's
    * boxes take words, with nothing a password manager or a keyboard keeps.
-   * They're compared here alone, and kept nowhere. A check says whether they
-   * match and nothing more: a mismatch shows no word, nor which one is wrong,
-   * with Try again, which asks the same three again, and apart from it Show
-   * my recovery words (`show`), which the page shows them for as it shows
-   * them. `checked` says once they match.
+   * They're compared here alone, as both wallets compare them
+   * (`@dusk-network/app-core/recovery-words`), and kept nowhere. A check
+   * says whether they match and nothing more: a mismatch shows no word, nor
+   * which one is wrong, with Try again, which asks the same three again, and
+   * apart from it Show my recovery words (`show`), which the page shows them
+   * for as it shows them. `checked` says once they match.
    */
   import { createEventDispatcher, tick } from "svelte";
+  import {
+    RECOVERY_WORDS_MISMATCH,
+    RECOVERY_WORDS_SHOW,
+    recoveryWordsMatch,
+  } from "@dusk-network/app-core/recovery-words";
 
   import { Button, Textbox } from "$lib/dusk/components";
   import { randomUUID } from "$lib/dusk/string";
@@ -74,8 +80,11 @@
           .join(", ")} and ${places[places.length - 1] + 1}`;
 
   function check() {
-    const isMatch = asked.every(
-      (place, i) => typed[i].trim().toLowerCase() === words[place]
+    const isMatch = recoveryWordsMatch(
+      words,
+      asked.map(
+        (place, i) => /** @type {[number, string]} */ ([place + 1, typed[i]])
+      )
     );
 
     result = isMatch ? "match" : "mismatch";
@@ -99,13 +108,13 @@
 {#if result === "mismatch"}
   <div class="recovery-check">
     <p class="recovery-check__mismatch" role="alert">
-      That doesn't match your recovery words. Check the words you wrote down.
+      {RECOVERY_WORDS_MISMATCH}
     </p>
     <div class="recovery-check__actions">
       <Button on:click={tryAgain} text="Try again" variant="primary" />
       <Button
         on:click={(event) => dispatch("show", event)}
-        text="Show my recovery words"
+        text={RECOVERY_WORDS_SHOW}
         variant="secondary"
       />
     </div>

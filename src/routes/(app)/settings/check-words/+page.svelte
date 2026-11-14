@@ -12,6 +12,7 @@
    */
   import { mdiArrowLeft } from "@mdi/js";
   import { onDestroy, tick } from "svelte";
+  import { RECOVERY_WORDS_SHOW } from "@dusk-network/app-core/recovery-words";
 
   import { Button } from "$lib/dusk/components";
   import {
@@ -136,7 +137,7 @@
         text={busy
           ? "Opening…"
           : purpose === "show"
-            ? "Show my recovery words"
+            ? RECOVERY_WORDS_SHOW
             : "Continue"}
         type="submit"
       />

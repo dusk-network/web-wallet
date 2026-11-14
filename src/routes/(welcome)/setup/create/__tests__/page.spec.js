@@ -380,11 +380,21 @@ describe("Create", async () => {
       expect(queryByRole("alert")).toBeNull();
     }
 
-    // Right: they match, and Next goes on.
+    // Right: they match, and Next goes on. Compared as both wallets compare
+    // them: case, the spaces around and a keyboard's fullwidth letters aside.
+    const fullwidth = (/** @type {string} */ word) =>
+      word.replace(/[a-z]/gi, (letter) =>
+        String.fromCharCode(letter.charCodeAt(0) + 0xfee0)
+      );
+
     for (const [i, box] of boxesShown().entries()) {
       await fireInput(
         box,
-        i === 1 ? ` ${words[asked[1] - 1].toUpperCase()} ` : words[asked[i] - 1]
+        i === 1
+          ? ` ${words[asked[1] - 1].toUpperCase()} `
+          : i === 2
+            ? fullwidth(words[asked[2] - 1])
+            : words[asked[i] - 1]
       );
     }
 
