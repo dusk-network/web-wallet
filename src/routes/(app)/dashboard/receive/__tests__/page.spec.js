@@ -15,6 +15,7 @@ import { claimDay } from "$lib/bridge/claimDate";
 import { formatTime } from "@dusk-network/networks/format";
 import { BALANCE_MASK } from "$lib/constants";
 import { shortenAddress } from "$lib/dusk/string";
+import { toastList, toastTimer } from "$lib/dusk/components/Toast/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -662,10 +663,14 @@ describe("Receive", () => {
       click.mockRestore();
     });
 
-    it("should keep one request for what's asked again once it's paid, as its QR and link are the same", async () => {
+    it("should keep one request for what's asked again once it's paid, as its QR and link are the same, and say it was paid already", async () => {
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")
         .mockImplementation(() => {});
+
+      // Toasts stay as long as the app's do.
+      toastTimer.set(5000);
+      toastList.set([]);
       const at = Date.now() - 60_000;
 
       localStorage.setItem(
@@ -699,8 +704,44 @@ describe("Receive", () => {
       expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
       expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
+      // Sofía's, in the Android app: a paid invoice copied again could be
+      // paid twice. Its own link goes, and that it was paid is said.
+      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
+        "This request was paid already.",
+      ]);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
+
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+        amountDusk: "0.013",
+        memo: "Factura 2026-071",
+        to: ACCOUNT,
+      });
+      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
+      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
+        "This request was paid already.",
+        "This request was paid already.",
+      ]);
+
+      // Another, not paid: nothing said.
+      toastList.set([]);
+      await type("Memo (optional)", "Factura 2026-072");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(get(requestsStore)).toHaveLength(2);
+      expect(get(toastList)).toStrictEqual([]);
 
       click.mockRestore();
+      toastTimer.set(0);
     });
 
     // Then Sofía's: left open, the list said Paid for minutes after a second

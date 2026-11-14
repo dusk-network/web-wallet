@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say "This request was paid already." as a request paid already is copied, shared or downloaded again, its own link going as before
 - Say Paid twice on Receive's list of requests left open as a second payment comes in
 - List under a request only the payments that could be its: those with its memo, and while it isn't paid, the first three of its amount with another memo
 - Say "Not sent", with Send it now and Don't send, of a send left "Not confirmed" when the browser closed before it went out, once another transaction from the account took its place on chain, and drop it from History

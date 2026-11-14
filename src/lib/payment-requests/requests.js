@@ -102,6 +102,30 @@ function trimmed(list) {
 }
 
 /**
+ * Whether a request kept asks what `asked` does: the same amount and memo, to
+ * the same address, on the same network. Its link and QR are the same.
+ *
+ * @param {{ lux: bigint | null, memo: string, network: string, to: string }} asked
+ * @returns {(kept: PaymentRequest) => boolean}
+ */
+const asks =
+  ({ lux, memo, network, to }) =>
+  (kept) =>
+    kept.to === to &&
+    kept.lux === (lux === null ? null : String(lux)) &&
+    kept.memo === memo &&
+    kept.network === network;
+
+/**
+ * Whether the request that asks what `asked` does was paid already: its link
+ * would ask a second payment.
+ *
+ * @param {{ lux: bigint | null, memo: string, network: string, to: string }} asked
+ */
+export const isPaidAlready = (asked) =>
+  get(requests).some((kept) => asks(asked)(kept) && Boolean(kept.paid));
+
+/**
  * Keeps a request as it leaves the wallet: the same one asked before stays as
  * it is, with the time it was first asked, paid or not, as its link and QR are
  * the same.
@@ -112,13 +136,7 @@ export function rememberRequest({ lux, memo, network, to }) {
   const text = lux === null ? null : String(lux);
 
   changeRecords(records, walletDataScope(), (list) =>
-    list.some(
-      (kept) =>
-        kept.to === to &&
-        kept.lux === text &&
-        kept.memo === memo &&
-        kept.network === network
-    )
+    list.some(asks({ lux, memo, network, to }))
       ? list
       : trimmed([
           {

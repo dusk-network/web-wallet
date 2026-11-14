@@ -25,6 +25,7 @@ export {
   forgetRequest,
   forgetWalletRequests,
   hydrateRequests,
+  isPaidAlready,
   keepRequestMatches,
   rememberRequest,
   requestsStore,
