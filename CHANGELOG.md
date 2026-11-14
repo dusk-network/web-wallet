@@ -166,6 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep what was typed in a form that moves money through Back, as through the automatic lock, for the next time it opens
 - Show a request's memo with hidden characters, or digits that can misread, under its field as a payer's wallet will
 - Show the offer to be told when a transfer arrives without a scroll on a phone on its side
+- Say a send whose browser died once it was handed to the network went out, as the chain says once the wallet opens again, or that it may have, to check in History before sending it again, never that it wasn't sent
 
 ## [2.0.0] - 2026-11-06
 

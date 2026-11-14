@@ -65,7 +65,7 @@ export function useWalletData(key) {
   hydrateWithdrawalActivity();
   hydrateRequests();
   hydrateExportAddresses();
-  hydrateUnsentSends();
+  void hydrateUnsentSends();
 }
 
 /**
@@ -92,9 +92,9 @@ export async function forgetWalletData(key, { accounts, addresses }) {
       forgetWalletRouteTransfers(suffix);
       forgetWalletRequests(suffix);
       forgetWalletExportAddresses(suffix);
-      forgetWalletUnsentSends(suffix);
       forgetVerifiedNamesOf(accounts);
     }),
+    forgetWalletUnsentSends(suffix),
     accounts[0] ? forgetContactsOf(accounts[0]) : Promise.resolve(),
     forgetWalletActivity({ accounts, addresses }),
   ]);
@@ -125,9 +125,9 @@ export async function forgetOtherWalletsData() {
     forgetWalletRouteTransfers(suffix);
     forgetWalletRequests(suffix);
     forgetWalletExportAddresses(suffix);
-    forgetWalletUnsentSends(suffix);
   }
 
+  await Promise.allSettled(suffixes.map(forgetWalletUnsentSends));
   await forgetOtherWalletCaches(suffixes);
 }
 
@@ -144,5 +144,5 @@ export async function forgetEveryWalletData() {
   forgetWalletRouteTransfers("");
   forgetWalletRequests("");
   forgetWalletExportAddresses("");
-  forgetWalletUnsentSends("");
+  await forgetWalletUnsentSends("").catch(() => {});
 }
