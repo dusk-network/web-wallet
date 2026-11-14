@@ -11,8 +11,9 @@
  * worktree with `npm ci` and `npm run build`; --keep keeps it, to look at.
  * --attested checks first, with GitHub's CLI (`gh attestation verify`), that
  * the repository's Deploy workflow attested the manifest as the site serves
- * it, built from the commit it names on GitHub's own runners: GitHub vouches
- * for it, not the site.
+ * it, built from the commit it names on GitHub's own runners, from the ref
+ * the workflow deploys the site from: main for testnet, the release's tag
+ * for mainnet. GitHub vouches for it, not the site.
  *
  *   node scripts/verify-build.js https://apps.dusk.network/wallet/ [--attested] [--keep]
  */
@@ -247,16 +248,37 @@ export const fetchFrom = async (address, { limit, to, get = fetch } = {}) => {
 /** The repository whose Deploy workflow attests each build's manifest. */
 export const REPOSITORY = new URL(pkg.homepage).pathname.slice(1);
 
+/** The sites the Deploy workflow deploys: testnet from main, mainnet from a release's tag. */
+export const TESTNET_SITE = "https://apps.testnet.dusk.network/wallet/";
+export const MAINNET_SITE = "https://apps.dusk.network/wallet/";
+
+/**
+ * The ref the Deploy workflow builds a site from, which its attestation
+ * names: main for testnet, the tag of the release its manifest says for
+ * mainnet; null for a site it doesn't deploy.
+ *
+ * @param {string} site
+ * @param {string} version The manifest's
+ * @returns {string | null}
+ */
+export const sourceRefOf = (site, version) =>
+  site === TESTNET_SITE
+    ? "refs/heads/main"
+    : site === MAINNET_SITE
+      ? `refs/tags/web-wallet-v${version}`
+      : null;
+
 /**
  * GitHub's CLI's arguments that check the repository's Deploy workflow
  * attested a manifest, as the site served it (`file`), built from the commit
- * it names, on GitHub's own runners.
+ * it names, from `ref`, on GitHub's own runners.
  *
  * @param {string} file
  * @param {string} commit
+ * @param {string} ref
  * @param {string} [repository]
  */
-export const attestationArgs = (file, commit, repository = REPOSITORY) => [
+export const attestationArgs = (file, commit, ref, repository = REPOSITORY) => [
   "attestation",
   "verify",
   file,
@@ -266,6 +288,8 @@ export const attestationArgs = (file, commit, repository = REPOSITORY) => [
   `${repository}/.github/workflows/deploy.yml`,
   "--source-digest",
   commit,
+  "--source-ref",
+  ref,
   "--deny-self-hosted-runners",
 ];
 
@@ -319,8 +343,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(2);
   }
 
-  // The manifest as it was served, which GitHub attests by its SHA-256.
+  // The manifest as it was served, which GitHub attests by its SHA-256, from
+  // the ref the Deploy workflow deploys the site from.
   if (attested) {
+    const ref = sourceRefOf(site.href, manifest.version);
+
+    if (!ref) {
+      console.error(
+        `${REPOSITORY}'s Deploy workflow doesn't deploy ${site.href}: no attestation of it can be checked.`
+      );
+      process.exit(2);
+    }
+
     const file = join(
       mkdtempSync(join(tmpdir(), "web-wallet-attested-")),
       MANIFEST
@@ -329,19 +363,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     writeFileSync(file, served);
 
     try {
-      execFileSync("gh", attestationArgs(file, manifest.commit), {
+      execFileSync("gh", attestationArgs(file, manifest.commit, ref), {
         stdio: ["ignore", "ignore", "pipe"],
       });
     } catch (error) {
       process.stderr.write(error.stderr ?? `${error.message}\n`);
       console.error(
-        `${site.href}${MANIFEST} has no attestation of ${REPOSITORY}'s Deploy workflow for ${manifest.commit}.`
+        `${site.href}${MANIFEST} has no attestation of ${REPOSITORY}'s Deploy workflow for ${manifest.commit} from ${ref}.`
       );
       process.exit(1);
     }
 
     console.log(
-      `GitHub attests ${REPOSITORY}'s Deploy workflow built ${site.href}${MANIFEST} from ${manifest.commit}.`
+      `GitHub attests ${REPOSITORY}'s Deploy workflow built ${site.href}${MANIFEST} from ${manifest.commit}, on ${ref}.`
     );
   }
 

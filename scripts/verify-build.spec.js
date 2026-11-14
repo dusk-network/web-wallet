@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { modeOf } from "./build.js";
 import {
+  MAINNET_SITE,
   REPOSITORY,
+  TESTNET_SITE,
   attestationArgs,
   compareSite,
   fetchFrom,
@@ -13,6 +15,7 @@ import {
   readManifest,
   settingProblem,
   settingsDiffer,
+  sourceRefOf,
 } from "./verify-build.js";
 
 const SITE = new URL("https://wallet.example/wallet/");
@@ -345,9 +348,13 @@ describe("Verifying a deployment", () => {
     expect(checkedOut.equals(committed)).toBe(true);
   });
 
-  it("should check with GitHub that its Deploy workflow attested a site's manifest, as served, built from the commit it names on GitHub's own runners", () => {
+  // Marek's: the check didn't pin the ref, so a build the workflow made from
+  // any branch the environment let in passed.
+  it("should check with GitHub that its Deploy workflow attested a site's manifest, as served, built from the commit it names on GitHub's own runners, from the ref it deploys the site from", () => {
     expect(REPOSITORY).toBe("dusk-network/web-wallet");
-    expect(attestationArgs("/tmp/build-manifest.json", COMMIT)).toStrictEqual([
+    expect(
+      attestationArgs("/tmp/build-manifest.json", COMMIT, "refs/heads/main")
+    ).toStrictEqual([
       "attestation",
       "verify",
       "/tmp/build-manifest.json",
@@ -357,8 +364,34 @@ describe("Verifying a deployment", () => {
       "dusk-network/web-wallet/.github/workflows/deploy.yml",
       "--source-digest",
       COMMIT,
+      "--source-ref",
+      "refs/heads/main",
       "--deny-self-hosted-runners",
     ]);
+
+    // Testnet from main, mainnet from its release's tag, nothing else.
+    expect(sourceRefOf(TESTNET_SITE, "2.0.0")).toBe("refs/heads/main");
+    expect(sourceRefOf(MAINNET_SITE, "2.0.0")).toBe(
+      "refs/tags/web-wallet-v2.0.0"
+    );
+    expect(sourceRefOf(SITE.href, "2.0.0")).toBeNull();
+    expect(
+      sourceRefOf("https://apps.devnet.dusk.network/wallet/", "2.0.0")
+    ).toBeNull();
+
+    // As the workflow deploys them, and as deployments.json lists them.
+    const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
+    const listed = JSON.parse(readFileSync("deployments.json", "utf8"));
+
+    expect(workflow).toContain(
+      `SITE: \${{ github.ref_type == 'tag' && '${MAINNET_SITE}' || '${TESTNET_SITE}' }}`
+    );
+    expect(workflow).toMatch(
+      /branches: \["main"\]\n {4}tags: \["web-wallet-v\*"\]/
+    );
+    expect(Object.keys(listed)).toEqual(
+      expect.arrayContaining([MAINNET_SITE, TESTNET_SITE])
+    );
   });
 
   it("should have the Deploy workflow attest the manifest it builds, with GitHub's identity for it, before anything is deployed", () => {
