@@ -19,9 +19,10 @@
   import { formatDuskExact, formatDuskPlain } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
-  import { requestText } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+
+  import { canShare, shareText } from "./share";
 
   /** @type {string} */
   export let address = "";
@@ -46,28 +47,22 @@
 
   /**
    * What's asked of whoever pays, in place of the address alone: what the QR
-   * holds, the link Share sends, and what's in them, for the picture's words.
+   * holds, and what's in it, for the picture's words.
    *
    * @type {{ dusk: string, link: string, lux?: bigint | null, memo?: string } | null}
    */
   export let request = null;
 
   /**
-   * Whose request it is, as Share says it: the profile's verified .dusk
-   * name, else the name given it here, "" for none.
-   */
-  export let requestName = "";
-
-  /**
-   * Called as the request leaves the wallet, by Share or Download QR, with
-   * the request that left and the address it pays.
+   * Called as the request leaves the wallet, by Download QR, with the
+   * request that left and the address it pays.
    *
    * @type {(used: { address: string, request: typeof request }) => void}
    */
   export let onUse = () => {};
 
   // Where a browser has a share sheet: most phones, some computers.
-  const canShare = typeof navigator.share === "function";
+  const hasShare = canShare();
 
   /** @type {HTMLElement} */
   let figureElement;
@@ -104,31 +99,11 @@
       ? `People who send to ${shownName} reach this public account.`
       : `People who pay ${shownName} choose public or shielded. Anyone can see this address belongs to ${shownName}.`;
 
-  /** The address, or what's asked, through the phone's share sheet. */
-  async function share() {
-    const used = { address, request };
-
-    try {
-      // A request in a line, then its link, all as text: some targets would
-      // add a separate link twice.
-      await navigator.share({
-        text: used.request
-          ? requestText(used.request, {
-              language: $settingsStore.language,
-              name: requestName,
-              net: $nodeNetwork,
-            })
-          : used.address,
-        title: used.request ? "Dusk payment request" : "My Dusk address",
-      });
-      onUse(used);
-    } catch (error) {
-      // Closing the sheet is an answer, not a failure.
-      if (error instanceof Error && error.name !== "AbortError") {
-        toast("error", "Couldn't share that", mdiAlertOutline);
-      }
-    }
-  }
+  /**
+   * The address alone, through the phone's share sheet: each request has its
+   * own Share, beside its Copy.
+   */
+  const share = () => shareText({ text: address, title: "My Dusk address" });
 
   /** The picture's width, and its margin, in pixels. */
   const PICTURE = 1024;
@@ -372,7 +347,7 @@
         variant="secondary"
       />
       <div class="receive__share">
-        {#if canShare}
+        {#if hasShare}
           <Button
             icon={{ path: mdiShareVariantOutline }}
             on:click={share}

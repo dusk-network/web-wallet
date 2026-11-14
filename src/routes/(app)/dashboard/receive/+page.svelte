@@ -114,7 +114,6 @@
     {name}
     onUse={keepRequest}
     {request}
-    {requestName}
   >
     <RequestPayment
       address={currentAddress}
@@ -128,6 +127,7 @@
           currentProfile.account.toString(),
           currentProfile.address.toString(),
         ]}
+        {requestName}
       />
     {/if}
   </Receive>

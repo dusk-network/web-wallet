@@ -436,7 +436,9 @@ describe("Receive", () => {
       });
     });
 
-    it("should offer Share only where the browser has a share sheet, sending the address, or the request's link once there is one, and keep that request", async () => {
+    // Chen's: the only Share sat up by the address, away from the request it
+    // shared, which he had to guess.
+    it("should offer Share only where the browser has a share sheet: the address alone by the address, and each request's own beside its Copy, which keeps a new one", async () => {
       const first = render(Receive);
 
       await vi.runAllTimersAsync();
@@ -461,7 +463,33 @@ describe("Receive", () => {
       await openRequest();
       await type("Amount (optional)", "2");
       await vi.advanceTimersByTimeAsync(0);
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+      // The request's own, beside its Copy.
+      const actions = /** @type {HTMLElement} */ (
+        document.querySelector(".request__actions")
+      );
+
+      expect(
+        Array.from(actions.querySelectorAll("button"), (b) =>
+          b.textContent?.trim()
+        )
+      ).toStrictEqual(["Copy request link", "Share"]);
+
+      // By the address, still the address alone.
+      await fireEvent.click(
+        screen.getAllByRole("button", { name: "Share" })[0]
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).toHaveBeenLastCalledWith({
+        text: ACCOUNT,
+        title: "My Dusk address",
+      });
+      expect(get(requestsStore)).toStrictEqual([]);
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (actions.querySelector(".request__share"))
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       // The request in a line, then its link, as text alone.
@@ -485,10 +513,97 @@ describe("Receive", () => {
       );
       await type("Amount (optional)", "3");
       await vi.advanceTimersByTimeAsync(0);
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (document.querySelector(".request__share"))
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       expect(get(requestsStore)).toHaveLength(1);
+
+      // In the list, each its own, beside its Copy link.
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share the request for 2 DUSK" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share.mock.lastCall?.[0]).toStrictEqual({
+        text: expect.stringMatching(
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+        ),
+        title: "Dusk payment request",
+      });
+      expect(
+        Array.from(
+          document.querySelectorAll(".requests__actions button"),
+          (b) => b.textContent?.trim()
+        )
+      ).toStrictEqual(["Copy link", "Share", "Remove"]);
+    });
+
+    // Sofía's, in the app: Request payment opened with its Amount at the
+    // screen's bottom edge.
+    it("should bring Request payment into view at its Amount, to type in, as a tap opens it", async () => {
+      const scrolled = vi
+        .spyOn(Element.prototype, "scrollIntoView")
+        .mockImplementation(() => {});
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+        await openRequest();
+        // At the next frame, once what opened shows.
+        await vi.advanceTimersByTimeAsync(50);
+
+        const amount = screen.getByRole("textbox", {
+          name: "Amount (optional)",
+        });
+
+        expect(document.activeElement).toBe(amount);
+        expect(scrolled.mock.contexts).toStrictEqual([amount]);
+      } finally {
+        scrolled.mockRestore();
+      }
+    });
+
+    it("should bring Request payment into view only once it has opened, as the page can't scroll to it before", async () => {
+      /** @type {() => void} */
+      let opened = () => {};
+      const opening = {
+        finished: new Promise((done) => {
+          opened = () => done(undefined);
+        }),
+      };
+
+      Object.defineProperty(HTMLDetailsElement.prototype, "getAnimations", {
+        configurable: true,
+        value: () => [opening],
+      });
+
+      const scrolled = vi
+        .spyOn(Element.prototype, "scrollIntoView")
+        .mockImplementation(() => {});
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+        await openRequest();
+        await vi.advanceTimersByTimeAsync(50);
+
+        const amount = screen.getByRole("textbox", {
+          name: "Amount (optional)",
+        });
+
+        expect(document.activeElement).toBe(amount);
+        expect(scrolled).not.toHaveBeenCalled();
+
+        opened();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(scrolled.mock.contexts).toStrictEqual([amount]);
+      } finally {
+        Reflect.deleteProperty(HTMLDetailsElement.prototype, "getAnimations");
+        scrolled.mockRestore();
+      }
     });
 
     it("should write what a request asks under its QR in the picture: what it is, the amount, the memo and whom it pays", async () => {

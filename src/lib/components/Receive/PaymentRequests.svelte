@@ -28,6 +28,7 @@
     keepRequestMatches,
     makeRequestLink,
     matchRequests,
+    requestText,
     requestsStore,
   } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
@@ -35,9 +36,20 @@
 
   import { BalanceValue, MemoText, SectionHead } from "..";
 
+  import { canShare, shareText } from "./share";
+
   /** The profile's public account and its shielded address. */
   /** @type {string[]} */
   export let addresses;
+
+  /**
+   * Whose requests they are, as Share says it: the profile's verified .dusk
+   * name, else the name given it here, "" for none.
+   */
+  export let requestName = "";
+
+  // Where a browser has a share sheet: most phones, some computers.
+  const hasShare = canShare();
 
   /** @type {Record<string, string>} */
   const STATE_WORDS = { check: "Check", paid: "Paid", waiting: "Waiting" };
@@ -404,6 +416,25 @@
     return made.https ?? made.dusk;
   };
 
+  /**
+   * Shares a request again through the phone's share sheet: what it asks in
+   * a line, then its link, as the request's own Share and Copy give it.
+   *
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   */
+  const share = (request) =>
+    shareText({
+      text: requestText(
+        {
+          link: linkOf(request),
+          lux: request.lux === null ? null : BigInt(request.lux),
+          memo: request.memo,
+        },
+        { language, name: requestName, net: $nodeNetwork }
+      ),
+      title: "Dusk payment request",
+    });
+
   $: ({ hideBalances, language } = $settingsStore);
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
@@ -583,6 +614,15 @@
               value={linkOf(request)}
               variant="tertiary"
             />
+            {#if hasShare}
+              <Button
+                aria-label={`Share the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
+                on:click={() => share(request)}
+                size="small"
+                text="Share"
+                variant="tertiary"
+              />
+            {/if}
             <Button
               aria-label={`Remove the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               on:click={() => forgetRequest(request.id)}
