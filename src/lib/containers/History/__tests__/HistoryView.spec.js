@@ -325,6 +325,93 @@ describe("HistoryView", () => {
     expect(getByText("Rent \\u202eyluj")).toBeInTheDocument();
   });
 
+  it("should show a memo that came in from an address not in the contacts as the sender's words, muted and in quotes, with whom it's from, and find it all the same", async () => {
+    const { saveContact, removeContact } = await import("$lib/contacts");
+    const { openTestContacts } = await import("$lib/test-helpers");
+    const STRANGER =
+      "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
+    const SOFIA =
+      "25z9o6qCaVk1ReyHjmB4pyXcE3D1vRu4FVV1rR8ChYcosdTSktkANLDHq9GD6B4985Q1S2KrDZYBRrohWAjrNmACFUb3UMSRyYctJRzh3d28R1ZNC1ZyKm1HwXL4FF5Etftt";
+
+    await openTestContacts();
+
+    // Lucas, a contact, who sent one too.
+    const lucas = saveContact({ address: ACCOUNT, name: "Lucas" });
+    /**
+     * A payment that came in, with its memo.
+     *
+     * @param {string} hash
+     * @param {string} from
+     * @param {string} memo
+     * @param {string} [counterpartyName]
+     */
+    const received = (hash, from, memo, counterpartyName) =>
+      rowOf({
+        amount: "100000000",
+        blockHeight: 4_687_000,
+        counterpartyName,
+        direction: "in",
+        from,
+        hash,
+        memo,
+        status: "executed",
+        timestamp: WINTER,
+      });
+
+    try {
+      const { container, rerender } = render(HistoryView, {
+        locale: "en",
+        query: "",
+        state: {
+          ...state,
+          rows: [
+            received(
+              "f1".repeat(32),
+              STRANGER,
+              "URGENT: wallet suspended - pay now to restore"
+            ),
+            received("f2".repeat(32), SOFIA, "Factura 71", "sofiadesign.dusk"),
+            received("f3".repeat(32), ACCOUNT, "Dinner"),
+          ],
+        },
+      });
+      const memos = () =>
+        Array.from(container.querySelectorAll(".history__memo"), (memo) => [
+          memo.textContent?.replace(/\s+/g, " ").trim(),
+          memo.classList.contains("history__memo--theirs"),
+        ]);
+
+      expect(memos()).toStrictEqual([
+        [
+          "“URGENT: wallet suspended - pay now to restore” · From an address not in your contacts",
+          true,
+        ],
+        ["“Factura 71” · From sofiadesign.dusk", true],
+        // A contact's: their memo, as the wallet's are.
+        ["Dinner", false],
+      ]);
+
+      // Found by its words, as any memo is.
+      await rerender({ query: "wallet suspended" });
+
+      expect(memos()).toStrictEqual([
+        [
+          "“URGENT: wallet suspended - pay now to restore” · From an address not in your contacts",
+          true,
+        ],
+      ]);
+
+      // In its details too.
+      await rerender({ query: "", selected: "f1".repeat(32) });
+
+      expect(container.querySelector(".tx-detail__memo")).toHaveTextContent(
+        "“URGENT: wallet suspended - pay now to restore” From an address not in your contacts"
+      );
+    } finally {
+      removeContact(lucas.id);
+    }
+  });
+
   it("should look further back on Show more in a search until it finds more, and say once there's no more to find", async () => {
     const kopi = (/** @type {number} */ n) =>
       row(`d${n}`.repeat(32), WINTER - n * 3_600_000, { memo: `Kopi ${n}` });

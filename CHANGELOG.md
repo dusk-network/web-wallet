@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say on mainnet what a payment request comes to in your currency, with the price's time, and what a payment comes to in the payer's on Send and its review, the link still asking DUSK
 - Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
 - Give a request's Share and Copy a line above its link, as the extension does: "sofiadesign.dusk asks you to pay 0.03 DUSK · Factura 71", then "Pay here:" and the link
+- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History, muted and in quotes, with "From an address not in your contacts" or the sender's .dusk name
 
 ### Changed
 

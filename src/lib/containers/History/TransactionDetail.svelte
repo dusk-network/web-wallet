@@ -1,4 +1,5 @@
 <script>
+  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
   import { displayText } from "@dusk-network/app-core/text";
   import { createEventDispatcher, onMount } from "svelte";
@@ -68,6 +69,15 @@
   /** The account the history is of, and how the wallet names it. */
   /** @type {{ address: string, label: string } | null} */
   export let account = null;
+
+  /**
+   * Whom a memo that came in isn't the sender's own words from: the
+   * profiles here and the contacts (`@dusk-network/app-core/activity`'s
+   * sendersMemo).
+   *
+   * @type {{ contacts?: ReadonlyArray<{ address?: unknown }>, profiles?: ReadonlyArray<{ account?: unknown, address?: unknown }> }}
+   */
+  export let memoAmong = {};
 
   /** Looks a public transaction's nonce up. */
   /** @type {(hash: string) => Promise<string | null>} */
@@ -592,11 +602,20 @@
         <dd>{p.privacy}</dd>
       </div>
       {#if row.memo}
+        {@const theirs = sendersMemo(row, memoAmong)}
         <div>
           <dt>Memo</dt>
           <!-- Anyone can send a memo, and hidden characters would show it out
-            of order, as "exe.png" for "gnp.exe". -->
-          <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
+            of order, as "exe.png" for "gnp.exe". A stranger's is theirs: in
+            quotes, muted, with whom it came from. -->
+          {#if theirs}
+            <dd class="tx-detail__memo tx-detail__memo--theirs">
+              “<MemoText text={theirs.memo} />”
+              <span class="tx-detail__memo-from">{theirs.from}</span>
+            </dd>
+          {:else}
+            <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
+          {/if}
         </div>
       {/if}
       <div>
@@ -997,6 +1016,16 @@
 
   .tx-detail__memo {
     overflow-wrap: anywhere;
+  }
+
+  .tx-detail__memo--theirs {
+    color: var(--calm-muted);
+    font-weight: 400;
+  }
+
+  .tx-detail__memo-from {
+    display: block;
+    font-size: 0.8125rem;
   }
 
   .tx-detail__error {

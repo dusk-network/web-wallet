@@ -6,6 +6,7 @@
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
+  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { displayText } from "@dusk-network/app-core/text";
   import { transactionsFound } from "$lib/containers/Shell/search";
   import { sidePanel } from "$lib/dusk/motion";
@@ -171,6 +172,15 @@
   };
   // Contacts whose names look like another's show their address, as on Send.
   $: alike = alikeContacts($contactsStore, $profilesHere);
+  // Whom a memo that came in isn't the sender's own words from: the
+  // profiles here, every wallet's, and the contacts.
+  $: memoAmong = {
+    contacts: $contactsStore,
+    profiles: [
+      ...$profilesHere.map(({ address }) => ({ account: address })),
+      { address: shieldedAddress },
+    ],
+  };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
@@ -403,8 +413,17 @@
                         <span class="history__claim">{p.note}</span>
                       {/if}
                       {#if row.memo}
-                        <span class="history__memo"
-                          ><MemoText inline text={row.memo} /></span
+                        {@const theirs = sendersMemo(row, memoAmong)}
+                        <!-- A stranger's memo is theirs: in quotes, muted,
+                          with whom it came from. -->
+                        <span
+                          class="history__memo"
+                          class:history__memo--theirs={theirs}
+                          >{#if theirs}“<MemoText inline text={theirs.memo} />”
+                            · {theirs.from}{:else}<MemoText
+                              inline
+                              text={row.memo}
+                            />{/if}</span
                         >
                       {/if}
                       {#if isDeposit}
@@ -482,6 +501,7 @@
         {locale}
         {network}
         on:close={() => closeDetail(open?.row.hash ?? "")}
+        {memoAmong}
         presentation={open.presentation}
         row={open.row}
       />
@@ -713,6 +733,11 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
+  }
+
+  .history__memo--theirs {
+    color: var(--calm-muted);
+    font-weight: 400;
   }
 
   .history__search {
