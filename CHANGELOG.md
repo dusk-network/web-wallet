@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
+- Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name
 - Refuse pasted text with a second payment link in it, also where it starts with a link
 - Say "Sending" of a waiting send on Home as it goes out, and "Not sent yet" only while it waits for the network, not both at once
 - Mark what may be out of date within about 10 seconds of the network going silent

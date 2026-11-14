@@ -591,14 +591,22 @@ describe("ContactsView", () => {
         ).toBeInTheDocument();
       }
 
-      // And in other letters: a Cyrillic а.
-      await name("Estudio M\u0430rta");
+      // And in other letters: a Cyrillic а; then Marek's "Davld" and
+      // "Dav!d", any thin stroke for an i, as both wallets read them.
+      for (const lookalike of [
+        "Estudio M\u0430rta",
+        "Estud!o Marta",
+        "Estudlo Marta",
+        "Estud|o Marta",
+      ]) {
+        await name(lookalike);
 
-      expect(
-        getByText(
-          `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
-        )
-      ).toBeInTheDocument();
+        expect(
+          getByText(
+            `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
+          )
+        ).toBeInTheDocument();
+      }
 
       // Amélie's new phone: "Lucas" beside "Lucas (petit-fils)". Asked at
       // Save, and saved only once answered.
@@ -889,11 +897,14 @@ describe("ContactsView", () => {
       { target: { value: OTHER } }
     );
 
+    // In small capitals and after a fullwidth point too: Marek's.
     for (const value of [
       "alice.dusk",
       "ALICE.Dusk",
       " alice.dusk ",
       "alice.dusk.",
+      "alice.ᴅᴜꜱᴋ",
+      "alice\uff0edusk",
     ]) {
       await name(value);
       expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
