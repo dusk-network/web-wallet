@@ -224,6 +224,64 @@ function tellOtherTabs() {
 const kept = writable([]);
 
 /**
+ * This tab's changes storage hasn't taken yet, by ID, with the name of the
+ * wallet they're of: what a read of storage meanwhile shows over what it
+ * reads. Null for one forgotten. A change storage refuses stays, as this
+ * tab's.
+ *
+ * @type {Map<string, { send: UnsentSend | null, wallet: string }>}
+ */
+const unwritten = new Map();
+
+/**
+ * Keeps a send for a wallet, as this tab's until storage takes it: rejects
+ * where storage refuses it.
+ *
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @param {UnsentSend} send
+ */
+function putKept(scope, send) {
+  const change = { send, wallet: scope.name(KEY) };
+
+  unwritten.set(send.id, change);
+
+  return db
+    .table("sends")
+    .put(rowOf(send, scope))
+    .then(() => {
+      if (unwritten.get(send.id) === change) {
+        unwritten.delete(send.id);
+      }
+
+      tellOtherTabs();
+    });
+}
+
+/**
+ * Forgets a send, as this tab's until storage takes it: rejects where
+ * storage refuses it.
+ *
+ * @param {import("$lib/wallets/dataNames").WalletDataScope} scope
+ * @param {string} id
+ */
+function deleteKept(scope, id) {
+  const change = { send: null, wallet: scope.name(KEY) };
+
+  unwritten.set(id, change);
+
+  return db
+    .table("sends")
+    .delete(id)
+    .then(() => {
+      if (unwritten.get(id) === change) {
+        unwritten.delete(id);
+      }
+
+      tellOtherTabs();
+    });
+}
+
+/**
  * Changes the open wallet's as shown, where the wallet they're of is still
  * the one shown.
  *
@@ -256,9 +314,25 @@ const withSend = (list, send) =>
  *   read
  */
 async function readAgain(scope) {
-  const list = await readKept(scope).catch(() => null);
+  const read = await readKept(scope).catch(() => null);
 
-  if (list && scope.isShown()) {
+  if (!read) {
+    return null;
+  }
+
+  // This tab's changes storage hasn't taken yet, over what it read.
+  const changes = [...unwritten].filter(
+    ([, { wallet }]) => wallet === scope.name(KEY)
+  );
+  let list = read.filter(({ id }) => !changes.some(([key]) => key === id));
+
+  for (const [, { send }] of changes) {
+    if (send) {
+      list = [...list, send];
+    }
+  }
+
+  if (scope.isShown()) {
     // Those sent the same millisecond in the order they're shown in.
     const shown = get(kept).map(({ id }) => id);
     /** @param {UnsentSend} send */
@@ -479,9 +553,7 @@ export function keepUnsent(send) {
   const write = () => {
     const value = current;
     const written = writes.then(() =>
-      value && scope.keeps()
-        ? db.table("sends").put(rowOf(value, scope)).then(tellOtherTabs)
-        : undefined
+      value && scope.keeps() ? putKept(scope, value) : undefined
     );
 
     writes = written.catch(() => {});
@@ -491,9 +563,7 @@ export function keepUnsent(send) {
 
   /** Forgets it, after the writes before: rejects where storage refuses. */
   const forget = () => {
-    const forgotten = writes.then(() =>
-      db.table("sends").delete(record.id).then(tellOtherTabs)
-    );
+    const forgotten = writes.then(() => deleteKept(scope, record.id));
 
     writes = forgotten.catch(() => {});
 
@@ -598,10 +668,7 @@ export function dropUnsent(id) {
   const scope = walletDataScope();
 
   show(scope, (list) => list.filter((kept) => kept.id !== id));
-  db.table("sends")
-    .delete(id)
-    .then(tellOtherTabs)
-    .catch(() => {});
+  deleteKept(scope, id).catch(() => {});
 }
 
 /** @type {import("svelte/store").Writable<UnsentSend | null>} */
