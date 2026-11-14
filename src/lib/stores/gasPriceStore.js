@@ -13,24 +13,25 @@ const minimum = BigInt(import.meta.env.VITE_GAS_PRICE_LOWER ?? 1);
 
 /**
  * The default gas price, by the one rule of both wallets
- * (`@dusk-network/app-core/gas`): the median price of the transactions the
- * node holds, never under the wallet's lowest, nor over a ceiling, where the
- * network is busy. Until the node answers, and while it can't, the one last
- * read, or the lowest.
+ * (`@dusk-network/app-core/gas`), from what waits in the node's mempool: the
+ * lowest while it fits in the next block, else the median price of what
+ * waits, never under the lowest, nor over a ceiling, where the network is
+ * busy. Until the node answers, and while it can't, the one last read, or
+ * the lowest.
  */
 const rule = writable(defaultGasPrice({ minimum }));
 
 /** When the node last gave its price, as Date.now() says it: 0 for never. */
 let readAt = 0;
 
-/** Asks the node for its gas price: the median of all it holds. */
+/** Asks the node what waits in its mempool, and at what gas price. */
 const refresh = () =>
   networkStore
     .connect()
-    .then((network) => network.blocks.gasPrice)
-    .then(({ median }) => {
-      if (typeof median === "bigint") {
-        rule.set(defaultGasPrice({ median, minimum }));
+    .then((network) => network.query("mempoolTxs { gasPrice gasLimit }"))
+    .then(({ mempoolTxs }) => {
+      if (Array.isArray(mempoolTxs)) {
+        rule.set(defaultGasPrice({ mempool: mempoolTxs, minimum }));
         readAt = Date.now();
       }
     })

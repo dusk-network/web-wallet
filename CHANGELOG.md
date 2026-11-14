@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Count what unstaking took out of Sozu at average cost with the deposit fees included in staking rewards by year, as the line under them says, and show a loss as one
 - Count what grew while held with Sozu at the same cost as what unstaking took out, deposit fees included, so the one is part of the other and a loss shows in both
 - Start the gas price from the network's median up to five times the lowest, by the same rule as the extension, saying under the fee when the network is busy and the price can be raised, and read it again as Send or Staking opens
+- Start the gas price from the lowest while what waits in the node's mempool fits in the next block, as the extension does, so one transaction waiting at a higher price, as Sozu's after a stake, no longer raises every fee
 - Bridge testnet's DUSK to and from a BSC test chain, in place of Sepolia's routes, now retired
 
 ### Removed

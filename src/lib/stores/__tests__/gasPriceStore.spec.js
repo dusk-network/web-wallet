@@ -9,9 +9,28 @@ describe("gasPriceStore", () => {
   /** @type {GasPriceStore} */
   let gasPriceStore;
 
-  /** @param {Record<string, bigint>} stats */
-  const nodeGives = (stats) =>
-    connect.mockResolvedValue({ blocks: { gasPrice: Promise.resolve(stats) } });
+  /**
+   * What waits in the node's mempool, as its GraphQL lists it.
+   *
+   * @param {Array<{ gasLimit: number, gasPrice: number }>} mempoolTxs
+   */
+  const nodeHolds = (mempoolTxs) =>
+    connect.mockResolvedValue({
+      query: vi.fn(async (/** @type {string} */ gql) =>
+        gql === "mempoolTxs { gasPrice gasLimit }"
+          ? { mempoolTxs }
+          : Promise.reject(new Error(`Not asked here: ${gql}`))
+      ),
+    });
+
+  /**
+   * A block's worth waiting, each at `gasPrice`: more than the next block
+   * takes.
+   *
+   * @param {number} gasPrice
+   */
+  const blockFull = (gasPrice) =>
+    Array.from({ length: 1_000 }, () => ({ gasLimit: 2_500_000, gasPrice }));
 
   beforeEach(async () => {
     vi.resetModules();
@@ -27,31 +46,42 @@ describe("gasPriceStore", () => {
     expect(get(gasPriceStore)).toBe(1n);
   });
 
-  it("should take the node's median price", async () => {
-    nodeGives({ average: 4n, max: 9n, median: 3n, min: 1n });
+  it("should take the lowest while what waits fits in the next block, as Sozu's activation waiting alone at 2 after a stake", async () => {
+    nodeHolds([{ gasLimit: 6_000_000, gasPrice: 2 }]);
 
     await gasPriceStore.refresh();
 
-    expect(get(gasPriceStore)).toBe(3n);
+    expect(get(gasPriceStore)).toBe(1n);
+    expect(get(gasPriceStore.rule)).toMatchObject({
+      busy: false,
+      median: 2n,
+      price: 1n,
+    });
+
+    // Nothing waiting: the lowest.
+    nodeHolds([]);
+    await gasPriceStore.refresh();
+
+    expect(get(gasPriceStore)).toBe(1n);
   });
 
-  it("should take the median up to five times the lowest, by app-core's rule for both wallets, and say the network is busy over it", async () => {
+  it("should take the median of a block's worth up to five times the lowest, by app-core's rule for both wallets, and say the network is busy over it", async () => {
     const { GAS_PRICE_CEILING_TIMES, defaultGasPrice } =
       await import("@dusk-network/app-core/gas");
 
-    nodeGives({ average: 2n, max: 9n, median: 2n, min: 1n });
+    nodeHolds(blockFull(3));
     await gasPriceStore.refresh();
 
-    expect(get(gasPriceStore)).toBe(2n);
-    expect(get(gasPriceStore.rule)).toMatchObject({ busy: false, median: 2n });
+    expect(get(gasPriceStore)).toBe(3n);
+    expect(get(gasPriceStore.rule)).toMatchObject({ busy: false, median: 3n });
 
     // A spammed mempool: the default stops at the ceiling, and says so.
-    nodeGives({ average: 600n, max: 1000n, median: 900n, min: 1n });
+    nodeHolds(blockFull(900));
     await gasPriceStore.refresh();
 
     expect(get(gasPriceStore)).toBe(GAS_PRICE_CEILING_TIMES);
     expect(get(gasPriceStore.rule)).toStrictEqual(
-      defaultGasPrice({ median: 900n, minimum: 1n })
+      defaultGasPrice({ mempool: blockFull(900), minimum: 1n })
     );
     expect(get(gasPriceStore.rule)).toMatchObject({
       busy: true,
@@ -62,7 +92,7 @@ describe("gasPriceStore", () => {
 
   it("should ask again as a form opens, where the price was read longer ago than half a minute", async () => {
     vi.useFakeTimers({ now: Date.UTC(2026, 10, 13, 12) });
-    nodeGives({ average: 2n, max: 2n, median: 2n, min: 2n });
+    nodeHolds(blockFull(2));
 
     // Never read: asked.
     await gasPriceStore.readAgain();
@@ -76,7 +106,7 @@ describe("gasPriceStore", () => {
     expect(connect).toHaveBeenCalledOnce();
 
     // Older: asked again.
-    nodeGives({ average: 3n, max: 3n, median: 3n, min: 3n });
+    nodeHolds(blockFull(3));
     vi.setSystemTime(Date.UTC(2026, 10, 13, 12, 0, 31));
     await gasPriceStore.readAgain();
 
@@ -85,7 +115,7 @@ describe("gasPriceStore", () => {
   });
 
   it("should never go under the lowest price", async () => {
-    nodeGives({ average: 0n, max: 0n, median: 0n, min: 0n });
+    nodeHolds(blockFull(0));
 
     await gasPriceStore.refresh();
 
@@ -93,7 +123,7 @@ describe("gasPriceStore", () => {
   });
 
   it("should keep the last price while the node can't give one", async () => {
-    nodeGives({ average: 2n, max: 2n, median: 2n, min: 2n });
+    nodeHolds(blockFull(2));
     await gasPriceStore.refresh();
 
     connect.mockRejectedValue(new Error("Timed out"));
@@ -104,7 +134,7 @@ describe("gasPriceStore", () => {
 
   it("should ask again every five minutes until it is stopped", async () => {
     vi.useFakeTimers();
-    nodeGives({ average: 2n, max: 2n, median: 2n, min: 2n });
+    nodeHolds(blockFull(2));
 
     const stop = gasPriceStore.startRefreshing();
 
@@ -112,7 +142,7 @@ describe("gasPriceStore", () => {
     expect(connect).toHaveBeenCalledTimes(1);
     expect(get(gasPriceStore)).toBe(2n);
 
-    nodeGives({ average: 5n, max: 5n, median: 5n, min: 5n });
+    nodeHolds(blockFull(5));
     await vi.advanceTimersByTimeAsync(300_000);
 
     expect(connect).toHaveBeenCalledTimes(2);
