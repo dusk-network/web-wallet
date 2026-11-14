@@ -236,7 +236,10 @@ describe("Dashboard", () => {
     }
   });
 
-  it("says a send that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
+  // Then M19's: "Not sent yet … It's being sent. Cancel" as it went out.
+  // One state at a time: Sending as it goes out, Not sent yet while it waits
+  // for the network, and nothing once it's handed over, as Activity has it.
+  it("says a send goes out as it does, and that one that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -262,9 +265,7 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("answering"));
 
-      expect(banner()).toBe(
-        `Not sent yet: 0.01 DUSK to Profile 2. ${at} It's being sent. Cancel`
-      );
+      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at} Cancel`);
 
       // The node can't be reached as it's sent: it waits for the network.
       gate
@@ -278,6 +279,11 @@ describe("Dashboard", () => {
           `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`
         )
       );
+
+      // Handed over: no longer said here.
+      await act(() => gate.handOver());
+
+      expect(banner()).toBeUndefined();
     } finally {
       gate.cancel();
       setNetworkReach("answering");
