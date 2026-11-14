@@ -684,7 +684,9 @@ describe("Receive", () => {
       );
       hydrateRequests();
       render(Receive);
-      await vi.runAllTimersAsync();
+      // Not all: the list, with a request on it, always has another look to
+      // run.
+      await vi.runOnlyPendingTimersAsync();
       await openRequest();
       await type("Amount (optional)", "0.013");
       await type("Memo (optional)", "Factura 2026-071");
@@ -701,8 +703,20 @@ describe("Receive", () => {
       click.mockRestore();
     });
 
-    it("should look for what comes in while a request waits, say Paid once a payment has its amount and memo, and stop looking", async () => {
+    // Then Sofía's: left open, the list said Paid for minutes after a second
+    // payment, as it stopped looking once the request was paid.
+    it("should look for what comes in while a request shows, say Paid once a payment has its amount and memo, and Paid twice once another comes in, the list left open", async () => {
       const at = Date.now() - 1000;
+      /** @param {string} hash @param {number} time */
+      const payment = (hash, time) => ({
+        category: "received",
+        hash,
+        memo: "Factura 33",
+        privacy: "public",
+        status: "executed",
+        time,
+        value: 150_000_000n,
+      });
 
       localStorage.setItem(
         REQUESTS,
@@ -731,17 +745,7 @@ describe("Receive", () => {
 
       history.state?.set({
         hasMore: false,
-        rows: [
-          {
-            category: "received",
-            hash: "ab".repeat(32),
-            memo: "Factura 33",
-            privacy: "public",
-            status: "executed",
-            time: at + 500,
-            value: 150_000_000n,
-          },
-        ],
+        rows: [payment("ab".repeat(32), at + 500)],
       });
       await vi.advanceTimersByTimeAsync(0);
 
@@ -756,6 +760,27 @@ describe("Receive", () => {
         lux: "150000000",
       });
 
+      // Paid, it's still looked for: the history has a second payment at
+      // the next read, half a minute on, and the list says so.
+      history.refresh.mockClear();
+      history.refresh.mockImplementationOnce(async () => {
+        history.state?.set({
+          hasMore: false,
+          rows: [
+            payment("ab".repeat(32), at + 500),
+            payment("cd".repeat(32), at + 900),
+          ],
+        });
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(history.refresh).toHaveBeenCalledOnce();
+      expect(
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid twice$/);
+
+      // Not with the page gone.
+      cleanup();
       history.refresh.mockClear();
       await vi.advanceTimersByTimeAsync(60_000);
 
@@ -857,7 +882,7 @@ describe("Receive", () => {
       }
     });
 
-    it("should say a request paid twice in its badge, list each payment with a way to send the second back, and quote another payment's memo safely", async () => {
+    it("should say a request paid twice in its badge, and list each payment with a way to send the second back", async () => {
       const PAYER =
         "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
       const at = Date.now() - 10_000;
@@ -889,16 +914,7 @@ describe("Receive", () => {
       hydrateRequests();
       history.state?.set({
         hasMore: false,
-        rows: [
-          row({}),
-          row({ hash: "cd".repeat(32), time: at + 2500 }),
-          // A right-to-left override would turn the line around.
-          row({
-            hash: "ef".repeat(32),
-            memo: "Fra \u202E34 aruc",
-            time: at + 3500,
-          }),
-        ],
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 2500 })],
       });
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
@@ -908,13 +924,7 @@ describe("Receive", () => {
       expect(item.querySelector(".requests__state")).toHaveTextContent(
         /^Paid twice$/
       );
-      expect(item).toHaveTextContent(
-        `Amount and memo match 2 payments. Also the same amount ${inSentence(paidAt(at + 3500))}, with another memo: "Fra \\u202e34 aruc".`
-      );
-      expect(item).not.toHaveTextContent("\u202E");
-      expect(item).toHaveTextContent(
-        "A memo here has hidden characters, shown as codes."
-      );
+      expect(item).toHaveTextContent("Amount and memo match 2 payments.");
 
       // Each payment to see; the second, to send back to whoever paid it.
       const payments = screen.getByRole("list", {
@@ -976,6 +986,91 @@ describe("Receive", () => {
         memo: "Refund: Factura 43",
         to: PAYER,
       });
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    // Sofía's: an old paid request listed 26 payments of its amount made for
+    // other invoices, as "Also the same amount … with another memo".
+    it("should list on a card only what else could be its: the same memo first, the same amount with another memo only while it isn't paid, three at most, each memo quoted safely", async () => {
+      const at = Date.now() - 60_000;
+      /** @param {number} n @param {Record<string, unknown>} fields */
+      const row = (n, fields) => ({
+        category: "received",
+        hash: n.toString(16).padStart(64, "0"),
+        privacy: "public",
+        status: "executed",
+        time: at + n * 1000,
+        ...fields,
+      });
+      /** @param {Record<string, unknown>} request */
+      const show = async (request, /** @type {any[]} */ rows) => {
+        cleanup();
+        localStorage.setItem(
+          REQUESTS,
+          JSON.stringify([
+            { at, id: "asked", network: "testnet", to: ACCOUNT, ...request },
+          ])
+        );
+        hydrateRequests();
+        history.state?.set({ hasMore: false, rows });
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        return /** @type {HTMLElement} */ (
+          document.querySelector(".requests__item")
+        );
+      };
+
+      // Paid: the same memo for another amount still could be its, the same
+      // amount with another memo, other invoices' payments, can't.
+      const paid = await show({ lux: "10000000", memo: "Factura 43" }, [
+        row(1, { memo: "Factura 43", value: 10_000_000n }),
+        row(2, { memo: "Factura 44", value: 10_000_000n }),
+        row(3, { memo: "Factura 45", value: 10_000_000n }),
+        row(4, { memo: "Factura 43", value: 20_000_000n }),
+      ]);
+
+      expect(paid.querySelector(".requests__state")).toHaveTextContent(
+        /^Paid$/
+      );
+      expect(paid).toHaveTextContent(
+        `Amount and memo match a payment of 0.01 DUSK ${inSentence(paidAt(at + 1000))}. Also the same memo ${inSentence(paidAt(at + 4000))}, for 0.02 DUSK.`
+      );
+      expect(paid).not.toHaveTextContent("same amount");
+
+      // Not paid: the same memo first, then the same amount with another
+      // memo, the first three that came; a right-to-left override would turn
+      // a line around.
+      const open = await show({ lux: "50000000", memo: "Factura 70" }, [
+        row(1, { memo: "Factura 7O", value: 50_000_000n }),
+        row(2, { memo: "Fra \u202E34 aruc", value: 50_000_000n }),
+        row(3, { memo: "Factura 72", value: 50_000_000n }),
+        row(4, { memo: "Factura 73", value: 50_000_000n }),
+        row(5, { memo: "Factura 74", value: 50_000_000n }),
+        row(6, { memo: "Factura 70", value: 70_000_000n }),
+      ]);
+      const line = open.querySelector(".requests__line")?.textContent ?? "";
+
+      expect(open.querySelector(".requests__state")).toHaveTextContent(
+        /^Check$/
+      );
+      expect(
+        line.match(/Also the same (memo|amount)/g)?.map((also) => also.slice(9))
+      ).toStrictEqual([
+        "same memo",
+        "same amount",
+        "same amount",
+        "same amount",
+      ]);
+      expect(line).toContain(
+        `Also the same amount ${inSentence(paidAt(at + 2000))}, with another memo: "Fra \\u202e34 aruc".`
+      );
+      expect(line).toContain(`with another memo: "Factura 73".`);
+      expect(line).not.toContain("Factura 74");
+      expect(open).not.toHaveTextContent("\u202E");
+      expect(open).toHaveTextContent(
+        "A memo here has hidden characters, shown as codes."
+      );
       history.state?.set({ hasMore: false, rows: [] });
     });
 
