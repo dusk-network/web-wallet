@@ -15,7 +15,7 @@
   import { formatDusk } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { formDraft } from "$lib/navigation";
-  import { makeRequestLink } from "$lib/payment-requests";
+  import { makeRequestLink, requestText } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
@@ -38,6 +38,12 @@
   /** Called as the request leaves the wallet. */
   /** @type {() => void} */
   export let onUse = () => {};
+
+  /**
+   * Whose request it is, as Copy says it: the profile's verified .dusk name,
+   * else the name given it here, "" for none.
+   */
+  export let requestName = "";
 
   const id = randomUUID();
   const draft = formDraft("request");
@@ -153,12 +159,17 @@
           ? ""
           : " The link opens the web wallet's Send, filled in."}
       </p>
+      <!-- What it asks in a line, then its link. -->
       <CopyButton
         className="request__copy"
         name="request link"
         onCopied={onUse}
         text="Copy request link"
-        value={request.link}
+        value={requestText(request, {
+          language,
+          name: requestName,
+          net: $nodeNetwork,
+        })}
         variant="secondary"
       />
     {/if}

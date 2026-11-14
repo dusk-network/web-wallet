@@ -45,6 +45,8 @@ import {
 } from "$lib/contacts";
 import { networkStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { LINK_SEVERAL, requestText } from "$lib/payment-requests";
+import { LINK_BAD_AMOUNT } from "@dusk-network/app-core/payment-links";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
@@ -306,6 +308,66 @@ describe("Send", () => {
         );
       }
     );
+
+    it.each([
+      ["a dusk: link", duskLink],
+      ["an https link to the web wallet's Send", httpsLink],
+    ])(
+      "should fill in the recipient, the amount and the memo from what Copy gives of a request with %s, pasted into To, as from its link alone",
+      async (_, link) => {
+        const { getByRole, getByText } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await paste(
+          fields,
+          requestText(
+            { link, lux: 150_000_000n, memo: "Factura 33" },
+            { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+          )
+        );
+
+        expect(filled(fields)).toStrictEqual([
+          otherAccount,
+          "0.15",
+          "Factura 33",
+        ]);
+        expect(getByText(/^Filled in from the link/)).toBeInTheDocument();
+
+        await sendIt(fields);
+
+        expect(baseProps.execute).toHaveBeenCalledWith(
+          otherAccount,
+          150_000_000n,
+          "Factura 33",
+          gasPrice,
+          gasLimit,
+          undefined,
+          aGate
+        );
+      }
+    );
+
+    it("should read a link pasted alone whole, refusing one with a space in its amount, as it always did, not filling in what comes before the space", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, httpsLink.replace("amount=0.15", "amount=1 000"));
+
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+      expect(fields.review()).toBeDisabled();
+    });
+
+    it("should refuse pasted text with two payment links in it, filling in nothing, as which is meant can't be told", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+
+      await paste(fields, `Pay here: ${httpsLink}\nOr here: ${duskLink}`);
+
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("alert")).toHaveTextContent(LINK_SEVERAL);
+      expect(fields.review()).toBeDisabled();
+    });
 
     it("should refuse a link whose amount in lux isn't the one it says, filling in nothing", async () => {
       const { getByRole, getByText } = render(Send, baseProps);

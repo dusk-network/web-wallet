@@ -230,6 +230,14 @@ describe("Receive", () => {
         target: { value },
       });
 
+    /**
+     * The link in what Copy or Share gave: a line saying what's asked, then
+     * "Pay here: " and the link.
+     *
+     * @param {string | undefined} text
+     */
+    const linkIn = (text) => String(text).split("\nPay here: ")[1] ?? "";
+
     /** What the QR code on screen holds, as the library was asked to draw it. */
     const qrAlt = () => screen.getByRole("img", { name: /^QR code for your/ });
 
@@ -253,10 +261,14 @@ describe("Receive", () => {
 
       const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
 
-      expect(copied).toMatch(
+      // What it asks in a line, as the extension gives it, then the link.
+      expect(copied.split("\n")[0]).toBe(
+        "You're asked to pay 0.15 DUSK on Testnet · Factura 33"
+      );
+      expect(linkIn(copied)).toMatch(
         /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/
       );
-      expect(parsePaymentLink(copied)).toMatchObject({
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
         amountDusk: "0.15",
         chainId: "dusk:2",
         memo: "Factura 33",
@@ -325,7 +337,9 @@ describe("Receive", () => {
           .mocked(navigator.clipboard.writeText)
           .mock.calls.at(-1) ?? [""];
 
-        expect(parsePaymentLink(copied)).toMatchObject({ amountDusk: "2" });
+        expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+          amountDusk: "2",
+        });
         expect(copied).not.toMatch(/eur|€/i);
       } finally {
         vi.unstubAllGlobals();
@@ -416,7 +430,9 @@ describe("Receive", () => {
       const copied = vi.mocked(navigator.clipboard.writeText).mock
         .lastCall?.[0];
 
-      expect(parsePaymentLink(copied)).toMatchObject({ to: expectedAddress });
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+        to: expectedAddress,
+      });
     });
 
     it("should offer Share only where the browser has a share sheet, sending the address, or the request's link once there is one, and keep that request", async () => {
@@ -447,7 +463,16 @@ describe("Receive", () => {
       await fireEvent.click(screen.getByRole("button", { name: "Share" }));
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(parsePaymentLink(share.mock.lastCall?.[0].text)).toMatchObject({
+      // The request in a line, then its link, as text alone.
+      expect(share.mock.lastCall?.[0]).toStrictEqual({
+        text: expect.stringMatching(
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+        ),
+        title: "Dusk payment request",
+      });
+      expect(
+        parsePaymentLink(linkIn(share.mock.lastCall?.[0].text))
+      ).toMatchObject({
         amountDusk: "2",
         to: ACCOUNT,
       });

@@ -52,7 +52,7 @@
   import { onTheirWay } from "$lib/activity/sends";
   import { paidInSentence } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
-  import { readPaymentLink } from "$lib/payment-requests";
+  import { readPastedLink, readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
   import { networkStore, settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
@@ -633,7 +633,8 @@
    * @param {string} text
    */
   async function takeRecipient(text) {
-    const asked = readPaymentLink(text, $nodeNetwork, language);
+    // A link alone, or in what Share and Copy give of a request.
+    const asked = readPastedLink(text, $nodeNetwork, language);
 
     // The field holds what was given until now: what takes its place, or
     // nothing, then shows, whatever it held before.
