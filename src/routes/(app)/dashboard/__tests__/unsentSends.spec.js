@@ -309,7 +309,7 @@ describe("A send that never went out", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("is said once the wallet opens again after its page reloaded as it waited for the network: what, to whom, its memo and when, to send now or not, never sent by itself", async () => {
+  it("is said once the wallet opens again after its page reloaded as it waited for the network: what, to whom, its memo and when, to send now or not, never sent by itself, and still once Send takes it, until it's sent", async () => {
     const reloads = Promise.withResolvers();
     const before = await openPage();
     const { at } = await sendWaiting(before, "tab dropped 1", reloads.promise);
@@ -327,7 +327,7 @@ describe("A send that never went out", () => {
     ]);
     expect(app.transfer).not.toHaveBeenCalled();
 
-    // Send it now: Send, filled in with it, to be reviewed.
+    // Send it now: Send's review, filled in with it, to send it from there.
     await after.fireEvent.click(getByRole("button", { name: "Send it now" }));
 
     expect(app.goto).toHaveBeenCalledWith(
@@ -344,16 +344,23 @@ describe("A send that never went out", () => {
       typed: { amount: "0.01", memo: "tab dropped 1", to },
     });
 
-    // Taken by Send: said no more, here or after another reload.
-    await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
+    // Taken by Send, and left there before it's sent, as a call comes: said
+    // still, here and after another reload.
+    expect(noticesOf(container)).toStrictEqual([
+      `Not sent: 0.01 DUSK to your Profile 2. tab dropped 1 · ${formatTime(at, { locale: "en" })} Nothing left your wallet. Send it now Don't send`,
+    ]);
 
     const later = await openPage();
     const { container: laterPage } = later.render(later.Home);
 
     await vi.waitFor(() =>
-      expect(get(later.transactions.unsentSends)).toStrictEqual([])
+      expect(noticesOf(laterPage)).toStrictEqual([
+        expect.stringMatching(
+          /^Not sent: 0\.01 DUSK to your Profile 2\. tab dropped 1 /
+        ),
+      ])
     );
-    expect(noticesOf(laterPage)).toStrictEqual([]);
+    expect(app.transfer).not.toHaveBeenCalled();
   });
 
   it("is dropped with Don't send, here and after the next reload", async () => {

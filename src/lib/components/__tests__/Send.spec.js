@@ -26,6 +26,7 @@ import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
 import {
   cancelWaitingSends,
+  dropUnsent,
   keepWaiting,
   outcomeUnknown,
   sendGate,
@@ -2001,7 +2002,7 @@ describe("Send", () => {
       }
     });
 
-    it("should fill the form in with a send that never went out, asked from where it's said, and send it only from the review", async () => {
+    it("should take a send that never went out to its review, filled in with it, as asked from where it's said, and send it from there in its place", async () => {
       const { networkName } = get(networkStore);
       const unsent = {
         account: publicAddress,
@@ -2021,30 +2022,34 @@ describe("Send", () => {
           to: otherAccount,
         },
       };
+      const execute = vi.fn(() => new Promise(() => {}));
 
-      // Asked before Send opens.
+      // Asked before Send opens: its review, as it was.
       sendUnsentAgain(unsent);
 
-      const { getByRole, getByText } = render(Send, baseProps);
-      const fields = fieldsOf(getByRole);
-      const filled = () =>
-        [fields.to(), fields.amount(), fields.memo()].map(
-          (field) => /** @type {HTMLInputElement} */ (field).value
-        );
+      const { container, getByRole, queryByRole } = render(Send, {
+        ...baseProps,
+        execute,
+      });
 
-      expect(filled()).toStrictEqual([otherAccount, "0.0019", "tab dropped 1"]);
-      expect(
-        getByText(
-          "Filled in from the send that didn't go out. Check it before you send."
-        )
-      ).toBeInTheDocument();
-      expect(baseProps.execute).not.toHaveBeenCalled();
+      await vi.waitFor(() =>
+        expect(container.querySelector(".send")).toHaveClass("send--review")
+      );
 
-      await fireEvent.click(fields.review());
+      expect(queryByRole("button", { name: "Review" })).toBeNull();
+      expect(getSummary(container)).toStrictEqual([
+        ["From", `Your public account ${shortenAddress(publicAddress)}`],
+        ["To", otherAccount],
+        ["Amount", "0.0019 DUSK"],
+        ["Memo", "tab dropped 1"],
+        ["Total", "Up to 0.0219 DUSK"],
+      ]);
+      expect(execute).not.toHaveBeenCalled();
+
       await afterConfirmDelay();
-      await fireEvent.click(fields.send());
+      await fireEvent.click(fieldsOf(getByRole).send());
 
-      expect(baseProps.execute).toHaveBeenCalledWith(
+      expect(execute).toHaveBeenCalledWith(
         otherAccount,
         1_900_000n,
         "tab dropped 1",
@@ -2053,6 +2058,16 @@ describe("Send", () => {
         undefined,
         aGate
       );
+
+      // In its place: the wallet locks as it waits, and it's the one kept.
+      cancelWaitingSends(new WalletChangedError());
+
+      await vi.waitFor(() =>
+        expect(get(unsentSends)).toStrictEqual([
+          expect.objectContaining({ id: "unsent-1", memo: "tab dropped 1" }),
+        ])
+      );
+      dropUnsent("unsent-1");
       cleanup();
 
       // Asked while the form shows, over what's typed there.
@@ -2066,13 +2081,18 @@ describe("Send", () => {
         memo: "",
         typed: { ...unsent.typed, memo: "" },
       });
-      await tick();
 
-      expect(
-        [typed.to(), typed.amount(), typed.memo()].map(
-          (field) => /** @type {HTMLInputElement} */ (field).value
+      await vi.waitFor(() =>
+        expect(open.container.querySelector(".send")).toHaveClass(
+          "send--review"
         )
-      ).toStrictEqual([otherAccount, "0.0019", ""]);
+      );
+      expect(getSummary(open.container)).toStrictEqual([
+        ["From", `Your public account ${shortenAddress(publicAddress)}`],
+        ["To", otherAccount],
+        ["Amount", "0.0019 DUSK"],
+        ["Total", "Up to 0.0219 DUSK"],
+      ]);
 
       // Another profile's isn't this form's to fill in.
       sendUnsentAgain({ ...unsent, account: otherAccount, id: "unsent-3" });
@@ -2083,6 +2103,45 @@ describe("Send", () => {
       expect(
         /** @type {HTMLInputElement} */ (fieldsOf(another.getByRole).to()).value
       ).toBe("");
+    });
+
+    it("should keep a send that never went out on the form, filled in with it, where the form can't send it as it was", async () => {
+      const { networkName } = get(networkStore);
+
+      sendUnsentAgain({
+        account: publicAddress,
+        at: Date.now() - 60_000,
+        id: "unsent-4",
+        label: "Lena",
+        lux: "1900000",
+        memo: "too much now",
+        network: networkName,
+        to: otherAccount,
+        typed: {
+          amount: "0.0019",
+          memo: "too much now",
+          to: otherAccount,
+        },
+      });
+
+      const { container, getByRole, getByText } = render(Send, {
+        ...baseProps,
+        availableBalance: 1_000_000n,
+      });
+
+      await tick();
+
+      expect(container.querySelector(".send")).not.toHaveClass("send--review");
+      expect(
+        [fieldsOf(getByRole).to(), fieldsOf(getByRole).amount()].map(
+          (field) => /** @type {HTMLInputElement} */ (field).value
+        )
+      ).toStrictEqual([otherAccount, "0.0019"]);
+      expect(
+        getByText(
+          "Filled in from the send that didn't go out. Check it before you send."
+        )
+      ).toBeInTheDocument();
     });
 
     it("should keep a send until it goes out, and say no more of one that never went out once the same is sent again", async () => {

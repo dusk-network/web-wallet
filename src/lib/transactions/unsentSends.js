@@ -611,8 +611,8 @@ const refills = writable(null);
 export const unsentRefill = { subscribe: refills.subscribe };
 
 /**
- * Asks Send to fill its form in with a send that never went out, to be
- * reviewed: it goes off the list as Send takes it (`takeUnsentRefill`).
+ * Asks Send to fill its form in with a send that never went out, and to take
+ * it to its review: said until it's handed over, or dropped.
  *
  * @param {UnsentSend} send
  */
@@ -621,9 +621,9 @@ export function sendUnsentAgain(send) {
 }
 
 /**
- * The send Send was asked to fill its form in with, once, off the list now:
- * null for none, or for one of another profile's or network's than the one
- * Send sends from.
+ * The send Send was asked to fill its form in with, once: null for none, or
+ * for one of another profile's or network's than the one Send sends from.
+ * It's kept until Send sends it, which takes its place, or it's dropped.
  *
  * @param {{ account: string, network: string }} sender
  * @returns {UnsentSend | null}
@@ -637,11 +637,5 @@ export function takeUnsentRefill({ account, network }) {
 
   refills.set(null);
 
-  if (send.account !== account || send.network !== network) {
-    return null;
-  }
-
-  dropUnsent(send.id);
-
-  return send;
+  return send.account === account && send.network === network ? send : null;
 }

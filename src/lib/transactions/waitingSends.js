@@ -82,12 +82,13 @@ const isKeptAfter = (why, isSaid) =>
  * Before the node is asked to broadcast it, it's kept as handed over, and
  * it goes out only once it is: one whose page goes from then on may have
  * gone out, and is never said as one that didn't. It's forgotten as it ends.
+ * One sent again from what's kept of it takes its place (`kept.id`).
  *
  * @param {{
  *   address?: string,
  *   from?: string,
  *   gate: import("./sendGate").SendGate,
- *   kept?: { account: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
+ *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
  *   lux: bigint,
  *   maxFee?: bigint,
  *   memo?: string,
@@ -106,7 +107,7 @@ export function keepWaiting({
   operation,
   to,
 }) {
-  const id = crypto.randomUUID();
+  const id = kept?.id || crypto.randomUUID();
   const at = Date.now();
   let isWaiting = true;
 

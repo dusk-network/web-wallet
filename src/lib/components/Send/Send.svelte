@@ -302,6 +302,21 @@
    */
   let isRefilled = Boolean(refilled);
 
+  /**
+   * The send that never went out the form was filled in with: sent from
+   * here, it takes its place. Null for none.
+   *
+   * @type {import("$lib/transactions/unsentSends").UnsentSend | null}
+   */
+  let refill = refilled;
+
+  /**
+   * Whether the review shows as soon as the form can be sent, as it holds a
+   * send that never went out, asked to be sent now: not once anything's
+   * typed.
+   */
+  let reviewWhenReady = Boolean(refilled);
+
   /** Whether the page shows still: its screen says how a send ended. */
   let isShown = true;
 
@@ -555,6 +570,8 @@
     linkElsewhere = null;
     isFromLink = false;
     isRefilled = true;
+    refill = send;
+    reviewWhenReady = true;
     sendToAddress = typed.to;
     linkRecipient = typed.to;
     isRecipientChecked = Boolean(typed.to);
@@ -972,6 +989,8 @@
       gate,
       kept: {
         account: publicAddress,
+        // Sent from a send that never went out: in its place.
+        id: isRefilled && refill ? refill.id : undefined,
         isSaid: () => isShown && sent?.operation === operation,
         network: $networkStore.networkName,
         typed: {
@@ -1246,6 +1265,23 @@
   $: if (sendToAddress !== linkRecipient) {
     isFromLink = false;
     isRefilled = false;
+  }
+
+  // A send that never went out, asked to be sent now: its review, once the
+  // form can send it as it was, to the same address, with the same amount
+  // and memo. Anything else stays for the form to say.
+  $: if (
+    reviewWhenReady &&
+    step === "form" &&
+    canSend &&
+    isRefilled &&
+    refill &&
+    recipientAddress === refill.to &&
+    sendAmountInLux === BigInt(refill.lux) &&
+    transactionMemo === refill.memo
+  ) {
+    reviewWhenReady = false;
+    showReview();
   }
 
   // Asked to be sent again while the form shows: it takes what's typed's
@@ -1641,7 +1677,14 @@
     class:send--fee-short={canLowerFee}
     class:send--review={step === "review"}
   >
-    <section aria-labelledby="{id}-title" class="send__form">
+    <!-- Anything typed holds the form until Review. -->
+    <section
+      aria-labelledby="{id}-title"
+      class="send__form"
+      on:input={() => {
+        reviewWhenReady = false;
+      }}
+    >
       <a class="send__back" href={addBasePath("/dashboard")}
         ><Icon path={mdiArrowLeft} />Home</a
       >

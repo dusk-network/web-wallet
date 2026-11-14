@@ -30,8 +30,9 @@
   const hasHistory = isHistoryEnabled();
 
   /**
-   * Opens Send filled in with a send that never went out, to be reviewed, on
-   * the profile it was sent from.
+   * Takes a send that never went out to Send's review, filled in with it,
+   * on the profile it was sent from: it's sent from there, and said here
+   * until it is.
    *
    * @param {import("$lib/transactions/unsentSends").UnsentSend} send
    */
