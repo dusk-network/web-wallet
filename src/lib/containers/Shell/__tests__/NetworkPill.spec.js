@@ -242,7 +242,7 @@ describe("NetworkPill", () => {
     }
   });
 
-  it("says it can't reach the network once the node answered nothing for 30 seconds, between syncs too, and why on the pill, without a tap", async () => {
+  it("says it can't reach the network as soon as the node leaves an ask unanswered for the 10 seconds it gets, between syncs too, and why on the pill, without a tap", async () => {
     vi.useFakeTimers();
 
     try {
@@ -256,16 +256,15 @@ describe("NetworkPill", () => {
         getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
 
-      // From here it answers nothing, and the wallet's next sync, 20 seconds
-      // on, gets nothing back either.
+      // From here it answers nothing: its next ask, 15 seconds on, gets no
+      // answer in 10 seconds.
       askNode.mockImplementation(() => new Promise(() => {}));
-      await act(() => vi.advanceTimersByTimeAsync(20_000));
-      await setSync({ isInProgress: true, progress: 0 });
-      await act(() => vi.advanceTimersByTimeAsync(9_000));
+      await act(() => vi.advanceTimersByTimeAsync(24_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, syncing" })
+        getByRole("button", { name: "Network: Testnet, in sync" })
       ).toBeInTheDocument();
+      expect(get(networkReach)).toBe("answering");
 
       await act(() => vi.advanceTimersByTimeAsync(1_000));
 
@@ -274,14 +273,14 @@ describe("NetworkPill", () => {
           name: "Network: Testnet, can't reach the network",
         })
       ).toBeInTheDocument();
+      expect(get(networkReach)).toBe("silent");
       // In a word on a phone, whole where there's room.
       expect(pill()).toHaveTextContent(
         "Testnet Can't reach Can't reach the network"
       );
 
-      // It answers again, and the sync gets through: in sync by its next ask.
+      // It answers again: in sync by its next ask.
       askNode.mockImplementation(() => Promise.resolve(1n));
-      await setSync({ isInProgress: false, progress: 1 });
       await act(() => vi.advanceTimersByTimeAsync(15_000));
 
       expect(

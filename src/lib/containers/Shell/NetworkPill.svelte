@@ -71,7 +71,11 @@
    */
   const ASK_EVERY = 15_000;
 
-  /** Whether the node answered nothing for STALL_MS, sync or not. */
+  /**
+   * Whether the node answered nothing for STALL_MS, sync or not, or left an
+   * ask unanswered for as long as an ask gets: what shows may be out of
+   * date from then on, as Home says.
+   */
   let isSilent = false;
 
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -117,7 +121,15 @@
         asking = null;
       }
     };
-    const deadline = setTimeout(end, ANSWER_WITHIN);
+    // Unanswered in time: silent, at once, until it answers again.
+    const deadline = setTimeout(() => {
+      if (asking === controller) {
+        isSilent = true;
+        isRetrying = false;
+      }
+
+      end();
+    }, ANSWER_WITHIN);
 
     asking = controller;
     networkStore

@@ -180,6 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refuse a profile name with a .dusk name registered to another account, saying so, and take one registered to the profile as its own without asking
 - Ask about a contact's name, and refuse a profile's, that reads as another's with a digit for a letter or v for y, as Dav1d for David or Wendv for Wendy
 - Ask "Is that 2.1250 or 2125?" with a button for each reading wherever an amount could be either of two, on Send, Request, Staking and the Bridge, and of a link's amount=2.125 as of one typed
+- Say on Home's total, balances and stake that they may be out of date as soon as the network leaves a request unanswered for 10 seconds, the total naming both, not the stake alone at first
+- Say a send went through in History as soon as the node takes it out of its queue and its balance moves, also with its screen left, not Pending until the network's history has it
 
 ## [2.0.0] - 2026-11-06
 

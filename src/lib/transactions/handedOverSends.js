@@ -17,6 +17,7 @@ import { networkStore } from "$lib/stores";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
 import { FOLLOW_INTERVAL, FOLLOW_TIMEOUT } from "./followTransaction";
+import transactionInBlock from "./transactionInBlock";
 import { dropUnsent, unsentSends } from "./unsentSends";
 
 /** How long the network gets to answer each time it's asked, in milliseconds. */
@@ -64,25 +65,8 @@ const unlessAborted = (promise, signal) =>
 export async function lookUpHandedOver(send, signal) {
   const { hash } = /** @type {{ hash: string }} */ (send.handedOver);
   const network = await unlessAborted(networkStore.connect(), signal);
-  const { tx } =
-    (await unlessAborted(
-      network.query(
-        `tx(hash: "${hash}") { blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
-        { signal }
-      ),
-      signal
-    )) ?? {};
-  const seconds = Number(tx?.blockTimestamp);
 
-  return tx
-    ? {
-        blockHeight: BigInt(tx.blockHeight),
-        error: tx.err || null,
-        fee: BigInt(tx.gasSpent ?? 0) * BigInt(tx.tx?.gasPrice ?? 0),
-        timestamp:
-          Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null,
-      }
-    : null;
+  return unlessAborted(transactionInBlock(network, hash, signal), signal);
 }
 
 /**

@@ -19,7 +19,12 @@ import {
 } from "@dusk/w3sper";
 
 import { stakeInfo } from "$lib/mock-data";
-import { activityFor, clearActivityStore, stopActivity } from "$lib/activity";
+import {
+  activityFor,
+  clearActivityStore,
+  noteSentOutcome,
+  stopActivity,
+} from "$lib/activity";
 import { encodeDepositArgs } from "@dusk-network/networks/duskevm";
 import {
   getVerifiedName,
@@ -79,6 +84,7 @@ vi.mock("$lib/activity", async (importOriginal) => {
     clearActivityStore: vi.fn(async () => {}),
     currentActivity: vi.fn(() => history.session),
     getShieldedHistory: vi.fn(async () => ({ entries: [] })),
+    noteSentOutcome: vi.fn(async () => {}),
     stopActivity: vi.fn(),
   };
 });
@@ -1562,6 +1568,141 @@ describe("Wallet store", async () => {
         removed.mockRestore();
         vi.useFakeTimers();
       }
+    });
+
+    describe("History, as the balances", () => {
+      /** What the node says of the block that took "in-block-tx". */
+      const inBlock = {
+        blockHeight: "4850914",
+        blockTimestamp: "1763080677",
+        err: null,
+        gasSpent: "1820914",
+        tx: { gasPrice: "1000" },
+      };
+
+      /**
+       * Sends one, its leaving the node's queue held until `left` resolves,
+       * and the node's blocks as `blocks` gives them, by each time it's
+       * asked.
+       *
+       * @param {Array<typeof inBlock | null>} blocks
+       */
+      async function sendInBlock(blocks) {
+        const network = await networkStore.connect();
+        const scope = Object.getPrototypeOf(network.transactions.withId(""));
+        const left = Promise.withResolvers();
+        const removed = vi
+          .spyOn(scope, "removed")
+          .mockReturnValueOnce(left.promise);
+        const query = network.query.bind(network);
+        /** @type {string[]} */
+        const asked = [];
+        const querySpy = vi
+          .spyOn(network, "query")
+          .mockImplementation(async (gql, options) => {
+            if (gql?.startsWith('tx(hash: "in-block-tx")')) {
+              asked.push(gql);
+
+              return { tx: blocks[asked.length - 1] ?? null };
+            }
+
+            return query(gql, options);
+          });
+
+        executeSpy.mockResolvedValueOnce({
+          buffer: new Uint8Array(),
+          hash: "in-block-tx",
+          nonce: 9n,
+        });
+        await walletStore.transfer(toMoonlight, amount, memo, gas);
+        await vi.waitUntil(() => removed.mock.calls.length === 1);
+
+        return {
+          asked,
+          restore: () => {
+            removed.mockRestore();
+            querySpy.mockRestore();
+          },
+          leave: () => left.resolve(undefined),
+        };
+      }
+
+      it("says what the block that took a send says as soon as the node takes it out of its queue, as the balances read then do, not once that block is final", async () => {
+        vi.useRealTimers();
+        vi.mocked(noteSentOutcome).mockClear();
+
+        const { asked, leave, restore } = await sendInBlock([inBlock]);
+
+        try {
+          // In the node's queue: nothing asked, nothing said.
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          expect(asked).toStrictEqual([]);
+          expect(noteSentOutcome).not.toHaveBeenCalled();
+
+          leave();
+          await vi.waitUntil(
+            () => vi.mocked(noteSentOutcome).mock.calls.length
+          );
+
+          expect(noteSentOutcome).toHaveBeenCalledExactlyOnceWith(
+            "in-block-tx",
+            {
+              blockHeight: 4850914n,
+              error: null,
+              fee: 1820914000n,
+              timestamp: 1763080677000,
+            }
+          );
+          // Its block's status isn't asked: as the balances, final or not.
+          expect(asked).toStrictEqual([
+            'tx(hash: "in-block-tx") { blockHeight blockTimestamp err gasSpent tx { gasPrice } }',
+          ]);
+        } finally {
+          restore();
+          vi.useFakeTimers();
+        }
+      });
+
+      it("asks again once the balances are read, where the node didn't have the block yet as it took the send out of its queue, and says nothing of one no block took", async () => {
+        vi.useRealTimers();
+        vi.mocked(noteSentOutcome).mockClear();
+
+        const late = await sendInBlock([null, inBlock]);
+
+        try {
+          const balanceReads = balanceSpy.mock.calls.length;
+
+          late.leave();
+          await vi.waitUntil(
+            () => vi.mocked(noteSentOutcome).mock.calls.length
+          );
+
+          expect(late.asked).toHaveLength(2);
+          expect(balanceSpy.mock.calls.length).toBeGreaterThan(balanceReads);
+          expect(noteSentOutcome).toHaveBeenCalledExactlyOnceWith(
+            "in-block-tx",
+            expect.objectContaining({ blockHeight: 4850914n })
+          );
+        } finally {
+          late.restore();
+        }
+
+        vi.mocked(noteSentOutcome).mockClear();
+
+        const dropped = await sendInBlock([null, null]);
+
+        try {
+          dropped.leave();
+          await vi.waitUntil(() => dropped.asked.length === 2);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          expect(noteSentOutcome).not.toHaveBeenCalled();
+        } finally {
+          dropped.restore();
+          vi.useFakeTimers();
+        }
+      });
     });
 
     it.each(
