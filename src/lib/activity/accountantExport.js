@@ -19,6 +19,8 @@ import { keptMigrations } from "$lib/bridge/migrationActivity";
 import { currencies } from "$lib/dusk/currency";
 import { shortenAddress } from "$lib/dusk/string";
 
+import { hasPrice } from "$lib/prices";
+
 import { duskPrices } from "./duskPrice";
 
 /**
@@ -300,7 +302,8 @@ export async function makeExport({
     facts,
     network,
     period,
-    price: choices.fiat ? duskPrices({ currency }) : undefined,
+    // None where DUSK has no price, as on testnet.
+    price: choices.fiat && hasPrice(net) ? duskPrices({ currency }) : undefined,
     profile,
     profiles,
     rows: whole.rows,
@@ -330,11 +333,13 @@ const newYearRates = new Map();
  * held, by its rate at each new year, read from the chain, and what it's
  * worth now (`sozuStatus`); and what Sozu's unstakes took out beyond what
  * their stDUSK cost. In DUSK, and in `currency` where `fiat` asks, from
- * CoinGecko's prices. Throws what to say when it can't be read.
+ * CoinGecko's prices, on a network where DUSK has a price (`net`). Throws
+ * what to say when it can't be read.
  *
  * @param {{
  *   currency: string,
  *   fiat: boolean,
+ *   net?: import("@dusk-network/networks").Network | null,
  *   session: Pick<import("./activitySession").ActivitySession, "sozuFacts" | "whole"> & { archive?: import("@dusk-network/app-core/history").Archive },
  *   sozuStatus: () => Promise<SozuStatus | null>,
  * }} asked `sozuStatus`: Sozu's, read now for the account
@@ -342,9 +347,12 @@ const newYearRates = new Map();
 export async function readRewardsByYear({
   currency,
   fiat,
+  net = null,
   session,
   sozuStatus,
 }) {
+  // None where DUSK has no price, as on testnet.
+  const valued = fiat && hasPrice(net);
   const whole = await session.whole().catch(() => {
     throw new Error(
       "Couldn't read your whole history from this node. Try again."
@@ -358,13 +366,13 @@ export async function readRewardsByYear({
     archive: session.archive,
     cache: newYearRates,
     facts,
-    price: fiat ? duskPrices({ currency }) : undefined,
+    price: valued ? duskPrices({ currency }) : undefined,
     rows: whole.rows,
     status,
   });
 
   return {
-    currency: fiat ? currency : null,
+    currency: valued ? currency : null,
     shieldedWaiting: whole.shieldedWaiting,
     years,
   };

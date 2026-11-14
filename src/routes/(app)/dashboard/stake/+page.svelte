@@ -25,6 +25,7 @@
   import { IconHeadingCard } from "$lib/containers/Cards";
   import { getGasLimits, getGasSettings } from "$lib/contracts";
   import { goto } from "$lib/navigation";
+  import { hasPrice } from "$lib/prices";
   import { readSozuGrowth, sozuStore } from "$lib/sozu";
   import { followTransaction } from "$lib/transactions";
   import { readNativeRewards, readProvisioners } from "$lib/staking/rewardRate";
@@ -214,6 +215,7 @@
       {
         currency: rewardsCurrency,
         fiat: rewardsValued,
+        net: get(networkStore).net,
         session,
         sozuStatus: () => sozuStore.check(),
       },
@@ -504,6 +506,7 @@
       {publicBalance}
       {rewards}
       {rewardsCurrency}
+      rewardsPriced={hasPrice($networkStore.net)}
       bind:rewardsValued
       sozu={$sozuStore}
       {stakeInfo}

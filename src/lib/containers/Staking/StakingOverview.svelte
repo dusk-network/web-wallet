@@ -123,6 +123,9 @@
   /** Whether they're read with their value. */
   export let rewardsValued = false;
 
+  /** Whether DUSK has a price on the network: test DUSK has no value. */
+  export let rewardsPriced = true;
+
   /** @param {bigint} lux */
   const amountOf = (lux) => ({
     exact: formatDuskExact(lux, locale),
@@ -467,6 +470,7 @@
           bind:valued={rewardsValued}
           currency={rewardsCurrency}
           {locale}
+          priced={rewardsPriced}
           {rewards}
         />
       </div>

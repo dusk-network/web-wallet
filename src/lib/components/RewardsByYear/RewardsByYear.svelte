@@ -36,12 +36,20 @@
   /** Whether they're asked with their value. */
   export let valued = false;
 
+  /** Whether DUSK has a price on the network: test DUSK has no value. */
+  export let priced = true;
+
   export let disabled = false;
 
   /** @type {string} */
   export let locale;
 
   const dispatch = createEventDispatcher();
+
+  // Nothing's asked with a value where DUSK has none.
+  $: if (!priced && valued) {
+    valued = false;
+  }
 
   /**
    * A year's rewards in DUSK, what they were worth where that's asked, and
@@ -114,13 +122,16 @@
     <input
       bind:checked={valued}
       class="dusk-checkbox"
-      {disabled}
+      disabled={disabled || !priced}
       on:change={() => dispatch("valued", valued)}
       type="checkbox"
     />
     Add each reward's value in {currencyWords(currency).many}, from CoinGecko's
     prices
   </label>
+  {#if !priced}
+    <p class="rewards-by-year__note">Test DUSK has no value.</p>
+  {/if}
 {:else}
   <p class="rewards-by-year__note">No staking rewards yet.</p>
 {/if}

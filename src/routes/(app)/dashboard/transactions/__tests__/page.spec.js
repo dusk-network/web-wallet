@@ -527,6 +527,7 @@ describe("History", () => {
     afterEach(() => {
       vi.restoreAllMocks();
       mocks.whole.mockReset();
+      setNodeNetwork(null);
     });
 
     /** Opens Export, and gives the page's controls. */
@@ -860,6 +861,9 @@ describe("History", () => {
     });
 
     it("asks CoinGecko only when euros are asked for, in euros as the wallet's amounts are, for no more than times", async () => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       const prices = vi.fn((/** @type {string} */ url) =>
         Promise.resolve(
           new Response(
@@ -906,6 +910,9 @@ describe("History", () => {
     });
 
     it("shows staking rewards by year beside the file, in DUSK, and in the wallet's currency as asked under them, saving nothing", async () => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       // Mid-year, whatever the device's time zone: one a year and a half
       // ago, past CoinGecko's year, and the rest this year.
       const year = new Date(NOW).getUTCFullYear();
@@ -1129,6 +1136,9 @@ describe("History", () => {
         "euros",
       ],
     ])("gives the values in %s", async (_, currency, language, words) => {
+      // Mainnet, where DUSK has a price.
+      setNodeNetwork(networks.mainnet);
+
       const code =
         { euros: "EUR", "Indian rupees": "INR", "Singapore dollars": "SGD" }[
           words
@@ -1166,6 +1176,79 @@ describe("History", () => {
       expect(await blobs[0].text()).toContain(`,${code},`);
       settingsStore.reset();
       vi.unstubAllGlobals();
+    });
+
+    it("gives no value in a currency on testnet, whose DUSK has none, saying so where it's asked, and asks CoinGecko nothing", async () => {
+      const prices = vi.fn((/** @type {string} */ url) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              prices: String(url).includes("coingecko")
+                ? [[NOW - 60_000, 0.25]]
+                : [],
+            })
+          )
+        )
+      );
+
+      vi.stubGlobal("fetch", prices);
+      setNodeNetwork(networks.testnet);
+      settingsStore.update((store) => ({ ...store, currency: "EUR" }));
+
+      try {
+        const { container, getByRole, getByText } = await openExport();
+        const fileValues = getByRole("checkbox", {
+          name: /^Add each payment's value in euros/,
+        });
+
+        expect(fileValues).toBeDisabled();
+        expect(fileValues).not.toBeChecked();
+        expect(getByText("Test DUSK has no value.")).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Save CSV" }));
+        await vi.waitFor(() => expect(names).toHaveLength(1));
+
+        expect(await blobs[0].text()).not.toContain(",EUR,");
+
+        // Nor the staking rewards by year beside it: a reward claimed.
+        mocks.whole.mockResolvedValue({
+          rows: rowsOf([
+            {
+              amount: "1000000000",
+              blockHeight: 4_000_000,
+              direction: "in",
+              hash: "e1".repeat(32),
+              kind: "withdraw_reward",
+              status: "executed",
+              timestamp: NOW - 86_400_000,
+            },
+          ]),
+          shieldedWaiting: false,
+        });
+        await fireEvent.click(getByRole("button", { name: "Export" }));
+        await fireEvent.click(
+          getByRole("button", { name: "Show staking rewards by year" })
+        );
+
+        const rewardValues = await vi.waitFor(() =>
+          getByRole("checkbox", {
+            name: "Add each reward's value in euros, from CoinGecko's prices",
+          })
+        );
+
+        expect(rewardValues).toBeDisabled();
+        expect(
+          container.querySelector(
+            ".rewards-by-year__option + .rewards-by-year__note"
+          )
+        ).toHaveTextContent("Test DUSK has no value.");
+        expect(
+          prices.mock.calls.filter(([url]) => String(url).includes("coingecko"))
+        ).toStrictEqual([]);
+      } finally {
+        settingsStore.reset();
+        vi.unstubAllGlobals();
+      }
     });
   });
 
