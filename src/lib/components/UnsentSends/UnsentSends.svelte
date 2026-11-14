@@ -112,9 +112,11 @@
       followHandedOver(send, (wentOut) => sayWentOut(send, wentOut));
     }
   }
+  // By its transaction: one sent again is another.
   $: shown = kept.filter(
     (send) =>
-      !send.handedOver || $handedOverStates.get(send.id) === "unconfirmed"
+      !send.handedOver ||
+      $handedOverStates.get(send.handedOver.hash) === "unconfirmed"
   );
 </script>
 

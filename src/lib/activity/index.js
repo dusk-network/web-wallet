@@ -5,7 +5,10 @@ import nodeNetwork from "$lib/stores/nodeNetwork";
 import { tellOtherTabs } from "$lib/wallets/tabs";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
-import { changeLocalTransactions } from "./activityStore";
+import {
+  changeLocalTransactions,
+  forgetLocalTransaction,
+} from "./activityStore";
 import { awaitedArrivals } from "./arrivals";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
@@ -106,6 +109,25 @@ export async function noteSentOutcome(
     ...(error ? { error } : {}),
     ...(timestamp ? { timestamp } : {}),
   });
+
+  if (owners.length) {
+    if (current && owners.includes(current.ownerKey)) {
+      await current.keptChanged();
+    }
+
+    tellOtherTabs({ type: "sent" });
+  }
+}
+
+/**
+ * A transaction the wallet sent that can never be in a block, as another
+ * took its nonce: History and Home no longer show it, for whichever profile
+ * sent it.
+ *
+ * @param {string} hash
+ */
+export async function noteNeverSent(hash) {
+  const owners = await forgetLocalTransaction(hash);
 
   if (owners.length) {
     if (current && owners.includes(current.ownerKey)) {

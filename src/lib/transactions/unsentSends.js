@@ -8,7 +8,8 @@
  * broadcast one, it's kept as handed over, with its transaction's hash and
  * nonce, and only then broadcast: from then on it may have gone out, and
  * only the chain says whether it did ($lib/transactions/handedOverSends). It's
- * never said as not sent.
+ * said as not sent only once the chain shows another transaction took its
+ * nonce.
  *
  * They're kept in IndexedDB, each write on disk before it's done (strict
  * durability): a browser that dies just after finds it there. Storage that
@@ -670,6 +671,102 @@ export function dropUnsent(id) {
   show(scope, (list) => list.filter((kept) => kept.id !== id));
   deleteKept(scope, id).catch(() => {});
 }
+
+/**
+ * Changes what's kept of a send handed over as the transaction `hash`, only
+ * while it's kept so, and no tab sends it: another tab may have sent it
+ * again since, under its ID, as another transaction ("Send it now"), which
+ * nothing found of this one may change. Storage is read and written in one
+ * transaction, as that tab writes there; it's shown so once storage took
+ * it. `change` gives what's kept of it from then on, or null to forget it.
+ * Resolves true where it was kept so, and changed; rejects where storage
+ * refuses, leaving it as it was.
+ *
+ * @param {string} id
+ * @param {string} hash
+ * @param {(send: UnsentSend) => UnsentSend | null} change
+ * @returns {Promise<boolean>}
+ */
+async function changeHandedOver(id, hash, change) {
+  const scope = walletDataScope();
+  const sends = db.table("sends");
+  /** @param {UnsentSend | null | undefined} send */
+  const isKeptAs = (send) =>
+    send?.id === id &&
+    send.handedOver?.hash.toLowerCase() === hash.toLowerCase();
+
+  if (!get(unsentSends).some(isKeptAs)) {
+    return false;
+  }
+
+  const changed = await db.transaction("rw", sends, async () => {
+    const row = await sends.get(id);
+    const send =
+      row?.wallet === scope.name(KEY) && row.owner === scope.owner
+        ? sendOf(row)
+        : null;
+
+    if (!isUnsent(send) || !isKeptAs(send)) {
+      return null;
+    }
+
+    const next = change(send);
+
+    if (next) {
+      await sends.put(rowOf(next, scope));
+    } else {
+      await sends.delete(id);
+    }
+
+    return { next };
+  });
+
+  if (!changed) {
+    return false;
+  }
+
+  const { next } = changed;
+
+  show(scope, (list) =>
+    next ? withSend(list, next) : list.filter((kept) => kept.id !== id)
+  );
+  tellOtherTabs();
+
+  return true;
+}
+
+/**
+ * Keeps a send that was handed over as the transaction `hash` as one that
+ * never went out, once its account's transaction with its nonce is in a
+ * final block under another hash: this one can never be in one. It's said
+ * as not sent from then on, to send through Review or to drop. Only while
+ * it's kept as that transaction: see `changeHandedOver`.
+ *
+ * @param {string} id
+ * @param {string} hash
+ * @returns {Promise<boolean>}
+ */
+export const keepNotSent = (id, hash) =>
+  changeHandedOver(id, hash, (send) => {
+    /** @type {UnsentSend} */
+    const notSent = { ...send };
+
+    delete notSent.handedOver;
+
+    return notSent;
+  });
+
+/**
+ * Forgets a send that was handed over as the transaction `hash`, once the
+ * chain has that transaction. Only while it's kept as that transaction: see
+ * `changeHandedOver`.
+ *
+ * @param {string} id
+ * @param {string} hash
+ * @returns {Promise<boolean>}
+ */
+export const dropHandedOver = (id, hash) =>
+  changeHandedOver(id, hash, () => null);
 
 /** @type {import("svelte/store").Writable<UnsentSend | null>} */
 const refills = writable(null);

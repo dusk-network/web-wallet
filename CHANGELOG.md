@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say "Not sent", with Send it now and Don't send, of a send left "Not confirmed" when the browser closed before it went out, once another transaction from the account took its place on chain, and drop it from History
 - Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
 - Send every payment that waited for the network once it answers, one after another, not only the first
 - Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again
