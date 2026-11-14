@@ -22,7 +22,7 @@ describe("walletConnection", () => {
       ])
     ).toStrictEqual([
       [745, "DuskEVM Testnet", "https://rpc.testnet.evm.dusk.network"],
-      [11155111, "Sepolia", "https://ethereum-sepolia-rpc.publicnode.com"],
+      [745745, "BSC test chain", "https://anvil.testnet.dusk.network"],
     ]);
 
     // No DuskEVM on mainnet yet: BNB Smart Chain and Ethereum.

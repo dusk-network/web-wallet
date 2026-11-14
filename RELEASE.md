@@ -129,7 +129,7 @@ Deploy the new version progressively through each environment:
    - Address any issues before proceeding
 
 2. **Testnet**
-   - Deploy to test network after devnet validation: push a `deploy/web-wallet-testnet*` branch, the release with what only testnet takes, and the Deploy workflow builds it and deploys it to Cloudflare
+   - Deploy to test network after devnet validation: the Deploy workflow builds `main` and deploys it to Cloudflare as it's pushed, or run on `main` by hand
    - Run comprehensive tests
    - Verify integrations with other systems
 
@@ -168,7 +168,7 @@ If errors occur during deployment:
 If critical issues are discovered after deployment:
 
 1. Identify the last stable tag/version
-2. Deploy the previous stable version to affected environments: on Cloudflare, roll the Worker back to its version before, or run the Deploy workflow on the deploy branch that was there
+2. Deploy the previous stable version to affected environments: on Cloudflare, roll the Worker back to its version before
 3. Create a hotfix branch from the stable tag
 4. Fix the issue and follow an expedited version of the release process
 5. Communicate transparently about the issue and resolution

@@ -101,11 +101,11 @@ describe("the EVM wallet connection, on Connect", () => {
     const appKit = stubAppKit();
     const { modal } = await load();
 
-    await modal.open(11155111);
+    await modal.open(745745);
 
     expect(appKit.switchNetwork).toHaveBeenCalledOnce();
     expect(appKit.switchNetwork.mock.calls[0][0]).toMatchObject({
-      id: 11155111,
+      id: 745745,
     });
     expect(appKit.switchNetwork.mock.invocationCallOrder[0]).toBeLessThan(
       appKit.open.mock.invocationCallOrder[0]

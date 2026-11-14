@@ -8,7 +8,7 @@ import bridgeTimes from "$lib/bridge/bridgeTimes";
 import { formatFee } from "$lib/dusk/currency";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore, walletStore } from "$lib/stores";
-import { stubWalletNetwork } from "$lib/test-helpers";
+import { routesStopped, stubWalletNetwork } from "$lib/test-helpers";
 import { outcomeUnknown } from "$lib/transactions";
 import { account } from "$lib/web3/walletConnection";
 
@@ -621,14 +621,17 @@ describe("Bridge", () => {
   });
 
   it("should pick the networks from lists, as the network's routes go", async () => {
+    // Testnet's routes to its BSC test chain stopped.
+    setNodeNetwork(routesStopped(networks.testnet));
+
     const { container, getByRole } = render(Bridge, baseProps);
 
     await fireEvent.click(
       getByRole("button", { name: "From: Dusk. Choose the network" })
     );
 
-    // Testnet's Sepolia route isn't running: listed, and not picked.
-    expect(getByRole("option", { name: /^Sepolia/ })).toHaveAttribute(
+    // A route that isn't running: listed, and not picked.
+    expect(getByRole("option", { name: /BSC test chain/ })).toHaveAttribute(
       "aria-disabled",
       "true"
     );
@@ -683,7 +686,7 @@ describe("Bridge", () => {
 
     expect(summary()).toBe("~1 min · fee up to 0.02 DUSK");
     expect(await notes()).toStrictEqual([
-      "Sepolia Not running on testnet right now",
+      "BNB BSC test chain ~1 min",
       "Dusk It's where it comes from",
       "EVM DuskEVM ~1 min · fee up to 0.02 DUSK",
     ]);
@@ -692,7 +695,7 @@ describe("Bridge", () => {
 
     expect(summary()).toBe("~7 days · three steps");
     expect(await notes()).toStrictEqual([
-      "Sepolia No route from DuskEVM",
+      "BNB BSC test chain No route from DuskEVM",
       "Dusk ~7 days · three steps",
       "EVM DuskEVM It's where it comes from",
     ]);

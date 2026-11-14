@@ -41,10 +41,11 @@ describe("route times", () => {
       ["ethereum-to-dusk", "~70 min"],
       ["dusk-to-bsc", "~10 hours"],
     ]);
-    // Testnet: its deposits'; its migrations have no time.
+    // Testnet: its deposits' and its BSC test chain's; Sepolia's, retired,
+    // has none.
     expect(text(DEPOSIT, { net: testnet })).toBe("~1 min");
     expect(text(migrationRoute("ethereum"), { net: testnet })).toBe("");
-    expect(text(migrationRoute("bsc"), { net: testnet })).toBe("");
+    expect(text(migrationRoute("bsc"), { net: testnet })).toBe("~1 min");
     // DuskEVM on mainnet, and a network without a file: only what its chains say.
     expect(text(DEPOSIT, { net: mainnet })).toBe("");
     expect(text(DEPOSIT, { net: null })).toBe("");
