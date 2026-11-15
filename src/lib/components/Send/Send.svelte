@@ -1226,16 +1226,25 @@
 
   /**
    * What's in To, as it's meant without its spaces and line breaks: an
-   * address, a `.dusk` name or a link, which have none. A name typed, as a
-   * contact's or a profile's, keeps them.
+   * address, a `.dusk` name or an EVM address, which have none, or what a
+   * line break broke. A name typed, as a contact's or a profile's, keeps
+   * them; so do a link, and what Share and Copy give of a request, which are
+   * read as they were given, any space in a link's amount refused
+   * (`readPastedLink`), never joined into another amount.
    *
    * @param {string} text
    */
   function withoutSpaces(text) {
+    if (
+      /^(dusk:|https?:\/\/)/i.test(text.trim()) ||
+      readPastedLink(text, $nodeNetwork, language)
+    ) {
+      return text;
+    }
+
     const joined = text.replace(/\s+/g, "");
 
     return /[\n\r\t]/.test(text) ||
-      /^(dusk:|https?:\/\/)/i.test(joined) ||
       isDuskName(joined) ||
       isValidEvmAddress(joined) ||
       getAddressInfo(joined, shieldedAddress, publicAddress).isValid

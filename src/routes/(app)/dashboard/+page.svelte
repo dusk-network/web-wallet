@@ -176,23 +176,25 @@
 
     <!-- Sends that haven't gone out, as the network doesn't answer, or
       couldn't be reached: called off from here, or they go out once it
-      answers. Each with its memo and when it was sent, to tell them apart. -->
+      answers. Each with its memo and when it was sent, to tell them apart,
+      and one state at a time: not sent yet while it waits for the network,
+      sending as it goes out. Once handed over, Activity lists it. -->
     {#each $waitingSends as send (send.id)}
+      {@const isSending =
+        $networkReach === "answering" && !send.waitsForNetwork}
       <Banner
         className="home__waiting"
         role="status"
-        title={`Not sent yet: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
+        title={`${isSending ? "Sending" : "Not sent yet"}: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
         variant="info"
       >
         <p class="home__waiting-when">
           {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
           {timeLabel(send.at, language)}
         </p>
-        <p>
-          {$networkReach === "answering" && !send.waitsForNetwork
-            ? "It's being sent."
-            : "It goes out once the network answers."}
-        </p>
+        {#if !isSending}
+          <p>It goes out once the network answers.</p>
+        {/if}
         <Button
           className="home__waiting-cancel"
           on:click={() => cancelSend(send)}

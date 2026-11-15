@@ -1,10 +1,12 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { mdiAlertOutline } from "@mdi/js";
   import { onMount } from "svelte";
 
   import { getPrimaryName } from "$lib/dusk-domains";
-  import { rememberRequest } from "$lib/payment-requests";
+  import { toast } from "$lib/dusk/components/Toast/store";
+  import { isPaidAlready, rememberRequest } from "$lib/payment-requests";
   import { networkStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { PaymentRequests, Receive, RequestPayment } from "$lib/components";
@@ -31,18 +33,27 @@
 
   /**
    * Keeps what's asked in the list as it leaves the wallet: what left, or
-   * what's on screen.
+   * what's on screen. The same request asked again isn't kept twice, and
+   * where it was paid already, that's said.
    *
    * @param {{ address: string, request: { lux?: bigint | null, memo?: string } | null }} [used]
    */
   function keepRequest(used = { address: currentAddress, request }) {
     if (used.request) {
-      rememberRequest({
+      const asked = {
         lux: used.request.lux ?? null,
         memo: used.request.memo ?? "",
         network: $nodeNetwork?.name ?? "",
         to: used.address,
-      });
+      };
+
+      // One paid already goes as its own link, the same one: said, as its
+      // link asks a second payment.
+      if (isPaidAlready(asked)) {
+        toast("warning", "This request was paid already.", mdiAlertOutline);
+      }
+
+      rememberRequest(asked);
     }
   }
 
@@ -103,7 +114,6 @@
     {name}
     onUse={keepRequest}
     {request}
-    {requestName}
   >
     <RequestPayment
       address={currentAddress}
@@ -117,6 +127,7 @@
           currentProfile.account.toString(),
           currentProfile.address.toString(),
         ]}
+        {requestName}
       />
     {/if}
   </Receive>

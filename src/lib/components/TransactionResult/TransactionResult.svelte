@@ -152,15 +152,14 @@
   <svelte:fragment slot="pending-content">
     <Throbber className="dusk-suspense__throbber" />
     <span class="dusk-suspense__pending-message">Processing transaction</span>
-    <!-- Said where it waits, not only on the pill: what it means for it,
-      and which send it is. -->
+    <!-- Which send it is, however long its answer takes. -->
+    {#if what}
+      <p class="transaction-result__what">
+        {what}{memo ? " · " : ""}{#if memo}<MemoText inline text={memo} />{/if}
+      </p>
+    {/if}
+    <!-- Said where it waits, not only on the pill: what it means for it. -->
     {#if isWaiting}
-      {#if what && gate && !isHandedOver}
-        <p class="transaction-result__what">
-          {what}{#if memo}
-            · <MemoText inline text={memo} />{/if}
-        </p>
-      {/if}
       <p class="transaction-result__waiting" role="status">
         {$networkReach === "offline"
           ? "You're offline."

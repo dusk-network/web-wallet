@@ -46,7 +46,10 @@ import {
 import { networkStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { LINK_SEVERAL, requestText } from "$lib/payment-requests";
-import { LINK_BAD_AMOUNT } from "@dusk-network/app-core/payment-links";
+import {
+  LINK_BAD_AMOUNT,
+  LINK_UNCLEAR,
+} from "@dusk-network/app-core/payment-links";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
@@ -357,6 +360,57 @@ describe("Send", () => {
       expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
       expect(fields.review()).toBeDisabled();
     });
+
+    // Marek's: a pasted link's "1" + NBSP + "000" filled 1000, as the spaces
+    // were joined out of what was pasted before it was read.
+    it.each([
+      ["a no-break space", " "],
+      ["a thin space", " "],
+      ["an ideographic space", "　"],
+      ["a tab", "\t"],
+    ])(
+      "should refuse a pasted link with %s in its amount, filling in nothing, alone or in what Copy gives",
+      async (_, space) => {
+        const { getByRole } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+        const link = httpsLink.replace("amount=0.15", `amount=1${space}000`);
+
+        // Pasted alone: its amount can't be read.
+        await paste(fields, link);
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+        expect(fields.review()).toBeDisabled();
+
+        // In what Copy gives: the words after the space may be the link's.
+        await paste(
+          fields,
+          `You're asked to pay 1000 DUSK on Testnet\nPay here: ${link}`
+        );
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
+
+        // Put in a key at a time, as a phone's keyboard can, then left: its
+        // spaces aren't joined out of it either. On the way, its host reads
+        // as a .dusk name, which no one has.
+        baseProps.resolveName.mockResolvedValue(null);
+
+        for (let end = 1; end <= link.length; end += 1) {
+          await fireEvent.input(fields.to(), {
+            target: { value: link.slice(0, end) },
+          });
+        }
+
+        await fireEvent.blur(fields.to());
+        await tick();
+        await tick();
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+        expect(fields.review()).toBeDisabled();
+      }
+    );
 
     it("should refuse pasted text with two payment links in it, filling in nothing, as which is meant can't be told", async () => {
       const { getByRole } = render(Send, baseProps);

@@ -60,6 +60,38 @@ describe("TransactionResult", () => {
     expect(followTransaction).not.toHaveBeenCalled();
   });
 
+  // Chen's: on slow Wi-Fi, with its answer held back, the screen said only
+  // "Processing transaction"; and Amélie's, offline: "Lucas (petit-fils)·
+  // Wi-Fi coupé", with no space.
+  it("should say which send it is while it's processed, its answer slow or not, and with no network", async () => {
+    const gate = sendGate();
+    const what = () =>
+      document.querySelector(".transaction-result__what")?.textContent;
+
+    render(TransactionResult, {
+      ...baseProps,
+      gate,
+      memo: "night shift 1",
+      operation: new Promise(() => {}),
+      what: "0.01 DUSK to your Profile 2",
+    });
+
+    expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+
+    // Handed over, its answer held back.
+    await act(() => gate.handOver());
+
+    expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+
+    try {
+      await act(() => setNetworkReach("offline"));
+
+      expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+    } finally {
+      setNetworkReach("answering");
+    }
+  });
+
   it("should say a send waits for the network it couldn't reach, with Cancel and Home, though the network's pill finds it answering", async () => {
     const gate = sendGate();
     const { getByRole } = render(TransactionResult, {

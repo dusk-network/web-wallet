@@ -15,6 +15,7 @@ import { claimDay } from "$lib/bridge/claimDate";
 import { formatTime } from "@dusk-network/networks/format";
 import { BALANCE_MASK } from "$lib/constants";
 import { shortenAddress } from "$lib/dusk/string";
+import { toastList, toastTimer } from "$lib/dusk/components/Toast/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 
@@ -435,7 +436,9 @@ describe("Receive", () => {
       });
     });
 
-    it("should offer Share only where the browser has a share sheet, sending the address, or the request's link once there is one, and keep that request", async () => {
+    // Chen's: the only Share sat up by the address, away from the request it
+    // shared, which he had to guess.
+    it("should offer Share only where the browser has a share sheet: the address alone by the address, and each request's own beside its Copy, which keeps a new one", async () => {
       const first = render(Receive);
 
       await vi.runAllTimersAsync();
@@ -460,7 +463,33 @@ describe("Receive", () => {
       await openRequest();
       await type("Amount (optional)", "2");
       await vi.advanceTimersByTimeAsync(0);
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+      // The request's own, beside its Copy.
+      const actions = /** @type {HTMLElement} */ (
+        document.querySelector(".request__actions")
+      );
+
+      expect(
+        Array.from(actions.querySelectorAll("button"), (b) =>
+          b.textContent?.trim()
+        )
+      ).toStrictEqual(["Copy request link", "Share"]);
+
+      // By the address, still the address alone.
+      await fireEvent.click(
+        screen.getAllByRole("button", { name: "Share" })[0]
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).toHaveBeenLastCalledWith({
+        text: ACCOUNT,
+        title: "My Dusk address",
+      });
+      expect(get(requestsStore)).toStrictEqual([]);
+
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (actions.querySelector(".request__share"))
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       // The request in a line, then its link, as text alone.
@@ -484,10 +513,97 @@ describe("Receive", () => {
       );
       await type("Amount (optional)", "3");
       await vi.advanceTimersByTimeAsync(0);
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+      await fireEvent.click(
+        /** @type {HTMLElement} */ (document.querySelector(".request__share"))
+      );
       await vi.advanceTimersByTimeAsync(0);
 
       expect(get(requestsStore)).toHaveLength(1);
+
+      // In the list, each its own, beside its Copy link.
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share the request for 2 DUSK" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share.mock.lastCall?.[0]).toStrictEqual({
+        text: expect.stringMatching(
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+        ),
+        title: "Dusk payment request",
+      });
+      expect(
+        Array.from(
+          document.querySelectorAll(".requests__actions button"),
+          (b) => b.textContent?.trim()
+        )
+      ).toStrictEqual(["Copy link", "Share", "Remove"]);
+    });
+
+    // Sofía's, in the app: Request payment opened with its Amount at the
+    // screen's bottom edge.
+    it("should bring Request payment into view at its Amount, to type in, as a tap opens it", async () => {
+      const scrolled = vi
+        .spyOn(Element.prototype, "scrollIntoView")
+        .mockImplementation(() => {});
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+        await openRequest();
+        // At the next frame, once what opened shows.
+        await vi.advanceTimersByTimeAsync(50);
+
+        const amount = screen.getByRole("textbox", {
+          name: "Amount (optional)",
+        });
+
+        expect(document.activeElement).toBe(amount);
+        expect(scrolled.mock.contexts).toStrictEqual([amount]);
+      } finally {
+        scrolled.mockRestore();
+      }
+    });
+
+    it("should bring Request payment into view only once it has opened, as the page can't scroll to it before", async () => {
+      /** @type {() => void} */
+      let opened = () => {};
+      const opening = {
+        finished: new Promise((done) => {
+          opened = () => done(undefined);
+        }),
+      };
+
+      Object.defineProperty(HTMLDetailsElement.prototype, "getAnimations", {
+        configurable: true,
+        value: () => [opening],
+      });
+
+      const scrolled = vi
+        .spyOn(Element.prototype, "scrollIntoView")
+        .mockImplementation(() => {});
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+        await openRequest();
+        await vi.advanceTimersByTimeAsync(50);
+
+        const amount = screen.getByRole("textbox", {
+          name: "Amount (optional)",
+        });
+
+        expect(document.activeElement).toBe(amount);
+        expect(scrolled).not.toHaveBeenCalled();
+
+        opened();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(scrolled.mock.contexts).toStrictEqual([amount]);
+      } finally {
+        Reflect.deleteProperty(HTMLDetailsElement.prototype, "getAnimations");
+        scrolled.mockRestore();
+      }
     });
 
     it("should write what a request asks under its QR in the picture: what it is, the amount, the memo and whom it pays", async () => {
@@ -662,10 +778,14 @@ describe("Receive", () => {
       click.mockRestore();
     });
 
-    it("should keep one request for what's asked again once it's paid, as its QR and link are the same", async () => {
+    it("should keep one request for what's asked again once it's paid, as its QR and link are the same, and say it was paid already", async () => {
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")
         .mockImplementation(() => {});
+
+      // Toasts stay as long as the app's do.
+      toastTimer.set(5000);
+      toastList.set([]);
       const at = Date.now() - 60_000;
 
       localStorage.setItem(
@@ -684,7 +804,9 @@ describe("Receive", () => {
       );
       hydrateRequests();
       render(Receive);
-      await vi.runAllTimersAsync();
+      // Not all: the list, with a request on it, always has another look to
+      // run.
+      await vi.runOnlyPendingTimersAsync();
       await openRequest();
       await type("Amount (optional)", "0.013");
       await type("Memo (optional)", "Factura 2026-071");
@@ -697,12 +819,60 @@ describe("Receive", () => {
       expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
       expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
+      // Sofía's, in the Android app: a paid invoice copied again could be
+      // paid twice. Its own link goes, and that it was paid is said.
+      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
+        "This request was paid already.",
+      ]);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const [[copied]] = vi.mocked(navigator.clipboard.writeText).mock.calls;
+
+      expect(parsePaymentLink(linkIn(copied))).toMatchObject({
+        amountDusk: "0.013",
+        memo: "Factura 2026-071",
+        to: ACCOUNT,
+      });
+      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
+      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
+        "This request was paid already.",
+        "This request was paid already.",
+      ]);
+
+      // Another, not paid: nothing said.
+      toastList.set([]);
+      await type("Memo (optional)", "Factura 2026-072");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request link" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(get(requestsStore)).toHaveLength(2);
+      expect(get(toastList)).toStrictEqual([]);
 
       click.mockRestore();
+      toastTimer.set(0);
     });
 
-    it("should look for what comes in while a request waits, say Paid once a payment has its amount and memo, and stop looking", async () => {
+    // Then Sofía's: left open, the list said Paid for minutes after a second
+    // payment, as it stopped looking once the request was paid.
+    it("should look for what comes in while a request shows, say Paid once a payment has its amount and memo, and Paid twice once another comes in, the list left open", async () => {
       const at = Date.now() - 1000;
+      /** @param {string} hash @param {number} time */
+      const payment = (hash, time) => ({
+        category: "received",
+        hash,
+        memo: "Factura 33",
+        privacy: "public",
+        status: "executed",
+        time,
+        value: 150_000_000n,
+      });
 
       localStorage.setItem(
         REQUESTS,
@@ -731,17 +901,7 @@ describe("Receive", () => {
 
       history.state?.set({
         hasMore: false,
-        rows: [
-          {
-            category: "received",
-            hash: "ab".repeat(32),
-            memo: "Factura 33",
-            privacy: "public",
-            status: "executed",
-            time: at + 500,
-            value: 150_000_000n,
-          },
-        ],
+        rows: [payment("ab".repeat(32), at + 500)],
       });
       await vi.advanceTimersByTimeAsync(0);
 
@@ -756,6 +916,27 @@ describe("Receive", () => {
         lux: "150000000",
       });
 
+      // Paid, it's still looked for: the history has a second payment at
+      // the next read, half a minute on, and the list says so.
+      history.refresh.mockClear();
+      history.refresh.mockImplementationOnce(async () => {
+        history.state?.set({
+          hasMore: false,
+          rows: [
+            payment("ab".repeat(32), at + 500),
+            payment("cd".repeat(32), at + 900),
+          ],
+        });
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(history.refresh).toHaveBeenCalledOnce();
+      expect(
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid twice$/);
+
+      // Not with the page gone.
+      cleanup();
       history.refresh.mockClear();
       await vi.advanceTimersByTimeAsync(60_000);
 
@@ -857,7 +1038,7 @@ describe("Receive", () => {
       }
     });
 
-    it("should say a request paid twice in its badge, list each payment with a way to send the second back, and quote another payment's memo safely", async () => {
+    it("should say a request paid twice in its badge, and list each payment with a way to send the second back", async () => {
       const PAYER =
         "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
       const at = Date.now() - 10_000;
@@ -889,16 +1070,7 @@ describe("Receive", () => {
       hydrateRequests();
       history.state?.set({
         hasMore: false,
-        rows: [
-          row({}),
-          row({ hash: "cd".repeat(32), time: at + 2500 }),
-          // A right-to-left override would turn the line around.
-          row({
-            hash: "ef".repeat(32),
-            memo: "Fra \u202E34 aruc",
-            time: at + 3500,
-          }),
-        ],
+        rows: [row({}), row({ hash: "cd".repeat(32), time: at + 2500 })],
       });
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
@@ -908,13 +1080,7 @@ describe("Receive", () => {
       expect(item.querySelector(".requests__state")).toHaveTextContent(
         /^Paid twice$/
       );
-      expect(item).toHaveTextContent(
-        `Amount and memo match 2 payments. Also the same amount ${inSentence(paidAt(at + 3500))}, with another memo: "Fra \\u202e34 aruc".`
-      );
-      expect(item).not.toHaveTextContent("\u202E");
-      expect(item).toHaveTextContent(
-        "A memo here has hidden characters, shown as codes."
-      );
+      expect(item).toHaveTextContent("Amount and memo match 2 payments.");
 
       // Each payment to see; the second, to send back to whoever paid it.
       const payments = screen.getByRole("list", {
@@ -976,6 +1142,91 @@ describe("Receive", () => {
         memo: "Refund: Factura 43",
         to: PAYER,
       });
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    // Sofía's: an old paid request listed 26 payments of its amount made for
+    // other invoices, as "Also the same amount … with another memo".
+    it("should list on a card only what else could be its: the same memo first, the same amount with another memo only while it isn't paid, three at most, each memo quoted safely", async () => {
+      const at = Date.now() - 60_000;
+      /** @param {number} n @param {Record<string, unknown>} fields */
+      const row = (n, fields) => ({
+        category: "received",
+        hash: n.toString(16).padStart(64, "0"),
+        privacy: "public",
+        status: "executed",
+        time: at + n * 1000,
+        ...fields,
+      });
+      /** @param {Record<string, unknown>} request */
+      const show = async (request, /** @type {any[]} */ rows) => {
+        cleanup();
+        localStorage.setItem(
+          REQUESTS,
+          JSON.stringify([
+            { at, id: "asked", network: "testnet", to: ACCOUNT, ...request },
+          ])
+        );
+        hydrateRequests();
+        history.state?.set({ hasMore: false, rows });
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        return /** @type {HTMLElement} */ (
+          document.querySelector(".requests__item")
+        );
+      };
+
+      // Paid: the same memo for another amount still could be its, the same
+      // amount with another memo, other invoices' payments, can't.
+      const paid = await show({ lux: "10000000", memo: "Factura 43" }, [
+        row(1, { memo: "Factura 43", value: 10_000_000n }),
+        row(2, { memo: "Factura 44", value: 10_000_000n }),
+        row(3, { memo: "Factura 45", value: 10_000_000n }),
+        row(4, { memo: "Factura 43", value: 20_000_000n }),
+      ]);
+
+      expect(paid.querySelector(".requests__state")).toHaveTextContent(
+        /^Paid$/
+      );
+      expect(paid).toHaveTextContent(
+        `Amount and memo match a payment of 0.01 DUSK ${inSentence(paidAt(at + 1000))}. Also the same memo ${inSentence(paidAt(at + 4000))}, for 0.02 DUSK.`
+      );
+      expect(paid).not.toHaveTextContent("same amount");
+
+      // Not paid: the same memo first, then the same amount with another
+      // memo, the first three that came; a right-to-left override would turn
+      // a line around.
+      const open = await show({ lux: "50000000", memo: "Factura 70" }, [
+        row(1, { memo: "Factura 7O", value: 50_000_000n }),
+        row(2, { memo: "Fra \u202E34 aruc", value: 50_000_000n }),
+        row(3, { memo: "Factura 72", value: 50_000_000n }),
+        row(4, { memo: "Factura 73", value: 50_000_000n }),
+        row(5, { memo: "Factura 74", value: 50_000_000n }),
+        row(6, { memo: "Factura 70", value: 70_000_000n }),
+      ]);
+      const line = open.querySelector(".requests__line")?.textContent ?? "";
+
+      expect(open.querySelector(".requests__state")).toHaveTextContent(
+        /^Check$/
+      );
+      expect(
+        line.match(/Also the same (memo|amount)/g)?.map((also) => also.slice(9))
+      ).toStrictEqual([
+        "same memo",
+        "same amount",
+        "same amount",
+        "same amount",
+      ]);
+      expect(line).toContain(
+        `Also the same amount ${inSentence(paidAt(at + 2000))}, with another memo: "Fra \\u202e34 aruc".`
+      );
+      expect(line).toContain(`with another memo: "Factura 73".`);
+      expect(line).not.toContain("Factura 74");
+      expect(open).not.toHaveTextContent("\u202E");
+      expect(open).toHaveTextContent(
+        "A memo here has hidden characters, shown as codes."
+      );
       history.state?.set({ hasMore: false, rows: [] });
     });
 

@@ -11,7 +11,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { announce } from "$lib/dusk/announce";
   import { COPIED_FOR } from "$lib/dusk/motion";
-  import { activityState } from "$lib/activity";
+  import { keptActivity } from "$lib/activity";
   import { fetchTxDetails } from "@dusk-network/app-core/history";
   import { archiveAt } from "$lib/activity/activityHistory";
   import { shortAddress } from "$lib/activity/present";
@@ -63,14 +63,23 @@
   const close = () => dispatch("close");
 
   $: ({ networkName } = $networkStore);
-  $: ({ profiles } = $walletStore);
+  $: ({ currentProfile, profiles } = $walletStore);
   $: ({ hideBalances, language } = $settingsStore);
   $: index = {
     alike: alikeContacts($contactsStore, $profilesHere),
     contacts: $contactsStore,
     hideBalances,
-    history: $activityState.rows,
+    // All the history this device keeps, not only the page History shows.
+    history: $keptActivity,
     locale: language,
+    // Whom a memo that came in isn't a stranger's from, as History has it.
+    memoAmong: {
+      contacts: $contactsStore,
+      profiles: [
+        ...$profilesHere.map(({ address }) => ({ account: address })),
+        { address: String(currentProfile?.address ?? "") },
+      ],
+    },
     network: networkName,
     pages,
     // The history's rows told as History tells them.
@@ -451,7 +460,13 @@
           {#if result.sub}
             <span class="command-bar__sub">{result.sub}</span>
           {/if}
-          {#if result.memo}
+          {#if result.memo && result.memoFrom}
+            <!-- A stranger's memo, as History shows it: who it's from first,
+              then their words, in quotes. -->
+            <span class="command-bar__sub command-bar__memo"
+              >{result.memoFrom} “<MemoText inline text={result.memo} />”</span
+            >
+          {:else if result.memo}
             <span class="command-bar__sub command-bar__memo"
               ><MemoText inline text={result.memo} /></span
             >

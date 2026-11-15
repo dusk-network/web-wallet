@@ -4,14 +4,16 @@
   /**
    * Request payment, folded under Receive: an amount and a memo, checked as
    * they're typed, as Send will check them. Once there's either, the QR holds
-   * the request, and its link can be copied: a link for a payer on any wallet,
-   * which opens the web wallet's Send, filled in.
+   * the request, and its link can be copied or shared, beside each other: a
+   * link for a payer on any wallet, which opens the web wallet's Send, filled
+   * in. Opened with a tap, it comes into view at its Amount.
    */
-  import { mdiChevronDown } from "@mdi/js";
+  import { mdiChevronDown, mdiShareVariantOutline } from "@mdi/js";
+  import { tick } from "svelte";
   import { readAmount } from "@dusk-network/app-core/amounts";
   import { displayText, numbersNote } from "@dusk-network/app-core/text";
 
-  import { CopyButton, Icon, Textbox } from "$lib/dusk/components";
+  import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
   import { formatDusk } from "$lib/dusk/currency";
   import { randomUUID } from "$lib/dusk/string";
   import { formDraft } from "$lib/navigation";
@@ -22,6 +24,8 @@
   import AmountInCurrency from "../AmountInCurrency/AmountInCurrency.svelte";
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
+
+  import { canShare, shareText } from "./share";
 
   /** The account or shielded address that's paid. */
   /** @type {string} */
@@ -56,6 +60,78 @@
   let memo = typedBefore?.memo ?? "";
   let isOpen = Boolean(amount || memo);
 
+  // Where a browser has a share sheet: most phones, some computers.
+  const hasShare = canShare();
+
+  /** Whether the form is being opened with a tap, as its summary is pressed. */
+  let isTapped = false;
+
+  /**
+   * Opened with a tap: its Amount, to type in, as soon as the browser shows
+   * what opened, at its next frame, and into view there once it's opened:
+   * the page can't scroll to what's still growing. As the form says it is,
+   * whatever's told of it first.
+   *
+   * @param {Event} event
+   */
+  async function cameOpen(event) {
+    const form = /** @type {HTMLDetailsElement} */ (event.currentTarget);
+
+    if (!form.open || !isTapped) {
+      isTapped = false;
+
+      return;
+    }
+
+    isTapped = false;
+    await tick();
+    await new Promise((shown) =>
+      (globalThis.requestAnimationFrame ?? setTimeout)(shown)
+    );
+
+    const amountBox = document.getElementById(`${id}-amount`);
+
+    if (!amountBox) {
+      return;
+    }
+
+    // Still there, and still open.
+    const isShown = () =>
+      form.isConnected && form.open && form.contains(amountBox);
+
+    if (!isShown()) {
+      return;
+    }
+
+    amountBox.focus({ preventScroll: true });
+    await Promise.all(
+      (form.getAnimations?.({ subtree: true }) ?? []).map((opening) =>
+        opening.finished.catch(() => {})
+      )
+    );
+
+    if (isShown()) {
+      amountBox.scrollIntoView?.({ block: "center" });
+    }
+  }
+
+  /** What's asked, through the phone's share sheet: kept once it went. */
+  async function share() {
+    if (
+      request &&
+      (await shareText({
+        text: requestText(request, {
+          language,
+          name: requestName,
+          net: $nodeNetwork,
+        }),
+        title: "Dusk payment request",
+      }))
+    ) {
+      onUse();
+    }
+  }
+
   $: ({ language } = $settingsStore);
   $: made = makeRequestLink(
     { amount, language, memo, to: address },
@@ -80,8 +156,13 @@
     memoShown.neutralized || numbersNote(memoShown.flags) !== "";
 </script>
 
-<details bind:open={isOpen} class="request">
-  <summary class="request__summary">
+<details bind:open={isOpen} class="request" on:toggle={cameOpen}>
+  <summary
+    class="request__summary"
+    on:click={(event) => {
+      isTapped = !event.currentTarget.closest("details")?.open;
+    }}
+  >
     <span>Request payment</span>
     {#if request}
       <span class="request__meta"
@@ -159,19 +240,31 @@
           ? ""
           : " The link opens the web wallet's Send, filled in."}
       </p>
-      <!-- What it asks in a line, then its link. -->
-      <CopyButton
-        className="request__copy"
-        name="request link"
-        onCopied={onUse}
-        text="Copy request link"
-        value={requestText(request, {
-          language,
-          name: requestName,
-          net: $nodeNetwork,
-        })}
-        variant="secondary"
-      />
+      <!-- What it asks in a line, then its link: copied, or shared, beside
+        each other. -->
+      <div class="request__actions">
+        <CopyButton
+          className="request__copy"
+          name="request link"
+          onCopied={onUse}
+          text="Copy request link"
+          value={requestText(request, {
+            language,
+            name: requestName,
+            net: $nodeNetwork,
+          })}
+          variant="secondary"
+        />
+        {#if hasShare}
+          <Button
+            className="request__share"
+            icon={{ path: mdiShareVariantOutline }}
+            on:click={share}
+            text="Share"
+            variant="secondary"
+          />
+        {/if}
+      </div>
     {/if}
   </div>
 </details>
@@ -220,9 +313,16 @@
     flex-direction: column;
     gap: 0.875rem;
     padding-bottom: 0.75rem;
+  }
 
-    :global(.request__copy) {
-      width: 100%;
+  .request__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    & :global(.request__copy),
+    & :global(.request__share) {
+      flex: 1 1 10rem;
     }
   }
 

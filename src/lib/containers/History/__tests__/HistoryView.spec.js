@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
-import { fullDateTime, timeLabel } from "$lib/activity/present";
+import { fullDateTime, shortAddress, timeLabel } from "$lib/activity/present";
 import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { settingsStore } from "$lib/stores";
 
@@ -269,6 +269,34 @@ describe("HistoryView", () => {
     );
   });
 
+  // Amélie's: a search found payments only once Show more had shown them.
+  it("should find what a search's See all found in all the history this device keeps, not only the rows shown", () => {
+    const shown = row("a1".repeat(32), WINTER, { memo: "Les tulipes du 14" });
+    const older = [
+      row("a2".repeat(32), WINTER - 9 * 86_400_000, {
+        memo: "Les fleurs du marché",
+      }),
+      row("a3".repeat(32), WINTER - 10 * 86_400_000, {
+        memo: "Pour le marché, merci",
+      }),
+    ];
+    const { container, getByRole } = render(HistoryView, {
+      locale: "en",
+      query: "marché",
+      searched: [shown, ...older],
+      state: { ...state, rows: [shown] },
+    });
+
+    expect(getByRole("status")).toHaveTextContent(
+      "2 transactions found for “marché”"
+    );
+    expect(
+      Array.from(container.querySelectorAll(".history__memo"), (memo) =>
+        memo.textContent?.trim()
+      )
+    ).toStrictEqual(["Les fleurs du marché", "Pour le marché, merci"]);
+  });
+
   it("should show what a search's See all found, each row's memo, and all of it again from Clear search", async () => {
     const filter = vi.fn();
     const invoices = [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -325,7 +353,9 @@ describe("HistoryView", () => {
     expect(getByText("Rent \\u202eyluj")).toBeInTheDocument();
   });
 
-  it("should show a memo that came in from an address not in the contacts as the sender's words, muted and in quotes, with whom it's from, and find it all the same", async () => {
+  // Then Lena's and Amélie's: "From sofiadesign.dusk" said nothing of her
+  // not being a contact, and a long memo cut off whom it was from.
+  it("should show a memo that came in from an address not in the contacts as the sender's words, muted and in quotes, after whom it's from and that they're not in your contacts, a .dusk name or not, and find it all the same", async () => {
     const { saveContact, removeContact } = await import("$lib/contacts");
     const { openTestContacts } = await import("$lib/test-helpers");
     const STRANGER =
@@ -381,31 +411,35 @@ describe("HistoryView", () => {
           memo.classList.contains("history__memo--theirs"),
         ]);
 
+      const urgent = `From ${shortAddress(STRANGER)} · not in your contacts“URGENT: wallet suspended - pay now to restore”`;
+
       expect(memos()).toStrictEqual([
-        [
-          "“URGENT: wallet suspended - pay now to restore” · From an address not in your contacts",
-          true,
-        ],
-        ["“Factura 71” · From sofiadesign.dusk", true],
+        [urgent, true],
+        ["From sofiadesign.dusk · not in your contacts“Factura 71”", true],
         // A contact's: their memo, as the wallet's are.
         ["Dinner", false],
+      ]);
+      // Whom it's from first, on its own line: a long memo can't cut it off.
+      expect(
+        Array.from(
+          container.querySelectorAll(".history__memo-from"),
+          (from) => from.textContent
+        )
+      ).toStrictEqual([
+        `From ${shortAddress(STRANGER)} · not in your contacts`,
+        "From sofiadesign.dusk · not in your contacts",
       ]);
 
       // Found by its words, as any memo is.
       await rerender({ query: "wallet suspended" });
 
-      expect(memos()).toStrictEqual([
-        [
-          "“URGENT: wallet suspended - pay now to restore” · From an address not in your contacts",
-          true,
-        ],
-      ]);
+      expect(memos()).toStrictEqual([[urgent, true]]);
 
       // In its details too.
       await rerender({ query: "", selected: "f1".repeat(32) });
 
       expect(container.querySelector(".tx-detail__memo")).toHaveTextContent(
-        "“URGENT: wallet suspended - pay now to restore” From an address not in your contacts"
+        `From ${shortAddress(STRANGER)} · not in your contacts “URGENT: wallet suspended - pay now to restore”`
       );
     } finally {
       removeContact(lucas.id);

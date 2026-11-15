@@ -1,11 +1,14 @@
-import { writable } from "svelte/store";
+import { derived, writable } from "svelte/store";
 
 import { sozuPools } from "$lib/sozu/config";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 import { tellOtherTabs } from "$lib/wallets/tabs";
 
 import { ACTIVITY_PAGE, ActivitySession } from "./activitySession";
-import { changeLocalTransactions } from "./activityStore";
+import {
+  changeLocalTransactions,
+  forgetLocalTransaction,
+} from "./activityStore";
 import { awaitedArrivals } from "./arrivals";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
@@ -42,6 +45,39 @@ let unsubscribe = null;
 
 /** The history of the account the wallet shows: its rows, and how its sync goes. */
 export const activityState = { subscribe: state.subscribe };
+
+/**
+ * All of the history of the account shown that this device keeps, newest
+ * first, read again as it changes: what a search covers, not only the page
+ * History shows. The rows shown until it's read, and where it can't be.
+ *
+ * @type {import("svelte/store").Readable<ActivityRow[]>}
+ */
+export const keptActivity = derived(state, ($state, set) => {
+  let isCurrent = true;
+  const session = current;
+
+  set($state.rows);
+  session
+    ?.keptRows()
+    .then((kept) => {
+      if (isCurrent && session === current) {
+        // A row the history shows is the latest said of it.
+        const shown = new Map($state.rows.map((row) => [row.hash, row]));
+        const keptHashes = new Set(kept.map(({ hash }) => hash));
+
+        set([
+          ...$state.rows.filter(({ hash }) => !keptHashes.has(hash)),
+          ...kept.map((row) => shown.get(row.hash) ?? row),
+        ]);
+      }
+    })
+    .catch(() => {});
+
+  return () => {
+    isCurrent = false;
+  };
+});
 
 /** Tells the shown history's state again: its rows are read again. */
 const tellAgain = () => current && state.set(current.state);
@@ -106,6 +142,25 @@ export async function noteSentOutcome(
     ...(error ? { error } : {}),
     ...(timestamp ? { timestamp } : {}),
   });
+
+  if (owners.length) {
+    if (current && owners.includes(current.ownerKey)) {
+      await current.keptChanged();
+    }
+
+    tellOtherTabs({ type: "sent" });
+  }
+}
+
+/**
+ * A transaction the wallet sent that can never be in a block, as another
+ * took its nonce: History and Home no longer show it, for whichever profile
+ * sent it.
+ *
+ * @param {string} hash
+ */
+export async function noteNeverSent(hash) {
+  const owners = await forgetLocalTransaction(hash);
 
   if (owners.length) {
     if (current && owners.includes(current.ownerKey)) {

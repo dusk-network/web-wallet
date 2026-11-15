@@ -22,13 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say which EVM addresses the export has the network fees of migrations from, and add one for the file
 - Show staking rewards by calendar year beside History's export: native claimed, and Sozu's grown while held and taken out by unstaking, in DUSK and in the wallet's currency where asked
 - Say on mainnet what a payment request comes to in your currency, with the price's time, and what a payment comes to in the payer's on Send and its review, the link still asking DUSK
-- Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks
+- Run only the wallet's own scripts, under a Content-Security-Policy every page carries and Cloudflare sends as a header, and have GitHub attest each deployed build's manifest, which scripts/verify-build.js --attested checks, with the ref it was built from: main for testnet, the release's tag for mainnet
 - Give a request's Share and Copy a line above its link, as the extension does: "sofiadesign.dusk asks you to pay 0.03 DUSK · Factura 71", then "Pay here:" and the link
-- Check your recovery words: three of them, chosen at random, typed as written down, right after a wallet's words are shown, with Skip for now, and in Settings behind the password, the words shown again where one doesn't match
-- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History, muted and in quotes, with "From an address not in your contacts" or the sender's .dusk name
+- Check your recovery words: three of them, chosen at random, typed as written down, right after a wallet's words are shown, with Skip for now, and in Settings behind the password; a wrong answer shows no word, saying only that they don't match, with Try again and Show my recovery words
+- Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History and its details, small, muted and in quotes, after "From" their .dusk name or address "· not in your contacts", in the memo's size
 
 ### Changed
 
+- Say on Sozu's card that its rewards so far are before deposit fees, and in Rewards by year that what grew while held is after them
+- Give each request its own Share beside its Copy, on Request payment and in Your requests, the Share by the address sharing the address alone, and bring Request payment into view at its Amount as a tap opens it
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
 - Let the Dusk app on Android open the wallet's payment request links where it's installed, and lead a request's page there with the way that works in the browser, with the Dusk app and Firefox after it
 - Count what unstaking took out of Sozu at average cost with the deposit fees included in staking rewards by year, as the line under them says, and show a loss as one
@@ -43,6 +45,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
+- Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name
+- Refuse pasted text with a second payment link in it, also where it starts with a link
+- Say "Sending" of a waiting send on Home as it goes out, and "Not sent yet" only while it waits for the network, not both at once
+- Mark what may be out of date within about 10 seconds of the network going silent
+- Say "Sent" and its block in a "Not confirmed" notice's place once its send is found, as the total and History change with it
+- Say which send it is on its Processing screen whatever its answer's wait, with a space before its memo
+- Search all of the history kept on this device, not only the rows History shows, in the search and in its See all, with a stranger's memo marked as History marks it
+- Say "This request was paid already." as a request paid already is copied, shared or downloaded again, its own link going as before
+- Say Paid twice on Receive's list of requests left open as a second payment comes in
+- List under a request only the payments that could be its: those with its memo, and while it isn't paid, the first three of its amount with another memo
+- Say "Not sent", with Send it now and Don't send, of a send left "Not confirmed" when the browser closed before it went out, once another transaction from the account took its place on chain, and drop it from History
 - Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
 - Send every payment that waited for the network once it answers, one after another, not only the first
 - Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again

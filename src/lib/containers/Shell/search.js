@@ -21,6 +21,7 @@ import {
   describeRow,
   historyDuskNames,
   shortAddress,
+  strangersMemo,
   timeLabel,
 } from "$lib/activity/present";
 
@@ -37,12 +38,14 @@ import {
  *   label: string,
  *   labelIsCode?: boolean,
  *   memo?: string,
+ *   memoFrom?: string,
  *   sub?: string,
  *   value?: string,
  * }} SearchResult
  *   `block` a block's height, which the explorer is opened at; `sub` a
  *   second line, as when a transaction was made; `memo` a transaction's, as
- *   it's written, for what shows it to make it safe to read.
+ *   it's written, for what shows it to make it safe to read; `memoFrom`, for
+ *   a stranger's memo, who it's from, as History says it.
  *
  * @typedef {{
  *   alike?: Set<string>,
@@ -50,6 +53,7 @@ import {
  *   hideBalances?: boolean,
  *   history: ActivityRow[],
  *   locale: string,
+ *   memoAmong?: Parameters<typeof strangersMemo>[1],
  *   network?: string,
  *   pages: { href: string, keywords?: string, label: string }[],
  *   present?: Omit<import("$lib/activity/present").PresentContext, "locale">,
@@ -57,7 +61,8 @@ import {
  * }} SearchIndex
  *   `present` what the history's rows are told by, as History tells them;
  *   `alike` the addresses of contacts whose names look like another's, said
- *   with their address.
+ *   with their address; `memoAmong` whom a memo that came in isn't a
+ *   stranger's from, as History has it.
  */
 
 /** The most results a group shows. */
@@ -259,6 +264,7 @@ export function searchLocally(
     hideBalances = false,
     history,
     locale,
+    memoAmong = {},
     network = "",
     pages,
     present = {},
@@ -366,6 +372,7 @@ export function searchLocally(
       // what it moved unless it's found by its hash.
       const { amount, counterparty, title, titleIsAddress } = shown;
       const byHash = isHash(row, q);
+      const theirs = strangersMemo(row, memoAmong);
       const when =
         row.time === null
           ? ""
@@ -381,8 +388,10 @@ export function searchLocally(
         id: `tx:${row.hash}`,
         label: title,
         labelIsCode: titleIsAddress,
-        // What it was found by, often: as History shows it, under it.
+        // What it was found by, often: as History shows it, under it, a
+        // stranger's with who it's from.
         memo: row.memo || undefined,
+        memoFrom: theirs?.from,
         sub:
           [
             when,

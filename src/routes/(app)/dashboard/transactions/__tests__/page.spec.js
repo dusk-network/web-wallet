@@ -43,6 +43,13 @@ const stores = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   history: null,
 
+  /**
+   * All the history kept, as the search finds in it.
+   *
+   * @type {import("svelte/store").Writable<any> | null}
+   */
+  kept: null,
+
   /** @type {import("svelte/store").Writable<any> | null} */
   page: null,
 
@@ -121,8 +128,13 @@ vi.mock("$lib/activity", async (importOriginal) => {
   const { writable } = await import("svelte/store");
 
   stores.history = writable({});
+  stores.kept = writable([]);
 
-  return { ...original, activityState: stores.history };
+  return {
+    ...original,
+    activityState: stores.history,
+    keptActivity: stores.kept,
+  };
 });
 
 const ALICE =
@@ -221,6 +233,7 @@ beforeAll(() => openTestContacts());
 describe("History", () => {
   beforeEach(async () => {
     await setHistory({});
+    stores.kept?.set(rows);
     await visit("/dashboard/transactions");
   });
 
@@ -378,6 +391,43 @@ describe("History", () => {
     );
 
     back.mockRestore();
+  });
+
+  // The search's results open History at a transaction by its hash alone:
+  // one it found beyond the rows shown opened with no details.
+  it("opens the details of a transaction this device keeps beyond the rows shown, from its address alone, as the search's results open it", async () => {
+    const OLDER = "d4".repeat(32);
+
+    stores.kept?.set([
+      ...rows,
+      ...rowsOf([
+        {
+          amount: "7000000000",
+          blockHeight: 4_500_000,
+          feePaid: "1854786",
+          gasLimit: "2500000",
+          gasSpent: "1854786",
+          hash: OLDER,
+          memo: "Factura 7",
+          privacy: "public",
+          source: "both",
+          status: "executed",
+          timestamp: NOW - 40 * 86_400_000,
+          to: ALICE,
+        },
+      ]),
+    ]);
+    await visit(`/dashboard/transactions?tx=${OLDER}`);
+
+    const { container } = render(History);
+    const detail = /** @type {HTMLElement} */ (
+      container.querySelector(".tx-detail")
+    );
+
+    expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(OLDER);
+    expect(detail).toHaveTextContent("Memo Factura 7");
+    // The rows shown are as they were.
+    expect(shownRows(container)).toHaveLength(3);
   });
 
   it("names a saved contact by its name, with its .dusk name second, and saves a counterparty as a contact", async () => {
@@ -1033,7 +1083,7 @@ describe("History", () => {
         ).toStrictEqual([
           "Year",
           "Native staking, claimed",
-          "Sozu, grown while held",
+          "Sozu, grown while held, after deposit fees",
           "Sozu, taken out by unstaking",
         ]);
         // How what unstaking took out is counted, under them.

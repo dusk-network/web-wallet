@@ -532,14 +532,29 @@ describe("Settings › Profiles", () => {
     const settings = render(Settings);
     const field = settings.getByRole("textbox", { name: "Profile 2 name" });
 
-    for (const name of ["sofiadesign.dusk", "Mi cliente (sofiadesign.dusk)"]) {
+    // In small capitals and circled letters too: Marek's, which History
+    // then gave his own transfers.
+    for (const [name, words] of [
+      [
+        "sofiadesign.dusk",
+        "sofiadesign.dusk belongs to another account. Choose another name.",
+      ],
+      [
+        "Mi cliente (sofiadesign.dusk)",
+        "sofiadesign.dusk belongs to another account. Choose another name.",
+      ],
+      [
+        "sofiadesign.ᴅᴜꜱᴋ",
+        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
+      ],
+      [
+        "ⓢⓞⓕⓘⓐⓓⓔⓢⓘⓖⓝ.dusk",
+        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
+      ],
+    ]) {
       await nameProfile(settings, 2, name, "enter");
 
-      await vi.waitFor(() =>
-        expect(field).toHaveAccessibleDescription(
-          "sofiadesign.dusk belongs to another account. Choose another name."
-        )
-      );
+      await vi.waitFor(() => expect(field).toHaveAccessibleDescription(words));
       expect(
         settings.queryByRole("button", { name: "Yes, save it" })
       ).toBeNull();
@@ -584,6 +599,9 @@ describe("Settings › Profiles", () => {
         // A digit for a letter, and v for y.
         ["Dav1d", "That looks like your contact David. Choose another name."],
         ["Wendv", "That looks like your contact Wendy. Choose another name."],
+        // Marek's: l and ! for an i.
+        ["Davld", "That looks like your contact David. Choose another name."],
+        ["Dav!d", "That looks like your contact David. Choose another name."],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 

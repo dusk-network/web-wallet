@@ -218,6 +218,8 @@ describe("App layout.svelte", () => {
     expect(logoutSpy).toHaveBeenCalledExactlyOnceWith(false, 5 * minute);
   });
 
+  // A day of the shell's timers, the network asked every few seconds: more
+  // than a test's usual five seconds in a full, busy run.
   it("should never lock a wallet with a password when auto-lock is off", async () => {
     setPassword();
     setAutoLock(0);
@@ -226,7 +228,7 @@ describe("App layout.svelte", () => {
     await vi.advanceTimersByTimeAsync(24 * 60 * minute);
 
     expect(logoutSpy).not.toHaveBeenCalled();
-  });
+  }, 30_000);
 
   it("should start over from a new auto-lock time, and only from a new one", async () => {
     setPassword();

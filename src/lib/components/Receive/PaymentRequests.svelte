@@ -28,6 +28,7 @@
     keepRequestMatches,
     makeRequestLink,
     matchRequests,
+    requestText,
     requestsStore,
   } from "$lib/payment-requests";
   import { settingsStore } from "$lib/stores";
@@ -35,9 +36,20 @@
 
   import { BalanceValue, MemoText, SectionHead } from "..";
 
+  import { canShare, shareText } from "./share";
+
   /** The profile's public account and its shielded address. */
   /** @type {string[]} */
   export let addresses;
+
+  /**
+   * Whose requests they are, as Share says it: the profile's verified .dusk
+   * name, else the name given it here, "" for none.
+   */
+  export let requestName = "";
+
+  // Where a browser has a share sheet: most phones, some computers.
+  const hasShare = canShare();
 
   /** @type {Record<string, string>} */
   const STATE_WORDS = { check: "Check", paid: "Paid", waiting: "Waiting" };
@@ -50,19 +62,27 @@
    * @typedef {{ text: string } | { memo: string } | { lux: bigint }} Part
    */
 
-  /** How often the history is read again while this shows a request not paid. */
+  /** How often the history is read again while this shows a request. */
   const LOOK_MS = 30_000;
+
+  /**
+   * How many payments of a request's amount with another memo its card
+   * lists at most, while it isn't paid.
+   */
+  const SAME_AMOUNT_SHOWN = 3;
 
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let timer;
 
   /**
-   * Reads the history for what's come in, while a request isn't paid: nothing
-   * else does but a change of the balance, which may have come before this shows.
+   * Reads the history for what's come in while requests show, paid or not:
+   * one paid can be paid again. Nothing else does but a change of the
+   * balance, which may have come before this shows, or before the payment's
+   * block was final, and so before the history has it.
    *
-   * @param {boolean} isOpen
+   * @param {boolean} isShown
    */
-  function lookWhile(isOpen) {
+  function lookWhile(isShown) {
     const look = () => {
       if (document.visibilityState !== "hidden") {
         void currentActivity()?.refresh();
@@ -72,7 +92,7 @@
     clearInterval(timer);
     timer = undefined;
 
-    if (isOpen) {
+    if (isShown) {
       look();
       timer = setInterval(look, LOOK_MS);
     }
@@ -151,10 +171,27 @@
       : [];
 
   /**
+   * The payments that match a request in part that could be its, as its
+   * card lists them: those with its memo, of another amount, first; then
+   * those of its amount with another memo, only while it isn't paid, and a
+   * few at most, the first that came.
+   *
+   * @param {import("$lib/payment-requests/requests").RequestMatch} match
+   */
+  const couldBeIts = ({ more = [], state }) => [
+    ...more.filter((payment) => payment.matched === "memo"),
+    ...(state === "paid"
+      ? []
+      : more
+          .filter((payment) => payment.matched === "amount")
+          .slice(0, SAME_AMOUNT_SHOWN)),
+  ];
+
+  /**
    * What matched of a payment, in words, with what it brought where it paid
-   * the request, and of the others that match the request in part: another
-   * payment to check. A request paid more than once lists its payments, and
-   * what each brought, under this.
+   * the request, and of the others that match the request in part and could
+   * be its: another payment to check. A request paid more than once lists
+   * its payments, and what each brought, under this.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
@@ -164,18 +201,16 @@
    * @returns {Part[]}
    */
   function matchedParts(request, match, language, isChecking) {
-    const { at, lux, matched, memo, more = [] } = match;
+    const { at, lux, matched, memo } = match;
     const what =
       request.lux === null ? "Its memo matches" : "Amount and memo match";
     const day = at ? paidInSentence(at, language) : "";
     const again = paidAgain(match);
-    const also = more
-      .filter((payment) => payment.matched !== "amount-memo")
-      .flatMap((payment) => [
-        { text: " Also the " },
-        ...partOf(payment, language),
-        { text: "." },
-      ]);
+    const also = couldBeIts(match).flatMap((payment) => [
+      { text: " Also the " },
+      ...partOf(payment, language),
+      { text: "." },
+    ]);
 
     switch (matched) {
       case "amount-memo":
@@ -381,6 +416,25 @@
     return made.https ?? made.dusk;
   };
 
+  /**
+   * Shares a request again through the phone's share sheet: what it asks in
+   * a line, then its link, as the request's own Share and Copy give it.
+   *
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   */
+  const share = (request) =>
+    shareText({
+      text: requestText(
+        {
+          link: linkOf(request),
+          lux: request.lux === null ? null : BigInt(request.lux),
+          memo: request.memo,
+        },
+        { language, name: requestName, net: $nodeNetwork }
+      ),
+      title: "Dusk payment request",
+    });
+
   $: ({ hideBalances, language } = $settingsStore);
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
@@ -389,8 +443,9 @@
   $: matches = matchRequests(shown, $activityState.rows);
   $: refunds = refundsOf(shown, matches, $activityState.rows, $nodeNetwork);
   $: keepRequestMatches(matches);
-  $: hasOpen = shown.some(({ id }) => matches.get(id)?.state !== "paid");
-  $: lookWhile(hasOpen);
+  // Looked for as one shows, and from then on, not again with each change.
+  $: isShowing = shown.length > 0;
+  $: lookWhile(isShowing);
   // A payment to this profile from another one here went out, and the
   // history doesn't have it yet: it's looked for, and checked, not nothing.
   $: awaited = arrivalsNotIn(
@@ -559,6 +614,15 @@
               value={linkOf(request)}
               variant="tertiary"
             />
+            {#if hasShare}
+              <Button
+                aria-label={`Share the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
+                on:click={() => share(request)}
+                size="small"
+                text="Share"
+                variant="tertiary"
+              />
+            {/if}
             <Button
               aria-label={`Remove the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               on:click={() => forgetRequest(request.id)}

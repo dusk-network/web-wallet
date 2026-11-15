@@ -35,18 +35,10 @@ import {
   unsealContacts,
 } from "./contactsVault";
 
-/**
- * Whether a contact's name would pass for a `.dusk` name it isn't saved from,
- * as a name that points elsewhere: its name shows where a `.dusk` name would.
- *
- * @param {string} name
- * @param {string | null | undefined} duskName What the contact is saved from
- */
-export const passesForDuskName = (name, duskName) => {
-  const typed = name.trim().toLowerCase().replace(/\.$/, "");
-
-  return typed.endsWith(".dusk") && typed !== duskName?.toLowerCase();
-};
+// Whether a contact's name would pass for a `.dusk` name it isn't saved from,
+// as a name that points elsewhere, read in plain letters, as both wallets
+// read it: its name shows where a `.dusk` name would.
+export { passesForDuskName } from "@dusk-network/app-core/names";
 
 /** The most contacts kept: past it, the least recently changed go. */
 const LIMIT = 200;

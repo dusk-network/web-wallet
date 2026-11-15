@@ -6,7 +6,6 @@
   import { mdiTrayArrowDown } from "@mdi/js";
   import { Button, Icon, Select } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
-  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { displayText } from "@dusk-network/app-core/text";
   import { transactionsFound } from "$lib/containers/Shell/search";
   import { sidePanel } from "$lib/dusk/motion";
@@ -17,6 +16,7 @@
     groupByDay,
     matchesFilters,
     shortAddress,
+    strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
   import { settingsStore } from "$lib/stores";
@@ -63,6 +63,16 @@
   export let query = "";
 
   /**
+   * All the history this device keeps, which a search finds in, as the
+   * search does: not only the page shown. Where it's given, a transaction
+   * the rows shown don't have opens from it too, as the search opens one it
+   * found beyond them. Null for the rows shown.
+   *
+   * @type {ActivityRow[] | null}
+   */
+  export let searched = null;
+
+  /**
    * Reads more of the history, older: resolves once it's shown.
    *
    * @type {() => Promise<unknown>}
@@ -70,6 +80,19 @@
   export let onMore = () => Promise.resolve();
 
   const dispatch = createEventDispatcher();
+
+  /**
+   * A transaction of all the history kept, described: null where it isn't
+   * there.
+   *
+   * @param {ActivityRow[] | null} kept
+   * @param {string | null} hash
+   */
+  const describedKept = (kept, hash) => {
+    const row = hash ? kept?.find((each) => each.hash === hash) : undefined;
+
+    return row ? { presentation: describeRow(row, context), row } : null;
+  };
 
   /** The most pages Show more reads at a press, looking for more found. */
   const MORE_PAGES = 20;
@@ -182,7 +205,9 @@
     ],
   };
   $: since = range === "all" ? null : Date.now() - Number(range) * 86_400_000;
-  $: described = state.rows.map((row) => ({
+  // A search finds in all the history kept, not only the page shown.
+  $: rows = query.trim() && searched ? searched : state.rows;
+  $: described = rows.map((row) => ({
     presentation: describeRow(row, context),
     row,
   }));
@@ -191,7 +216,7 @@
     ? new Set(
         transactionsFound(query, {
           contacts: $contactsStore,
-          history: state.rows,
+          history: rows,
           locale,
           network,
           present: context,
@@ -214,7 +239,10 @@
     full: true,
     locale,
   });
-  $: open = described.find(({ row }) => row.hash === selected) ?? null;
+  // Among the rows shown, or among all the history kept.
+  $: open =
+    described.find(({ row }) => row.hash === selected) ??
+    describedKept(searched, selected);
   $: if (open) {
     isDetailShown = true;
   }
@@ -413,14 +441,19 @@
                         <span class="history__claim">{p.note}</span>
                       {/if}
                       {#if row.memo}
-                        {@const theirs = sendersMemo(row, memoAmong)}
-                        <!-- A stranger's memo is theirs: in quotes, muted,
-                          with whom it came from. -->
+                        {@const theirs = strangersMemo(row, memoAmong)}
+                        <!-- A stranger's memo is theirs: who it came from
+                          first, then their words, in quotes, muted, in the
+                          same size. -->
                         <span
                           class="history__memo"
                           class:history__memo--theirs={theirs}
-                          >{#if theirs}“<MemoText inline text={theirs.memo} />”
-                            · {theirs.from}{:else}<MemoText
+                          >{#if theirs}<span class="history__memo-from"
+                              >{theirs.from}</span
+                            >“<MemoText
+                              inline
+                              text={theirs.memo}
+                            />”{:else}<MemoText
                               inline
                               text={row.memo}
                             />{/if}</span
@@ -738,6 +771,12 @@
   .history__memo--theirs {
     color: var(--calm-muted);
     font-weight: 400;
+  }
+
+  /* Who a stranger's memo is from, on a line of its own, before it: a long
+     memo never cuts it off. */
+  .history__memo-from {
+    display: block;
   }
 
   .history__search {

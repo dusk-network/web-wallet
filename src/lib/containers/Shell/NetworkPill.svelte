@@ -67,9 +67,10 @@
   /**
    * How often the node is asked how far its chain got, while the page shows
    * and the browser is online: between syncs, which can be minutes apart,
-   * nothing else would find it silent.
+   * nothing else would find it silent. With ANSWER_WITHIN, a network that
+   * goes silent is found so within about 10 seconds.
    */
-  const ASK_EVERY = 15_000;
+  const ASK_EVERY = 4_000;
 
   /**
    * Whether the node answered nothing for STALL_MS, sync or not, or left an
@@ -84,8 +85,11 @@
   /** @type {ReturnType<typeof setInterval> | undefined} */
   let askTimer;
 
-  /** How long an ask gets before it's stopped: less than ASK_EVERY. */
-  const ANSWER_WITHIN = 10_000;
+  /**
+   * How long an ask gets before it's stopped, and the network found silent:
+   * an ask still open when the next is due is the only one.
+   */
+  const ANSWER_WITHIN = 6_000;
 
   /**
    * The ask under way: one at a time, as a node that holds them open would

@@ -441,6 +441,32 @@ export async function changeLocalTransactions(hash, change) {
 }
 
 /**
+ * Forget the wallet's own records of a transaction, by its hash, whichever
+ * account's they are: one that can never be in a block.
+ *
+ * @param {string} hash
+ * @returns {Promise<string[]>} The owners whose record went
+ */
+export async function forgetLocalTransaction(hash) {
+  const lower = String(hash).toLowerCase();
+
+  /** @type {string[]} */
+  const owners = [];
+
+  await db.transaction("rw", "local", async () => {
+    const kept = await db
+      .table("local")
+      .filter((record) => record.hash === lower)
+      .toArray();
+
+    await db.table("local").bulkDelete(kept.map(({ id }) => id));
+    owners.push(...kept.map(({ ownerKey }) => ownerKey));
+  });
+
+  return owners;
+}
+
+/**
  * Forget the wallet's own records of transactions the archive now has.
  *
  * @param {string} ownerKey

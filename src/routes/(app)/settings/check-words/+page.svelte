@@ -4,11 +4,15 @@
   /**
    * Check your recovery words: the password first, as for anything that
    * reads the phrase, then three of the open wallet's words, chosen at
-   * random, typed as they were written down (RecoveryWordsCheck). The
-   * phrase is read here alone, and forgotten as the page goes.
+   * random, typed as they were written down (RecoveryWordsCheck). A check
+   * that doesn't match shows no word: Show my recovery words, apart from it,
+   * forgets the phrase and asks for the password again before it shows the
+   * words, to write the paper again. The phrase is read here alone, and
+   * forgotten as the page goes.
    */
   import { mdiArrowLeft } from "@mdi/js";
-  import { onDestroy } from "svelte";
+  import { onDestroy, tick } from "svelte";
+  import { RECOVERY_WORDS_SHOW } from "@dusk-network/app-core/recovery-words";
 
   import { Button } from "$lib/dusk/components";
   import {
@@ -20,6 +24,17 @@
   import { goto, pageTitle } from "$lib/navigation";
   import { walletStore } from "$lib/stores";
   import vault from "$lib/vault";
+
+  import MnemonicPhrase from "../../../(welcome)/setup/create/MnemonicPhrase.svelte";
+
+  /**
+   * What the page asks for: the password to check the words, then the
+   * check; after a check that didn't match, the password to show them, and
+   * then the words.
+   *
+   * @type {"check" | "show"}
+   */
+  let purpose = "check";
 
   let password = "";
 
@@ -35,6 +50,9 @@
    * @type {string[]}
    */
   let words = [];
+
+  /** @type {UnlockPasswordField} */
+  let passwordField;
 
   async function open() {
     passwordError = password ? "" : "Enter your password.";
@@ -68,6 +86,19 @@
     }
   }
 
+  /**
+   * Show my recovery words, after a check that didn't match: the phrase is
+   * forgotten, and read again only with the password.
+   */
+  async function askToShow() {
+    words = [];
+    passwordError = "";
+    formError = "";
+    purpose = "show";
+    await tick();
+    passwordField?.focus();
+  }
+
   // Nothing of the phrase or the password is kept once the page goes.
   onDestroy(() => {
     words = [];
@@ -86,11 +117,14 @@
   <header class="check-words__header">
     <h1 use:pageTitle>Check your recovery words</h1>
   </header>
-  {#if words.length}
-    <RecoveryWordsCheck {words} />
+  {#if words.length && purpose === "show"}
+    <MnemonicPhrase mnemonicPhrase={words} />
+  {:else if words.length}
+    <RecoveryWordsCheck on:show={askToShow} {words} />
   {:else}
     <form class="check-words__form" novalidate on:submit|preventDefault={open}>
       <UnlockPasswordField
+        bind:this={passwordField}
         bind:error={passwordError}
         bind:value={password}
         disabled={busy}
@@ -100,7 +134,11 @@
       {/if}
       <Button
         disabled={busy || !password}
-        text={busy ? "Opening…" : "Continue"}
+        text={busy
+          ? "Opening…"
+          : purpose === "show"
+            ? RECOVERY_WORDS_SHOW
+            : "Continue"}
         type="submit"
       />
     </form>

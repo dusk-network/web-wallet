@@ -7,10 +7,13 @@
 
 import { base } from "$app/paths";
 import {
+  LINK_SEVERAL,
+  LINK_UNCLEAR,
   chainLabel,
   linkAmount,
   makePaymentLink,
   parsePaymentLink,
+  readPastedLink as readPasted,
   readPaymentLink as readLink,
   requestMessage,
 } from "@dusk-network/app-core/payment-links";
@@ -25,6 +28,7 @@ export {
   forgetRequest,
   forgetWalletRequests,
   hydrateRequests,
+  isPaidAlready,
   keepRequestMatches,
   rememberRequest,
   requestsStore,
@@ -116,26 +120,17 @@ export function inFirefox(href) {
  */
 
 /**
- * What a link asks of Send, for the wallet's network, as app-core reads it,
- * the same whether it's pasted, scanned or opened: null for what isn't a
- * link, as an address or a name. Send checks what it fills in, as it checks
- * what's typed.
+ * What a link app-core read asks of Send: what to fill in, or why it fills
+ * in nothing, with the same request on the network's own web wallet where
+ * it's for another network (`elsewhere`, from the link as it's written,
+ * `text`).
  *
+ * @param {import("@dusk-network/app-core/payment-links").LinkRead | import("@dusk-network/app-core/payment-links").PastedLinkRead} read
  * @param {string} text
- * @param {import("@dusk-network/networks").Network | null} net The wallet's network
  * @param {string} [language] The language the amount field reads
- * @returns {LinkAsked | null}
+ * @returns {LinkAsked}
  */
-export function readPaymentLink(text, net, language) {
-  const read = readLink(text.trim(), {
-    network: net ?? undefined,
-    walletUrl: ownWalletUrl(),
-  });
-
-  if (!read) {
-    return null;
-  }
-
+function askedOf(read, text, language) {
   // Said as the link's: an address cut short is no one to pay, as one
   // missing.
   if (read.link && !read.problem && isBrokenAddress(read.link.to)) {
@@ -151,73 +146,57 @@ export function readPaymentLink(text, net, language) {
       }
     : {
         amount: "",
-        elsewhere: read.reason === "other-network" ? elsewhereLink(text) : null,
+        elsewhere:
+          read.reason === "other-network" && text ? elsewhereLink(text) : null,
         memo: "",
         problem: read.problem,
         to: "",
       };
 }
 
-/** Said of pasted text with more than one payment link in it. */
-export const LINK_SEVERAL =
-  "That has more than one payment link. Paste just the one to pay.";
-
-/** Said of pasted text with words after its link, which may be part of it. */
-export const LINK_UNCLEAR =
-  "The words after that link may be part of it. Paste the link alone.";
-
 /**
- * What pasted text refused for `problem` asks: nothing.
- *
- * @param {string} problem
- * @returns {LinkAsked}
- */
-const refused = (problem) => ({
-  amount: "",
-  elsewhere: null,
-  memo: "",
-  problem,
-  to: "",
-});
-
-/**
- * What pasted text asks of Send. A link, as the text starts with one, is
- * read whole, spaces and all, as `readPaymentLink` reads a link: refused
- * where what's in it can't be read, as it always was. Else, where it's what
- * Share and Copy give of a request, a line saying what it asks, then "Pay
- * here:" and the link (`requestText`), its one payment link, its last
- * words, read alone; text with more than one, or with words after it, which
- * may be part of it, fills in nothing, and says so. Null for text with
- * none, as an address or a name.
+ * What a link asks of Send, for the wallet's network, as app-core reads it,
+ * the same whether it's scanned or opened: null for what isn't a link, as an
+ * address or a name. Send checks what it fills in, as it checks what's
+ * typed.
  *
  * @param {string} text
  * @param {import("@dusk-network/networks").Network | null} net The wallet's network
  * @param {string} [language] The language the amount field reads
  * @returns {LinkAsked | null}
  */
+export function readPaymentLink(text, net, language) {
+  const read = readLink(text.trim(), {
+    network: net ?? undefined,
+    walletUrl: ownWalletUrl(),
+  });
+
+  return read ? askedOf(read, text, language) : null;
+}
+
+export { LINK_SEVERAL, LINK_UNCLEAR };
+
+/**
+ * What pasted text asks of Send, as app-core reads it for every wallet
+ * (`readPastedLink`): a link, as the text starts with one, read whole,
+ * spaces and all; else, where it's what Share and Copy give of a request, a
+ * line saying what it asks, then "Pay here:" and the link (`requestText`),
+ * its one payment link, its last words, read alone. Text with more than one
+ * link, or with words after it, which may be part of it, fills in nothing,
+ * and says so. Null for text with none, as an address or a name.
+ *
+ * @param {string} text As it was pasted, its spaces as they were
+ * @param {import("@dusk-network/networks").Network | null} net The wallet's network
+ * @param {string} [language] The language the amount field reads
+ * @returns {LinkAsked | null}
+ */
 export function readPastedLink(text, net, language) {
-  const pasted = text.trim();
+  const read = readPasted(text, {
+    network: net ?? undefined,
+    walletUrl: ownWalletUrl(),
+  });
 
-  if (/^(dusk:|https?:\/\/)/i.test(pasted)) {
-    return readPaymentLink(pasted, net, language);
-  }
-
-  const words = pasted.split(/\s+/);
-  const links = words.filter((word) =>
-    readLink(word, { network: net ?? undefined, walletUrl: ownWalletUrl() })
-  );
-
-  if (links.length > 1) {
-    return refused(LINK_SEVERAL);
-  }
-
-  if (!links.length) {
-    return readPaymentLink(pasted, net, language);
-  }
-
-  return words.at(-1) === links[0]
-    ? readPaymentLink(links[0], net, language)
-    : refused(LINK_UNCLEAR);
+  return read ? askedOf(read, read.text, language) : null;
 }
 
 /**

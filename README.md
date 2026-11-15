@@ -252,8 +252,9 @@ The Deploy workflow has GitHub attest each build's manifest
 (`actions/attest-build-provenance`), signed for that workflow and commit,
 with no key to keep. `--attested` checks it first with GitHub's CLI
 (`gh attestation verify`): that this repository's Deploy workflow built the
-manifest the site serves from the commit it names, on GitHub's own runners.
-GitHub vouches for it, not the site.
+manifest the site serves from the commit it names, on GitHub's own runners,
+from the ref it deploys that site from: `main` for testnet, the release's
+`web-wallet-v*` tag for mainnet. GitHub vouches for it, not the site.
 
 The script builds the manifest's commit in a new worktree, with `npm ci` and
 `npm run build`, and checks every file, and every page at the addresses

@@ -1,5 +1,4 @@
 <script>
-  import { sendersMemo } from "@dusk-network/app-core/activity";
   import { NAME_SAVE_YES } from "@dusk-network/app-core/names";
   import { displayText } from "@dusk-network/app-core/text";
   import { createEventDispatcher, onMount } from "svelte";
@@ -33,7 +32,11 @@
     followHistoryDeposits,
   } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
-  import { fullDateTime, routeLabel } from "$lib/activity/present";
+  import {
+    fullDateTime,
+    routeLabel,
+    strangersMemo,
+  } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
@@ -602,16 +605,17 @@
         <dd>{p.privacy}</dd>
       </div>
       {#if row.memo}
-        {@const theirs = sendersMemo(row, memoAmong)}
+        {@const theirs = strangersMemo(row, memoAmong)}
         <div>
           <dt>Memo</dt>
           <!-- Anyone can send a memo, and hidden characters would show it out
-            of order, as "exe.png" for "gnp.exe". A stranger's is theirs: in
-            quotes, muted, with whom it came from. -->
+            of order, as "exe.png" for "gnp.exe". A stranger's is theirs: who
+            it came from first, then their words, in quotes, muted, in the
+            same size. -->
           {#if theirs}
             <dd class="tx-detail__memo tx-detail__memo--theirs">
-              “<MemoText text={theirs.memo} />”
               <span class="tx-detail__memo-from">{theirs.from}</span>
+              “<MemoText text={theirs.memo} />”
             </dd>
           {:else}
             <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
@@ -1025,7 +1029,6 @@
 
   .tx-detail__memo-from {
     display: block;
-    font-size: 0.8125rem;
   }
 
   .tx-detail__error {

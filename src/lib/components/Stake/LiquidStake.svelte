@@ -8,6 +8,7 @@
   import { mdiPercentOutline, mdiWaterOutline } from "@mdi/js";
 
   import {
+    POSITION_WORDS,
     sozuPosition,
     sozuRate,
     sozuRateLine,
@@ -760,7 +761,7 @@
       <dl class="liquid-stake__position">
         {#if history.whole}
           <div>
-            <dt>Put in</dt>
+            <dt>{POSITION_WORDS.putIn}</dt>
             <dd>
               <BalanceValue
                 exact={formatDuskExact(held.putIn, language)}
@@ -770,7 +771,7 @@
           </div>
           {#if held.takenOut > 0n}
             <div>
-              <dt>Taken out</dt>
+              <dt>{POSITION_WORDS.takenOut}</dt>
               <dd>
                 <BalanceValue
                   exact={formatDuskExact(held.takenOut, language)}
@@ -781,7 +782,7 @@
           {/if}
         {/if}
         <div>
-          <dt>Worth now</dt>
+          <dt>{POSITION_WORDS.worthNow}</dt>
           <dd>
             <BalanceValue
               exact={formatDuskExact(staked, language)}
@@ -792,7 +793,11 @@
         {#if history.whole && held.depositFees !== null && held.depositFees > 0n}
           <!-- Each read from its stake: to the lux. -->
           <div>
-            <dt>{held.feesExact ? "Deposit fees" : "Deposit fees, about"}</dt>
+            <dt>
+              {held.feesExact
+                ? POSITION_WORDS.depositFees
+                : POSITION_WORDS.depositFeesAbout}
+            </dt>
             <dd>
               <BalanceValue
                 exact={formatDuskExact(held.depositFees, language)}
@@ -805,13 +810,13 @@
         {/if}
         {#if history.reading}
           <div>
-            <dt>Rewards so far</dt>
+            <dt>{POSITION_WORDS.earned}</dt>
             <dd class="liquid-stake__reading">Reading your history…</dd>
           </div>
         {:else if history.whole && earnedSoFar !== null}
           {@const earned = earnedSoFar < 0n ? -earnedSoFar : earnedSoFar}
           <div>
-            <dt>Rewards so far</dt>
+            <dt>{POSITION_WORDS.earned}</dt>
             <dd>
               {earnedSoFar < 0n ? "−" : ""}<BalanceValue
                 exact={formatDuskExact(earned, language)}
@@ -821,7 +826,7 @@
           </div>
         {/if}
         <div>
-          <dt>stDUSK</dt>
+          <dt>{POSITION_WORDS.stDusk}</dt>
           <dd>
             <BalanceValue
               exact={formatDuskExact(stDusk, language)}

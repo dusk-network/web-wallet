@@ -19,9 +19,13 @@ import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { keptSendsDatabase } from "$lib/transactions/unsentSends";
 import { startIncarnation } from "$lib/wallets/dataNames";
 
-/** What sends, and where the wallet goes: nothing sends here by itself. */
+/**
+ * What sends, where the wallet goes, and the balances read again: nothing
+ * sends here by itself.
+ */
 const app = vi.hoisted(() => ({
   goto: vi.fn(() => Promise.resolve()),
+  refreshBalance: vi.fn(() => Promise.resolve()),
   transfer: vi.fn(),
 }));
 
@@ -50,7 +54,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
     },
     walletStore: {
       ...wallet,
-      refreshBalance: () => Promise.resolve(),
+      refreshBalance: app.refreshBalance,
       setCurrentProfile: () => Promise.resolve(),
       startHistory: () => ({ refresh: () => Promise.resolve() }),
       transfer: app.transfer,
@@ -302,6 +306,8 @@ describe("A send that never went out", () => {
     cleanups.forEach((cleanup) => cleanup());
     cleanups = [];
     app.goto.mockClear();
+    app.refreshBalance.mockReset();
+    app.refreshBalance.mockImplementation(() => Promise.resolve());
     app.transfer.mockClear();
   });
 
@@ -605,6 +611,313 @@ describe("A send that never went out", () => {
     expect(app.transfer).not.toHaveBeenCalled();
   });
 
+  /**
+   * Opens the wallet again after its page died, its own transaction in no
+   * block, and the account's transactions in final blocks, as the archive
+   * lists them, those `taken()` says, each with its nonce, once `listed`
+   * resolves.
+   *
+   * @param {() => Array<{ hash: string, nonce: number }>} taken
+   * @param {Promise<unknown>} [listed]
+   */
+  async function reopenWithNonces(taken, listed = Promise.resolve()) {
+    const page = await openPage();
+    const { Network } = await import("@dusk/w3sper");
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        const text = String(gql);
+
+        if (text.startsWith(`out: moonlightHistory(sender: "${from}"`)) {
+          await listed;
+
+          return {
+            out: {
+              json: taken().map(({ hash }, i) => ({
+                block_height: 4_850_160 + i,
+                events: [],
+                origin: hash,
+              })),
+            },
+          };
+        }
+
+        if (text.startsWith("t0: ")) {
+          return Object.fromEntries(
+            Array.from(
+              text.matchAll(/(t\d+): tx\(hash: "(\w+)"\)/g),
+              ([, alias, hash]) => [
+                alias,
+                {
+                  tx: {
+                    json: JSON.stringify({
+                      nonce: taken().find((tx) => tx.hash === hash)?.nonce,
+                      sender: from,
+                    }),
+                  },
+                },
+              ]
+            )
+          );
+        }
+
+        if (text.startsWith("block(height: -1)")) {
+          return { block: { header: { height: 4_850_200 } } };
+        }
+
+        if (text.includes(`tx(hash: "${sentTx.hash}")`)) {
+          return { tx: null };
+        }
+
+        throw new Error("Not asked here");
+      });
+
+    return { page, query, ...page.render(page.Home) };
+  }
+
+  // Marek's: the browser died before the broadcast, and the next send took
+  // its nonce. It said "Not confirmed" and "on its way" for good.
+  it("is said as not sent where its page died once it was kept as handed over, before the broadcast, once another transaction of its account took its nonce in a final block: to send now or not, and History no longer shows it", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "nonce taken", dies.promise, "kept");
+    // History's record of it, as kept as it was handed over.
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+
+    // The next send took its nonce, 107, its block not final yet: the
+    // archive doesn't list it.
+    /** @type {Array<{ hash: string, nonce: number }>} */
+    let listed = [{ hash: "a1".repeat(32), nonce: 106 }];
+    const { container, findByText, getByRole, page, query } =
+      await reopenWithNonces(() => listed);
+
+    try {
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+
+      // Its block final, the archive lists it: said as not sent once its
+      // nonce is looked up again, a minute on, and kept so.
+      listed = [...listed, { hash: "b2".repeat(32), nonce: 107 }];
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not sent: 0\.01 DUSK to your Profile 2\. nonce taken · .+ Nothing left your wallet\. Send it now Don't send$/
+          ),
+        ])
+      );
+      expect(container).not.toHaveTextContent("Not confirmed");
+      expect(toastsOf(page)).toStrictEqual([]);
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.not.objectContaining({ handedOver: expect.anything() }),
+        ])
+      );
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([])
+      );
+
+      // Nothing asked of the chain about it any more.
+      const asked = query.mock.calls.length;
+
+      await vi.advanceTimersByTimeAsync(180_000);
+
+      expect(query.mock.calls.length).toBe(asked);
+      expect(noticesOf(container)).toHaveLength(1);
+
+      // Don't send: said no more.
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+      expect(noticesOf(container)).toStrictEqual([]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+    } finally {
+      query.mockRestore();
+      vi.useRealTimers();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Another tab sends a kept send again ("Send it now"), as another
+   * transaction, under its ID, and closes once it's handed over, nothing
+   * broadcast: what's kept of it, as that tab writes it.
+   *
+   * @param {string} hash
+   */
+  async function sentAgainElsewhere(hash) {
+    const [row] = await keptNow();
+
+    await keptSendsDatabase.table("sends").put({
+      ...row,
+      at: Date.now(),
+      handedOver: { hash, nonce: "108" },
+    });
+    // As storage tells the tabs that tab changed it.
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: `${CONFIG.LOCAL_STORAGE_APP_KEY}-unsent-sends-changed`,
+      })
+    );
+  }
+
+  it("is looked up again as another tab sends it now, once it's said as not sent, and closes once it's handed over: said as not confirmed", async () => {
+    const dies = Promise.withResolvers();
+    const again = "ef".repeat(32);
+
+    await sendThrough(await openPage(), "sent now", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+
+    const { container, findByText, query } = await reopenWithNonces(() => [
+      { hash: "b2".repeat(32), nonce: 107 },
+    ]);
+
+    try {
+      await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+      await sentAgainElsewhere(again);
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not confirmed: 0\.01 DUSK to your Profile 2\. sent now · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
+          ),
+        ])
+      );
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining(`tx(hash: "${again}")`),
+        expect.anything()
+      );
+    } finally {
+      query.mockRestore();
+      vi.useRealTimers();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is never said as not sent where another tab sent it again, as another transaction, as its nonce was looked up: what's kept of that one stays, said as not confirmed", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+    const again = "ef".repeat(32);
+    const listed = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "sent again", dies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+
+    // Its nonce, 107, went to another transaction: the archive says so
+    // once it's let answer.
+    const { container, page, query } = await reopenWithNonces(
+      () => [{ hash: "b2".repeat(32), nonce: 107 }],
+      listed.promise
+    );
+
+    try {
+      await vi.waitFor(() =>
+        expect(query).toHaveBeenCalledWith(
+          expect.stringMatching(/^out: moonlightHistory/),
+          expect.anything()
+        )
+      );
+
+      // Meanwhile another tab sent it again, and closed.
+      await sentAgainElsewhere(again);
+      await vi.waitFor(() =>
+        expect(get(page.unsent.unsentSends)).toStrictEqual([
+          expect.objectContaining({
+            handedOver: { hash: again, nonce: "108" },
+          }),
+        ])
+      );
+
+      // The archive answers: History no longer shows the first, which can
+      // never be in a block, and the one sent again is kept as it is.
+      listed.resolve(undefined);
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([])
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(get(page.unsent.unsentSends)).toStrictEqual([
+        expect.objectContaining({ handedOver: { hash: again, nonce: "108" } }),
+      ]);
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: { hash: again, nonce: "108" },
+          }),
+        ])
+      );
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not confirmed: 0\.01 DUSK to your Profile 2\. sent again · .+ It may have reached the network\./
+          ),
+        ])
+      );
+      expect(container).not.toHaveTextContent("Nothing left your wallet");
+    } finally {
+      query.mockRestore();
+      vi.useRealTimers();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is never said as not sent where the transaction its account's history has at its nonce is its own, nor where only later nonces are seen", async () => {
+    for (const listed of [
+      [{ hash: sentTx.hash, nonce: 107 }],
+      [{ hash: "c3".repeat(32), nonce: 108 }],
+    ]) {
+      const dies = Promise.withResolvers();
+
+      await keptSendsDatabase.table("sends").clear();
+      await sendThrough(await openPage(), "its own", dies.promise, "kept");
+      dies.resolve(undefined);
+
+      const { container, findByText, query } = await reopenWithNonces(
+        () => listed
+      );
+
+      try {
+        await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+        await vi.waitFor(() =>
+          expect(query).toHaveBeenCalledWith(
+            expect.stringMatching(/^t0: tx\(hash:/),
+            expect.anything()
+          )
+        );
+
+        expect(container).not.toHaveTextContent("Not sent");
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: { hash: sentTx.hash, nonce: "107" },
+          }),
+        ]);
+      } finally {
+        query.mockRestore();
+        cleanups.forEach((cleanup) => cleanup());
+        cleanups = [];
+      }
+    }
+  });
+
   it("is never said as not sent where its page died once it was kept as handed over, before the broadcast: it may have gone out, to check before sending it again", async () => {
     const dies = Promise.withResolvers();
 
@@ -645,7 +958,9 @@ describe("A send that never went out", () => {
     expect(app.transfer).not.toHaveBeenCalled();
   });
 
-  it("is said as sent where its page died once the node was asked to broadcast it, before it answered, and the chain has it, in History too: never as not sent", async () => {
+  // Then Chen's: the notice went with no word that it went out, and the
+  // total and History's row disagreed for 5 to 13 seconds.
+  it("is said as sent in its notice's place where its page died once the node was asked to broadcast it, before it answered, and the chain has it, once the balances are read again, in History too: never as not sent", async () => {
     const dies = Promise.withResolvers();
     // History's record of it, as kept as it was handed over.
     const owner = `testnet::${from}`;
@@ -663,34 +978,106 @@ describe("A send that never went out", () => {
     });
     dies.resolve(undefined);
 
+    // The balances take their time to be read again.
+    const read = Promise.withResolvers();
+
+    app.refreshBalance.mockImplementation(() => read.promise);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
     const { container, page, query } = await reopenWith({
       blockHeight: 4_850_155,
       err: null,
     });
 
     try {
+      await vi.waitFor(() => expect(app.refreshBalance).toHaveBeenCalled());
+
+      // Found: nothing said of it yet, nor in History, until the balances
+      // are read.
+      expect(container).not.toHaveTextContent("Sent:");
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "submitted" }),
+      ]);
+
+      read.resolve(undefined);
+
       await vi.waitFor(() =>
-        expect(toastsOf(page)).toStrictEqual([
-          "Sent: 0.01 DUSK to your Profile 2. In block 4,850,155.",
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, no answer · .+ In block 4,850,155\.$/
+          ),
         ])
       );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({
+          blockHeight: 4_850_155,
+          hash: sentTx.hash,
+          status: "executed",
+        }),
+      ]);
+      expect(toastsOf(page)).toStrictEqual([]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+
+      // Said for a moment, then not.
+      await vi.advanceTimersByTimeAsync(8_000);
 
       expect(noticesOf(container)).toStrictEqual([]);
-      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
-      await vi.waitFor(async () =>
-        expect(await listLocalTransactions(owner)).toStrictEqual([
-          expect.objectContaining({
-            blockHeight: 4_850_155,
-            hash: sentTx.hash,
-            status: "executed",
-          }),
-        ])
-      );
     } finally {
       query.mockRestore();
+      vi.useRealTimers();
     }
 
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is said as sent where the chain has it though the balances' read hangs, with the wallet's sync: once it waited as long as the network gets to answer, in History too", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(
+      await openPage(),
+      "sync hangs",
+      dies.promise,
+      "broadcast"
+    );
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    // The balances' read never ends.
+    app.refreshBalance.mockImplementation(() => new Promise(() => {}));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const { container, query } = await reopenWith({
+      blockHeight: 4_850_158,
+      err: null,
+    });
+
+    try {
+      await vi.waitFor(() => expect(app.refreshBalance).toHaveBeenCalled());
+
+      expect(container).not.toHaveTextContent("Sent:");
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. sync hangs · .+ In block 4,850,158\.$/
+          ),
+        ])
+      );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "executed" }),
+      ]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+    } finally {
+      query.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it("is said as not confirmed where its page died once the node was asked to broadcast it, and the chain doesn't have it yet, and as sent once it does", async () => {
@@ -720,13 +1107,66 @@ describe("A send that never went out", () => {
       await vi.advanceTimersByTimeAsync(4_000);
 
       await vi.waitFor(() =>
-        expect(toastsOf(page)).toStrictEqual([
-          "Sent: 0.01 DUSK to your Profile 2. In block 4,850,156.",
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, not in a block yet · .+ In block 4,850,156\.$/
+          ),
         ])
       );
-      expect(noticesOf(container)).toStrictEqual([]);
+      expect(toastsOf(page)).toStrictEqual([]);
     } finally {
       query.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  // Chen's, the other way round: the total had moved while History still
+  // said Pending, as the send was looked up only at its next turn.
+  it("is looked up at once, not at its next turn, as the balances change", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(
+      await openPage(),
+      "balances moved",
+      dies.promise,
+      "broadcast"
+    );
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const before = mockedWalletStore.getMockedStoreValue();
+    const { container, findByText, query } = await reopenWith(null);
+
+    try {
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+
+      // Past its first minutes: looked up once a minute from then on.
+      await vi.advanceTimersByTimeAsync(200_000);
+
+      const asked = query.mock.calls.length;
+
+      // A block takes it, and the balances read change with it.
+      query.mockImplementation(async () => ({
+        tx: { blockHeight: 4_850_157, err: null },
+      }));
+      mockedWalletStore.setMockedStoreValue({
+        ...before,
+        balance: {
+          shielded: { spendable: 0n, value: 0n },
+          unshielded: { nonce: 108n, value: 1n },
+        },
+      });
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(/^Sent: .+ In block 4,850,157\.$/),
+        ])
+      );
+      expect(query.mock.calls.length).toBeGreaterThan(asked);
+    } finally {
+      query.mockRestore();
+      mockedWalletStore.setMockedStoreValue(before);
       vi.useRealTimers();
     }
   });

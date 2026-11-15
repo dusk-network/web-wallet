@@ -1,6 +1,7 @@
 <script>
+  import { onDestroy } from "svelte";
   import { page } from "$app/stores";
-  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import { activityState, isHistoryEnabled, keptActivity } from "$lib/activity";
   import { HistoryView } from "$lib/containers/History";
   import { appPath } from "$lib/containers/Shell";
   import { sheetStep } from "$lib/navigation";
@@ -115,11 +116,50 @@
         ),
       }
     : null;
+  /**
+   * All the history this device keeps, while a search shows: it finds in all
+   * of it, as the search does; and while the details of a transaction the
+   * rows shown don't have open, as the search's results open one it found
+   * beyond them, by its hash alone. Null otherwise.
+   *
+   * @type {ActivityRow[] | null}
+   */
+  let searched = null;
+
+  let stopSearching = () => {};
+
+  /**
+   * Reads all the history kept, and again as it changes, while it's needed:
+   * only then.
+   *
+   * @param {boolean} isNeeded
+   */
+  function searchKept(isNeeded) {
+    stopSearching();
+    stopSearching = () => {};
+    searched = null;
+
+    if (isNeeded) {
+      stopSearching = keptActivity.subscribe((rows) => {
+        searched = rows;
+      });
+    }
+  }
+
+  onDestroy(() => stopSearching());
+
   $: kind = kindOf(url);
   $: privacy = filterOf(url, "privacy");
   $: range = filterOf(url, "range");
   // A search's See all: what it finds.
   $: query = url.searchParams.get("q") ?? "";
+  $: isSearching = query.trim() !== "";
+  // The transaction whose details open, and whether the rows shown have it.
+  $: selected = url.searchParams.get("tx");
+  $: isBeyond =
+    selected !== null &&
+    !$activityState.rows.some((row) => row.hash === selected);
+  $: searchKept(isSearching || isBeyond);
 </script>
 
 {#if isHistoryEnabled()}
@@ -134,7 +174,8 @@
     onMore={() => walletStore.startHistory()?.showMore() ?? Promise.resolve()}
     {query}
     {range}
-    selected={url.searchParams.get("tx")}
+    {searched}
+    {selected}
     shieldedAddress={currentProfile ? String(currentProfile.address) : ""}
     state={$activityState}
   />

@@ -110,4 +110,104 @@ describe("Check your recovery words", () => {
     expect(JSON.stringify({ ...localStorage })).toBe(kept);
     expect(JSON.stringify({ ...sessionStorage })).not.toContain("scheme");
   });
+
+  // Nandini's and Amélie's: one word wrong, or three made up, put all twelve
+  // words on screen. A check is not a reveal.
+  it("says no more than that the words don't match, with Try again, and shows them only on their own ask, behind the password again", async () => {
+    const { container, getByLabelText, getByRole, queryByRole } =
+      render(CheckWords);
+    const words = B.split(" ");
+
+    /** Which of the phrase's words are on the page, by their whole word. */
+    const wordsShown = () =>
+      words.filter((word) =>
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+      );
+
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
+
+    const asked = askedIn(container).map(({ n }) => n);
+
+    // One word wrong, then three made up: said, and nothing else.
+    for (const typed of [
+      asked.map((n, i) => (i === 1 ? `${words[n - 1]}x` : words[n - 1])),
+      ["maison", "velo", "gateau"],
+    ]) {
+      for (const [i, { box }] of askedIn(container).entries()) {
+        await fireEvent.input(box, { target: { value: typed[i] } });
+      }
+
+      await fireEvent.click(getByRole("button", { name: "Check" }));
+
+      expect(getByRole("alert")).toHaveTextContent(
+        /^That doesn't match your recovery words\. Check the words you wrote down\.$/
+      );
+      expect(wordsShown()).toStrictEqual([]);
+      expect(container.querySelector(".dusk-words")).toBeNull();
+      expect(askedIn(container)).toStrictEqual([]);
+      expect(
+        Array.from(container.querySelectorAll("button"), (b) =>
+          b.textContent?.trim()
+        )
+      ).toStrictEqual(["Try again", "Show my recovery words"]);
+
+      // Try again: the same three, empty, the first to type in.
+      await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+      expect(askedIn(container).map(({ n }) => n)).toStrictEqual(asked);
+      expect(askedIn(container).map(({ box }) => box.value)).toStrictEqual([
+        "",
+        "",
+        "",
+      ]);
+      await vi.waitFor(() =>
+        expect(document.activeElement).toBe(askedIn(container)[0].box)
+      );
+      expect(queryByRole("alert")).toBeNull();
+    }
+
+    // Show my recovery words, apart: the password again first.
+    for (const { box } of askedIn(container)) {
+      await fireEvent.input(box, { target: { value: "zoo" } });
+    }
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery words" })
+    );
+
+    const password = getByLabelText("Password you unlock with");
+
+    expect(password).toHaveValue("");
+    await vi.waitFor(() => expect(document.activeElement).toBe(password));
+    expect(wordsShown()).toStrictEqual([]);
+
+    await fireEvent.input(password, { target: { value: "not the password" } });
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery words" })
+    );
+    await vi.waitFor(() =>
+      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+    );
+    expect(wordsShown()).toStrictEqual([]);
+
+    await fireEvent.input(password, { target: { value: PASSWORD } });
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery words" })
+    );
+
+    await vi.waitFor(() =>
+      expect(
+        Array.from(
+          container.querySelectorAll(".dusk-words__word"),
+          (word) => word.textContent
+        )
+      ).toStrictEqual(words)
+    );
+    expect(askedIn(container)).toStrictEqual([]);
+  });
 });
