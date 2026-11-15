@@ -7,7 +7,8 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
+import { wordlist } from "@scure/bip39/wordlists/english.js";
 
 import * as navigation from "$lib/navigation";
 import { walletStore } from "$lib/stores";
@@ -109,6 +110,85 @@ describe("Check your recovery words", () => {
     // Nothing of the phrase, nor what was typed, kept anywhere.
     expect(JSON.stringify({ ...localStorage })).toBe(kept);
     expect(JSON.stringify({ ...sessionStorage })).not.toContain("scheme");
+  });
+
+  it("suggests recovery words in each box as they're typed, from the wallet's list and the letters alone, and marks one that isn't a recovery word", async () => {
+    const { container, getByLabelText, getByRole, getByText, queryByRole } =
+      render(CheckWords);
+
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
+
+    const words = B.split(" ");
+    const [first, second, third] = askedIn(container);
+
+    /** @param {string} letters The list's first four words that start with them. */
+    const listed = (letters) =>
+      wordlist.filter((word) => word.startsWith(letters)).slice(0, 4);
+
+    /** What the box suggests now. */
+    const suggested = () =>
+      within(getByRole("listbox", { name: "Suggestions" }))
+        .getAllByRole("option")
+        .map((option) => option.textContent?.trim());
+
+    /**
+     * Types into a box letter by letter, as a person does.
+     *
+     * @param {HTMLInputElement} box
+     * @param {string} text
+     */
+    const typeInto = async (box, text) => {
+      box.focus();
+
+      for (let end = 1; end <= text.length; end++) {
+        await fireEvent.input(box, { target: { value: text.slice(0, end) } });
+      }
+    };
+
+    // The first letters of the very word asked: the list's words for them,
+    // whether the phrase's word is among them or not.
+    const letters = words[first.n - 1].slice(0, 2);
+
+    await typeInto(first.box, letters);
+
+    expect(suggested()).toStrictEqual(listed(letters));
+    expect(first.box).toHaveAttribute("aria-expanded", "true");
+
+    await fireEvent.keyDown(first.box, { key: "Enter" });
+
+    expect(first.box).toHaveValue(listed(letters)[0]);
+    expect(document.activeElement).toBe(second.box);
+    expect(queryByRole("listbox")).toBeNull();
+    expect(queryByRole("alert")).toBeNull();
+
+    // Letters no recovery word starts with: marked in the box at once.
+    await typeInto(second.box, "qx");
+
+    expect(second.box).toHaveAttribute("aria-invalid", "true");
+    expect(second.box).toHaveAccessibleDescription("Not a recovery word");
+
+    // A tap takes one too.
+    const last = words[third.n - 1].slice(0, 2);
+
+    await typeInto(third.box, last);
+    await fireEvent.click(getByRole("option", { name: listed(last).at(-1) }));
+
+    expect(third.box).toHaveValue(listed(last).at(-1));
+
+    // The words as written down still match.
+    for (const { box, n } of askedIn(container)) {
+      await fireEvent.input(box, { target: { value: words[n - 1] } });
+    }
+
+    expect(second.box).not.toHaveAttribute("aria-invalid");
+
+    await fireEvent.click(getByRole("button", { name: "Check" }));
+
+    expect(getByText("They match.")).toBeInTheDocument();
   });
 
   // Nandini's and Amélie's: one word wrong, or three made up, put all twelve

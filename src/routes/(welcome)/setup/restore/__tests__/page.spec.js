@@ -235,6 +235,36 @@ describe("Restore", async () => {
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
+  it("should take a word typed with an accent as the list spells it, and restore from the list's words", async () => {
+    await vault.setUp(mnemonic, pwd);
+
+    // A public BIP39 test phrase, never a real wallet's: two words accented.
+    const phrase =
+      "legal winner thank year wave sausage worth useful legal winner thank yellow";
+    const { getByLabelText, getByRole, queryByRole } = render(Restore);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await pasteInto(
+      getByLabelText("Word 1"),
+      phrase.replace("legal", "Légal").replace("wave", "wáve")
+    );
+    await tick();
+
+    expect(queryByRole("alert")).toBeNull();
+    expect(getByLabelText("Word 1")).not.toHaveAttribute("aria-invalid");
+    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("switch"));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await vi.waitFor(() => {
+      expect(vault.exists()).toBe(false);
+    });
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(initWalletSpy).toHaveBeenCalledExactlyOnceWith(phrase, 0n);
+  });
+
   it("should initialize the wallet without setting a password", async () => {
     await vault.setUp(mnemonic, pwd);
 

@@ -26,9 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Give a request's Share and Copy a line above its link, as the extension does: "sofiadesign.dusk asks you to pay 0.03 DUSK · Factura 71", then "Pay here:" and the link
 - Check your recovery words: three of them, chosen at random, typed as written down, right after a wallet's words are shown, with Skip for now, and in Settings behind the password; a wrong answer shows no word, saying only that they don't match, with Try again and Show my recovery words
 - Show a memo that came in from an address that isn't one of your profiles or contacts as the sender's words in History and its details, small, muted and in quotes, after "From" their .dusk name or address "· not in your contacts", in the memo's size
+- Suggest recovery words as they're typed, in Restore, Add wallet, Unlock and Check your recovery words: from two letters, up to four from the wallet's own list as chips under the box, a tap, Enter or Tab taking the highlighted one
 
 ### Changed
 
+- Mark a word as "Not a recovery word" in its box as soon as no recovery word starts with what's typed, and take one typed with an accent as the word it is
 - Say on Sozu's card that its rewards so far are before deposit fees, and in Rewards by year that what grew while held is after them
 - Give each request its own Share beside its Copy, on Request payment and in Your requests, the Share by the address sharing the address alone, and bring Request payment into view at its Amount as a tap opens it
 - Show amounts to start with in the currency of the browser's region, as Singapore dollars in Singapore, where DUSK has a price in it, else in US dollars
@@ -45,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Go on to the next word box with a space typed on a phone's keyboard, as with the space key
 - Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
 - Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name
 - Refuse pasted text with a second payment link in it, also where it starts with a link

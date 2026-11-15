@@ -1,8 +1,7 @@
 import { validateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 
-/** The words a recovery phrase is made of. */
-export const RECOVERY_WORDS = new Set(wordlist);
+import { isWord, listWord } from "./suggestions";
 
 /**
  * "Word 7", "Words 3 and 7", "Words 3, 5 and 7".
@@ -24,7 +23,7 @@ function wordsNamed(numbers) {
  */
 function unknownWords(typed) {
   const unknown = typed.flatMap((word, i) =>
-    word && !RECOVERY_WORDS.has(word) ? [i + 1] : []
+    word && !isWord(word) ? [i + 1] : []
   );
 
   if (unknown.length > 3) {
@@ -89,7 +88,7 @@ export function phraseProblem(words, { pasted = 0 } = {}) {
     return `That's ${n} ${n === 1 ? "word" : "words"}. A recovery phrase has 12 or 24.`;
   }
 
-  return validateMnemonic(typed.join(" "), wordlist)
+  return validateMnemonic(typed.map(listWord).join(" "), wordlist)
     ? ""
     : "These words aren't a valid recovery phrase. Check each word.";
 }
