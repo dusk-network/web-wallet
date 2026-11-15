@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
 import { MnemonicInput } from "..";
 
@@ -20,24 +20,44 @@ const pasteInto = (box, text) =>
 /** @param {HTMLElement} box */
 const valueOf = (box) => /** @type {HTMLInputElement} */ (box).value;
 
+/**
+ * Types into a box as a person does: with the focus, letter by letter.
+ *
+ * @param {HTMLElement} box
+ * @param {string} text
+ */
+const typeInto = async (box, text) => {
+  box.focus();
+
+  for (let end = 1; end <= text.length; end++) {
+    await fireEvent.input(box, { target: { value: text.slice(0, end) } });
+  }
+};
+
+/** @param {HTMLElement} list */
+const wordsIn = (list) =>
+  within(list)
+    .getAllByRole("option")
+    .map((option) => option.textContent?.trim());
+
 describe("MnemonicInput", () => {
   afterEach(cleanup);
 
   it("fills every box from the first with a whole phrase pasted into any box, and 24 words make 24 boxes", async () => {
     const { getAllByRole, getByLabelText, getByRole } = render(MnemonicInput);
 
-    expect(getAllByRole("textbox")).toHaveLength(12);
+    expect(getAllByRole("combobox")).toHaveLength(12);
     expect(
       getByRole("group", { name: "Recovery phrase" })
     ).toHaveAccessibleDescription("Paste the whole phrase into any box.");
 
     await pasteInto(getByLabelText("Word 5"), `  ${TWELVE.toUpperCase()}\n`);
 
-    expect(getAllByRole("textbox").map(valueOf)).toEqual(TWELVE.split(" "));
+    expect(getAllByRole("combobox").map(valueOf)).toEqual(TWELVE.split(" "));
 
     await pasteInto(getByLabelText("Word 3"), TWENTY_FOUR);
 
-    expect(getAllByRole("textbox").map(valueOf)).toEqual(
+    expect(getAllByRole("combobox").map(valueOf)).toEqual(
       TWENTY_FOUR.split(" ")
     );
     expect(getByRole("button", { name: "24 words" })).toHaveAttribute(
@@ -113,7 +133,7 @@ describe("MnemonicInput", () => {
 
     await fireEvent.click(paste);
     await vi.waitFor(() =>
-      expect(getAllByRole("textbox").map(valueOf)).toEqual(TWELVE.split(" "))
+      expect(getAllByRole("combobox").map(valueOf)).toEqual(TWELVE.split(" "))
     );
 
     await fireEvent.click(paste);
@@ -190,6 +210,176 @@ describe("MnemonicInput", () => {
     } finally {
       Object.assign(navigator, { clipboard: undefined });
     }
+  });
+
+  it("suggests up to four recovery words from two letters, in a listbox right under the box typed in, and a tap takes one and goes on to the next box", async () => {
+    const { getByLabelText, getByRole, queryByRole } = render(MnemonicInput);
+    const first = getByLabelText("Word 1");
+
+    await typeInto(first, "a");
+
+    expect(queryByRole("listbox")).toBeNull();
+    expect(first).toHaveAttribute("aria-expanded", "false");
+
+    await typeInto(first, "ab");
+
+    const list = getByRole("listbox", { name: "Suggestions" });
+    const [abandon] = within(list).getAllByRole("option");
+
+    expect(wordsIn(list)).toStrictEqual([
+      "abandon",
+      "ability",
+      "able",
+      "about",
+    ]);
+    expect(first).toHaveAttribute("aria-expanded", "true");
+    expect(first).toHaveAttribute("aria-controls", list.id);
+    // The first highlighted, which the screen reader hears as the box's.
+    expect(abandon).toHaveAttribute("aria-selected", "true");
+    expect(first).toHaveAttribute("aria-activedescendant", abandon.id);
+    // Right under its box, before the next.
+    expect(
+      first.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      list.compareDocumentPosition(getByLabelText("Word 2")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const able = getByRole("option", { name: "able" });
+
+    // A press keeps the focus, and a phone's keyboard, in the box.
+    expect(await fireEvent.mouseDown(able)).toBe(false);
+
+    await fireEvent.click(able);
+
+    expect(valueOf(first)).toBe("able");
+    expect(document.activeElement).toBe(getByLabelText("Word 2"));
+    expect(queryByRole("listbox")).toBeNull();
+  });
+
+  it("takes the highlighted word with Enter or Tab, moves the highlight with the arrow keys, and closes with Escape or as the box is left, a space still going on with the letters typed", async () => {
+    const changed = vi.fn();
+    const { getByLabelText, getByRole, queryByRole } = render(MnemonicInput, {
+      events: { change: changed },
+    });
+    const box = (/** @type {number} */ n) => getByLabelText(`Word ${n}`);
+
+    await typeInto(box(1), "zo");
+    await fireEvent.keyDown(box(1), { key: "ArrowDown" });
+
+    expect(getByRole("option", { name: "zoo" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(getByRole("option", { name: "zone" })).toHaveAttribute(
+      "aria-selected",
+      "false"
+    );
+    expect(box(1)).toHaveAttribute(
+      "aria-activedescendant",
+      getByRole("option", { name: "zoo" }).id
+    );
+
+    // Round from the last to the first, and back.
+    await fireEvent.keyDown(box(1), { key: "ArrowDown" });
+
+    expect(getByRole("option", { name: "zone" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    await fireEvent.keyDown(box(1), { key: "ArrowUp" });
+    changed.mockClear();
+    await fireEvent.keyDown(box(1), { key: "Enter" });
+
+    expect(valueOf(box(1))).toBe("zoo");
+    expect(changed).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(box(2));
+    expect(queryByRole("listbox")).toBeNull();
+
+    // Tab: the first, as none was moved to.
+    await typeInto(box(2), "wor");
+    await fireEvent.keyDown(box(2), { key: "Tab" });
+
+    expect(valueOf(box(2))).toBe("word");
+    expect(document.activeElement).toBe(box(3));
+
+    // Escape: no suggestions, the letters as they are.
+    await typeInto(box(3), "ab");
+    await fireEvent.keyDown(box(3), { key: "Escape" });
+
+    expect(queryByRole("listbox")).toBeNull();
+    expect(valueOf(box(3))).toBe("ab");
+
+    // Gone as the box is left, which marks what isn't a recovery word.
+    await typeInto(box(3), "abs");
+
+    expect(getByRole("listbox")).toBeInTheDocument();
+
+    await fireEvent.focusOut(box(3), { relatedTarget: box(5) });
+
+    expect(queryByRole("listbox")).toBeNull();
+    expect(box(3)).toHaveAttribute("aria-invalid", "true");
+    expect(box(3)).toHaveAccessibleDescription("Not a recovery word");
+
+    // A space goes on, the letters as typed, none taken: as a key, and as
+    // text, as a phone's keyboard sends it.
+    await typeInto(box(4), "act");
+    await fireEvent.keyDown(box(4), { key: " " });
+
+    expect(valueOf(box(4))).toBe("act");
+    expect(document.activeElement).toBe(box(5));
+    expect(queryByRole("listbox")).toBeNull();
+
+    await typeInto(box(5), "lib ");
+
+    expect(valueOf(box(5))).toBe("lib");
+    expect(document.activeElement).toBe(box(6));
+    expect(queryByRole("listbox")).toBeNull();
+    expect(box(5)).toHaveAccessibleDescription("Not a recovery word");
+
+    // Nothing suggested where a phrase was pasted: its last box holds "art".
+    await pasteInto(box(5), TWENTY_FOUR);
+
+    expect(valueOf(box(24))).toBe("art");
+    expect(queryByRole("listbox")).toBeNull();
+  });
+
+  it("needs no chip for the one word typed, and marks in its box at once what no recovery word starts with", async () => {
+    const { getByLabelText, getByRole, getByText, queryByRole } =
+      render(MnemonicInput);
+    const first = getByLabelText("Word 1");
+
+    await typeInto(first, "zoo");
+
+    expect(queryByRole("listbox")).toBeNull();
+    expect(first).not.toHaveAttribute("aria-invalid");
+
+    await typeInto(first, "zx");
+
+    expect(first).toHaveAttribute("aria-invalid", "true");
+    expect(first).toHaveAccessibleDescription("Not a recovery word");
+    expect(getByText("Not a recovery word")).toBeInTheDocument();
+    // In its box, while it's typed: the sentence waits for the words' end.
+    expect(queryByRole("alert")).toBeNull();
+    expect(document.activeElement).toBe(first);
+    // And said to screen readers as it comes.
+    await vi.waitFor(() =>
+      expect(document.querySelector("[aria-live='polite']")).toHaveTextContent(
+        "Not a recovery word"
+      )
+    );
+
+    // Letters a recovery word starts with: the mark goes as they're typed.
+    await typeInto(first, "ze");
+
+    expect(first).not.toHaveAttribute("aria-invalid");
+    expect(
+      within(getByRole("group", { name: "Recovery phrase" })).queryByText(
+        "Not a recovery word"
+      )
+    ).toBeNull();
   });
 
   it("tells of each change, and shows a refusal from outside where its own problems show", async () => {

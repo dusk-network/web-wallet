@@ -6,8 +6,18 @@
    * - A whole phrase (12 words or more) pasted or typed into any box fills
    *   the boxes from the first, in order, and sets 12 or 24 by its length;
    *   a few words go where they're put.
-   * - A word that isn't a recovery word is marked once a paste puts it in
-   *   or its box is left, never while it's typed; it clears once it's one.
+   * - Enter, or a space after a word, goes on to the next box: a space as a
+   *   key, or as text, as a phone's keyboard sends it.
+   * - As a word is typed, from two letters, the recovery words that start
+   *   with them, up to four, show as chips right under its box, from the
+   *   wallet's own list (WordSuggestions): a tap, Enter or Tab takes the
+   *   highlighted one, the first until the arrow keys move it, and goes on
+   *   to the next box; Escape closes them. A single word they spell needs
+   *   none. They show for the box typed in, and go as it's left.
+   * - A word that isn't a recovery word is marked in its box, "Not a
+   *   recovery word": as it's typed once no recovery word starts with it,
+   *   and once a paste puts it in or its box is left; it clears once it's
+   *   one, or as it's typed once one starts with it.
    * - What's wrong with the words is said in one plain sentence after a
    *   paste and when the focus leaves the boxes, and goes as soon as
    *   something's typed. `error`, from outside, shows there too.
@@ -24,7 +34,17 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { randomUUID } from "$lib/dusk/string";
 
-  import { RECOVERY_WORDS, phraseProblem, wordsOf } from "./phraseProblem";
+  import { phraseProblem, wordsOf } from "./phraseProblem";
+  import {
+    NOT_A_WORD,
+    isWord,
+    listWord,
+    markAsTyped,
+    optionId,
+    suggestionKey,
+    suggestionsFor,
+  } from "./suggestions";
+  import WordSuggestions from "./WordSuggestions.svelte";
 
   /** The words of the boxes shown, one space between: "" for none. */
   export let mnemonic = "";
@@ -63,6 +83,12 @@
 
   /** The boxes marked: their word isn't a recovery word. */
   let marked = Array.from({ length: MAX }, () => false);
+
+  /** The box typed in, whose suggestions show: -1 for none. */
+  let suggesting = -1;
+
+  /** The highlighted suggestion's place. */
+  let active = 0;
 
   /** A paste with more words than there are boxes: its count, until the next edit. */
   let overflow = 0;
@@ -111,11 +137,11 @@
 
   /** @param {number} i */
   function mark(i) {
-    marked[i] = Boolean(values[i]) && !RECOVERY_WORDS.has(values[i]);
+    marked[i] = Boolean(values[i]) && !isWord(values[i]);
   }
 
   function markAll() {
-    marked = values.map((word) => Boolean(word) && !RECOVERY_WORDS.has(word));
+    marked = values.map((word) => Boolean(word) && !isWord(word));
   }
 
   /** @param {number} i */
@@ -170,6 +196,8 @@
    * @param {string[]} words
    */
   function takeWords(i, words) {
+    suggesting = -1;
+
     if (words.length >= 12) {
       placePhrase(words);
       problem = problemNow();
@@ -178,11 +206,31 @@
       placeWords(i, words);
 
       // A few words: only those that aren't recovery words, said now.
-      problem = shownWords().some((w) => w && !RECOVERY_WORDS.has(w))
-        ? problemNow()
-        : "";
+      problem = shownWords().some((w) => w && !isWord(w)) ? problemNow() : "";
     }
 
+    dispatch("change");
+  }
+
+  /**
+   * A suggested word taken into box `i`, which goes on to the next box: the
+   * focus first, so a phone's keyboard is done with the letters it had.
+   *
+   * @param {number} i
+   * @param {string} word
+   */
+  function takeSuggestion(i, word) {
+    suggesting = -1;
+
+    if (i < count - 1) {
+      inputs[i + 1]?.focus();
+    }
+
+    values[i] = word;
+    inputs[i].value = word;
+    marked[i] = false;
+    overflow = 0;
+    problem = "";
     dispatch("change");
   }
 
@@ -201,9 +249,24 @@
     }
   }
 
+  /**
+   * On from box `i`, as Enter and a space go: to the next box, or from the
+   * last one to what comes after the words.
+   *
+   * @param {number} i
+   */
+  function moveOn(i) {
+    if (i >= count - 1) {
+      dispatch("complete");
+    } else {
+      focusBox(i + 1);
+    }
+  }
+
   /** @param {number} i */
   function handleInput(i) {
     const raw = inputs[i].value;
+    let isSpaced = false;
 
     if (/\s/.test(raw)) {
       const words = wordsOf(raw);
@@ -217,19 +280,30 @@
 
       values[i] = words[0] ?? "";
       inputs[i].value = values[i];
+      // A space after the word, as a phone's keyboard sends it, as text.
+      isSpaced = Boolean(values[i]) && /\s$/.test(raw);
     } else {
       values[i] = raw.toLowerCase();
     }
 
     overflow = 0;
+    problem = "";
 
-    // A word typed: its mark goes once it's a word; a new one waits for the
-    // box to be left.
-    if (marked[i]) {
+    if (isSpaced) {
+      // On, as the space key goes: the word as typed, marked as it's left.
       mark(i);
+      suggesting = -1;
+      dispatch("change");
+      moveOn(i);
+
+      return;
     }
 
-    problem = "";
+    // A word typed: marked at once if no recovery word starts with it, and
+    // its mark gone once one does; whether it's one is for when it's left.
+    marked[i] = markAsTyped(values[i], marked[i]);
+    suggesting = document.activeElement === inputs[i] ? i : -1;
+    active = 0;
     dispatch("change");
   }
 
@@ -238,14 +312,27 @@
    * @param {KeyboardEvent} event
    */
   function handleKeyDown(i, event) {
-    if ((event.key === "Enter" || event.key === " ") && values[i]) {
-      event.preventDefault();
+    const key =
+      suggesting === i && suggestions.length ? suggestionKey(event) : "";
 
-      if (i >= count - 1) {
-        dispatch("complete");
-      } else {
-        focusBox(i + 1);
+    if (key === "next" || key === "previous") {
+      event.preventDefault();
+      active =
+        (active + (key === "next" ? 1 : suggestions.length - 1)) %
+        suggestions.length;
+    } else if (key === "take") {
+      // Tab from the last box goes on out of the words, as it would.
+      if (event.key === "Enter" || i < count - 1) {
+        event.preventDefault();
       }
+
+      takeSuggestion(i, suggestions[active]);
+    } else if (key === "close") {
+      event.preventDefault();
+      suggesting = -1;
+    } else if ((event.key === "Enter" || event.key === " ") && values[i]) {
+      event.preventDefault();
+      moveOn(i);
     } else if (event.key === "Backspace" && !values[i] && i > 0) {
       event.preventDefault();
       focusBox(i - 1);
@@ -263,6 +350,10 @@
 
     if (i >= 0) {
       mark(i);
+    }
+
+    if (i === suggesting) {
+      suggesting = -1;
     }
 
     if (!grid.contains(/** @type {Node | null} */ (event.relatedTarget))) {
@@ -298,6 +389,7 @@
   /** @param {number} next 12 or 24 */
   function setCount(next) {
     count = next;
+    suggesting = -1;
 
     for (let i = count; i < MAX; i++) {
       values[i] = "";
@@ -309,7 +401,9 @@
   }
 
   $: shown = values.slice(0, count);
-  $: mnemonic = shown.filter(Boolean).join(" ");
+  $: suggestions = suggesting >= 0 ? suggestionsFor(values[suggesting]) : [];
+  // The phrase as the list spells it: a word typed with an accent too.
+  $: mnemonic = shown.filter(Boolean).map(listWord).join(" ");
   $: isValid =
     shown.every(Boolean) && !phraseProblem(shown, { pasted: overflow });
   $: said = problem || error;
@@ -352,29 +446,52 @@
     role="group"
   >
     {#each shown as word, i (i)}
-      <label
-        class="mnemonic-input__word"
-        class:mnemonic-input__word--marked={marked[i]}
-      >
-        <span aria-hidden="true" class="mnemonic-input__index">{i + 1}</span>
-        <input
-          aria-invalid={marked[i] ? "true" : undefined}
-          aria-label="Word {i + 1}"
-          autocapitalize="none"
-          autocomplete="off"
-          autocorrect="off"
-          bind:this={inputs[i]}
-          {disabled}
-          enterkeyhint={i === count - 1 ? "done" : "next"}
-          inputmode="text"
-          on:input={() => handleInput(i)}
-          on:keydown={(event) => handleKeyDown(i, event)}
-          on:paste={(event) => handlePaste(i, event)}
-          spellcheck="false"
-          type="text"
-          value={word}
-        />
-      </label>
+      {@const isSuggesting = suggesting === i && suggestions.length > 0}
+      <div class="mnemonic-input__cell">
+        <label
+          class="mnemonic-input__word"
+          class:mnemonic-input__word--marked={marked[i]}
+        >
+          <span aria-hidden="true" class="mnemonic-input__index">{i + 1}</span>
+          <input
+            aria-activedescendant={isSuggesting
+              ? optionId(`${id}-suggestions`, suggestions[active])
+              : undefined}
+            aria-autocomplete="list"
+            aria-controls={isSuggesting ? `${id}-suggestions` : undefined}
+            aria-describedby={marked[i] ? `${id}-not-${i}` : undefined}
+            aria-expanded={isSuggesting}
+            aria-invalid={marked[i] ? "true" : undefined}
+            aria-label="Word {i + 1}"
+            autocapitalize="none"
+            autocomplete="off"
+            autocorrect="off"
+            bind:this={inputs[i]}
+            {disabled}
+            enterkeyhint={i === count - 1 ? "done" : "next"}
+            inputmode="text"
+            on:input={() => handleInput(i)}
+            on:keydown={(event) => handleKeyDown(i, event)}
+            on:paste={(event) => handlePaste(i, event)}
+            role="combobox"
+            spellcheck="false"
+            type="text"
+            value={word}
+          />
+        </label>
+        {#if marked[i]}
+          <span class="mnemonic-input__not" id="{id}-not-{i}">{NOT_A_WORD}</span
+          >
+        {/if}
+        {#if isSuggesting}
+          <WordSuggestions
+            {active}
+            id="{id}-suggestions"
+            on:take={(event) => takeSuggestion(i, event.detail)}
+            words={suggestions}
+          />
+        {/if}
+      </div>
     {/each}
   </div>
   {#if said}
@@ -454,6 +571,14 @@
     }
   }
 
+  /* A box, what's said of its word under it, and its suggestions over what follows. */
+  .mnemonic-input__cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
   /*
    * Each box has an edge that reads as one, 3:1 or more on its surface; the
    * box typed in takes the focus ring.
@@ -503,5 +628,12 @@
     color: var(--calm-danger);
     font-size: 0.875rem;
     line-height: 1.4;
+  }
+
+  .mnemonic-input__not {
+    padding: 0 0.75rem;
+    color: var(--calm-danger);
+    font-size: 0.75rem;
+    line-height: 1.3;
   }
 </style>

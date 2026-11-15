@@ -395,7 +395,7 @@ describe("Unlock Wallet", async () => {
   describe("Mnemonic phrase workflow", () => {
     it("should take the recovery phrase in Restore's word boxes, which browsers keep no record of, not in a password field they offer to save", () => {
       const { container, getAllByRole, getByRole } = render(UnlockWallet, {});
-      const boxes = getAllByRole("textbox");
+      const boxes = getAllByRole("combobox");
 
       expect(getByRole("group", { name: "Recovery phrase" })).toContainElement(
         boxes[0]
