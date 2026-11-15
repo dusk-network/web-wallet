@@ -1,44 +1,10 @@
+import {
+  isRecoveryWord,
+  wordSuggestions,
+} from "@dusk-network/app-core/recovery-words";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 
 import { announce } from "$lib/dusk/announce";
-
-/*
- * Until app-core 0.17.0: its `wordSuggestions` and `isRecoveryWord`
- * (`@dusk-network/app-core/recovery-words`), as both wallets take them, and
- * as they read what's typed: as BIP-39 reads a phrase (NFKD), accents aside,
- * in any case, without the spaces around it; suggestions from two letters.
- */
-
-/** @param {unknown} text */
-const plain = (text) =>
-  typeof text === "string"
-    ? text
-        .normalize("NFKD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase()
-    : "";
-
-/**
- * @param {string} prefix
- * @param {readonly string[]} words
- * @param {number} [limit]
- * @returns {string[]}
- */
-function wordSuggestions(prefix, words, limit = 4) {
-  const start = plain(prefix);
-
-  return [...start].length < 2
-    ? []
-    : words.filter((word) => plain(word).startsWith(start)).slice(0, limit);
-}
-
-/**
- * @param {string} word
- * @param {readonly string[]} words
- */
-const isRecoveryWord = (word, words) =>
-  Boolean(plain(word)) && words.some((each) => plain(each) === plain(word));
 
 /** The most words a box suggests. */
 const MOST = 4;
