@@ -53,7 +53,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
 - Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it
 - Say Sending of a waiting send on Home from the moment the node is asked to check it, with no Cancel, whatever the network's pill finds
-- Go on to the next box with Enter, or a phone keyboard's Next, in Check your recovery words, suggestions or not, and check only once every box holds a word, never saying a check half filled in doesn't match
+- Refuse a pasted request whose line says another amount, memo or name than its link, its .dusk name looked up first, Amount and Memo shown as being filled in meanwhile: "The message and its link don't agree."
+- Refuse a pasted link with words after it, whatever part of it comes last, as words after the link, and never take them into its memo, reading what was pasted line breaks and all
+- Take a profile's or a contact's name with a middle dot, an ideographic full stop or another point for the .dusk name it reads as
+- Count for a request no payment made before it was asked, nor one whose memo is another of the requests'
+- Go on to the next box with Enter, or a phone keyboard's Next, in Check your recovery words, suggestions or not, and check only once every box holds a recovery word, never saying a check half filled in doesn't match
 - Go on to the next word box with a space typed on a phone's keyboard, as with the space key
 - Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
 - Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name

@@ -897,7 +897,9 @@ describe("ContactsView", () => {
       { target: { value: OTHER } }
     );
 
-    // In small capitals and after a fullwidth point too: Marek's.
+    // In small capitals and after a fullwidth point too: Marek's. And after
+    // any point that reads as one: a middle dot, an ideographic full stop,
+    // a bullet (Q14).
     for (const value of [
       "alice.dusk",
       "ALICE.Dusk",
@@ -905,6 +907,9 @@ describe("ContactsView", () => {
       "alice.dusk.",
       "alice.ᴅᴜꜱᴋ",
       "alice\uff0edusk",
+      "alice·dusk",
+      "alice。dusk",
+      "alice•dusk",
     ]) {
       await name(value);
       expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();

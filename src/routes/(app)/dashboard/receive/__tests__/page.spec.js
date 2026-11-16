@@ -1942,6 +1942,93 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
+    // Q06, Amélie's: Lucas's new request said "Check it's this one" of a
+    // payment she'd made two minutes before he asked. Sofía's: her unpaid
+    // invoice 101 said "Check" for an hour, of invoice 102's payment.
+    it("should count for a request no payment made before it was asked, nor one whose memo names another of the requests", async () => {
+      const at = Date.now() - 60_000;
+      /** @param {Record<string, unknown>} fields */
+      const payment = (fields) => ({
+        category: "received",
+        privacy: "public",
+        status: "executed",
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "tulips",
+            lux: "10000000",
+            memo: "Les tulipes de dimanche",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at: at - 3_600_000,
+            id: "101",
+            lux: "30000000",
+            memo: "Factura F-2026-101",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at: at - 3_600_000,
+            id: "102",
+            lux: "30000000",
+            memo: "Factura F-2026-102",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          // The same amount, two minutes before the request: not its.
+          payment({
+            hash: "a1".repeat(32),
+            memo: "Wi-Fi coupé r35",
+            time: at - 120_000,
+          }),
+          // Invoice 102's: never 101's.
+          payment({
+            hash: "b2".repeat(32),
+            memo: "Factura F-2026-102",
+            time: at - 1_800_000,
+            value: 30_000_000n,
+          }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      /** @param {string} memo */
+      const card = (memo) =>
+        /** @type {HTMLElement} */ (
+          screen
+            .getAllByRole("listitem")
+            .find((item) => item.textContent?.includes(memo))
+        );
+
+      for (const memo of ["Les tulipes de dimanche", "Factura F-2026-101"]) {
+        expect(card(memo).querySelector(".requests__state")).toHaveTextContent(
+          /^Waiting$/
+        );
+        expect(card(memo)).toHaveTextContent("Nothing matching has come in.");
+        expect(card(memo)).not.toHaveTextContent(/Check|Wi-Fi|F-2026-102/);
+      }
+
+      expect(
+        card("Factura F-2026-102").querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid$/);
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
     it("should hide what came in and what was asked with the balances, as History does", async () => {
       const at = Date.now() - 1000;
 
