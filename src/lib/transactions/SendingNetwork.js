@@ -43,6 +43,14 @@ export default class SendingNetwork extends Network {
   #handOvers = new WeakMap();
 
   /**
+   * What each transaction does as the node is asked to check it, by its
+   * bytes: its gate says it goes out.
+   *
+   * @type {WeakMap<object, () => void>}
+   */
+  #checks = new WeakMap();
+
+  /**
    * The socket of the last attempt to connect: w3sper keeps its own to itself.
    *
    * @type {WebSocket | null}
@@ -58,8 +66,17 @@ export default class SendingNetwork extends Network {
 
     const broadcasts = this.#broadcasts;
     const handOvers = this.#handOvers;
+    const checks = this.#checks;
     const { transactions } = this;
+    const preverify = transactions.preverify.bind(transactions);
     const propagate = transactions.propagate.bind(transactions);
+
+    // As the node is asked to check it, it goes out: its gate says so.
+    transactions.preverify = (/** @type {any} */ tx) => {
+      checks.get(tx)?.();
+
+      return preverify(tx);
+    };
 
     transactions.propagate = async (/** @type {any} */ tx) => {
       // Called off before this, it never reaches the node; kept, it's kept
@@ -119,17 +136,19 @@ export default class SendingNetwork extends Network {
    * Builds, checks and broadcasts a transaction, as w3sper does: with a
    * `gate`, only while it isn't called off, which it checks once it's built,
    * and as it's handed over, with its hash and nonce, before the node is
-   * asked to broadcast it. As it is, `onHandOver` is told its hash, whatever
-   * the node answers, or if no answer comes.
+   * asked to broadcast it. As it is, `onHandOver` is told its hash, and its
+   * nonce where it has one, whatever the node answers, or if no answer
+   * comes.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
-   * @param {{ gate?: import("./sendGate").SendGate, onHandOver?: (hash: string) => void }} [options]
+   * @param {{ gate?: import("./sendGate").SendGate, onHandOver?: (hash: string, nonce?: bigint) => void }} [options]
    * @returns {ReturnType<T["build"]>}
    */
   execute(tx, { gate, onHandOver } = {}) {
     /** @type {any} */
     let built = tx;
+    const checks = this.#checks;
     const handOvers = this.#handOvers;
 
     // The transaction its builder makes, to know it by its bytes.
@@ -144,6 +163,7 @@ export default class SendingNetwork extends Network {
 
             built = made;
             gate?.check();
+            checks.set(made.buffer, () => gate?.checking());
             handOvers.set(made.buffer, async () => {
               await gate?.handOver({
                 hash,
@@ -152,7 +172,10 @@ export default class SendingNetwork extends Network {
 
               // Whoever's told can't stop it going out.
               try {
-                onHandOver?.(hash);
+                onHandOver?.(
+                  hash,
+                  typeof made.nonce === "bigint" ? made.nonce : undefined
+                );
               } catch {
                 // Nothing to do: it goes out all the same.
               }

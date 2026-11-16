@@ -133,6 +133,12 @@
   $: gateState = gate ?? readable("open");
   // Whether it waits for the network, which it couldn't reach, to go out.
   $: gateWaits = gate?.waitsForNetwork ?? readable(false);
+  // Whether it's held, as its account sent something else while it waited,
+  // for the person to say whether to send it too.
+  $: gateAsks = gate?.asking ?? readable(false);
+  // Whether it goes out, as the node was asked to check it: nothing to call
+  // off from then on.
+  $: gateGoesOut = gate?.goingOut ?? readable(false);
   $: isHandedOver = gate
     ? $gateState !== "open"
     : $broadcastsAsked > askedBefore;
@@ -150,16 +156,38 @@
   waitFor={shown}
 >
   <svelte:fragment slot="pending-content">
-    <Throbber className="dusk-suspense__throbber" />
-    <span class="dusk-suspense__pending-message">Processing transaction</span>
+    {#if !$gateAsks}
+      <Throbber className="dusk-suspense__throbber" />
+    {/if}
+    <span class="dusk-suspense__pending-message"
+      >{$gateAsks ? "Not sent yet" : "Processing transaction"}</span
+    >
     <!-- Which send it is, however long its answer takes. -->
     {#if what}
       <p class="transaction-result__what">
         {what}{memo ? " · " : ""}{#if memo}<MemoText inline text={memo} />{/if}
       </p>
     {/if}
-    <!-- Said where it waits, not only on the pill: what it means for it. -->
-    {#if isWaiting}
+    <!-- Held until the person says, as its account sent something else
+      while it waited; else said where it waits, not only on the pill: what
+      it means for it. -->
+    {#if $gateAsks}
+      <p class="transaction-result__waiting" role="status">
+        Your account sent something else while this waited.
+      </p>
+      <Button
+        className="transaction-result__button"
+        on:click={() => gate?.sendToo()}
+        text="Send it too"
+        variant="secondary"
+      />
+      <Button
+        className="transaction-result__button"
+        on:click={() => gate?.cancel()}
+        text="Don't send"
+        variant="tertiary"
+      />
+    {:else if isWaiting}
       <p class="transaction-result__waiting" role="status">
         {$networkReach === "offline"
           ? "You're offline."
@@ -174,7 +202,7 @@
       </p>
       <!-- A way back while it waits: called off, or left waiting, as Home
         shows it. -->
-      {#if gate && $gateState === "open"}
+      {#if gate && $gateState === "open" && !$gateGoesOut}
         <Button
           className="transaction-result__button"
           on:click={() => gate?.cancel()}
@@ -185,7 +213,7 @@
     {/if}
     <!-- And once it may have gone out, as Home shows it on its way, whether
       or not its answer comes. -->
-    {#if (isWaiting && gate) || isHandedOver}
+    {#if (isWaiting && gate) || isHandedOver || $gateAsks}
       <AppAnchorButton
         className="transaction-result__button"
         href={leaveHref}

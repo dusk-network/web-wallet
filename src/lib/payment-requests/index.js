@@ -7,12 +7,14 @@
 
 import { base } from "$app/paths";
 import {
+  LINK_DISAGREES,
   LINK_SEVERAL,
   LINK_UNCLEAR,
   chainLabel,
   linkAmount,
   makePaymentLink,
   parsePaymentLink,
+  pastedDuskNames,
   readPastedLink as readPasted,
   readPaymentLink as readLink,
   requestMessage,
@@ -28,8 +30,8 @@ export {
   forgetRequest,
   forgetWalletRequests,
   hydrateRequests,
-  isPaidAlready,
   keepRequestMatches,
+  paidAtOf,
   rememberRequest,
   requestsStore,
 } from "./requests";
@@ -174,30 +176,56 @@ export function readPaymentLink(text, net, language) {
   return read ? askedOf(read, text, language) : null;
 }
 
-export { LINK_SEVERAL, LINK_UNCLEAR };
+export { LINK_DISAGREES, LINK_SEVERAL, LINK_UNCLEAR };
 
 /**
  * What pasted text asks of Send, as app-core reads it for every wallet
- * (`readPastedLink`): a link, as the text starts with one, read whole,
- * spaces and all; else, where it's what Share and Copy give of a request, a
- * line saying what it asks, then "Pay here:" and the link (`requestText`),
- * its one payment link, its last words, read alone. Text with more than one
- * link, or with words after it, which may be part of it, fills in nothing,
- * and says so. Null for text with none, as an address or a name.
+ * (`readPastedLink`): a link, which ends at its first space or line break;
+ * else, where it's what Share and Copy give of a request, a line saying what
+ * it asks, then "Pay here:" and the link (`requestText`), its one payment
+ * link, its last words, read alone. Text with more than one link, or with
+ * words after it, fills in nothing, and says so, as does a message whose
+ * line says another amount, memo, network or name than its link
+ * (`LINK_DISAGREES`): its .dusk names, looked up (`pastedNames`), are
+ * `owners`. Null for text with none, as an address or a name.
  *
- * @param {string} text As it was pasted, its spaces as they were
+ * @param {string} text As it was pasted, its spaces and line breaks as they were
  * @param {import("@dusk-network/networks").Network | null} net The wallet's network
  * @param {string} [language] The language the amount field reads
+ * @param {Map<string, { account?: string, address?: string } | null>} [owners]
  * @returns {LinkAsked | null}
  */
-export function readPastedLink(text, net, language) {
+export function readPastedLink(text, net, language, owners) {
   const read = readPasted(text, {
     network: net ?? undefined,
+    owners,
     walletUrl: ownWalletUrl(),
   });
 
   return read ? askedOf(read, read.text, language) : null;
 }
+
+/**
+ * The .dusk names pasted text says a request is from, where it's what Share
+ * and Copy give of one: to look up on the wallet's network before it's read
+ * (`readPastedLink`'s `owners`). None for any other text, nor for a request
+ * paid on another network, whose names are that network's: this wallet's
+ * name service can't say whose they are, and the wallet reads nothing of
+ * another network. It's said to be for that network, as its link alone is,
+ * with the same request on that network's wallet (`elsewhere`), which takes
+ * its link, naming no one.
+ *
+ * @param {string} text
+ * @param {import("@dusk-network/networks").Network | null} net The wallet's network
+ * @returns {string[]}
+ */
+export const pastedNames = (text, net) => {
+  const options = { network: net ?? undefined, walletUrl: ownWalletUrl() };
+
+  return readPasted(text, options)?.reason === "other-network"
+    ? []
+    : pastedDuskNames(text, options);
+};
 
 /**
  * The links asking for a payment, as `makePaymentLink` makes them: the https

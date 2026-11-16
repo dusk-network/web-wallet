@@ -178,31 +178,68 @@
       couldn't be reached: called off from here, or they go out once it
       answers. Each with its memo and when it was sent, to tell them apart,
       and one state at a time: not sent yet while it waits for the network,
-      sending as it goes out. Once handed over, Activity lists it. -->
+      sending as it goes out, and from when the node is asked to check it,
+      with nothing to call off. One whose account sent something else while
+      it waited goes out only as the person says so here. Once handed over,
+      Activity lists it. -->
     {#each $waitingSends as send (send.id)}
       {@const isSending =
-        $networkReach === "answering" && !send.waitsForNetwork}
-      <Banner
-        className="home__waiting"
-        role="status"
-        title={`${isSending ? "Sending" : "Not sent yet"}: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
-        variant="info"
-      >
-        <p class="home__waiting-when">
-          {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
-          {timeLabel(send.at, language)}
-        </p>
-        {#if !isSending}
-          <p>It goes out once the network answers.</p>
-        {/if}
-        <Button
-          className="home__waiting-cancel"
-          on:click={() => cancelSend(send)}
-          size="small"
-          text="Cancel"
-          variant="secondary"
-        />
-      </Banner>
+        send.goesOut ||
+        ($networkReach === "answering" && !send.waitsForNetwork)}
+      {#if send.asks}
+        <Banner
+          className="home__waiting"
+          role="status"
+          title="Your account sent something else while this waited."
+          variant="warning"
+        >
+          <p>
+            Not sent yet: {waitingWhat(send, $settingsStore.hideBalances)}.
+          </p>
+          <p class="home__waiting-when">
+            {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
+            {timeLabel(send.at, language)}
+          </p>
+          <div class="home__waiting-actions">
+            <Button
+              on:click={() => send.sendToo()}
+              size="small"
+              text="Send it too"
+              variant="secondary"
+            />
+            <Button
+              on:click={() => cancelSend(send)}
+              size="small"
+              text="Don't send"
+              variant="tertiary"
+            />
+          </div>
+        </Banner>
+      {:else}
+        <Banner
+          className="home__waiting"
+          role="status"
+          title={`${isSending ? "Sending" : "Not sent yet"}: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
+          variant="info"
+        >
+          <p class="home__waiting-when">
+            {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
+            {timeLabel(send.at, language)}
+          </p>
+          {#if !isSending}
+            <p>It goes out once the network answers.</p>
+          {/if}
+          {#if !send.goesOut}
+            <Button
+              className="home__waiting-cancel"
+              on:click={() => cancelSend(send)}
+              size="small"
+              text="Cancel"
+              variant="secondary"
+            />
+          {/if}
+        </Banner>
+      {/if}
     {/each}
 
     <!-- And those that never went out, as their page closed, reloaded or
@@ -307,6 +344,13 @@
   }
 
   .home__main :global(.home__waiting-cancel) {
+    margin-top: 0.5rem;
+  }
+
+  .home__waiting-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     margin-top: 0.5rem;
   }
 

@@ -117,13 +117,16 @@ const asks =
     kept.network === network;
 
 /**
- * Whether the request that asks what `asked` does was paid already: its link
- * would ask a second payment.
+ * When the request of `list` that asks what `asked` does was paid, where it
+ * was paid already: its link would ask a second payment. Null where it
+ * wasn't, or none asks it.
  *
+ * @param {PaymentRequest[]} list
  * @param {{ lux: bigint | null, memo: string, network: string, to: string }} asked
+ * @returns {number | null}
  */
-export const isPaidAlready = (asked) =>
-  get(requests).some((kept) => asks(asked)(kept) && Boolean(kept.paid));
+export const paidAtOf = (list, asked) =>
+  list.find((kept) => asks(asked)(kept) && kept.paid)?.paid?.at ?? null;
 
 /**
  * Keeps a request as it leaves the wallet: the same one asked before stays as

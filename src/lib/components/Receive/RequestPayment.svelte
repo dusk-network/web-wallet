@@ -4,9 +4,11 @@
   /**
    * Request payment, folded under Receive: an amount and a memo, checked as
    * they're typed, as Send will check them. Once there's either, the QR holds
-   * the request, and its link can be copied or shared, beside each other: a
-   * link for a payer on any wallet, which opens the web wallet's Send, filled
-   * in. Opened with a tap, it comes into view at its Amount.
+   * the request, and it can be copied or shared, beside each other, as Copy
+   * request and Share request, which lead while it's made: a line saying what
+   * it asks and a link for a payer on any wallet, which opens the web
+   * wallet's Send, filled in. Opened with a tap, it comes into view at its
+   * Amount. Whether it's open is bound (`isOpen`).
    */
   import { mdiChevronDown, mdiShareVariantOutline } from "@mdi/js";
   import { tick } from "svelte";
@@ -25,6 +27,7 @@
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
+  import PaidAlready from "./PaidAlready.svelte";
   import { canShare, shareText } from "./share";
 
   /** The account or shielded address that's paid. */
@@ -49,6 +52,14 @@
    */
   export let requestName = "";
 
+  /**
+   * When the request it holds was paid, where it's one paid already: Copy
+   * request and Share request ask first, under them. Null for none.
+   *
+   * @type {number | null}
+   */
+  export let paidAt = null;
+
   const id = randomUUID();
   const draft = formDraft("request");
 
@@ -58,7 +69,9 @@
 
   let amount = typedBefore?.amount ?? "";
   let memo = typedBefore?.memo ?? "";
-  let isOpen = Boolean(amount || memo);
+
+  /** Whether it's open, as it is where something was typed before. */
+  export let isOpen = Boolean(amount || memo);
 
   // Where a browser has a share sheet: most phones, some computers.
   const hasShare = canShare();
@@ -115,6 +128,41 @@
     }
   }
 
+  /**
+   * What's asked of a request paid already before it's given out again:
+   * "Copy" or "Share", null for nothing.
+   *
+   * @type {"Copy" | "Share" | null}
+   */
+  let asking = null;
+
+  /** @type {CopyButton} */
+  let copyButton;
+
+  /**
+   * Whether a press is held to ask first, as the request was paid already.
+   *
+   * @param {"Copy" | "Share"} verb
+   */
+  function asksFirst(verb) {
+    asking = paidAt === null ? null : verb;
+
+    return asking !== null;
+  }
+
+  /** Gives it out all the same, as asked: copied, or shared. */
+  function giveAnyway() {
+    const verb = asking;
+
+    asking = null;
+
+    if (verb === "Copy") {
+      void copyButton?.copyNow();
+    } else if (verb === "Share") {
+      void share();
+    }
+  }
+
   /** What's asked, through the phone's share sheet: kept once it went. */
   async function share() {
     if (
@@ -148,6 +196,10 @@
         }
       : null;
   $: draft.save({ amount, memo });
+  // Another request asks nothing of the one asked about.
+  $: if (request !== undefined) {
+    asking = null;
+  }
   // What the field may not show as it is, as a payer's wallet shows it: a
   // hidden character, as one that turns the text around, or a number that
   // can read as another.
@@ -244,27 +296,44 @@
         each other. -->
       <div class="request__actions">
         <CopyButton
+          bind:this={copyButton}
           className="request__copy"
-          name="request link"
+          hold={() => asksFirst("Copy")}
+          name="request"
           onCopied={onUse}
-          text="Copy request link"
+          text="Copy request"
           value={requestText(request, {
             language,
             name: requestName,
             net: $nodeNetwork,
           })}
-          variant="secondary"
+          variant="primary"
         />
         {#if hasShare}
           <Button
             className="request__share"
             icon={{ path: mdiShareVariantOutline }}
-            on:click={share}
-            text="Share"
-            variant="secondary"
+            on:click={() => {
+              if (!asksFirst("Share")) {
+                void share();
+              }
+            }}
+            text="Share request"
+            variant="primary"
           />
         {/if}
       </div>
+      <!-- Paid already: asked under them first, never only said after. -->
+      {#if asking && paidAt !== null}
+        <PaidAlready
+          at={paidAt}
+          onAnyway={giveAnyway}
+          onCancel={() => {
+            asking = null;
+          }}
+          verb={asking}
+        />
+      {/if}
     {/if}
   </div>
 </details>

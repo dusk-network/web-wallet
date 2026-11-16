@@ -45,11 +45,12 @@ import {
 } from "$lib/contacts";
 import { networkStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
-import { LINK_SEVERAL, requestText } from "$lib/payment-requests";
 import {
-  LINK_BAD_AMOUNT,
-  LINK_UNCLEAR,
-} from "@dusk-network/app-core/payment-links";
+  LINK_DISAGREES,
+  LINK_SEVERAL,
+  requestText,
+} from "$lib/payment-requests";
+import { LINK_UNCLEAR } from "@dusk-network/app-core/payment-links";
 import { openTestContacts, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
@@ -269,6 +270,8 @@ describe("Send", () => {
      */
     const paste = async ({ to }, value) => {
       await fireEvent.input(to(), { target: { value } });
+      // A request's .dusk names are looked up before it fills anything in.
+      await new Promise((resolve) => setTimeout(resolve, 0));
       await tick();
       await tick();
     };
@@ -350,36 +353,300 @@ describe("Send", () => {
       }
     );
 
-    it("should read a link pasted alone whole, refusing one with a space in its amount, as it always did, not filling in what comes before the space", async () => {
+    /**
+     * Pasted as a browser pastes it: the clipboard's text, line breaks and
+     * all, which a one-line field then holds without its line breaks.
+     *
+     * @param {ReturnType<typeof fieldsOf>} fields
+     * @param {string} text
+     */
+    const pasteAsBrowser = async (fields, text) => {
+      await fireEvent.paste(fields.to(), {
+        clipboardData: { getData: () => text },
+      });
+      await paste(fields, text.replace(/[\r\n]/g, ""));
+    };
+
+    // Lena's, in both wallets: her own link with " danke!" after it said
+    // "This link's network can't be read", and her link whose memo came
+    // last filled the memo "Lena r35 odd danke!", the word on the next line
+    // glued on as "odddanke!" where the field dropped the line break.
+    it("should refuse a pasted link with words after it, whatever field it ends with, saying so, and never take them into its memo", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const memoLast = `https://apps.testnet.dusk.network/wallet/dashboard/send?to=${otherAccount}&amount=0.01&network=testnet&memo=Lena+r35+odd`;
+
+      for (const link of [httpsLink, memoLast]) {
+        for (const after of [" danke!", "\ndanke!", "\r\ndanke!"]) {
+          await pasteAsBrowser(fields, `${link}${after}`);
+
+          expect(filled(fields)).toStrictEqual(["", "", ""]);
+          expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
+          expect(fields.review()).toBeDisabled();
+        }
+      }
+
+      // Alone, it fills in what it asks, as ever.
+      await pasteAsBrowser(fields, memoLast);
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.01",
+        "Lena r35 odd",
+      ]);
+    });
+
+    // Marek's: the wallet's own message with only its link's amount changed
+    // filled the link's 0.15 under a line saying 0.002, "Filled in from the
+    // link".
+    it("should refuse what Copy gives of a request whose line says another amount or memo than its link, filling in nothing", async () => {
+      const { getByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const copied = requestText(
+        { link: httpsLink, lux: 2_000_000n, memo: "Factura 33" },
+        { language: "en", name: "", net: networks.testnet }
+      ).replace("amount=0.15", "amount=0.002");
+
+      // As Copy gave it: it agrees with its link.
+      await pasteAsBrowser(fields, copied);
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.002",
+        "Factura 33",
+      ]);
+
+      for (const forged of [
+        copied.replace("amount=0.002", "amount=0.15"),
+        copied.replace("0.002 DUSK", "0.001 DUSK"),
+        copied.replace("· Factura 33", "· coffee"),
+      ]) {
+        await pasteAsBrowser(fields, forged);
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+        expect(fields.review()).toBeDisabled();
+      }
+    });
+
+    // Then a line naming a .dusk name over someone else's link: its names
+    // are looked up first, nothing filled in, nor said wrong, meanwhile.
+    it("should look a request's .dusk name up before it fills anything in, and refuse it where the name pays another account than its link", async () => {
+      const { getByRole, queryByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const copied = requestText(
+        { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+      );
+      const lookup = Promise.withResolvers();
+
+      baseProps.resolveName.mockImplementationOnce(() => lookup.promise);
+      await fireEvent.paste(fields.to(), {
+        clipboardData: { getData: () => copied },
+      });
+      await fireEvent.input(fields.to(), {
+        target: { value: copied.replace("\n", "") },
+      });
+      await tick();
+
+      expect(baseProps.resolveName).toHaveBeenLastCalledWith(
+        "sofiadesign.dusk"
+      );
+      expect(filled(fields).slice(1)).toStrictEqual(["", ""]);
+      expect(queryByRole("alert")).toBeNull();
+      expect(fields.review()).toBeDisabled();
+
+      // Another account's: refused.
+      lookup.resolve({
+        account: bep20BridgeAddress,
+        address: "",
+        name: "sofiadesign.dusk",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await tick();
+      await tick();
+
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+
+      // The link's own: filled in.
+      baseProps.resolveName.mockResolvedValueOnce({
+        account: otherAccount,
+        address: "",
+        name: "sofiadesign.dusk",
+      });
+      await pasteAsBrowser(fields, copied);
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+    });
+
+    // Anything put in To while a request's names are looked up comes first:
+    // a contact picked, a recipient typed, To cleared. The lookup's answer,
+    // when it comes, fills in nothing.
+    it("should fill in nothing of a pasted request whose names are still looked up once another recipient is put in To", async () => {
+      const contact = saveContact({ address: publicAddress, name: "Rent" });
+      const { getByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const copied = requestText(
+        { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+      );
+      /** @type {Array<PromiseWithResolvers<any>>} */
+      const lookups = [];
+
+      baseProps.resolveName.mockImplementation(() => {
+        const lookup = Promise.withResolvers();
+
+        lookups.push(lookup);
+
+        return lookup.promise;
+      });
+
+      /** The request's name answers as the link's own account's. */
+      const answer = async () => {
+        lookups.forEach(({ resolve }) =>
+          resolve({ account: otherAccount, address: "", name: "x" })
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await tick();
+        await tick();
+      };
+
+      try {
+        // A contact picked meanwhile.
+        await fireEvent.input(fields.to(), { target: { value: copied } });
+        await fireEvent.change(
+          getByRole("combobox", { name: "Send to a contact" }),
+          { target: { value: contact.id } }
+        );
+        await tick();
+        await answer();
+
+        expect(filled(fields)).toStrictEqual([publicAddress, "", ""]);
+        expect(queryByText(/^Filled in from the link/)).toBeNull();
+
+        // To cleared meanwhile.
+        await fireEvent.input(fields.to(), { target: { value: "" } });
+        await fireEvent.input(fields.to(), { target: { value: copied } });
+        await fireEvent.input(fields.to(), { target: { value: "" } });
+        await answer();
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(queryByText(/^Filled in from the link/)).toBeNull();
+      } finally {
+        baseProps.resolveName.mockReset();
+        removeContact(contact.id);
+      }
+    });
+
+    // 0.12 typed in Amount while a request's name was looked up went back to
+    // its 0.15 as the answer came. What's put in Amount or Memo meanwhile
+    // comes first; left alone, they show as being filled in, not to be typed
+    // in, until the answer comes.
+    it("should fill in nothing over what's put in Amount or Memo while a pasted request's names are looked up, and keep them from being typed in meanwhile", async () => {
+      const { getByRole, getByText, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const copied = requestText(
+        { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+      );
+      /** @type {Array<PromiseWithResolvers<any>>} */
+      const lookups = [];
+
+      baseProps.resolveName.mockImplementation(() => {
+        const lookup = Promise.withResolvers();
+
+        lookups.push(lookup);
+
+        return lookup.promise;
+      });
+
+      /** The request's name answers as the link's own account's. */
+      const answer = async () => {
+        lookups.forEach(({ resolve }) =>
+          resolve({ account: otherAccount, address: "", name: "x" })
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await tick();
+        await tick();
+      };
+
+      // 0.12 put in Amount meanwhile, and a memo: they stay.
+      await fireEvent.input(fields.to(), { target: { value: copied } });
+      await tick();
+      await fireEvent.input(fields.amount(), { target: { value: "0.12" } });
+      await answer();
+
+      expect(filled(fields).slice(1)).toStrictEqual(["0.12", ""]);
+      expect(queryByText(/^Filled in from the link/)).toBeNull();
+
+      await fireEvent.input(fields.to(), { target: { value: "" } });
+      await fireEvent.input(fields.to(), { target: { value: copied } });
+      await tick();
+      await fireEvent.input(fields.memo(), { target: { value: "partial" } });
+      await answer();
+
+      expect(filled(fields).slice(1)).toStrictEqual(["0.12", "partial"]);
+      expect(queryByText(/^Filled in from the link/)).toBeNull();
+
+      // Left alone, they show as being filled in, not to be typed in, until
+      // the answer comes.
+      await fireEvent.input(fields.to(), { target: { value: "" } });
+      await fireEvent.input(fields.to(), { target: { value: copied } });
+      await tick();
+
+      expect(getByText("Looking up sofiadesign.dusk…")).toBeInTheDocument();
+      expect(fields.amount()).toBeDisabled();
+      expect(getByRole("button", { name: "Max" })).toBeDisabled();
+      expect(fields.memo()).toBeDisabled();
+
+      await answer();
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.15",
+        "Factura 33",
+      ]);
+      expect(fields.amount()).toBeEnabled();
+      expect(fields.memo()).toBeEnabled();
+    });
+
+    // A space inside a link pasted alone is words after it too: the link
+    // ends at its first space, as app-core reads it.
+    it("should refuse a link pasted alone with a space in its amount, as words after it, filling in nothing", async () => {
       const { getByRole } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
 
       await paste(fields, httpsLink.replace("amount=0.15", "amount=1 000"));
 
       expect(filled(fields)).toStrictEqual(["", "", ""]);
-      expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+      expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
       expect(fields.review()).toBeDisabled();
     });
 
     // Marek's: a pasted link's "1" + NBSP + "000" filled 1000, as the spaces
     // were joined out of what was pasted before it was read.
     it.each([
-      ["a no-break space", " "],
-      ["a thin space", " "],
-      ["an ideographic space", "　"],
+      ["a no-break space", "\u00a0"],
+      ["a thin space", "\u2009"],
+      ["an ideographic space", "\u3000"],
       ["a tab", "\t"],
     ])(
-      "should refuse a pasted link with %s in its amount, filling in nothing, alone or in what Copy gives",
+      "should refuse a pasted link with %s in its amount, filling in nothing, alone, in what Copy gives or typed",
       async (_, space) => {
         const { getByRole } = render(Send, baseProps);
         const fields = fieldsOf(getByRole);
         const link = httpsLink.replace("amount=0.15", `amount=1${space}000`);
 
-        // Pasted alone: its amount can't be read.
+        // Pasted alone: the link ends at the space.
         await paste(fields, link);
 
         expect(filled(fields)).toStrictEqual(["", "", ""]);
-        expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+        expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
         expect(fields.review()).toBeDisabled();
 
         // In what Copy gives: the words after the space may be the link's.
@@ -407,7 +674,7 @@ describe("Send", () => {
         await tick();
 
         expect(filled(fields)).toStrictEqual(["", "", ""]);
-        expect(getByRole("alert")).toHaveTextContent(LINK_BAD_AMOUNT);
+        expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
         expect(fields.review()).toBeDisabled();
       }
     );
@@ -516,6 +783,41 @@ describe("Send", () => {
       await paste(fields, otherAccount);
 
       expect(() => getByRole("link", { name: "Switch to Mainnet" })).toThrow();
+    });
+
+    // A request for Mainnet naming alice.dusk, pasted on Testnet, was refused
+    // as its line and link not agreeing, Switch to Mainnet gone: its name was
+    // looked up on Testnet, where it's someone else's.
+    it("should say a request for Mainnet naming a .dusk name is for Mainnet, on testnet, and offer it on Mainnet's wallet, its name not looked up on testnet", async () => {
+      const { getByRole, getByText, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const link = `${networks.mainnet.apps.wallet}/dashboard/send?to=${bep20BridgeAddress}&amount=0.15&memo=Factura+33&network=mainnet`;
+
+      // On Testnet, alice.dusk is another account's.
+      baseProps.resolveName.mockResolvedValue({
+        account: otherAccount,
+        address: "",
+        name: "alice.dusk",
+      });
+
+      await pasteAsBrowser(
+        fields,
+        requestText(
+          { link, lux: 150_000_000n, memo: "Factura 33" },
+          { language: "en", name: "alice.dusk", net: networks.mainnet }
+        )
+      );
+
+      expect(
+        getByText("This request is for Mainnet. You are on Testnet.")
+      ).toBeInTheDocument();
+      expect(queryByText(LINK_DISAGREES)).toBeNull();
+      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
+        "href",
+        link
+      );
+      expect(baseProps.resolveName).not.toHaveBeenCalled();
     });
 
     it("should read the amount in the language of the amount field", async () => {
@@ -1916,6 +2218,34 @@ describe("Send", () => {
       );
     });
 
+    // Marek's: a send whose page died before the node answered was "on its
+    // way" here, though the chain never saw it.
+    it("should say what this profile sent whose answer never came isn't confirmed yet, never on its way, for as long as the wallet waits for it", () => {
+      const { getAllByRole, getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ status: "unknown" }),
+          // Given up on long since: History says it.
+          sentRow({
+            hash: "ef".repeat(32),
+            status: "unknown",
+            time: Date.now() - 16 * 60_000,
+          }),
+        ],
+      });
+
+      expect(
+        getAllByRole("status").map((status) => status.textContent?.trim())
+      ).toStrictEqual([
+        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)}. See in History`,
+      ]);
+      expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+      );
+      expect(document.body).not.toHaveTextContent("on its way");
+    });
+
     it("should say what's on its way, with no amount while the balances are hidden", () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
@@ -2049,6 +2379,23 @@ describe("Send", () => {
 
       expect(onItsWay.getByRole("alert")).toHaveTextContent(
         `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
+      );
+      cleanup();
+
+      // Its answer never came: not on its way for all that's known.
+      const unconfirmed = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ memo: "Factura 044", status: "unknown" })],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(unconfirmed.getByRole("alert")).toHaveTextContent(
+        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It may have reached the network.`
+      );
+      expect(unconfirmed.getByRole("alert")).not.toHaveTextContent(
+        /You sent|on its way/
       );
     });
 

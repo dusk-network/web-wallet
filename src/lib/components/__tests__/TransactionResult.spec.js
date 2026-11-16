@@ -120,6 +120,31 @@ describe("TransactionResult", () => {
     }
   });
 
+  // Chen's, on slow Wi-Fi: Cancel was offered while the node was checking
+  // the payment and took it.
+  it("should offer no Cancel once the node is asked to check a send, its answer slow and the network found silent, and keep a way Home", async () => {
+    const gate = sendGate();
+    const { getByRole, queryByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+
+      await act(() => gate.checking());
+
+      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+    } finally {
+      gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
   it("should keep a way Home, and no Cancel, once a send was handed over and the network doesn't answer", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {

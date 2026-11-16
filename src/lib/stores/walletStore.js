@@ -20,6 +20,7 @@ import {
   isHistoryEnabled,
   isToAnotherProfile,
   noteSentOutcome,
+  noteUnconfirmed,
   stopActivity,
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
@@ -191,11 +192,12 @@ function historyOf(profile) {
  * it, once (`record`): in the history of the profile that sends it, taken as
  * the send begins, which keeps nothing after a reset since (activityStore's
  * epoch). One the node refused as it was asked to broadcast it went nowhere,
- * and goes from it again (`forget`), once it's in it.
+ * and goes from it again (`forget`), once it's in it. One whose answer got
+ * lost is said not to be confirmed yet (`unconfirmed`), once it's in it.
  *
  * @param {Profile} profile
  * @param {SentDetails} details
- * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void }}
+ * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void, unconfirmed: (txInfo: TransactionInfo) => void }}
  */
 const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
@@ -227,6 +229,11 @@ const recordInHistory = (profile, details) => {
           tellTabs(() => history?.recordSent({ ...details, hash }))
         );
       }
+    },
+    unconfirmed({ hash }) {
+      void Promise.resolve(recorded.get(hash))
+        .then(() => noteUnconfirmed(hash))
+        .catch(() => {});
     },
   };
 };
@@ -521,7 +528,11 @@ function inTurn(work, gate) {
  * went out, as the chain will say. With a `gate`, it can be called off until
  * the node is asked to broadcast it: it then stops at once, whatever it
  * waits on, and never reaches the node (sendGate). Until then, what couldn't
- * reach the network waits for it, and is made again once it answers.
+ * reach the network waits for it, and is made again once it answers. One
+ * that waited, for the network or on a network that didn't answer, goes out
+ * by itself only where its account sent nothing since the person sent it,
+ * but what this wallet sent: else it's held for the person to say whether
+ * to send it too (`gate.ask`), as another device may have paid the same.
  *
  * @param {Profile} profile
  * @param {SentDetails} details What the history shows of it
@@ -538,11 +549,71 @@ const sendAs = (
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
-  const { forget, record } = recordInHistory(profile, details);
+  const { forget, record, unconfirmed } = recordInHistory(profile, details);
   const lookFor = lookForArrival(profile, details);
 
   /** The hash of the transaction the node was asked to broadcast, if any. */
   let handedOver = "";
+
+  /** Its nonce, where it has one. */
+  /** @type {bigint | undefined} */
+  let handedOverNonce;
+
+  /**
+   * The account's nonce as the wallet knew it as the person sent it: what
+   * the last sync read, else what was kept of the balance shown. Undefined
+   * where neither is known.
+   */
+  let seen =
+    treasury.nonceRead(profile) ??
+    (profile === getCurrentProfile()
+      ? get(walletStore).balance.unshielded.nonce
+      : undefined);
+
+  /**
+   * Whether it waited before it went out: for the network it couldn't
+   * reach, or on a network found not to answer, as Home says it waits.
+   */
+  let hasWaited = false;
+
+  const stopWatching = gate
+    ? networkReach.subscribe((reach) => {
+        hasWaited ||= reach !== "answering";
+      })
+    : () => {};
+
+  /**
+   * Whether the account sent anything since the person sent this, as the
+   * sync just made read its nonce, but this wallet's own transactions, as a
+   * block has them under their own hash: one of its own no block has may
+   * have been dropped, and its nonce taken by another device's, which then
+   * counts. Also where that can't be told.
+   *
+   * @returns {Promise<boolean>}
+   */
+  const isSentElsewhere = async () => {
+    const now = treasury.nonceRead(profile);
+
+    if (seen === undefined || now === undefined) {
+      return true;
+    }
+
+    const own =
+      now > seen ? treasury.handedOverBetween(profile, seen, now) : [];
+    const ownInBlock = own.length
+      ? await networkStore.connect().then(
+          (network) =>
+            Promise.all(
+              own.map(({ hash }) =>
+                transactionInBlock(network, hash).then(Boolean, () => false)
+              )
+            ),
+          () => []
+        )
+      : [];
+
+    return now - seen > BigInt(ownInBlock.filter(Boolean).length);
+  };
 
   /** @param {import("@dusk/w3sper").Network} network */
   const sending = (network) => ({
@@ -553,9 +624,16 @@ const sendAs = (
       ).execute(builtWhileOpen(tx, stillOpen), {
         gate,
         // It may go out from now on: History shows it on its way at once,
-        // also where the node's answer never comes.
-        onHandOver: (hash) => {
+        // also where the node's answer never comes. Its nonce is this
+        // wallet's: no other device took it.
+        onHandOver: (hash, nonce) => {
           handedOver = hash;
+          handedOverNonce = nonce;
+
+          if (nonce !== undefined && session === walletSession) {
+            treasury.noteHandedOver(profile, nonce, hash);
+          }
+
           record(/** @type {TransactionInfo} */ ({ hash }));
         },
       }),
@@ -623,17 +701,38 @@ const sendAs = (
 
   /**
    * Synced, connected, built and checked by the node, then handed over to
-   * it, which may answer, and what it changed kept, in its turn.
+   * it, which may answer, and what it changed kept, in its turn. One that
+   * waited, `waited` for the network or as it didn't answer, and whose
+   * account sent something else meanwhile, as the sync reads it, is held
+   * first until the person says to send it too: what the account sent until
+   * then is known to them from then on. It's synced again then, and asked
+   * again where the account sent more while it asked: it's built on the
+   * account as it is then.
    *
+   * @param {boolean} [waited]
    * @returns {Promise<TransactionInfo>}
    */
-  const attempt = () =>
+  const attempt = (waited = false) =>
     sync()
       .catch((error) => {
         throw stillOpen(error);
       })
-      .then(() => {
+      .then(async () => {
         gate?.check();
+
+        if (gate && (waited || hasWaited)) {
+          while (await isSentElsewhere()) {
+            const told = treasury.nonceRead(profile);
+
+            gate.check();
+            await gate.ask();
+            seen = told ?? seen;
+            await sync().catch((error) => {
+              throw stillOpen(error);
+            });
+            gate.check();
+          }
+        }
 
         return networkStore.connect();
       })
@@ -668,10 +767,17 @@ const sendAs = (
       if (hash) {
         followRemoval(/** @type {TransactionInfo} */ ({ hash }));
         record(/** @type {TransactionInfo} */ ({ hash }));
+        // Its answer got lost: History says so, not that it's on its way.
+        unconfirmed(/** @type {TransactionInfo} */ ({ hash }));
         lookFor(/** @type {TransactionInfo} */ ({ hash }));
       } else if (handedOver) {
-        // Refused as it was handed over: it went nowhere.
+        // Refused as it was handed over: it went nowhere, and its nonce is
+        // free for another.
         forget(/** @type {TransactionInfo} */ ({ hash: handedOver }));
+
+        if (handedOverNonce !== undefined && session === walletSession) {
+          treasury.forgetHandedOver(profile, handedOverNonce);
+        }
       }
 
       throw error;
@@ -686,6 +792,9 @@ const sendAs = (
           throw outcomeUnknown(error, txInfo.hash);
         })
     );
+
+  // Whether it waits is watched only while it can.
+  sent.then(stopWatching, stopWatching);
 
   // Called off, it stops at once: what it waits on goes on, and stops at
   // the gate before the node is asked to broadcast it.

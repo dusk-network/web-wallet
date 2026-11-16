@@ -33,6 +33,7 @@
   } from "$lib/bridge/depositActivity";
   import { contractLabel } from "$lib/activity/knownContracts";
   import {
+    NOT_CONFIRMED_YET,
     fullDateTime,
     routeLabel,
     strangersMemo,
@@ -266,7 +267,7 @@
       : p.status === "pending"
         ? { icon: mdiTimerSand, text: "Pending" }
         : p.status === "unknown"
-          ? { icon: mdiTimerSand, text: "Not confirmed by the network" }
+          ? { icon: mdiTimerSand, text: NOT_CONFIRMED_YET }
           : p.withdrawal
             ? p.withdrawal.claimed
               ? { icon: mdiCheck, text: "Proved · claimed" }
@@ -281,9 +282,11 @@
             : row.status === "executed"
               ? { icon: mdiCheck, text: "Completed" }
               : { icon: mdiTimerSand, text: "Checking the outcome…" };
+  // Sent to whom once it's known it went out: one not confirmed yet only
+  // names whom it's to.
   $: headline =
     p.titleIsAddress || p.icon === "sent" || p.icon === "received"
-      ? `${row.direction === "in" ? "Received from" : "Sent to"} ${p.title}`
+      ? `${row.direction === "in" ? "Received from" : p.status === "unknown" ? "To" : "Sent to"} ${p.title}`
       : p.title;
   $: counterpartyLabel = row.direction === "in" ? "From" : "To";
   $: duskName = row.counterpartyName ?? row.toName;

@@ -3,7 +3,15 @@ import { networks } from "@dusk-network/networks";
 
 import { LINK_BAD_AMOUNT } from "@dusk-network/app-core/payment-links";
 
-import { LINK_SEVERAL, LINK_UNCLEAR, readPastedLink, requestText } from "..";
+import {
+  LINK_DISAGREES,
+  LINK_SEVERAL,
+  LINK_UNCLEAR,
+  pastedNames,
+  readPastedLink,
+  readPaymentLink,
+  requestText,
+} from "..";
 
 const LINK =
   "https://apps.testnet.dusk.network/wallet/dashboard/send?to=abc&amount=0.03&network=testnet";
@@ -66,31 +74,152 @@ describe("What's pasted of a request", () => {
     }
   });
 
-  it("is read whole where it's a link, spaces and all, as a link alone always was: never cut short at a space", () => {
-    for (const link of [duskLink, httpsLink]) {
-      // A space in its memo: the memo as it says it, and all after it.
+  // Lena's: her own link with " danke!" after it said "This link's network
+  // can't be read", and with its memo last, the word went into the memo.
+  // A link ends at its first space or line break: what follows is words
+  // after it, whatever field it ends with, and a space inside it as well.
+  it("refuses a link with words after it, or a space in it, as words after the link, whatever field it ends with, and never takes them into its memo", () => {
+    const refused = {
+      amount: "",
+      elsewhere: null,
+      memo: "",
+      problem: LINK_UNCLEAR,
+      to: "",
+    };
+    // Its memo last, as Lena's link had it.
+    const memoLast = httpsLink.replace(
+      /&memo=Factura\+71(.*)$/,
+      "$1&memo=Factura+71"
+    );
+
+    expect(memoLast).toMatch(/&memo=Factura\+71$/);
+
+    for (const link of [duskLink, httpsLink, memoLast]) {
+      for (const after of [
+        " danke!",
+        "\ndanke!",
+        "\r\ndanke!",
+        "\u00a0danke!",
+      ]) {
+        expect(
+          readPastedLink(`${link}${after}`, networks.testnet, "en")
+        ).toStrictEqual(refused);
+      }
+
+      // A space inside it: in its memo, or its amount.
       expect(
         readPastedLink(
           link.replace("Factura+71", "Factura 71"),
           networks.testnet,
           "en"
         )
-      ).toStrictEqual(asked);
-      // In its amount: refused, as it was, not 1 DUSK.
+      ).toStrictEqual(refused);
       expect(
         readPastedLink(
           link.replace("amount=0.03", "amount=1 000"),
           networks.testnet,
           "en"
         )
-      ).toStrictEqual({
-        amount: "",
-        elsewhere: null,
-        memo: "",
-        problem: LINK_BAD_AMOUNT,
-        to: "",
-      });
+      ).toStrictEqual(refused);
     }
+
+    // Opened or scanned, a space in its amount is still its amount's.
+    expect(
+      readPaymentLink(
+        httpsLink.replace("amount=0.03", "amount=1 000"),
+        networks.testnet,
+        "en"
+      )
+    ).toMatchObject({ problem: LINK_BAD_AMOUNT });
+  });
+
+  // Marek's: the wallet's own message with only its link's amount changed
+  // filled the link's 0.15 under a line saying 0.002, and a forged line's
+  // name or memo was ignored.
+  it("refuses what Share and Copy give of a request whose line says another amount, memo or name than its link", () => {
+    const refused = {
+      amount: "",
+      elsewhere: null,
+      memo: "",
+      problem: LINK_DISAGREES,
+      to: "",
+    };
+    const said = (/** @type {string} */ link) =>
+      requestText(
+        { link, lux: 30_000_000n, memo: "Factura 71" },
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+      );
+
+    expect(
+      readPastedLink(said(httpsLink), networks.testnet, "en")
+    ).toMatchObject({ amount: "0.03", memo: "Factura 71", problem: "" });
+    // The link's amount changed under the line.
+    expect(
+      readPastedLink(
+        said(httpsLink).replace("amount=0.03", "amount=0.15"),
+        networks.testnet,
+        "en"
+      )
+    ).toStrictEqual(refused);
+    // The line's amount, or its memo.
+    expect(
+      readPastedLink(
+        said(httpsLink).replace("0.03 DUSK", "0.002 DUSK"),
+        networks.testnet,
+        "en"
+      )
+    ).toStrictEqual(refused);
+    expect(
+      readPastedLink(
+        said(httpsLink).replace("· Factura 71", "· coffee"),
+        networks.testnet,
+        "en"
+      )
+    ).toStrictEqual(refused);
+    // Its name, where the name service says that name pays another account,
+    // or no one.
+    const another =
+      "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+
+    expect(pastedNames(said(httpsLink), networks.testnet)).toStrictEqual([
+      "sofiadesign.dusk",
+    ]);
+
+    // A request for Mainnet, pasted on Testnet: its names are Mainnet's,
+    // none looked up here, where it's said to be for Mainnet.
+    const onMainnet = requestText(
+      {
+        link: `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.03&memo=Factura+71&network=mainnet`,
+        lux: 30_000_000n,
+        memo: "Factura 71",
+      },
+      { language: "en", name: "sofiadesign.dusk", net: networks.mainnet }
+    );
+
+    expect(pastedNames(onMainnet, networks.testnet)).toStrictEqual([]);
+    expect(pastedNames(onMainnet, networks.mainnet)).toStrictEqual([
+      "sofiadesign.dusk",
+    ]);
+
+    for (const owner of [{ account: another }, null]) {
+      expect(
+        readPastedLink(
+          said(httpsLink),
+          networks.testnet,
+          "en",
+          new Map([["sofiadesign.dusk", owner]])
+        )
+      ).toStrictEqual(refused);
+    }
+
+    expect(
+      readPastedLink(
+        said(httpsLink),
+        networks.testnet,
+        "en",
+        new Map([["sofiadesign.dusk", { account }]])
+      )
+    ).toMatchObject({ amount: "0.03", problem: "" });
   });
 
   it("asks nothing where words after the link in a longer text may be part of it, and says so", () => {

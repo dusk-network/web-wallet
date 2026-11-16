@@ -22,19 +22,25 @@ import { keepUnsent } from "./unsentSends";
  * A send waiting to go out: the DUSK it sends, in Lux, to whom, as "your
  * Profile 2", and to which address, from which of the wallet's accounts or
  * addresses, with what memo, when it was sent, the most its fee can be, what
- * calls it off, while it can be, and whether it waits for the network, which
- * it couldn't reach. Its amount is said as balances are shown when it's said
- * (waitingText), not as they were when it was sent.
+ * calls it off, while it can be, whether it waits for the network, which it
+ * couldn't reach, whether it's held for the person to say whether to send
+ * it too, as its account sent something else while it waited (`asks`),
+ * which `sendToo` says, and whether it goes out, as the node was asked to
+ * check it (`goesOut`). Its amount is said as balances are shown when it's
+ * said (waitingText), not as they were when it was sent.
  *
  * @typedef {{
  *   address: string,
+ *   asks: boolean,
  *   at: number,
  *   cancel: (reason?: Error) => boolean,
  *   from: string,
+ *   goesOut: boolean,
  *   id: string,
  *   lux: bigint,
  *   maxFee: bigint,
  *   memo: string,
+ *   sendToo: () => boolean,
  *   to: string,
  *   waitsForNetwork: boolean,
  * }} WaitingSend
@@ -82,13 +88,16 @@ const isKeptAfter = (why, isSaid) =>
  * Before the node is asked to broadcast it, it's kept as handed over, and
  * it goes out only once it is: one whose page goes from then on may have
  * gone out, and is never said as one that didn't. It's forgotten as it ends.
- * One sent again from what's kept of it takes its place (`kept.id`).
+ * One sent again from what's kept of it takes its place (`kept.id`). What's
+ * kept of it has its account's nonce as the wallet knew it (`kept.seen`),
+ * and says so where it's held as its account sent something else while it
+ * waited: it's said so once the wallet opens again, if it never went out.
  *
  * @param {{
  *   address?: string,
  *   from?: string,
  *   gate: import("./sendGate").SendGate,
- *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
+ *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, seen?: bigint, typed: Record<string, unknown> },
  *   lux: bigint,
  *   maxFee?: bigint,
  *   memo?: string,
@@ -128,6 +137,7 @@ export function keepWaiting({
         lux: String(lux),
         memo,
         network: kept.network,
+        ...(kept.seen === undefined ? {} : { seen: String(kept.seen) }),
         to: address,
         typed: kept.typed,
       })
@@ -157,17 +167,33 @@ export function keepWaiting({
     leave();
   };
 
+  /**
+   * Changes what's said of it, while it waits.
+   *
+   * @param {Partial<WaitingSend>} change
+   */
+  const say = (change) => {
+    if (isWaiting) {
+      sends.update((list) =>
+        list.map((each) => (each.id === id ? { ...each, ...change } : each))
+      );
+    }
+  };
+
   sends.update((list) => [
     ...list,
     {
       address,
+      asks: false,
       at,
       cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
       from,
+      goesOut: false,
       id,
       lux,
       maxFee,
       memo,
+      sendToo: () => gate.sendToo(),
       to,
       waitsForNetwork: false,
     },
@@ -191,13 +217,13 @@ export function keepWaiting({
         done(isKeptAfter(why, () => false));
       }
     }),
-    gate.waitsForNetwork.subscribe((waits) => {
-      if (isWaiting) {
-        sends.update((list) =>
-          list.map((each) =>
-            each.id === id ? { ...each, waitsForNetwork: waits } : each
-          )
-        );
+    gate.waitsForNetwork.subscribe((waits) => say({ waitsForNetwork: waits })),
+    gate.goingOut.subscribe((goesOut) => say({ goesOut })),
+    gate.asking.subscribe((asks) => {
+      say({ asks });
+
+      if (asks) {
+        keeping?.hold();
       }
     }),
   ];

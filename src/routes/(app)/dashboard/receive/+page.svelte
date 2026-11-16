@@ -1,12 +1,14 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiAlertOutline } from "@mdi/js";
   import { onMount } from "svelte";
 
   import { getPrimaryName } from "$lib/dusk-domains";
-  import { toast } from "$lib/dusk/components/Toast/store";
-  import { isPaidAlready, rememberRequest } from "$lib/payment-requests";
+  import {
+    paidAtOf,
+    rememberRequest,
+    requestsStore,
+  } from "$lib/payment-requests";
   import { networkStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { PaymentRequests, Receive, RequestPayment } from "$lib/components";
@@ -22,6 +24,15 @@
   /** @type {{ dusk: string, link: string, lux: bigint | null, memo: string } | null} */
   let request = null;
 
+  /**
+   * Whether Request payment is open: its Copy request and Share request then
+   * come first, and the address's own buttons go below it. As it opens, it
+   * says so itself: open where a request was typed before.
+   *
+   * @type {boolean | undefined}
+   */
+  let isRequestOpen = undefined;
+
   const options = [
     { disabled: false, label: "Public", value: "public" },
     { disabled: false, label: "Shielded", value: "shielded" },
@@ -33,27 +44,20 @@
 
   /**
    * Keeps what's asked in the list as it leaves the wallet: what left, or
-   * what's on screen. The same request asked again isn't kept twice, and
-   * where it was paid already, that's said.
+   * what's on screen. The same request asked again isn't kept twice: one
+   * paid already goes as its own link, the same one, once the person said to
+   * give it out all the same, where it was pressed.
    *
    * @param {{ address: string, request: { lux?: bigint | null, memo?: string } | null }} [used]
    */
   function keepRequest(used = { address: currentAddress, request }) {
     if (used.request) {
-      const asked = {
+      rememberRequest({
         lux: used.request.lux ?? null,
         memo: used.request.memo ?? "",
         network: $nodeNetwork?.name ?? "",
         to: used.address,
-      };
-
-      // One paid already goes as its own link, the same one: said, as its
-      // link asks a second payment.
-      if (isPaidAlready(asked)) {
-        toast("warning", "This request was paid already.", mdiAlertOutline);
-      }
-
-      rememberRequest(asked);
+      });
     }
   }
 
@@ -97,6 +101,16 @@
         )
       : "";
   $: takeName(name);
+  // When the request on screen was paid, where it's one paid already: its
+  // Copy, Share and Download QR ask first, where they're pressed.
+  $: paidAt = request
+    ? paidAtOf($requestsStore, {
+        lux: request.lux,
+        memo: request.memo,
+        network: $nodeNetwork?.name ?? "",
+        to: currentAddress,
+      })
+    : null;
   // Whose a request is, as Share and Copy say it: the verified .dusk name,
   // else the name given the profile here, none for one known by its number.
   $: requestName =
@@ -110,16 +124,21 @@
   <ExclusiveChoice {options} bind:value={addressToShow} />
   <Receive
     address={currentAddress}
+    addressBelow={Boolean(isRequestOpen)}
     addressType={addressProp}
     {name}
     onUse={keepRequest}
+    {paidAt}
     {request}
   >
     <RequestPayment
       address={currentAddress}
+      bind:isOpen={isRequestOpen}
       bind:request
       onUse={keepRequest}
+      {paidAt}
       {requestName}
+      slot="request"
     />
     {#if currentProfile}
       <PaymentRequests

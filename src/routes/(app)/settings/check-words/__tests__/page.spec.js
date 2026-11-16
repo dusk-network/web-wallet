@@ -191,6 +191,106 @@ describe("Check your recovery words", () => {
     expect(getByText("They match.")).toBeInTheDocument();
   });
 
+  // Lena's: a whole word in the first box, with no suggestion to take, and
+  // Enter checked at once, two boxes empty: "That doesn't match". Amélie's:
+  // Enter taking a suggestion in the last box checked too.
+  it("goes on to the next box with Enter, suggestions or not, and checks only once every box holds a recovery word, never saying a half-filled check doesn't match", async () => {
+    const { container, getByLabelText, getByRole, queryByRole } =
+      render(CheckWords);
+
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
+      target: { value: PASSWORD },
+    });
+    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
+
+    const [first, second, third] = askedIn(container);
+    const check = getByRole("button", { name: "Check" });
+
+    /**
+     * Types into a box letter by letter, as a person does.
+     *
+     * @param {HTMLInputElement} box
+     * @param {string} text
+     */
+    const typeInto = async (box, text) => {
+      box.focus();
+
+      for (let end = 1; end <= text.length; end++) {
+        await fireEvent.input(box, { target: { value: text.slice(0, end) } });
+      }
+    };
+
+    // A phone's keyboard says where Enter goes.
+    expect(
+      [first, second, third].map(({ box }) => box.getAttribute("enterkeyhint"))
+    ).toStrictEqual(["next", "next", "done"]);
+    expect(check).toBeDisabled();
+
+    // A whole word, which no list shows for: Enter goes on, and checks
+    // nothing.
+    await typeInto(first.box, "zoo");
+
+    expect(queryByRole("listbox")).toBeNull();
+
+    await fireEvent.keyDown(first.box, { key: "Enter" });
+
+    expect(document.activeElement).toBe(second.box);
+    expect(queryByRole("alert")).toBeNull();
+    expect(askedIn(container)).toHaveLength(3);
+    expect(check).toBeDisabled();
+
+    // From an empty box too.
+    await fireEvent.keyDown(second.box, { key: "Enter" });
+
+    expect(document.activeElement).toBe(third.box);
+
+    // In the last, with a box still empty: no check, and back to that box.
+    await typeInto(third.box, "zone");
+    await fireEvent.keyDown(third.box, { key: "Enter" });
+
+    expect(queryByRole("alert")).toBeNull();
+    expect(askedIn(container)).toHaveLength(3);
+    expect(document.activeElement).toBe(second.box);
+
+    // However it's sent, a check half filled in says nothing.
+    await fireEvent.submit(
+      /** @type {HTMLFormElement} */ (container.querySelector("form"))
+    );
+
+    expect(queryByRole("alert")).toBeNull();
+    expect(askedIn(container)).toHaveLength(3);
+
+    // A box whose letters are no recovery word holds none: Check stays off.
+    await typeInto(second.box, "qx");
+
+    expect(second.box).toHaveAttribute("aria-invalid", "true");
+    expect(check).toBeDisabled();
+
+    // Letters a word starts with are no word yet. Enter taking a suggestion
+    // in the last box takes it, and no more: every box holds a recovery
+    // word, and Check is on.
+    await typeInto(second.box, "zero");
+    await typeInto(third.box, "wh");
+
+    expect(check).toBeDisabled();
+    expect(getByRole("listbox", { name: "Suggestions" })).toBeInTheDocument();
+
+    await fireEvent.keyDown(third.box, { key: "Enter" });
+
+    expect(third.box).toHaveValue("whale");
+    expect(queryByRole("alert")).toBeNull();
+    expect(askedIn(container)).toHaveLength(3);
+    expect(check).toBeEnabled();
+
+    // Enter in the last box, all three typed: the check.
+    await fireEvent.keyDown(third.box, { key: "Enter" });
+
+    expect(getByRole("alert")).toHaveTextContent(
+      "That doesn't match your recovery words."
+    );
+  });
+
   // Nandini's and Amélie's: one word wrong, or three made up, put all twelve
   // words on screen. A check is not a reveal.
   it("says no more than that the words don't match, with Try again, and shows them only on their own ask, behind the password again", async () => {
@@ -214,8 +314,8 @@ describe("Check your recovery words", () => {
 
     // One word wrong, then three made up: said, and nothing else.
     for (const typed of [
-      asked.map((n, i) => (i === 1 ? `${words[n - 1]}x` : words[n - 1])),
-      ["maison", "velo", "gateau"],
+      asked.map((n, i) => (i === 1 ? "zoo" : words[n - 1])),
+      ["museum", "velvet", "gate"],
     ]) {
       for (const [i, { box }] of askedIn(container).entries()) {
         await fireEvent.input(box, { target: { value: typed[i] } });
@@ -234,6 +334,25 @@ describe("Check your recovery words", () => {
           b.textContent?.trim()
         )
       ).toStrictEqual(["Try again", "Show my recovery words"]);
+
+      // Amélie's: the two side by side, the same size, a caller need only
+      // say "press the grey one". Try again is the one button; Show my
+      // recovery words a small text link under it, apart.
+      const tryAgain = getByRole("button", { name: "Try again" });
+      const show = getByRole("button", { name: "Show my recovery words" });
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".recovery-check .dusk-button"),
+          (b) => b.textContent?.trim()
+        )
+      ).toStrictEqual(["Try again"]);
+      expect(show).not.toHaveClass("dusk-button");
+      expect(tryAgain.parentElement).not.toContainElement(show);
+      expect(
+        tryAgain.compareDocumentPosition(show) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
 
       // Try again: the same three, empty, the first to type in.
       await fireEvent.click(getByRole("button", { name: "Try again" }));

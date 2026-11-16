@@ -5,8 +5,6 @@
     mdiAlertOutline,
     mdiArrowLeft,
     mdiInformationOutline,
-    mdiShareVariantOutline,
-    mdiTrayArrowDown,
   } from "@mdi/js";
   import * as QRCode from "qrcode";
   import { onMount } from "svelte";
@@ -14,7 +12,7 @@
   import { displayText } from "@dusk-network/app-core/text";
 
   import { AppAnchorButton, FullAddress } from "$lib/components";
-  import { Button, CopyButton, Icon, QrCode } from "$lib/dusk/components";
+  import { CopyButton, Icon, QrCode } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { formatDuskExact, formatDuskPlain } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
@@ -22,6 +20,8 @@
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
+  import AddressActions from "./AddressActions.svelte";
+  import PaidAlready from "./PaidAlready.svelte";
   import { canShare, shareText } from "./share";
 
   /** @type {string} */
@@ -60,6 +60,23 @@
    * @type {(used: { address: string, request: typeof request }) => void}
    */
   export let onUse = () => {};
+
+  /**
+   * Whether the address's own buttons go below the request being made
+   * (the `request` slot), as it's open: its Copy and Share come first then.
+   */
+  export let addressBelow = false;
+
+  /**
+   * When the request the QR holds was paid, where it's one paid already:
+   * Download QR asks first, under it. Null for none.
+   *
+   * @type {number | null}
+   */
+  export let paidAt = null;
+
+  /** Whether Download QR asks first, as the request it holds was paid. */
+  let isAskingDownload = false;
 
   // Where a browser has a share sheet: most phones, some computers.
   const hasShare = canShare();
@@ -100,8 +117,8 @@
       : `People who pay ${shownName} choose public or shielded. Anyone can see this address belongs to ${shownName}.`;
 
   /**
-   * The address alone, through the phone's share sheet: each request has its
-   * own Share, beside its Copy.
+   * The address alone, through the phone's share sheet, as Share address:
+   * each request has its own Share request, beside its Copy request.
    */
   const share = () => shareText({ text: address, title: "My Dusk address" });
 
@@ -291,7 +308,20 @@
     }
   }
 
+  /** Download QR: a request paid already is asked of first. */
+  function download() {
+    if (request && paidAt !== null) {
+      isAskingDownload = true;
+    } else {
+      void downloadQr();
+    }
+  }
+
   $: qrValue = request?.dusk ?? address;
+  // Another request, or the address, asks nothing of the one asked about.
+  $: if (request !== undefined) {
+    isAskingDownload = false;
+  }
 </script>
 
 <div class="receive">
@@ -339,29 +369,27 @@
         <!-- A failed lookup shows no name. -->
       {/await}
       <p class="receive__full-address"><FullAddress {address} /></p>
-      <CopyButton
-        className="receive__copy-address"
-        name="address"
-        text="Copy address"
-        value={address}
-        variant="secondary"
-      />
-      <div class="receive__share">
-        {#if hasShare}
-          <Button
-            icon={{ path: mdiShareVariantOutline }}
-            on:click={share}
-            text="Share"
-            variant="secondary"
-          />
-        {/if}
-        <Button
-          icon={{ path: mdiTrayArrowDown }}
-          on:click={downloadQr}
-          text="Download QR"
-          variant="secondary"
-        />
-      </div>
+      {#if !addressBelow}
+        <AddressActions
+          {address}
+          onDownload={download}
+          onShare={hasShare ? share : null}
+        >
+          {#if isAskingDownload && paidAt !== null}
+            <PaidAlready
+              at={paidAt}
+              onAnyway={() => {
+                isAskingDownload = false;
+                void downloadQr();
+              }}
+              onCancel={() => {
+                isAskingDownload = false;
+              }}
+              verb="Download"
+            />
+          {/if}
+        </AddressActions>
+      {/if}
       <p class="receive__reveal">
         {addressType === "account"
           ? "Anyone with this address, or a name that points to it, can see its balance and every public payment to and from it."
@@ -382,6 +410,32 @@
       {/await}
     </figcaption>
   </figure>
+
+  <!-- The request being made, then the address's own buttons while it's
+    open, as its Copy and Share come first; then the rest. -->
+  <slot name="request" />
+
+  {#if addressBelow}
+    <AddressActions
+      {address}
+      onDownload={download}
+      onShare={hasShare ? share : null}
+    >
+      {#if isAskingDownload && paidAt !== null}
+        <PaidAlready
+          at={paidAt}
+          onAnyway={() => {
+            isAskingDownload = false;
+            void downloadQr();
+          }}
+          onCancel={() => {
+            isAskingDownload = false;
+          }}
+          verb="Download"
+        />
+      {/if}
+    </AddressActions>
+  {/if}
 
   <slot />
 
@@ -433,20 +487,6 @@
 
     &__full-address {
       text-align: center;
-    }
-
-    :global(&__copy-address) {
-      width: 100%;
-    }
-
-    &__share {
-      display: flex;
-      gap: var(--small-gap);
-      width: 100%;
-
-      & :global(.dusk-button) {
-        flex: 1;
-      }
     }
 
     &__field {

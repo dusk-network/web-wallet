@@ -551,6 +551,15 @@ describe("Settings › Profiles", () => {
         "ⓢⓞⓕⓘⓐⓓⓔⓢⓘⓖⓝ.dusk",
         "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
       ],
+      // Q14, Marek's: a middle dot, an ideographic full stop or a bullet for
+      // the point saved without a word, and History filed his own
+      // transfers under it, right above Sofía's.
+      ...["sofiadesign·dusk", "sofiadesign。dusk", "sofiadesign•dusk"].map(
+        (styled) => [
+          styled,
+          "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
+        ]
+      ),
     ]) {
       await nameProfile(settings, 2, name, "enter");
 

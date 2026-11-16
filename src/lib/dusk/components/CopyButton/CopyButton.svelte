@@ -55,6 +55,14 @@
   export let onCopied = () => {};
 
   /**
+   * Whether a press is held, as something is asked first: true, and it
+   * copies only once told to (`copyNow`).
+   *
+   * @type {() => boolean}
+   */
+  export let hold = () => false;
+
+  /**
    * What it just copied: it says Copied for a moment, while that's still
    * the value it shows.
    *
@@ -64,7 +72,8 @@
 
   let timer = 0;
 
-  async function copy() {
+  /** Copies what it copies now, as a press does where nothing holds it. */
+  export async function copyNow() {
     const copying = value;
 
     try {
@@ -90,6 +99,13 @@
     }, COPIED_FOR);
   }
 
+  /** A press: it copies, unless something is asked first. */
+  function press() {
+    if (!hold()) {
+      void copyNow();
+    }
+  }
+
   onDestroy(() => clearTimeout(timer));
 
   // Copied where it was pressed: the icon a check, the word Copied.
@@ -105,7 +121,7 @@
     aria-label={label}
     {className}
     icon={icon ? { path } : undefined}
-    on:click={copy}
+    on:click={press}
     {size}
     text={word}
     {variant}
@@ -115,7 +131,7 @@
     {...$$restProps}
     aria-label={label}
     class={className}
-    on:click={copy}
+    on:click={press}
     type="button"
   >
     {#if icon}

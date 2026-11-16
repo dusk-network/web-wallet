@@ -256,7 +256,7 @@ describe("Receive", () => {
       );
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -330,7 +330,7 @@ describe("Receive", () => {
 
         // The link asks what it asked: DUSK.
         await fireEvent.click(
-          screen.getByRole("button", { name: "Copy request link" })
+          screen.getByRole("button", { name: "Copy request" })
         );
         await vi.advanceTimersByTimeAsync(0);
 
@@ -353,17 +353,13 @@ describe("Receive", () => {
       await vi.runAllTimersAsync();
       await openRequest();
 
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await type("Amount (optional)", "1.2345678901");
       await vi.runAllTimersAsync();
 
       expect(screen.getByRole("alert")).toHaveTextContent(/9 decimals/);
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
     });
 
     it("should ask which amount is meant of one that could be either of two, with a button for each, and make the request for the one picked", async () => {
@@ -376,9 +372,7 @@ describe("Receive", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         /^Is that 2\.1250 or 2125\?/
       );
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await fireEvent.click(
         screen.getByRole("button", { name: "2.1250 DUSK" })
@@ -390,7 +384,7 @@ describe("Receive", () => {
       ).toHaveValue("2.1250");
       expect(screen.queryByRole("alert")).toBeNull();
       expect(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       ).toBeInTheDocument();
     });
 
@@ -424,7 +418,7 @@ describe("Receive", () => {
       await fireEvent.click(screen.getByRole("radio", { checked: false }));
       await vi.runAllTimersAsync();
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -437,13 +431,16 @@ describe("Receive", () => {
     });
 
     // Chen's: the only Share sat up by the address, away from the request it
-    // shared, which he had to guess.
-    it("should offer Share only where the browser has a share sheet: the address alone by the address, and each request's own beside its Copy, which keeps a new one", async () => {
+    // shared, which he had to guess. Then Sofía's and Nandini's: with a
+    // request filled in, the first Copy and the first of two buttons called
+    // Share gave a client the bare address.
+    it("should name each button by what it gives, and while a request is made put its Copy and Share first, leading, the address's below, no two buttons of the page sharing a name", async () => {
       const first = render(Receive);
 
       await vi.runAllTimersAsync();
 
-      expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+      // No share sheet: no Share.
+      expect(screen.queryByRole("button", { name: /^Share/ })).toBeNull();
       first.unmount();
 
       const share = vi.fn().mockResolvedValue(undefined);
@@ -451,7 +448,22 @@ describe("Receive", () => {
       Object.assign(navigator, { share });
       render(Receive);
       await vi.runAllTimersAsync();
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+      /** The page's buttons by name, in the order they come. */
+      const buttonNames = () =>
+        screen
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+
+      expect(buttonNames()).toStrictEqual([
+        "Copy address",
+        "Share address",
+        "Download QR",
+      ]);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share address" })
+      );
       await vi.runAllTimersAsync();
 
       expect(share).toHaveBeenLastCalledWith({
@@ -460,24 +472,48 @@ describe("Receive", () => {
       });
       expect(get(requestsStore)).toStrictEqual([]);
 
+      // Request payment open: the address's buttons go below it.
       await openRequest();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const form = /** @type {HTMLElement} */ (
+        document.querySelector(".request")
+      );
+      /** @param {string} name */
+      const isAfterForm = (name) =>
+        Boolean(
+          form.compareDocumentPosition(screen.getByRole("button", { name })) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        ) && !form.contains(screen.getByRole("button", { name }));
+
+      expect(isAfterForm("Copy address")).toBe(true);
+      expect(isAfterForm("Share address")).toBe(true);
+      expect(isAfterForm("Download QR")).toBe(true);
+
+      // A request made: its own Copy and Share come first, and lead.
       await type("Amount (optional)", "2");
       await vi.advanceTimersByTimeAsync(0);
 
-      // The request's own, beside its Copy.
-      const actions = /** @type {HTMLElement} */ (
-        document.querySelector(".request__actions")
+      expect(buttonNames()).toStrictEqual([
+        "Copy request",
+        "Share request",
+        "Copy address",
+        "Share address",
+        "Download QR",
+      ]);
+      expect(screen.getByRole("button", { name: "Copy request" })).toHaveClass(
+        "dusk-button--variant--primary"
       );
-
-      expect(
-        Array.from(actions.querySelectorAll("button"), (b) =>
-          b.textContent?.trim()
-        )
-      ).toStrictEqual(["Copy request link", "Share"]);
+      expect(screen.getByRole("button", { name: "Share request" })).toHaveClass(
+        "dusk-button--variant--primary"
+      );
+      expect(screen.getByRole("button", { name: "Copy address" })).toHaveClass(
+        "dusk-button--variant--secondary"
+      );
 
       // By the address, still the address alone.
       await fireEvent.click(
-        screen.getAllByRole("button", { name: "Share" })[0]
+        screen.getByRole("button", { name: "Share address" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -488,7 +524,7 @@ describe("Receive", () => {
       expect(get(requestsStore)).toStrictEqual([]);
 
       await fireEvent.click(
-        /** @type {HTMLElement} */ (actions.querySelector(".request__share"))
+        screen.getByRole("button", { name: "Share request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -514,7 +550,7 @@ describe("Receive", () => {
       await type("Amount (optional)", "3");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        /** @type {HTMLElement} */ (document.querySelector(".request__share"))
+        screen.getByRole("button", { name: "Share request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -538,6 +574,67 @@ describe("Receive", () => {
           (b) => b.textContent?.trim()
         )
       ).toStrictEqual(["Copy link", "Share", "Remove"]);
+
+      // No two buttons of the page share a name.
+      const names = buttonNames();
+
+      expect(new Set(names).size).toBe(names.length);
+
+      // Closed again: the address's buttons back above it.
+      await fireEvent.click(screen.getByText("Request payment"));
+      /** @type {HTMLDetailsElement} */ (form).open = false;
+      await fireEvent(form, new Event("toggle"));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(isAfterForm("Copy address")).toBe(false);
+    });
+
+    // A request typed, then Receive left by a link and opened again, or
+    // locked and unlocked: it comes back open, the QR and Download QR
+    // holding it, the address's buttons below it.
+    it("should bring back a request typed before, open, its QR and Download QR holding it", async () => {
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const first = render(Receive);
+
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "2");
+      await type("Memo (optional)", "Factura 34");
+      await vi.advanceTimersByTimeAsync(0);
+      first.unmount();
+
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const form = /** @type {HTMLDetailsElement} */ (
+        document.querySelector(".request")
+      );
+
+      expect(form.open).toBe(true);
+      expect(
+        screen.getByRole("textbox", { name: "Amount (optional)" })
+      ).toHaveValue("2");
+      await vi.waitFor(() =>
+        expect(qrAlt()).toHaveAccessibleName("QR code for your payment request")
+      );
+      expect(
+        form.compareDocumentPosition(
+          screen.getByRole("button", { name: "Download QR" })
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(
+        /** @type {HTMLAnchorElement} */ (click.mock.contexts[0]).download
+      ).toBe("dusk-testnet-request-2-DUSK-Factura-34.png");
+
+      click.mockRestore();
     });
 
     // Sofía's, in the app: Request payment opened with its Amount at the
@@ -778,12 +875,159 @@ describe("Receive", () => {
       click.mockRestore();
     });
 
-    it("should keep one request for what's asked again once it's paid, as its QR and link are the same, and say it was paid already", async () => {
+    // Q03, Sofía's, Nandini's, Marek's and Chen's: Copy on a request paid
+    // already, or paid twice, said only Copied, and Share sent a fresh "asks
+    // you to pay". Round 32's note was a toast from the form alone: the
+    // list's own Copy link and Share never checked, and nothing stayed to
+    // be read.
+    it("should say Paid with when beside a paid request's Copy and Share, and ask on its card before either gives it out again, never in a toast", async () => {
+      const share = vi.fn().mockResolvedValue(undefined);
+      const PAYER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+      const at = Date.now() - 60_000;
+      /** @param {Record<string, unknown>} fields */
+      const row = (fields) => ({
+        category: "received",
+        counterparty: PAYER,
+        memo: "Factura 2026-101",
+        privacy: "public",
+        status: "executed",
+        value: 30_000_000n,
+        ...fields,
+      });
+
+      Object.assign(navigator, { share });
+      toastTimer.set(5000);
+      toastList.set([]);
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "once",
+            lux: "13000000",
+            memo: "Factura 2026-071",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at,
+            id: "twice",
+            lux: "30000000",
+            memo: "Factura 2026-101",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          row({
+            hash: "ab".repeat(32),
+            memo: "Factura 2026-071",
+            time: at + 500,
+            value: 13_000_000n,
+          }),
+          row({ hash: "cd".repeat(32), time: at + 1500 }),
+          row({ hash: "ef".repeat(32), time: at + 2500 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const [once, twice] = screen.getAllByRole("listitem");
+      /** @param {HTMLElement} card */
+      const actionsOf = (card) =>
+        /** @type {HTMLElement} */ (card.querySelector(".requests__actions"));
+
+      // On the card, beside its Copy and Share: Paid, with when.
+      expect(actionsOf(once)).toHaveTextContent(
+        `Paid ${inSentence(paidAt(at + 500))} Copy link Share Remove`
+      );
+      expect(actionsOf(twice)).toHaveTextContent(
+        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy link Share Remove`
+      );
+
+      // Copy link asks first, on the card, brought into view: nothing
+      // copied yet.
+      const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+        })
+      );
+
+      const asked = `This request was paid already, ${inSentence(paidAt(at + 500))}.`;
+
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      expect(once.querySelector("[role=alert]")).toHaveTextContent(
+        `${asked} Copy anyway Cancel`
+      );
+      expect(scrolled.mock.contexts).toContainEqual(
+        once.querySelector(".paid-already")
+      );
+      scrolled.mockRestore();
+
+      // Cancel: nothing given out, nothing asked any more.
+      await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(once.querySelector("[role=alert]")).toBeNull();
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+
+      // Copy anyway: the link, as before.
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+        })
+      );
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy anyway" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        parsePaymentLink(
+          String(vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0])
+        )
+      ).toMatchObject({ amountDusk: "0.013", memo: "Factura 2026-071" });
+      expect(once.querySelector("[role=alert]")).toBeNull();
+
+      // Share on the one paid twice: asked first, with when it was first paid.
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Share the request for 0.03 DUSK, Factura 2026-101",
+        })
+      );
+
+      expect(share).not.toHaveBeenCalled();
+      expect(twice.querySelector("[role=alert]")).toHaveTextContent(
+        `This request was paid already, ${inSentence(paidAt(at + 1500))}. Share anyway Cancel`
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share anyway" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).toHaveBeenCalledOnce();
+      expect(share.mock.lastCall?.[0].text).toMatch(
+        /^You're asked to pay 0\.03 DUSK on Testnet · Factura 2026-101\nPay here: /
+      );
+      expect(get(toastList)).toStrictEqual([]);
+
+      toastTimer.set(0);
+    });
+
+    it("should keep one request for what's asked again once it's paid, its QR and link the same, and ask under Copy request, Share request and Download QR before they give it out again", async () => {
+      const share = vi.fn().mockResolvedValue(undefined);
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")
         .mockImplementation(() => {});
 
-      // Toasts stay as long as the app's do.
+      Object.assign(navigator, { share });
       toastTimer.set(5000);
       toastList.set([]);
       const at = Date.now() - 60_000;
@@ -811,22 +1055,20 @@ describe("Receive", () => {
       await type("Amount (optional)", "0.013");
       await type("Memo (optional)", "Factura 2026-071");
       await vi.advanceTimersByTimeAsync(0);
+
+      const asked = `This request was paid already, ${inSentence(paidAt(at + 500))}.`;
+      const question = () => document.querySelector(".request [role=alert]");
+
+      // Copy request: asked under it first.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Copy request" })
       );
-      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
-      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
-      expect(screen.getAllByRole("listitem")).toHaveLength(1);
-      expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
-      // Sofía's, in the Android app: a paid invoice copied again could be
-      // paid twice. Its own link goes, and that it was paid is said.
-      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
-        "This request was paid already.",
-      ]);
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      expect(question()).toHaveTextContent(`${asked} Copy anyway Cancel`);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy anyway" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -838,21 +1080,52 @@ describe("Receive", () => {
         to: ACCOUNT,
       });
       expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
-      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
-        "This request was paid already.",
-        "This request was paid already.",
-      ]);
+      expect(question()).toBeNull();
 
-      // Another, not paid: nothing said.
-      toastList.set([]);
-      await type("Memo (optional)", "Factura 2026-072");
-      await vi.advanceTimersByTimeAsync(0);
+      // Share request: the same, and Cancel shares nothing.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Share request" })
+      );
+
+      expect(question()).toHaveTextContent(`${asked} Share anyway Cancel`);
+
+      await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).not.toHaveBeenCalled();
+      expect(question()).toBeNull();
+
+      // Download QR, as the QR holds it: asked under it first.
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
+      expect(click).not.toHaveBeenCalled();
+      expect(
+        document.querySelector(".address-actions [role=alert]")
+      ).toHaveTextContent(`${asked} Download anyway Cancel`);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download anyway" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+      // Another, not paid: nothing asked.
+      await type("Memo (optional)", "Factura 2026-072");
+      await vi.advanceTimersByTimeAsync(0);
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(question()).toBeNull();
+      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(2);
       expect(get(requestsStore)).toHaveLength(2);
+      // Never a toast.
       expect(get(toastList)).toStrictEqual([]);
 
       click.mockRestore();
@@ -1666,6 +1939,93 @@ describe("Receive", () => {
         "A number in a memo here may not be what it looks like."
       );
       expect(get(requestsStore)[0].paid).toBeUndefined();
+      history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    // Q06, Amélie's: Lucas's new request said "Check it's this one" of a
+    // payment she'd made two minutes before he asked. Sofía's: her unpaid
+    // invoice 101 said "Check" for an hour, of invoice 102's payment.
+    it("should count for a request no payment made before it was asked, nor one whose memo names another of the requests", async () => {
+      const at = Date.now() - 60_000;
+      /** @param {Record<string, unknown>} fields */
+      const payment = (fields) => ({
+        category: "received",
+        privacy: "public",
+        status: "executed",
+        value: 10_000_000n,
+        ...fields,
+      });
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "tulips",
+            lux: "10000000",
+            memo: "Les tulipes de dimanche",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at: at - 3_600_000,
+            id: "101",
+            lux: "30000000",
+            memo: "Factura F-2026-101",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at: at - 3_600_000,
+            id: "102",
+            lux: "30000000",
+            memo: "Factura F-2026-102",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          // The same amount, two minutes before the request: not its.
+          payment({
+            hash: "a1".repeat(32),
+            memo: "Wi-Fi coupé r35",
+            time: at - 120_000,
+          }),
+          // Invoice 102's: never 101's.
+          payment({
+            hash: "b2".repeat(32),
+            memo: "Factura F-2026-102",
+            time: at - 1_800_000,
+            value: 30_000_000n,
+          }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      /** @param {string} memo */
+      const card = (memo) =>
+        /** @type {HTMLElement} */ (
+          screen
+            .getAllByRole("listitem")
+            .find((item) => item.textContent?.includes(memo))
+        );
+
+      for (const memo of ["Les tulipes de dimanche", "Factura F-2026-101"]) {
+        expect(card(memo).querySelector(".requests__state")).toHaveTextContent(
+          /^Waiting$/
+        );
+        expect(card(memo)).toHaveTextContent("Nothing matching has come in.");
+        expect(card(memo)).not.toHaveTextContent(/Check|Wi-Fi|F-2026-102/);
+      }
+
+      expect(
+        card("Factura F-2026-102").querySelector(".requests__state")
+      ).toHaveTextContent(/^Paid$/);
       history.state?.set({ hasMore: false, rows: [] });
     });
 

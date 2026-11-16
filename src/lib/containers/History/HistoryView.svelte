@@ -154,7 +154,8 @@
   ];
 
   /** @type {Record<string, string>} */
-  const STATUS_WORDS = { pending: "Pending", unknown: "Not confirmed" };
+  // One not confirmed yet says so in its line, in place of Sent.
+  const STATUS_WORDS = { pending: "Pending" };
 
   /** Whether Export's panel shows. */
   let isExportOpen = false;
@@ -828,10 +829,6 @@
 
     &--pending {
       color: var(--calm-pending);
-    }
-
-    &--unknown {
-      color: var(--calm-muted);
     }
   }
 

@@ -135,6 +135,52 @@ describe("A send that can be called off", () => {
     });
   });
 
+  // Chen's, on slow Wi-Fi: Home said "Not sent yet … Cancel" for 30 s while
+  // the node was checking it and took it.
+  it("goes out from the moment the node is asked to check it, though its answer is slow, and not once it waits for the network again", async () => {
+    const { Transactions } = await import("$lib/mocks/Transactions");
+    const checked = Promise.withResolvers();
+    // The node's check, under what the wallet wraps of it: the network
+    // drops at the first, and the second is slow to answer.
+    const preverify = vi
+      .spyOn(Transactions.prototype, "preverify")
+      .mockImplementationOnce(() =>
+        Promise.reject(new TypeError("Failed to fetch"))
+      )
+      .mockImplementationOnce(() => checked.promise);
+    const network = new SendingNetwork(new URL("https://nodes.example/"));
+    const gate = sendGate();
+
+    try {
+      expect(get(gate.goingOut)).toBe(false);
+
+      const sent = gate.untilHandedOver(
+        () => network.execute(/** @type {any} */ (builder()), { gate }),
+        async () => 1n
+      );
+
+      sent.catch(() => {});
+
+      // Asked, and the network dropped: it waits, not out.
+      await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
+      expect(get(gate.goingOut)).toBe(false);
+
+      window.dispatchEvent(new Event("online"));
+
+      // Asked again, its answer slow: out, still open, not handed over.
+      await vi.waitFor(() => expect(get(gate.goingOut)).toBe(true));
+      expect(get(gate)).toBe("open");
+      expect(get(gate.waitsForNetwork)).toBe(false);
+
+      checked.resolve(undefined);
+      await sent;
+
+      expect(get(gate)).toBe("handed-over");
+    } finally {
+      preverify.mockRestore();
+    }
+  });
+
   it("goes out as ever, past calling off, once the node was asked to broadcast it", async () => {
     const network = new SendingNetwork(new URL("https://nodes.example/"));
     const asked = get(broadcastsAsked);

@@ -9,12 +9,15 @@
    * (`@dusk-network/app-core/recovery-words`), and kept nowhere. A check
    * says whether they match and nothing more: a mismatch shows no word, nor
    * which one is wrong, with Try again, which asks the same three again, and
-   * apart from it Show my recovery words (`show`), which the page shows them
-   * for as it shows them. `checked` says once they match.
+   * under it, apart and small, Show my recovery words (`show`), which the
+   * page shows them for as it shows them. `checked` says once they match.
    *
    * Each box suggests recovery words as Import's do, from the wallet's own
    * list and from what's typed alone, never from the phrase, and marks a word
-   * that isn't one: "Not a recovery word".
+   * that isn't one: "Not a recovery word". Enter, or a phone keyboard's Next,
+   * goes on to the next box, whether or not suggestions show, and never
+   * checks: Check, and Enter in the last box, check only once every box
+   * holds a recovery word, and a check half filled in says nothing.
    */
   import { createEventDispatcher, tick } from "svelte";
   import {
@@ -102,7 +105,22 @@
           .map((place) => place + 1)
           .join(", ")} and ${places[places.length - 1] + 1}`;
 
+  /** Whether a box holds a recovery word, as typed. */
+  const holdsWord = (/** @type {string} */ word) => isWord(word.trim());
+
+  /** The first box that holds no recovery word, to type in next. */
+  const focusFirstEmpty = () =>
+    boxes[typed.findIndex((word) => !holdsWord(word))]?.focus();
+
   function check() {
+    // Half filled in, it's no answer: nothing is said, and the box to fill
+    // in next is the one typed in.
+    if (!typed.every(holdsWord)) {
+      focusFirstEmpty();
+
+      return;
+    }
+
     const isMatch = recoveryWordsMatch(
       words,
       asked.map(
@@ -189,6 +207,17 @@
     } else if (key === "close") {
       event.preventDefault();
       suggesting = -1;
+    } else if (event.key === "Enter" && !event.isComposing) {
+      // On to the next box, never the check; in the last, the check once
+      // every box holds a recovery word, else the first that doesn't.
+      event.preventDefault();
+
+      if (i < asked.length - 1) {
+        suggesting = -1;
+        boxes[i + 1]?.focus();
+      } else {
+        check();
+      }
     }
   }
 
@@ -222,12 +251,13 @@
     </p>
     <div class="recovery-check__actions">
       <Button on:click={tryAgain} text="Try again" variant="primary" />
-      <Button
-        on:click={(event) => dispatch("show", event)}
-        text={RECOVERY_WORDS_SHOW}
-        variant="secondary"
-      />
     </div>
+    <!-- Apart, and small: Try again is the one button here. -->
+    <button
+      class="recovery-check__show tap-link"
+      on:click={(event) => dispatch("show", event)}
+      type="button">{RECOVERY_WORDS_SHOW}</button
+    >
   </div>
 {:else}
   <form
@@ -259,6 +289,7 @@
               autocorrect="off"
               bind:this={boxes[i]}
               bind:value={typed[i]}
+              enterkeyhint={i < asked.length - 1 ? "next" : "done"}
               id="{id}-{place}"
               inputmode="text"
               on:blur={() => handleBlur(i)}
@@ -285,7 +316,12 @@
         </div>
       {/each}
     </div>
-    <Button text="Check" type="submit" variant="secondary" />
+    <Button
+      disabled={!typed.every(holdsWord)}
+      text="Check"
+      type="submit"
+      variant="secondary"
+    />
     {#if result === "match"}
       <p class="recovery-check__match" role="status">They match.</p>
     {/if}
@@ -346,5 +382,25 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  /* A text link, under Try again and set apart from it. */
+  .recovery-check__show {
+    align-self: flex-start;
+    margin-top: 1rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--calm-muted);
+    font: inherit;
+    font-size: 0.875rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+      outline-offset: 2px;
+    }
   }
 </style>

@@ -3,6 +3,7 @@
 <script>
   import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
+  import { get } from "svelte/store";
   import {
     mdiAlertOutline,
     mdiArrowLeft,
@@ -46,15 +47,21 @@
     sendGate,
     takeUnsentRefill,
     unsentRefill,
+    unsentSends,
     waitingSends,
     waitingText,
   } from "$lib/transactions";
-  import { onTheirWay } from "$lib/activity/sends";
+  import { notConfirmed, onTheirWay } from "$lib/activity/sends";
   import { paidInSentence } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
-  import { readPastedLink, readPaymentLink } from "$lib/payment-requests";
+  import { ownersOf } from "$lib/dusk-domains/nameOwners";
+  import {
+    pastedNames,
+    readPastedLink,
+    readPaymentLink,
+  } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
-  import { networkStore, settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import {
     openWalletName,
@@ -624,18 +631,77 @@
   let isPasting = false;
 
   /**
+   * What the last paste brought, as the clipboard had it: with its line
+   * breaks, which a one-line field drops, and with them where a link ended.
+   */
+  let pasted = "";
+
+  /** What's put in To is read, the last of it only: bumped with each. */
+  let takings = 0;
+
+  /**
+   * Whether what's put in To is being read, as a request's .dusk names are
+   * looked up: nothing is filled in, nor said wrong, meanwhile, and Amount
+   * and Memo show as being filled in, not to be typed in.
+   */
+  let isReadingLink = false;
+
+  /**
+   * What To, Amount and Memo held as what's read began to be read, and the
+   * names it's looked up by: anything else put in them meanwhile, as a
+   * contact picked, a name taken, a key typed or To cleared, comes first,
+   * and what's read fills in nothing.
+   */
+  let readingFrom = {
+    amount: "",
+    memo: "",
+    names: /** @type {string[]} */ ([]),
+    to: "",
+  };
+
+  /**
    * What's put in To whole, as pasted, scanned or finished: a link asking for
    * a payment fills in what it asks, and one refused, as for another network,
-   * says why and empties the form, so nothing in it reads as the refused
-   * link's. Anything else is a recipient as it is, leaving what's typed in
-   * the other fields. What's filled in is checked as if it were typed.
+   * or as what Share and Copy give of a request that doesn't agree with its
+   * link, its .dusk names looked up first, says why and empties the form, so
+   * nothing in it reads as the refused link's. Anything else is a recipient
+   * as it is, leaving what's typed in the other fields. What's filled in is
+   * checked as if it were typed.
    *
    * @param {string} text
+   * @param {string} [held] What To holds as it's put there
    */
-  async function takeRecipient(text) {
-    // A link alone, or in what Share and Copy give of a request.
-    const asked = readPastedLink(text, $nodeNetwork, language);
+  async function takeRecipient(text, held = sendToAddress) {
+    const taking = (takings += 1);
+    const names = pastedNames(text, $nodeNetwork);
 
+    // Whose a request says it is, as the name service says it.
+    if (names.length) {
+      readingFrom = { amount: sendAmount, memo, names, to: held };
+      isReadingLink = true;
+
+      const owners = await ownersOf(names, resolveName);
+
+      if (taking !== takings) {
+        return;
+      }
+
+      isReadingLink = false;
+      fillFrom(text, readPastedLink(text, $nodeNetwork, language, owners));
+    } else {
+      isReadingLink = false;
+      fillFrom(text, readPastedLink(text, $nodeNetwork, language));
+    }
+  }
+
+  /**
+   * Fills the form in from what's put in To, as it's read: a link alone, or
+   * in what Share and Copy give of a request.
+   *
+   * @param {string} text
+   * @param {ReturnType<typeof readPastedLink>} asked
+   */
+  async function fillFrom(text, asked) {
     // The field holds what was given until now: what takes its place, or
     // nothing, then shows, whatever it held before.
     await tick();
@@ -666,9 +732,20 @@
     const { value } = /** @type {HTMLInputElement} */ (target);
 
     if (isPasting || value.length - typedLength > 1) {
+      // As pasted, line breaks and all, where the paste is all the field
+      // holds: "link" then "danke!" on the next line isn't "linkdanke!".
+      const given =
+        isPasting && pasted && pasted.replace(/[\r\n]/g, "") === value
+          ? pasted
+          : value;
+
       isPasting = false;
-      takeRecipient(value);
+      pasted = "";
+      takeRecipient(given, value);
     } else {
+      // Typed: what was being read of a paste before fills in nothing.
+      takings += 1;
+      isReadingLink = false;
       linkProblem = "";
       isFromLink = false;
       typedLength = value.length;
@@ -993,6 +1070,9 @@
         id: isRefilled && refill ? refill.id : undefined,
         isSaid: () => isShown && sent?.operation === operation,
         network: $networkStore.networkName,
+        // What the account had sent, as the wallet knew it: said once the
+        // wallet opens again where it sent more while this waited.
+        seen: get(walletStore).balance.unshielded.nonce,
         typed: {
           amount: typed.amount,
           gas: typed.gas,
@@ -1258,6 +1338,18 @@
     sendToAddress = withoutSpaces(sendToAddress);
   }
 
+  // Anything else put in To, Amount or Memo while a paste is read comes
+  // first, however it got there: what's read of the paste fills in nothing.
+  $: if (
+    isReadingLink &&
+    (sendToAddress !== readingFrom.to ||
+      sendAmount !== readingFrom.amount ||
+      memo !== readingFrom.memo)
+  ) {
+    takings += 1;
+    isReadingLink = false;
+  }
+
   $: if (!sendToAddress) {
     isRecipientChecked = false;
   }
@@ -1410,9 +1502,11 @@
         )
       : undefined;
 
-  // Nothing is said of an empty field: Review stays off until there's one.
+  // Nothing is said of an empty field, nor of what's being read: Review
+  // stays off until there's a recipient.
   $: isRecipientInvalid =
     isRecipientChecked &&
+    !isReadingLink &&
     sendToAddress !== "" &&
     !recipientName &&
     !addressInfo.isValid &&
@@ -1599,17 +1693,21 @@
   /**
    * The same payment, made already, in a sentence: when a block took it, to
    * the second, as the request it paid and its Sent screen say it, or that
-   * it's on its way: its time is a block's, once one has it.
+   * it's on its way: its time is a block's, once one has it. One whose
+   * answer never came isn't on its way for all that's known: it may have
+   * gone out.
    *
    * @param {ActivityRow} row
    * @param {Parameters<typeof paymentOf>[1]} known
    */
   const sentBefore = (row, known) =>
-    `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
-      row.status === "executed" && row.time !== null
-        ? ` ${paidInSentence(row.time, known.locale)}.`
-        : ". It's on its way."
-    }`;
+    row.status === "unknown"
+      ? `Not confirmed yet: ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}. It may have reached the network.`
+      : `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
+          row.status === "executed" && row.time !== null
+            ? ` ${paidInSentence(row.time, known.locale)}.`
+            : ". It's on its way."
+        }`;
 
   /**
    * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
@@ -1636,6 +1734,15 @@
   // What this profile sent that's on its way: a reload or another tab's
   // send doesn't hide it.
   $: underWay = onTheirWay(historyRows);
+  // And what it sent whose answer never came: not confirmed yet, never on
+  // its way. One kept as handed over says so itself, in its notice.
+  $: unconfirmed = notConfirmed(historyRows).filter(
+    ({ hash }) =>
+      !$unsentSends.some(
+        ({ handedOver }) =>
+          handedOver?.hash.toLowerCase() === hash.toLowerCase()
+      )
+  );
   // The same payment, made already: moments ago, or with the same memo.
   $: madeAgain = addressInfo.isValid
     ? sentAlready(historyRows, {
@@ -1715,6 +1822,20 @@
           >
         </Banner>
       {/each}
+      {#each unconfirmed as row (row.hash)}
+        <Banner
+          className="send__under-way"
+          role="status"
+          title={`Not confirmed yet: ${paymentOf(row, known)}.`}
+          variant="warning"
+        >
+          <AppAnchor
+            className="text-link"
+            href={`/dashboard/transactions?tx=${row.hash}`}
+            >See in History</AppAnchor
+          >
+        </Banner>
+      {/each}
 
       <UnsentSends />
 
@@ -1735,9 +1856,10 @@
             on:blur={finishRecipient}
             on:input={handleRecipientInput}
             on:keydown={handleRecipientKeyDown}
-            on:paste={() => {
+            on:paste={(event) => {
               isPasting = true;
               isRecipientChecked = true;
+              pasted = event.clipboardData?.getData("text") ?? "";
             }}
             placeholder="Address, .dusk name or payment link"
             spellcheck="false"
@@ -1798,7 +1920,12 @@
           </select>
         {/if}
 
-        {#if linkProblem}
+        {#if isReadingLink}
+          <!-- Amount and Memo are being filled in meanwhile. -->
+          <p class="send__hint" role="status">
+            Looking up {readingFrom.names.join(", ")}…
+          </p>
+        {:else if linkProblem}
           <p class="send__error" role="alert"><strong>{linkProblem}</strong></p>
           {#if linkElsewhere}
             <AnchorButton
@@ -2162,6 +2289,7 @@
             aria-invalid={amountError ? "true" : undefined}
             autocomplete="off"
             className="send__amount-input"
+            disabled={isReadingLink}
             id="{id}-amount"
             inputmode="decimal"
             on:input={typeAmount}
@@ -2175,6 +2303,7 @@
           {/if}
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
+            disabled={isReadingLink}
             on:click={setMaxAmount}
             size="small"
             text="Max"
@@ -2244,6 +2373,7 @@
             "send__memo-input": true,
             "send__memo-input--invalid": isMemoValid === false,
           })}
+          disabled={isReadingLink}
           id="{id}-memo"
           type="multiline"
         />

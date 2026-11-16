@@ -290,6 +290,145 @@ describe("Dashboard", () => {
     }
   });
 
+  // Chen's, on slow Wi-Fi: "Not sent yet … It goes out once the network
+  // answers. Cancel" for 30 s while the node checked it and took it.
+  it("says a waiting send is being sent, with nothing to call off, from the moment the node is asked to check it, though the pill finds the network silent", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    keepWaiting({
+      gate,
+      lux: 10_000_000n,
+      operation: new Promise(() => {}),
+      to: "your Profile 2",
+    });
+
+    const at = timeLabel(get(waitingSends)[0].at, "en");
+
+    try {
+      await act(() => setNetworkReach("silent"));
+
+      expect(banner()).toBe(
+        `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`
+      );
+
+      // The node is asked to check it: it goes out, its answer slow.
+      await act(() => gate.checking());
+
+      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
+      expect(document.querySelector(".home__waiting button")).toBeNull();
+
+      // Handed over: no longer said here, as Activity has it.
+      await act(() => gate.handOver());
+
+      expect(banner()).toBeUndefined();
+    } finally {
+      gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
+  // Chen's, on two phones: the payment waiting on phone A went out by itself
+  // after she paid the same from phone B. Held, it says so here, with the
+  // payment, and goes only as she says.
+  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and sends it too, or not, only as the person says", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
+    const { toastList } = await import("$lib/dusk/components/Toast/store");
+
+    toastList.set([]);
+    render(Dashboard, props);
+
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    /** @param {string} name */
+    const button = (name) =>
+      /** @type {HTMLElement} */ (
+        Array.from(document.querySelectorAll(".home__waiting button")).find(
+          (each) => each.textContent?.trim() === name
+        )
+      );
+
+    /**
+     * A send that waited, held as the person is asked.
+     *
+     * @param {string} memo
+     */
+    async function held(memo) {
+      const gate = sendGate();
+      let goesOn = false;
+
+      keepWaiting({
+        gate,
+        lux: 10_000_000n,
+        memo,
+        operation: new Promise(() => {}),
+        to: "your Profile 2",
+      });
+      gate.ask().then(
+        () => {
+          goesOn = true;
+        },
+        () => {}
+      );
+      await act();
+
+      return { gate, goesOn: () => goesOn };
+    }
+
+    const sent = await held("night shift 6");
+
+    try {
+      const at = timeLabel(get(waitingSends)[0].at, "en");
+
+      expect(banner()).toBe(
+        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`
+      );
+      expect(
+        Array.from(document.querySelectorAll(".home__waiting button"), (b) =>
+          b.textContent?.trim()
+        )
+      ).toStrictEqual(["Send it too", "Don't send"]);
+
+      // Send it too: it goes on, no longer held.
+      await fireEvent.click(button("Send it too"));
+      await vi.waitFor(() => expect(sent.goesOn()).toBe(true));
+      expect(get(sent.gate)).toBe("open");
+      expect(banner()).not.toContain("sent something else");
+    } finally {
+      sent.gate.cancel();
+    }
+
+    const dropped = await held("night shift 7");
+
+    try {
+      // Don't send: called off, nothing goes out, and it's said.
+      await fireEvent.click(button("Don't send"));
+
+      expect(get(dropped.gate)).toBe("cancelled");
+      expect(dropped.goesOn()).toBe(false);
+      expect(banner()).toBeUndefined();
+      expect(get(toastList).map(({ message }) => message)).toContain(
+        "Not sent: 0.01 DUSK to your Profile 2."
+      );
+    } finally {
+      dropped.gate.cancel();
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -938,6 +1077,25 @@ describe("Dashboard", () => {
     expect(items()).toEqual([
       expect.stringMatching(/^wallet-both\.dusk Received/),
     ]);
+  });
+
+  // Marek's: a send whose page died before the node answered was "Sent ·
+  // Pending" until another send proved it never went out.
+  it("lists a send whose answer never came as not confirmed yet, never sent or pending", async () => {
+    await setHistory({
+      rows: [rowOf({ ...FIELDS[0], hash: "d4".repeat(32), status: "unknown" })],
+    });
+
+    const { container } = render(Dashboard, props);
+    const [item] = Array.from(
+      container.querySelectorAll(".activity-row"),
+      (row) => row.textContent?.replace(/\s+/g, " ").trim()
+    );
+
+    expect(item).toMatch(
+      /^alice-shop\.dusk Not confirmed yet · .+ · Public −5 DUSK$/
+    );
+    expect(item).not.toMatch(/Sent|Pending/);
   });
 
   it("hides amounts while balances are hidden, but not a fee", async () => {

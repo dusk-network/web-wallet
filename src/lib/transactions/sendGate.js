@@ -5,7 +5,11 @@
  * as the one thread runs them. A send called off stops at once, before
  * anything it waits on answers, and never reaches the node. Until then, what
  * couldn't reach the network waits for it, as on a network that doesn't
- * answer, and is made again once it answers (`untilHandedOver`).
+ * answer, and is made again once it answers (`untilHandedOver`). One that
+ * waited can be held until the person says to send it all the same (`ask`),
+ * as its account sent something else meanwhile. From the moment the node is
+ * asked to check it, it goes out (`goingOut`): it's no longer offered to call
+ * off, though it's handed over only once the node passed it.
  */
 
 import { writable } from "svelte/store";
@@ -45,13 +49,18 @@ const ANSWER_WITHIN = 10_000;
 
 /**
  * @typedef {{
+ *   ask: () => Promise<void>,
+ *   asking: import("svelte/store").Readable<boolean>,
  *   cancel: (reason?: Error) => boolean,
  *   cancelled: Promise<never>,
  *   check: () => void,
+ *   checking: () => void,
+ *   goingOut: import("svelte/store").Readable<boolean>,
  *   handOver: (sent?: HandedOver) => Promise<void>,
  *   keepFirst: (keep: (sent: HandedOver) => Promise<void>) => void,
+ *   sendToo: () => boolean,
  *   subscribe: import("svelte/store").Readable<SendGateState>["subscribe"],
- *   untilHandedOver: <T>(attempt: () => Promise<T>, answers: (signal: AbortSignal) => Promise<unknown>) => Promise<T>,
+ *   untilHandedOver: <T>(attempt: (waited: boolean) => Promise<T>, answers: (signal: AbortSignal) => Promise<unknown>) => Promise<T>,
  *   waitsForNetwork: import("svelte/store").Readable<boolean>,
  * }} SendGate
  *   `cancel` calls it off, where it wasn't handed over, by the person or
@@ -62,15 +71,29 @@ const ANSWER_WITHIN = 10_000;
  *   so (`keepFirst`), and only then may the node be asked to broadcast it,
  *   never where it rejects; `untilHandedOver` makes what comes before that
  *   again while it couldn't reach the network, once the network answers what
- *   `answers` asks; `waitsForNetwork` says whether it waits for that, until
- *   it's handed over or called off.
+ *   `answers` asks, telling `attempt` whether it waited; `waitsForNetwork`
+ *   says whether it waits for that, until it's handed over or called off;
+ *   `ask` holds it until the person says to send it all the same
+ *   (`sendToo`, true where it was held), and rejects with why as it's
+ *   called off meanwhile; `asking` says whether it's held so; `checking`
+ *   says the node is asked to check it, and `goingOut` whether it was and
+ *   it doesn't wait for the network again since.
  */
 
 /** @returns {SendGate} */
 export function sendGate() {
   const state = writable(/** @type {SendGateState} */ ("open"));
   const waiting = writable(false);
+  const held = writable(false);
+  const out = writable(false);
   let now = /** @type {SendGateState} */ ("open");
+
+  /**
+   * Lets a send held for the person go on (`ask`): null while none is.
+   *
+   * @type {(() => void) | null}
+   */
+  let goOn = null;
 
   /** Why it was called off. */
   let why = /** @type {Error} */ (new SendCancelledError());
@@ -99,8 +122,10 @@ export function sendGate() {
   /** @param {SendGateState} next */
   const set = (next) => {
     now = next;
+    goOn = null;
     state.set(next);
     waiting.set(false);
+    held.set(false);
   };
 
   const check = () => {
@@ -159,6 +184,17 @@ export function sendGate() {
   }
 
   return {
+    async ask() {
+      check();
+
+      const answered = Promise.withResolvers();
+
+      goOn = () => answered.resolve(undefined);
+      held.set(true);
+      // Called off meanwhile, it stops at once, with why.
+      await Promise.race([answered.promise, cancelled]);
+    },
+    asking: { subscribe: held.subscribe },
     cancel(reason = new SendCancelledError()) {
       if (now !== "open") {
         return false;
@@ -173,6 +209,12 @@ export function sendGate() {
     },
     cancelled,
     check,
+    checking() {
+      if (now === "open") {
+        out.set(true);
+      }
+    },
+    goingOut: { subscribe: out.subscribe },
     handOver(sent = { hash: "", nonce: "" }) {
       check();
       set("handed-over");
@@ -182,11 +224,24 @@ export function sendGate() {
     keepFirst(keep) {
       keepers.push(keep);
     },
+    sendToo() {
+      const release = goOn;
+
+      if (now !== "open" || !release) {
+        return false;
+      }
+
+      goOn = null;
+      held.set(false);
+      release();
+
+      return true;
+    },
     subscribe: state.subscribe,
     async untilHandedOver(attempt, answers) {
-      for (;;) {
+      for (let waited = false; ; waited = true) {
         try {
-          return await attempt();
+          return await attempt(waited);
         } catch (error) {
           // Once handed over it may have gone out, and is never made again.
           if (now !== "open" || !isUnreachable(error)) {
@@ -194,6 +249,8 @@ export function sendGate() {
           }
         }
 
+        // Not out: it waits for the network again.
+        out.set(false);
         waiting.set(true);
         await networkAnswers(answers);
         // It answers: the send is being made again, no longer waiting.

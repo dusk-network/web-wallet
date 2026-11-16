@@ -580,6 +580,401 @@ describe("A send that fails", () => {
     }
   });
 
+  /**
+   * Chen's, on two phones: a send that waited, offline or on a network
+   * that didn't answer, while the account's nonce moved on, as another
+   * device's payment took one.
+   *
+   * @param {"offline" | "silent"} how
+   */
+  async function heldSend(how) {
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    // The account's nonce, as the node says it: another device moves it.
+    const node = { isAnswering: true, nonce: 20_000n };
+    /** @type {PromiseWithResolvers<void>} */
+    let silence = Promise.withResolvers();
+    const update = vi
+      .spyOn(WalletTreasury.prototype, "update")
+      .mockImplementation(
+        /** @this {any} */
+        async function (/** @type {any[]} */ ...args) {
+          if (!node.isAnswering) {
+            if (how === "offline") {
+              throw new TypeError("Failed to fetch");
+            }
+
+            // Silent: no answer, no error, until it answers again.
+            await silence.promise;
+          }
+
+          return treasuryUpdate.apply(this, /** @type {any} */ (args));
+        }
+      );
+    const answers = vi
+      .spyOn(networkStore, "getCurrentBlockHeight")
+      .mockImplementation(() =>
+        node.isAnswering
+          ? Promise.resolve(123n)
+          : Promise.reject(new TypeError("Failed to fetch"))
+      );
+    const { AccountSyncer } = await import("@dusk/w3sper");
+    const balances = vi
+      .spyOn(AccountSyncer.prototype, "balances")
+      .mockImplementation(async (profiles) =>
+        profiles.map(
+          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n })
+        )
+      );
+    const toBuild = vi.spyOn(Transfer.prototype, "to").mockImplementation(
+      () =>
+        /** @type {any} */ ({
+          build: async () => ({
+            buffer: new Uint8Array([3, 3]),
+            hash: "fe".repeat(32),
+            nonce: node.nonce + 1n,
+          }),
+          gas() {
+            return this;
+          },
+          memo() {
+            return this;
+          },
+        })
+    );
+
+    // Read as the wallet last synced, before the Wi-Fi went.
+    await walletStore.sync();
+    node.isAnswering = false;
+    await act(() => setNetworkReach(how));
+
+    const transfer = await gatedTransfer();
+
+    if (how === "offline") {
+      await vi.waitFor(() =>
+        expect(get(transfer.gate.waitsForNetwork)).toBe(true)
+      );
+    } else {
+      await vi.waitFor(() => expect(update).toHaveBeenCalled());
+    }
+
+    // Paid from the other phone meanwhile: the nonce moves on.
+    node.nonce += 1n;
+    // Back.
+    node.isAnswering = true;
+    await act(() => setNetworkReach("answering"));
+    silence.resolve();
+    await backOnline();
+
+    return {
+      ...transfer,
+      restore() {
+        silence = Promise.withResolvers();
+        silence.resolve();
+        setNetworkReach("answering");
+        update.mockRestore();
+        answers.mockResolvedValue(123n);
+        balances.mockRestore();
+        toBuild.mockRestore();
+      },
+    };
+  }
+
+  it("holds a send that waited for the network while its account sent something else, says so on its screen, and sends it only once the person says Send it too", async () => {
+    const { broadcastsAsked } = await import("$lib/transactions");
+    const asked = get(broadcastsAsked);
+
+    executeUntil("propagate", null);
+
+    const { gate, rendered, restore } = await heldSend("offline");
+
+    try {
+      await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+
+      // Nothing went out by itself: it's held, and said.
+      expect(executeSpy).not.toHaveBeenCalled();
+      expect(get(broadcastsAsked)).toBe(asked);
+      expect(get(gate)).toBe("open");
+      expect(rendered.getByRole("status")).toHaveTextContent(
+        "Your account sent something else while this waited."
+      );
+      expect(rendered.getByText("Not sent yet")).toBeInTheDocument();
+      expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
+      expect(rendered.queryByRole("button", { name: "Cancel" })).toBeNull();
+
+      // It waits for the person, however long.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(executeSpy).not.toHaveBeenCalled();
+
+      follow.spy?.mockReturnValueOnce(new Promise(() => {}));
+      await act(() =>
+        rendered.getByRole("button", { name: "Send it too" }).click()
+      );
+
+      await vi.waitFor(() =>
+        expect(
+          rendered.container.querySelector(".transaction-status")
+        ).toBeTruthy()
+      );
+      expect(executeSpy).toHaveBeenCalledOnce();
+      expect(get(broadcastsAsked)).toBe(asked + 1);
+      expect(get(gate.asking)).toBe(false);
+      expect(shown(rendered.container).heading).toBe("Sending…");
+    } finally {
+      restore();
+    }
+  });
+
+  it("never sends a send held so once the person says Don't send, and says nothing was sent", async () => {
+    const { SendCancelledError, broadcastsAsked } =
+      await import("$lib/transactions");
+    const asked = get(broadcastsAsked);
+    const { gate, rendered, restore, sending } = await heldSend("offline");
+
+    try {
+      await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+      await act(() =>
+        rendered.getByRole("button", { name: "Don't send" }).click()
+      );
+
+      await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
+      await vi.waitFor(() =>
+        expect(shown(rendered.container)).toMatchObject({
+          heading: "Not sent",
+          sentence: "You cancelled it, so nothing was sent.",
+        })
+      );
+      expect(executeSpy).not.toHaveBeenCalled();
+      expect(get(broadcastsAsked)).toBe(asked);
+      expect(get(gate.asking)).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it("holds a send that waited on a network that didn't answer, and goes on as the person says Send it too", async () => {
+    executeUntil("propagate", null);
+
+    const { gate, rendered, restore } = await heldSend("silent");
+
+    try {
+      await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+      expect(executeSpy).not.toHaveBeenCalled();
+
+      follow.spy?.mockReturnValueOnce(new Promise(() => {}));
+      expect(gate.sendToo()).toBe(true);
+      await vi.waitFor(() => expect(get(gate)).toBe("handed-over"));
+      expect(executeSpy).toHaveBeenCalledOnce();
+      await vi.waitFor(() =>
+        expect(
+          rendered.container.querySelector(".transaction-status")
+        ).toBeTruthy()
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  /**
+   * The node, as the account's nonce and which transactions a block has
+   * say, and transfers built as w3sper builds them, with the nonce after the
+   * one the wallet reads: for the wallet's own transactions, as the chain
+   * has them or not.
+   *
+   * @param {bigint} nonce The account's nonce to start with
+   */
+  async function nodeAt(nonce) {
+    const { AccountSyncer, Network: NetworkClass } =
+      await import("@dusk/w3sper");
+    const node = {
+      inBlock: /** @type {Set<string>} */ (new Set()),
+      isAnswering: true,
+      nonce,
+    };
+    /** @type {any} */
+    let treasury = null;
+    const update = vi
+      .spyOn(WalletTreasury.prototype, "update")
+      .mockImplementation(
+        /** @this {any} */
+        function (/** @type {any[]} */ ...args) {
+          treasury = this;
+
+          return node.isAnswering
+            ? treasuryUpdate.apply(this, /** @type {any} */ (args))
+            : Promise.reject(new TypeError("Failed to fetch"));
+        }
+      );
+    const answers = vi
+      .spyOn(networkStore, "getCurrentBlockHeight")
+      .mockImplementation(() =>
+        node.isAnswering
+          ? Promise.resolve(123n)
+          : Promise.reject(new TypeError("Failed to fetch"))
+      );
+    const balances = vi
+      .spyOn(AccountSyncer.prototype, "balances")
+      .mockImplementation(async (profiles) =>
+        profiles.map(
+          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n })
+        )
+      );
+    const balance = vi
+      .spyOn(Bookkeeper.prototype, "balance")
+      .mockImplementation(async (identifier) =>
+        ProfileGenerator.typeOf(String(identifier)) === "address"
+          ? /** @type {any} */ ({ spendable: 0n, value: 0n })
+          : treasury.account(identifier)
+      );
+    // Which transactions a block has, by their hash.
+    const query = vi
+      .spyOn(NetworkClass.prototype, "query")
+      .mockImplementation(async (gql = "") => {
+        const [, hash] = gql.match(/tx\(hash: "([0-9a-f]+)"\)/) ?? [];
+
+        return {
+          tx: node.inBlock.has(hash)
+            ? { blockHeight: 1, blockTimestamp: 1, err: null, gasSpent: 1 }
+            : null,
+        };
+      });
+    /** @type {Array<{ hash: string, nonce: bigint }>} */
+    const built = [];
+    const realTo = Transfer.prototype.to;
+    const build = vi.spyOn(Transfer.prototype, "to").mockImplementation(
+      /** @this {any} */
+      function (/** @type {any} */ value) {
+        const builder = /** @type {any} */ (realTo.call(this, value));
+
+        builder.build = async () => {
+          const read = await builder.bookentry.info.balance("account");
+          const made = {
+            buffer: new Uint8Array([7, built.length]),
+            hash: `${built.length}`.padStart(2, "0").repeat(32),
+            nonce: read.nonce + 1n,
+          };
+
+          built.push(made);
+
+          return made;
+        };
+
+        return builder;
+      }
+    );
+
+    // Read as the wallet last synced.
+    await walletStore.sync();
+
+    return {
+      built,
+      node,
+      restore() {
+        node.isAnswering = true;
+        update.mockRestore();
+        answers.mockResolvedValue(123n);
+        balances.mockRestore();
+        balance.mockResolvedValue(
+          /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n })
+        );
+        query.mockRestore();
+        build.mockRestore();
+      },
+    };
+  }
+
+  it("counts as this wallet's own only what a block has of it: one dropped, whose nonce another device took, holds a send that waited, and one in a block doesn't", async () => {
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const { built, node, restore } = await nodeAt(30_000n);
+    const to = String(get(walletStore).profiles[1].account);
+    const gas = new Gas({ limit: 1n, price: 1n });
+
+    try {
+      for (const isOwnInBlock of [false, true]) {
+        // One of this wallet's goes out, its nonce the next.
+        executeUntil("propagate", null);
+        await walletStore.transfer(to, 1n, "", gas);
+
+        const [own] = built.slice(-1);
+
+        // Offline, a send waits.
+        node.isAnswering = false;
+        await act(() => setNetworkReach("offline"));
+        executeUntil("propagate", null);
+
+        const { gate } = await gatedTransfer();
+
+        await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
+
+        // The account's nonce moves on by one: by the wallet's own, in a
+        // block, or by another device's, as the wallet's was dropped.
+        node.nonce += 1n;
+
+        if (isOwnInBlock) {
+          node.inBlock.add(own.hash);
+        }
+
+        node.isAnswering = true;
+        await act(() => setNetworkReach("answering"));
+        await backOnline();
+
+        if (isOwnInBlock) {
+          // Its own: it goes out as ever, asking nothing.
+          await vi.waitFor(() => expect(get(gate)).toBe("handed-over"));
+          expect(get(gate.asking)).toBe(false);
+        } else {
+          // Another device's took the nonce: it's held, nothing built.
+          await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+          expect(built).toHaveLength(1);
+          gate.cancel();
+        }
+
+        built.length = 0;
+        cleanup();
+        node.nonce += 10n;
+        await walletStore.sync();
+      }
+    } finally {
+      restore();
+      setNetworkReach("answering");
+    }
+  });
+
+  it("asks again where the account sent more while it asked, synced afresh after Send it too, and is built on the account as it is then", async () => {
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+    const { built, node, restore } = await nodeAt(50_000n);
+
+    try {
+      node.isAnswering = false;
+      await act(() => setNetworkReach("offline"));
+      executeUntil("propagate", null);
+
+      const { gate } = await gatedTransfer();
+
+      await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
+
+      // Paid from the other phone meanwhile, then back: asked.
+      node.nonce = 50_001n;
+      node.isAnswering = true;
+      await act(() => setNetworkReach("answering"));
+      await backOnline();
+      await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+
+      // Paid again from there while it asks: Send it too asks again.
+      node.nonce = 50_002n;
+      gate.sendToo();
+      await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
+      expect(built).toStrictEqual([]);
+
+      // Nothing more: it's built on the nonce the account has now.
+      gate.sendToo();
+      await vi.waitFor(() => expect(get(gate)).toBe("handed-over"));
+      expect(built.map(({ nonce }) => nonce)).toStrictEqual([50_003n]);
+    } finally {
+      restore();
+      setNetworkReach("answering");
+    }
+  });
+
   it("sends the next once one waiting on the node before it was handed over is called off", async () => {
     const { SendCancelledError, broadcastsAsked, sendGate } =
       await import("$lib/transactions");

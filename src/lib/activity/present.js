@@ -369,11 +369,16 @@ const shownStatus = (row) =>
       ? "unknown"
       : null;
 
+/** What a send whose answer never came says, in place of Sent. */
+export const NOT_CONFIRMED_YET = "Not confirmed yet";
+
 /**
  * How a row reads: its icon, title, line, privacy, amount and status.
  *
  * A failed transaction sent nothing: its amount shows without a sign and
- * muted, and its line says what it cost.
+ * muted, and its line says what it cost. A send whose answer never came, and
+ * that the chain doesn't have yet, says it isn't confirmed yet in place of
+ * Sent: it may have gone out, and nothing says it did.
  *
  * @param {ActivityRow} row
  * @param {PresentContext} context
@@ -382,9 +387,10 @@ const shownStatus = (row) =>
 export function describeRow(row, context) {
   const { locale } = context;
   const icon = iconOf(row);
-  const { title, titleIsAddress, verb } = titleOf(row, icon, context);
+  const { title, titleIsAddress, verb: done } = titleOf(row, icon, context);
   const status = shownStatus(row);
   const failed = status === "failed";
+  const verb = status === "unknown" ? NOT_CONFIRMED_YET : done;
   const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
   const line = failed
     ? `Failed · nothing sent · ${feeText(row, locale)}`

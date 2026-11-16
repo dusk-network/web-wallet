@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
+- Name Receive's buttons by what they give, Copy address and Share address, Copy request and Share request, the request's first and leading while Request payment is open, the address's below it
 - Mark a word as "Not a recovery word" in its box as soon as no recovery word starts with what's typed, and take one typed with an accent as the word it is
 - Say on Sozu's card that its rewards so far are before deposit fees, and in Rewards by year that what grew while held is after them
 - Give each request its own Share beside its Copy, on Request payment and in Your requests, the Share by the address sharing the address alone, and bring Request payment into view at its Amount as a tap opens it
@@ -47,6 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
+- Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
+- Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it
+- Say Sending of a waiting send on Home from the moment the node is asked to check it, with no Cancel, whatever the network's pill finds
+- Refuse a pasted request whose line says another amount, memo or name than its link, its .dusk name looked up first, Amount and Memo shown as being filled in meanwhile: "The message and its link don't agree."
+- Refuse a pasted link with words after it, whatever part of it comes last, as words after the link, and never take them into its memo, reading what was pasted line breaks and all
+- Take a profile's or a contact's name with a middle dot, an ideographic full stop or another point for the .dusk name it reads as
+- Count for a request no payment made before it was asked, nor one whose memo is another of the requests'
+- Go on to the next box with Enter, or a phone keyboard's Next, in Check your recovery words, suggestions or not, and check only once every box holds a recovery word, never saying a check half filled in doesn't match
 - Go on to the next word box with a space typed on a phone's keyboard, as with the space key
 - Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
 - Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name
@@ -56,14 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say "Sent" and its block in a "Not confirmed" notice's place once its send is found, as the total and History change with it
 - Say which send it is on its Processing screen whatever its answer's wait, with a space before its memo
 - Search all of the history kept on this device, not only the rows History shows, in the search and in its See all, with a stranger's memo marked as History marks it
-- Say "This request was paid already." as a request paid already is copied, shared or downloaded again, its own link going as before
+- Say Paid, or Paid twice, with when beside a paid request's Copy link and Share, and ask on its card before either gives it out again, "This request was paid already, on …", with Copy anyway or Share anyway and Cancel, as Request payment's Copy request, Share request and Download QR ask under them, never in a toast
 - Say Paid twice on Receive's list of requests left open as a second payment comes in
 - List under a request only the payments that could be its: those with its memo, and while it isn't paid, the first three of its amount with another memo
 - Say "Not sent", with Send it now and Don't send, of a send left "Not confirmed" when the browser closed before it went out, once another transaction from the account took its place on chain, and drop it from History
 - Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
 - Send every payment that waited for the network once it answers, one after another, not only the first
 - Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again
-- Show a send on Home and in History as pending, with its amount, from the moment the node is asked to broadcast it, also where its answer never comes
+- Show a send on Home and in History, with its amount, from the moment the node is asked to broadcast it: as pending, or where its answer never comes, as not confirmed yet
 - Keep Home on a send's screen from the moment it may have gone out, whether or not the network answers
 - Say a send went through on Home and in History as soon as its screen says it was sent, or the wallet tells it arrived, not Pending until the network's history has it
 - Say on Home's total and public balance that they may be out of date where they couldn't be read, also after a sync that failed, and on the total where the stake it counts couldn't be read
