@@ -47,13 +47,13 @@ const asInput = (element) => /** @type {HTMLInputElement} */ (element);
 describe("Create", async () => {
   const currentBlockHeight = 1536n;
   const mnemonic =
-    "cart dad sail wreck robot grit combine noble rap farm slide sad";
+    "cart dad sail wreck robot grit combine noble rapid farm slide sad";
   const mnemonicShuffled = [
     "grit",
     "wreck",
     "cart",
     "dad",
-    "rap",
+    "rapid",
     "sail",
     "robot",
     "combine",
@@ -348,8 +348,8 @@ describe("Create", async () => {
 
     // One wrong, then three made up: said, and nothing else.
     for (const typed of [
-      asked.map((n, i) => (i === 1 ? "wrong" : words[n - 1])),
-      ["maison", "velo", "gateau"],
+      asked.map((n, i) => (i === 1 ? "zoo" : words[n - 1])),
+      ["museum", "velvet", "gate"],
     ]) {
       for (const [i, box] of boxesShown().entries()) {
         await fireInput(box, typed[i]);
