@@ -46,6 +46,8 @@
       variant="secondary"
     />
   </div>
+  <!-- What's asked of what they give, under them. -->
+  <slot />
 </div>
 
 <style lang="postcss">

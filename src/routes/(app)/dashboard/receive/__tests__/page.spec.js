@@ -875,12 +875,159 @@ describe("Receive", () => {
       click.mockRestore();
     });
 
-    it("should keep one request for what's asked again once it's paid, as its QR and link are the same, and say it was paid already", async () => {
+    // Q03, Sofía's, Nandini's, Marek's and Chen's: Copy on a request paid
+    // already, or paid twice, said only Copied, and Share sent a fresh "asks
+    // you to pay". Round 32's note was a toast from the form alone: the
+    // list's own Copy link and Share never checked, and nothing stayed to
+    // be read.
+    it("should say Paid with when beside a paid request's Copy and Share, and ask on its card before either gives it out again, never in a toast", async () => {
+      const share = vi.fn().mockResolvedValue(undefined);
+      const PAYER =
+        "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+      const at = Date.now() - 60_000;
+      /** @param {Record<string, unknown>} fields */
+      const row = (fields) => ({
+        category: "received",
+        counterparty: PAYER,
+        memo: "Factura 2026-101",
+        privacy: "public",
+        status: "executed",
+        value: 30_000_000n,
+        ...fields,
+      });
+
+      Object.assign(navigator, { share });
+      toastTimer.set(5000);
+      toastList.set([]);
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "once",
+            lux: "13000000",
+            memo: "Factura 2026-071",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+          {
+            at,
+            id: "twice",
+            lux: "30000000",
+            memo: "Factura 2026-101",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: false,
+        rows: [
+          row({
+            hash: "ab".repeat(32),
+            memo: "Factura 2026-071",
+            time: at + 500,
+            value: 13_000_000n,
+          }),
+          row({ hash: "cd".repeat(32), time: at + 1500 }),
+          row({ hash: "ef".repeat(32), time: at + 2500 }),
+        ],
+      });
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const [once, twice] = screen.getAllByRole("listitem");
+      /** @param {HTMLElement} card */
+      const actionsOf = (card) =>
+        /** @type {HTMLElement} */ (card.querySelector(".requests__actions"));
+
+      // On the card, beside its Copy and Share: Paid, with when.
+      expect(actionsOf(once)).toHaveTextContent(
+        `Paid ${inSentence(paidAt(at + 500))} Copy link Share Remove`
+      );
+      expect(actionsOf(twice)).toHaveTextContent(
+        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy link Share Remove`
+      );
+
+      // Copy link asks first, on the card, brought into view: nothing
+      // copied yet.
+      const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
+
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+        })
+      );
+
+      const asked = `This request was paid already, ${inSentence(paidAt(at + 500))}.`;
+
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      expect(once.querySelector("[role=alert]")).toHaveTextContent(
+        `${asked} Copy anyway Cancel`
+      );
+      expect(scrolled.mock.contexts).toContainEqual(
+        once.querySelector(".paid-already")
+      );
+      scrolled.mockRestore();
+
+      // Cancel: nothing given out, nothing asked any more.
+      await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(once.querySelector("[role=alert]")).toBeNull();
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+
+      // Copy anyway: the link, as before.
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+        })
+      );
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy anyway" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(
+        parsePaymentLink(
+          String(vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0])
+        )
+      ).toMatchObject({ amountDusk: "0.013", memo: "Factura 2026-071" });
+      expect(once.querySelector("[role=alert]")).toBeNull();
+
+      // Share on the one paid twice: asked first, with when it was first paid.
+      await fireEvent.click(
+        screen.getByRole("button", {
+          name: "Share the request for 0.03 DUSK, Factura 2026-101",
+        })
+      );
+
+      expect(share).not.toHaveBeenCalled();
+      expect(twice.querySelector("[role=alert]")).toHaveTextContent(
+        `This request was paid already, ${inSentence(paidAt(at + 1500))}. Share anyway Cancel`
+      );
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share anyway" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).toHaveBeenCalledOnce();
+      expect(share.mock.lastCall?.[0].text).toMatch(
+        /^You're asked to pay 0\.03 DUSK on Testnet · Factura 2026-101\nPay here: /
+      );
+      expect(get(toastList)).toStrictEqual([]);
+
+      toastTimer.set(0);
+    });
+
+    it("should keep one request for what's asked again once it's paid, its QR and link the same, and ask under Copy request, Share request and Download QR before they give it out again", async () => {
+      const share = vi.fn().mockResolvedValue(undefined);
       const click = vi
         .spyOn(HTMLAnchorElement.prototype, "click")
         .mockImplementation(() => {});
 
-      // Toasts stay as long as the app's do.
+      Object.assign(navigator, { share });
       toastTimer.set(5000);
       toastList.set([]);
       const at = Date.now() - 60_000;
@@ -908,22 +1055,20 @@ describe("Receive", () => {
       await type("Amount (optional)", "0.013");
       await type("Memo (optional)", "Factura 2026-071");
       await vi.advanceTimersByTimeAsync(0);
-      await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
-      );
-      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
-      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
-      expect(screen.getAllByRole("listitem")).toHaveLength(1);
-      expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
-      // Sofía's, in the Android app: a paid invoice copied again could be
-      // paid twice. Its own link goes, and that it was paid is said.
-      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
-        "This request was paid already.",
-      ]);
+      const asked = `This request was paid already, ${inSentence(paidAt(at + 500))}.`;
+      const question = () => document.querySelector(".request [role=alert]");
 
+      // Copy request: asked under it first.
       await fireEvent.click(
         screen.getByRole("button", { name: "Copy request" })
+      );
+
+      expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
+      expect(question()).toHaveTextContent(`${asked} Copy anyway Cancel`);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy anyway" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -935,13 +1080,41 @@ describe("Receive", () => {
         to: ACCOUNT,
       });
       expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
-      expect(get(toastList).map(({ message }) => message)).toStrictEqual([
-        "This request was paid already.",
-        "This request was paid already.",
-      ]);
+      expect(question()).toBeNull();
 
-      // Another, not paid: nothing said.
-      toastList.set([]);
+      // Share request: the same, and Cancel shares nothing.
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share request" })
+      );
+
+      expect(question()).toHaveTextContent(`${asked} Share anyway Cancel`);
+
+      await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(share).not.toHaveBeenCalled();
+      expect(question()).toBeNull();
+
+      // Download QR, as the QR holds it: asked under it first.
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(click).not.toHaveBeenCalled();
+      expect(
+        document.querySelector(".address-actions [role=alert]")
+      ).toHaveTextContent(`${asked} Download anyway Cancel`);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download anyway" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(get(requestsStore).map(({ id }) => id)).toStrictEqual(["invoice"]);
+      expect(screen.getAllByRole("listitem")).toHaveLength(1);
+
+      // Another, not paid: nothing asked.
       await type("Memo (optional)", "Factura 2026-072");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
@@ -949,7 +1122,10 @@ describe("Receive", () => {
       );
       await vi.advanceTimersByTimeAsync(0);
 
+      expect(question()).toBeNull();
+      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(2);
       expect(get(requestsStore)).toHaveLength(2);
+      // Never a toast.
       expect(get(toastList)).toStrictEqual([]);
 
       click.mockRestore();

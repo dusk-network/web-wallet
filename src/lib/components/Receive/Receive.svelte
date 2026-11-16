@@ -21,6 +21,7 @@
   import nodeNetwork from "$lib/stores/nodeNetwork";
 
   import AddressActions from "./AddressActions.svelte";
+  import PaidAlready from "./PaidAlready.svelte";
   import { canShare, shareText } from "./share";
 
   /** @type {string} */
@@ -65,6 +66,17 @@
    * (the `request` slot), as it's open: its Copy and Share come first then.
    */
   export let addressBelow = false;
+
+  /**
+   * When the request the QR holds was paid, where it's one paid already:
+   * Download QR asks first, under it. Null for none.
+   *
+   * @type {number | null}
+   */
+  export let paidAt = null;
+
+  /** Whether Download QR asks first, as the request it holds was paid. */
+  let isAskingDownload = false;
 
   // Where a browser has a share sheet: most phones, some computers.
   const hasShare = canShare();
@@ -296,7 +308,20 @@
     }
   }
 
+  /** Download QR: a request paid already is asked of first. */
+  function download() {
+    if (request && paidAt !== null) {
+      isAskingDownload = true;
+    } else {
+      void downloadQr();
+    }
+  }
+
   $: qrValue = request?.dusk ?? address;
+  // Another request, or the address, asks nothing of the one asked about.
+  $: if (request !== undefined) {
+    isAskingDownload = false;
+  }
 </script>
 
 <div class="receive">
@@ -347,9 +372,23 @@
       {#if !addressBelow}
         <AddressActions
           {address}
-          onDownload={downloadQr}
+          onDownload={download}
           onShare={hasShare ? share : null}
-        />
+        >
+          {#if isAskingDownload && paidAt !== null}
+            <PaidAlready
+              at={paidAt}
+              onAnyway={() => {
+                isAskingDownload = false;
+                void downloadQr();
+              }}
+              onCancel={() => {
+                isAskingDownload = false;
+              }}
+              verb="Download"
+            />
+          {/if}
+        </AddressActions>
       {/if}
       <p class="receive__reveal">
         {addressType === "account"
@@ -379,9 +418,23 @@
   {#if addressBelow}
     <AddressActions
       {address}
-      onDownload={downloadQr}
+      onDownload={download}
       onShare={hasShare ? share : null}
-    />
+    >
+      {#if isAskingDownload && paidAt !== null}
+        <PaidAlready
+          at={paidAt}
+          onAnyway={() => {
+            isAskingDownload = false;
+            void downloadQr();
+          }}
+          onCancel={() => {
+            isAskingDownload = false;
+          }}
+          verb="Download"
+        />
+      {/if}
+    </AddressActions>
   {/if}
 
   <slot />

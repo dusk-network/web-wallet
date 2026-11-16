@@ -28,8 +28,8 @@ export {
   forgetRequest,
   forgetWalletRequests,
   hydrateRequests,
-  isPaidAlready,
   keepRequestMatches,
+  paidAtOf,
   rememberRequest,
   requestsStore,
 } from "./requests";

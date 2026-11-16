@@ -4,7 +4,9 @@
   /**
    * The requests this profile made, kept on this device, each marked by what
    * came in after it, in words that say what matched, and what a payment
-   * that paid it brought.
+   * that paid it brought. One paid already says so, with when, beside its
+   * Copy link and Share, which ask on its card first: given out again, its
+   * link would ask a second payment.
    */
   import { onDestroy } from "svelte";
   import { refundOf, sentAlready } from "@dusk-network/app-core/requests";
@@ -36,6 +38,7 @@
 
   import { BalanceValue, MemoText, SectionHead } from "..";
 
+  import PaidAlready from "./PaidAlready.svelte";
   import { canShare, shareText } from "./share";
 
   /** The profile's public account and its shielded address. */
@@ -435,6 +438,68 @@
       title: "Dusk payment request",
     });
 
+  /**
+   * What's asked on a card before its request, paid already, is given out
+   * again: Copy or Share, on which card; null for nothing.
+   *
+   * @type {{ id: string, verb: "Copy" | "Share" } | null}
+   */
+  let asking = null;
+
+  /**
+   * Each card's Copy link, by its request's ID, to copy once asked.
+   *
+   * @type {Record<string, CopyButton>}
+   */
+  const copyButtons = {};
+
+  /**
+   * Whether a press on a card is held to ask first, as its request was paid
+   * already (`paidOn`).
+   *
+   * @param {string} id
+   * @param {"Copy" | "Share"} verb
+   * @param {number | null} paidOn
+   */
+  function asksFirst(id, verb, paidOn) {
+    asking = paidOn === null ? null : { id, verb };
+
+    return asking !== null;
+  }
+
+  /**
+   * Gives a request out all the same, as asked: copied, or shared.
+   *
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   */
+  function giveAnyway(request) {
+    const verb = asking?.verb;
+
+    asking = null;
+
+    if (verb === "Copy") {
+      void copyButtons[request.id]?.copyNow();
+    } else if (verb === "Share") {
+      void share(request);
+    }
+  }
+
+  /**
+   * A paid request, in words beside its Copy and Share: "Paid today,
+   * 16:42:05 SGT", or "Paid twice, first …".
+   *
+   * @param {number} again How many times it was paid again
+   * @param {number} at When it was first paid
+   */
+  const paidWords = (again, at) =>
+    `${
+      again === 0
+        ? "Paid"
+        : again === 1
+          ? "Paid twice, first"
+          : `Paid ${again + 1} times, first`
+    } ${paidInSentence(at, language)}`;
+
   $: ({ hideBalances, language } = $settingsStore);
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
@@ -473,6 +538,8 @@
       {#each shown as request (request.id)}
         {@const match = matches.get(request.id) ?? { state: "waiting" }}
         {@const again = paidAgain(match)}
+        {@const paidOn =
+          match.state === "paid" && match.at !== undefined ? match.at : null}
         {@const parts = matchedParts(
           request,
           match,
@@ -607,7 +674,15 @@
                 >See in History</a
               >
             {/if}
+            <!-- Paid already: said beside its Copy and Share. -->
+            {#if paidOn !== null}
+              <span class="requests__paid"
+                >{paidWords(again.length, paidOn)}</span
+              >
+            {/if}
             <CopyButton
+              bind:this={copyButtons[request.id]}
+              hold={() => asksFirst(request.id, "Copy", paidOn)}
               name={`link of the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               size="small"
               text="Copy link"
@@ -617,7 +692,11 @@
             {#if hasShare}
               <Button
                 aria-label={`Share the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
-                on:click={() => share(request)}
+                on:click={() => {
+                  if (!asksFirst(request.id, "Share", paidOn)) {
+                    void share(request);
+                  }
+                }}
                 size="small"
                 text="Share"
                 variant="tertiary"
@@ -631,6 +710,17 @@
               variant="tertiary"
             />
           </div>
+          <!-- Asked on the card itself, never only said after. -->
+          {#if asking?.id === request.id && paidOn !== null}
+            <PaidAlready
+              at={paidOn}
+              onAnyway={() => giveAnyway(request)}
+              onCancel={() => {
+                asking = null;
+              }}
+              verb={asking.verb}
+            />
+          {/if}
         </li>
       {/each}
     </ul>
@@ -747,5 +837,10 @@
     gap: 0.5rem 0.75rem;
     padding-top: 0.25rem;
     font-size: 0.875rem;
+  }
+
+  .requests__paid {
+    color: var(--calm-online);
+    font-size: 0.8125rem;
   }
 </style>

@@ -61,7 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Say "Sent" and its block in a "Not confirmed" notice's place once its send is found, as the total and History change with it
 - Say which send it is on its Processing screen whatever its answer's wait, with a space before its memo
 - Search all of the history kept on this device, not only the rows History shows, in the search and in its See all, with a stranger's memo marked as History marks it
-- Say "This request was paid already." as a request paid already is copied, shared or downloaded again, its own link going as before
+- Say Paid, or Paid twice, with when beside a paid request's Copy link and Share, and ask on its card before either gives it out again, "This request was paid already, on …", with Copy anyway or Share anyway and Cancel, as Request payment's Copy request, Share request and Download QR ask under them, never in a toast
 - Say Paid twice on Receive's list of requests left open as a second payment comes in
 - List under a request only the payments that could be its: those with its memo, and while it isn't paid, the first three of its amount with another memo
 - Say "Not sent", with Send it now and Don't send, of a send left "Not confirmed" when the browser closed before it went out, once another transaction from the account took its place on chain, and drop it from History
