@@ -335,6 +335,25 @@ describe("Check your recovery words", () => {
         )
       ).toStrictEqual(["Try again", "Show my recovery words"]);
 
+      // Amélie's: the two side by side, the same size, a caller need only
+      // say "press the grey one". Try again is the one button; Show my
+      // recovery words a small text link under it, apart.
+      const tryAgain = getByRole("button", { name: "Try again" });
+      const show = getByRole("button", { name: "Show my recovery words" });
+
+      expect(
+        Array.from(
+          container.querySelectorAll(".recovery-check .dusk-button"),
+          (b) => b.textContent?.trim()
+        )
+      ).toStrictEqual(["Try again"]);
+      expect(show).not.toHaveClass("dusk-button");
+      expect(tryAgain.parentElement).not.toContainElement(show);
+      expect(
+        tryAgain.compareDocumentPosition(show) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+
       // Try again: the same three, empty, the first to type in.
       await fireEvent.click(getByRole("button", { name: "Try again" }));
 

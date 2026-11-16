@@ -251,12 +251,13 @@
     </p>
     <div class="recovery-check__actions">
       <Button on:click={tryAgain} text="Try again" variant="primary" />
-      <Button
-        on:click={(event) => dispatch("show", event)}
-        text={RECOVERY_WORDS_SHOW}
-        variant="secondary"
-      />
     </div>
+    <!-- Apart, and small: Try again is the one button here. -->
+    <button
+      class="recovery-check__show tap-link"
+      on:click={(event) => dispatch("show", event)}
+      type="button">{RECOVERY_WORDS_SHOW}</button
+    >
   </div>
 {:else}
   <form
@@ -381,5 +382,25 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+  }
+
+  /* A text link, under Try again and set apart from it. */
+  .recovery-check__show {
+    align-self: flex-start;
+    margin-top: 1rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--calm-muted);
+    font: inherit;
+    font-size: 0.875rem;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--calm-focus);
+      outline-offset: 2px;
+    }
   }
 </style>
