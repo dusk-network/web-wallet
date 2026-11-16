@@ -68,6 +68,8 @@ export const keptSendsDatabase = db;
  *   lux: string,
  *   memo: string,
  *   network: string,
+ *   seen?: string,
+ *   sentElsewhere?: true,
  *   to: string,
  *   typed: Record<string, unknown>,
  * }} UnsentSend
@@ -75,8 +77,11 @@ export const keptSendsDatabase = db;
  *   the hash and the nonce of the transaction the node was asked to broadcast,
  *   none for one never handed over, and "" for a nonce it has none of, as a
  *   shielded send; `label` whom it goes to, as Send said it ("your Profile
- *   2"); `lux` its amount; `to` the address it goes to; `typed` what Send's
- *   form held, to fill it in again.
+ *   2"); `lux` its amount; `seen` its account's nonce as the wallet knew it
+ *   as it was sent; `sentElsewhere` that its account sent something else
+ *   while it waited, as it was held for the person to say whether to send it
+ *   too, or another transaction took its nonce; `to` the address it goes to;
+ *   `typed` what Send's form held, to fill it in again.
  */
 
 /** @param {any} handed */
@@ -101,6 +106,9 @@ const isUnsent = (kept) =>
   typeof kept.at === "number" &&
   typeof kept.lux === "string" &&
   /^\d+$/.test(kept.lux) &&
+  (kept.seen === undefined ||
+    (typeof kept.seen === "string" && /^\d+$/.test(kept.seen))) &&
+  (kept.sentElsewhere === undefined || kept.sentElsewhere === true) &&
   Boolean(kept.typed) &&
   typeof kept.typed === "object" &&
   (kept.handedOver === undefined || isHandedOver(kept.handedOver));
@@ -514,18 +522,21 @@ function keptOf(send) {
  *   more; where storage refuses that too, it rejects, and it mustn't go:
  *   what's kept of it would say nothing left the wallet;
  * - `end(true)` leaves it kept, as one that never went out, and `end(false)`
- *   forgets it.
+ *   forgets it;
+ * - `hold()` keeps it as held for the person to say whether to send it too,
+ *   as its account sent something else while it waited: it's said so, kept
+ *   as never sent, where its page goes, or the wallet locks, before then.
  *
  * While it's being sent, this tab holds its lock, and it's first written
  * only once the tab does: no other tab finds it kept with its lock free
  * while it's being sent. Storage says how it ended before the lock goes.
  *
  * @param {UnsentSend} send
- * @returns {{ end: (keep: boolean) => void, handOver: (sent: { hash: string, nonce: string }) => Promise<void> }}
+ * @returns {{ end: (keep: boolean) => void, handOver: (sent: { hash: string, nonce: string }) => Promise<void>, hold: () => void }}
  */
 export function keepUnsent(send) {
   const scope = walletDataScope();
-  const record = keptOf(send);
+  let record = keptOf(send);
   let isEnded = false;
 
   /**
@@ -617,6 +628,20 @@ export function keepUnsent(send) {
         forget()
           .catch(() => {})
           .finally(release);
+      }
+    },
+    hold() {
+      if (isEnded || record.sentElsewhere) {
+        return;
+      }
+
+      record = { ...record, sentElsewhere: true };
+
+      // Unless it's kept as handed over by now.
+      if (current && !current.handedOver) {
+        current = record;
+        show(scope, (list) => withSend(list, record));
+        write().catch(() => {});
       }
     },
     async handOver({ hash, nonce }) {
@@ -739,8 +764,9 @@ async function changeHandedOver(id, hash, change) {
  * Keeps a send that was handed over as the transaction `hash` as one that
  * never went out, once its account's transaction with its nonce is in a
  * final block under another hash: this one can never be in one. It's said
- * as not sent from then on, to send through Review or to drop. Only while
- * it's kept as that transaction: see `changeHandedOver`.
+ * as not sent from then on, its account having sent something else while it
+ * waited, to send too through Review or to drop. Only while it's kept as
+ * that transaction: see `changeHandedOver`.
  *
  * @param {string} id
  * @param {string} hash
@@ -749,7 +775,7 @@ async function changeHandedOver(id, hash, change) {
 export const keepNotSent = (id, hash) =>
   changeHandedOver(id, hash, (send) => {
     /** @type {UnsentSend} */
-    const notSent = { ...send };
+    const notSent = { ...send, sentElsewhere: true };
 
     delete notSent.handedOver;
 

@@ -162,7 +162,8 @@ describe("A send that never went out", () => {
    * @param {Awaited<ReturnType<typeof openPage>>} page
    * @param {string} memo
    * @param {Promise<unknown>} gone
-   * @param {{ gate?: import("$lib/transactions/sendGate").SendGate, operation?: Promise<unknown> }} [sending]
+   * @param {{ gate?: import("$lib/transactions/sendGate").SendGate, operation?: Promise<unknown>, seen?: bigint }} [sending]
+   *   `seen` the account's nonce as the wallet knew it as it was sent
    */
   async function sendWaiting(
     page,
@@ -171,6 +172,7 @@ describe("A send that never went out", () => {
     {
       gate = page.transactions.sendGate(),
       operation = new Promise(() => {}),
+      seen,
     } = {}
   ) {
     const locks = locksGoWith(gone);
@@ -183,6 +185,7 @@ describe("A send that never went out", () => {
         account: from,
         isSaid: () => true,
         network: "testnet",
+        seen,
         typed: {
           amount: "0.01",
           isMax: false,
@@ -371,6 +374,75 @@ describe("A send that never went out", () => {
       ])
     );
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  // Chen's, on two phones, the tab dropped: the send waiting on phone A
+  // was said "Not sent … Nothing left your wallet. Send it now", though
+  // she'd paid the same from phone B meanwhile, which A's Activity didn't
+  // list yet. Held as its account sent something else, or once its
+  // account's nonce moved on since it was sent, it says so after a reload.
+  it("says, once the wallet opens again, that its account sent something else while it waited, where it was held so, or its account's nonce moved on since, with Send it too to Review, never sent by itself", async () => {
+    const { unshielded } = mockedWalletStore.getMockedStoreValue().balance;
+    const reloads = Promise.withResolvers();
+    const before = await openPage();
+    const held = await sendWaiting(before, "night shift 5", reloads.promise, {
+      seen: unshielded.nonce,
+    });
+
+    // Held as the person is asked, the page goes.
+    held.gate.ask().catch(() => {});
+    await vi.waitFor(async () =>
+      expect(await keptNow()).toStrictEqual([
+        expect.objectContaining({ memo: "night shift 5", sentElsewhere: true }),
+      ])
+    );
+    // Sent as the account's nonce was one less; and as it is still.
+    await sendWaiting(before, "night shift 6", reloads.promise, {
+      seen: unshielded.nonce - 1n,
+    });
+    await sendWaiting(before, "night shift 7", reloads.promise, {
+      seen: unshielded.nonce,
+    });
+    reloads.resolve(undefined);
+
+    const after = await openPage();
+    const { container, findAllByText, getAllByRole } = after.render(after.Home);
+
+    await findAllByText("Not sent: 0.01 DUSK to your Profile 2.");
+    await vi.waitFor(() => expect(noticesOf(container)).toHaveLength(3));
+
+    // Two sent the same moment may come back in either order.
+    expect(noticesOf(container)).toEqual([
+      expect.stringMatching(
+        /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 5 · .+ Your account sent something else while this waited\. Send it too Don't send$/
+      ),
+      expect.any(String),
+      expect.any(String),
+    ]);
+    expect(noticesOf(container)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(
+          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Your account sent something else while this waited\. Send it too Don't send$/
+        ),
+        expect.stringMatching(
+          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 7 · .+ Nothing left your wallet\. Send it now Don't send$/
+        ),
+      ])
+    );
+    expect(app.transfer).not.toHaveBeenCalled();
+
+    // Send it too: Send's review, filled in with it, to send it from there.
+    await after.fireEvent.click(
+      getAllByRole("button", { name: "Send it too" })[0]
+    );
+
+    expect(app.goto).toHaveBeenCalledWith(
+      expect.stringMatching(/\/dashboard\/send$/)
+    );
+    expect(app.transfer).not.toHaveBeenCalled();
+    expect(
+      after.transactions.takeUnsentRefill({ account: from, network: "testnet" })
+    ).toMatchObject({ memo: "night shift 5", sentElsewhere: true });
   });
 
   it("is dropped with Don't send, here and after the next reload", async () => {
@@ -677,7 +749,7 @@ describe("A send that never went out", () => {
 
   // Marek's: the browser died before the broadcast, and the next send took
   // its nonce. It said "Not confirmed" and "on its way" for good.
-  it("is said as not sent where its page died once it was kept as handed over, before the broadcast, once another transaction of its account took its nonce in a final block: to send now or not, and History no longer shows it", async () => {
+  it("is said as not sent where its page died once it was kept as handed over, before the broadcast, once another transaction of its account took its nonce in a final block: that its account sent something else, to send too or not, and History no longer shows it", async () => {
     const dies = Promise.withResolvers();
     const owner = `testnet::${from}`;
 
@@ -703,14 +775,15 @@ describe("A send that never went out", () => {
       await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
 
       // Its block final, the archive lists it: said as not sent once its
-      // nonce is looked up again, a minute on, and kept so.
+      // nonce is looked up again, a minute on, and kept so. Another
+      // transaction took its place: its account sent something else.
       listed = [...listed, { hash: "b2".repeat(32), nonce: 107 }];
       await vi.advanceTimersByTimeAsync(60_000);
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent: 0\.01 DUSK to your Profile 2\. nonce taken · .+ Nothing left your wallet\. Send it now Don't send$/
+            /^Not sent: 0\.01 DUSK to your Profile 2\. nonce taken · .+ Your account sent something else while this waited\. Send it too Don't send$/
           ),
         ])
       );
@@ -718,9 +791,12 @@ describe("A send that never went out", () => {
       expect(toastsOf(page)).toStrictEqual([]);
       await vi.waitFor(async () =>
         expect(await keptNow()).toStrictEqual([
-          expect.not.objectContaining({ handedOver: expect.anything() }),
+          expect.objectContaining({ sentElsewhere: true }),
         ])
       );
+      expect(await keptNow()).toStrictEqual([
+        expect.not.objectContaining({ handedOver: expect.anything() }),
+      ]);
       await vi.waitFor(async () =>
         expect(await listLocalTransactions(owner)).toStrictEqual([])
       );

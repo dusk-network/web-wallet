@@ -86,13 +86,16 @@ const isKeptAfter = (why, isSaid) =>
  * Before the node is asked to broadcast it, it's kept as handed over, and
  * it goes out only once it is: one whose page goes from then on may have
  * gone out, and is never said as one that didn't. It's forgotten as it ends.
- * One sent again from what's kept of it takes its place (`kept.id`).
+ * One sent again from what's kept of it takes its place (`kept.id`). What's
+ * kept of it has its account's nonce as the wallet knew it (`kept.seen`),
+ * and says so where it's held as its account sent something else while it
+ * waited: it's said so once the wallet opens again, if it never went out.
  *
  * @param {{
  *   address?: string,
  *   from?: string,
  *   gate: import("./sendGate").SendGate,
- *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, typed: Record<string, unknown> },
+ *   kept?: { account: string, id?: string, isSaid: () => boolean, network: string, seen?: bigint, typed: Record<string, unknown> },
  *   lux: bigint,
  *   maxFee?: bigint,
  *   memo?: string,
@@ -132,6 +135,7 @@ export function keepWaiting({
         lux: String(lux),
         memo,
         network: kept.network,
+        ...(kept.seen === undefined ? {} : { seen: String(kept.seen) }),
         to: address,
         typed: kept.typed,
       })
@@ -211,7 +215,13 @@ export function keepWaiting({
       }
     }),
     gate.waitsForNetwork.subscribe((waits) => say({ waitsForNetwork: waits })),
-    gate.asking.subscribe((asks) => say({ asks })),
+    gate.asking.subscribe((asks) => {
+      say({ asks });
+
+      if (asks) {
+        keeping?.hold();
+      }
+    }),
   ];
 
   // Gone out or called off already as it was followed.

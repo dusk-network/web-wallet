@@ -3,6 +3,7 @@
 <script>
   import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
+  import { get } from "svelte/store";
   import {
     mdiAlertOutline,
     mdiArrowLeft,
@@ -54,7 +55,7 @@
   import { getAddressInfo } from "$lib/wallet";
   import { readPastedLink, readPaymentLink } from "$lib/payment-requests";
   import { getBlocklistedRecipient } from "$lib/security/addressBlocklist";
-  import { networkStore, settingsStore } from "$lib/stores";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import {
     openWalletName,
@@ -993,6 +994,9 @@
         id: isRefilled && refill ? refill.id : undefined,
         isSaid: () => isShown && sent?.operation === operation,
         network: $networkStore.networkName,
+        // What the account had sent, as the wallet knew it: said once the
+        // wallet opens again where it sent more while this waited.
+        seen: get(walletStore).balance.unshielded.nonce,
         typed: {
           amount: typed.amount,
           gas: typed.gas,

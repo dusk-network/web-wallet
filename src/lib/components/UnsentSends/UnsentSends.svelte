@@ -74,6 +74,21 @@
   }
 
   /**
+   * Whether a send's account sent something else while it waited: it was
+   * held for the person as it did, or another transaction took its nonce, or
+   * the account's nonce, as last read for the profile shown, moved on since
+   * it was sent.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
+   * @param {bigint} nonce The nonce of the profile shown, as last read
+   */
+  const isSentElsewhere = (send, nonce) =>
+    send.sentElsewhere === true ||
+    (send.seen !== undefined &&
+      send.account === String(currentProfile?.account ?? "") &&
+      nonce > BigInt(send.seen));
+
+  /**
    * What the balances are as last read: once they change, the sends handed
    * over are looked up at once, as a block with one may have changed them.
    */
@@ -178,6 +193,7 @@
       </div>
     </Banner>
   {:else}
+    {@const isElsewhere = isSentElsewhere(send, balance.unshielded.nonce)}
     <Banner
       className="unsent-send"
       role="status"
@@ -188,12 +204,16 @@
         {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
         {formatTime(send.at, { locale: language || undefined })}
       </p>
-      <p>Nothing left your wallet.</p>
+      <p>
+        {isElsewhere
+          ? "Your account sent something else while this waited."
+          : "Nothing left your wallet."}
+      </p>
       <div class="unsent-send__actions">
         <Button
           on:click={() => sendNow(send)}
           size="small"
-          text="Send it now"
+          text={isElsewhere ? "Send it too" : "Send it now"}
           variant="secondary"
         />
         <Button
