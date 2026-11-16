@@ -256,7 +256,7 @@ describe("Receive", () => {
       );
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -330,7 +330,7 @@ describe("Receive", () => {
 
         // The link asks what it asked: DUSK.
         await fireEvent.click(
-          screen.getByRole("button", { name: "Copy request link" })
+          screen.getByRole("button", { name: "Copy request" })
         );
         await vi.advanceTimersByTimeAsync(0);
 
@@ -353,17 +353,13 @@ describe("Receive", () => {
       await vi.runAllTimersAsync();
       await openRequest();
 
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await type("Amount (optional)", "1.2345678901");
       await vi.runAllTimersAsync();
 
       expect(screen.getByRole("alert")).toHaveTextContent(/9 decimals/);
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
     });
 
     it("should ask which amount is meant of one that could be either of two, with a button for each, and make the request for the one picked", async () => {
@@ -376,9 +372,7 @@ describe("Receive", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         /^Is that 2\.1250 or 2125\?/
       );
-      expect(screen.queryByRole("button", { name: "Copy request link" })).toBe(
-        null
-      );
+      expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await fireEvent.click(
         screen.getByRole("button", { name: "2.1250 DUSK" })
@@ -390,7 +384,7 @@ describe("Receive", () => {
       ).toHaveValue("2.1250");
       expect(screen.queryByRole("alert")).toBeNull();
       expect(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       ).toBeInTheDocument();
     });
 
@@ -424,7 +418,7 @@ describe("Receive", () => {
       await fireEvent.click(screen.getByRole("radio", { checked: false }));
       await vi.runAllTimersAsync();
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -437,13 +431,16 @@ describe("Receive", () => {
     });
 
     // Chen's: the only Share sat up by the address, away from the request it
-    // shared, which he had to guess.
-    it("should offer Share only where the browser has a share sheet: the address alone by the address, and each request's own beside its Copy, which keeps a new one", async () => {
+    // shared, which he had to guess. Then Sofía's and Nandini's: with a
+    // request filled in, the first Copy and the first of two buttons called
+    // Share gave a client the bare address.
+    it("should name each button by what it gives, and while a request is made put its Copy and Share first, leading, the address's below, no two buttons of the page sharing a name", async () => {
       const first = render(Receive);
 
       await vi.runAllTimersAsync();
 
-      expect(screen.queryByRole("button", { name: "Share" })).toBeNull();
+      // No share sheet: no Share.
+      expect(screen.queryByRole("button", { name: /^Share/ })).toBeNull();
       first.unmount();
 
       const share = vi.fn().mockResolvedValue(undefined);
@@ -451,7 +448,22 @@ describe("Receive", () => {
       Object.assign(navigator, { share });
       render(Receive);
       await vi.runAllTimersAsync();
-      await fireEvent.click(screen.getByRole("button", { name: "Share" }));
+
+      /** The page's buttons by name, in the order they come. */
+      const buttonNames = () =>
+        screen
+          .getAllByRole("button")
+          .map((b) => b.getAttribute("aria-label") ?? b.textContent?.trim());
+
+      expect(buttonNames()).toStrictEqual([
+        "Copy address",
+        "Share address",
+        "Download QR",
+      ]);
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Share address" })
+      );
       await vi.runAllTimersAsync();
 
       expect(share).toHaveBeenLastCalledWith({
@@ -460,24 +472,48 @@ describe("Receive", () => {
       });
       expect(get(requestsStore)).toStrictEqual([]);
 
+      // Request payment open: the address's buttons go below it.
       await openRequest();
+      await vi.advanceTimersByTimeAsync(0);
+
+      const form = /** @type {HTMLElement} */ (
+        document.querySelector(".request")
+      );
+      /** @param {string} name */
+      const isAfterForm = (name) =>
+        Boolean(
+          form.compareDocumentPosition(screen.getByRole("button", { name })) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+        ) && !form.contains(screen.getByRole("button", { name }));
+
+      expect(isAfterForm("Copy address")).toBe(true);
+      expect(isAfterForm("Share address")).toBe(true);
+      expect(isAfterForm("Download QR")).toBe(true);
+
+      // A request made: its own Copy and Share come first, and lead.
       await type("Amount (optional)", "2");
       await vi.advanceTimersByTimeAsync(0);
 
-      // The request's own, beside its Copy.
-      const actions = /** @type {HTMLElement} */ (
-        document.querySelector(".request__actions")
+      expect(buttonNames()).toStrictEqual([
+        "Copy request",
+        "Share request",
+        "Copy address",
+        "Share address",
+        "Download QR",
+      ]);
+      expect(screen.getByRole("button", { name: "Copy request" })).toHaveClass(
+        "dusk-button--variant--primary"
       );
-
-      expect(
-        Array.from(actions.querySelectorAll("button"), (b) =>
-          b.textContent?.trim()
-        )
-      ).toStrictEqual(["Copy request link", "Share"]);
+      expect(screen.getByRole("button", { name: "Share request" })).toHaveClass(
+        "dusk-button--variant--primary"
+      );
+      expect(screen.getByRole("button", { name: "Copy address" })).toHaveClass(
+        "dusk-button--variant--secondary"
+      );
 
       // By the address, still the address alone.
       await fireEvent.click(
-        screen.getAllByRole("button", { name: "Share" })[0]
+        screen.getByRole("button", { name: "Share address" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -488,7 +524,7 @@ describe("Receive", () => {
       expect(get(requestsStore)).toStrictEqual([]);
 
       await fireEvent.click(
-        /** @type {HTMLElement} */ (actions.querySelector(".request__share"))
+        screen.getByRole("button", { name: "Share request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -514,7 +550,7 @@ describe("Receive", () => {
       await type("Amount (optional)", "3");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        /** @type {HTMLElement} */ (document.querySelector(".request__share"))
+        screen.getByRole("button", { name: "Share request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -538,6 +574,67 @@ describe("Receive", () => {
           (b) => b.textContent?.trim()
         )
       ).toStrictEqual(["Copy link", "Share", "Remove"]);
+
+      // No two buttons of the page share a name.
+      const names = buttonNames();
+
+      expect(new Set(names).size).toBe(names.length);
+
+      // Closed again: the address's buttons back above it.
+      await fireEvent.click(screen.getByText("Request payment"));
+      /** @type {HTMLDetailsElement} */ (form).open = false;
+      await fireEvent(form, new Event("toggle"));
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(isAfterForm("Copy address")).toBe(false);
+    });
+
+    // A request typed, then Receive left by a link and opened again, or
+    // locked and unlocked: it comes back open, the QR and Download QR
+    // holding it, the address's buttons below it.
+    it("should bring back a request typed before, open, its QR and Download QR holding it", async () => {
+      const click = vi
+        .spyOn(HTMLAnchorElement.prototype, "click")
+        .mockImplementation(() => {});
+      const first = render(Receive);
+
+      await vi.runAllTimersAsync();
+      await openRequest();
+      await type("Amount (optional)", "2");
+      await type("Memo (optional)", "Factura 34");
+      await vi.advanceTimersByTimeAsync(0);
+      first.unmount();
+
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      const form = /** @type {HTMLDetailsElement} */ (
+        document.querySelector(".request")
+      );
+
+      expect(form.open).toBe(true);
+      expect(
+        screen.getByRole("textbox", { name: "Amount (optional)" })
+      ).toHaveValue("2");
+      await vi.waitFor(() =>
+        expect(qrAlt()).toHaveAccessibleName("QR code for your payment request")
+      );
+      expect(
+        form.compareDocumentPosition(
+          screen.getByRole("button", { name: "Download QR" })
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Download QR" })
+      );
+      await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
+
+      expect(
+        /** @type {HTMLAnchorElement} */ (click.mock.contexts[0]).download
+      ).toBe("dusk-testnet-request-2-DUSK-Factura-34.png");
+
+      click.mockRestore();
     });
 
     // Sofía's, in the app: Request payment opened with its Amount at the
@@ -826,7 +923,7 @@ describe("Receive", () => {
       ]);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -848,7 +945,7 @@ describe("Receive", () => {
       await type("Memo (optional)", "Factura 2026-072");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request link" })
+        screen.getByRole("button", { name: "Copy request" })
       );
       await vi.advanceTimersByTimeAsync(0);
 

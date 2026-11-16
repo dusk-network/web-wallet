@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
+- Name Receive's buttons by what they give, Copy address and Share address, Copy request and Share request, the request's first and leading while Request payment is open, the address's below it
 - Mark a word as "Not a recovery word" in its box as soon as no recovery word starts with what's typed, and take one typed with an accent as the word it is
 - Say on Sozu's card that its rewards so far are before deposit fees, and in Rewards by year that what grew while held is after them
 - Give each request its own Share beside its Copy, on Request payment and in Your requests, the Share by the address sharing the address alone, and bring Request payment into view at its Amount as a tap opens it

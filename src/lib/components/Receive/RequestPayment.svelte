@@ -4,9 +4,11 @@
   /**
    * Request payment, folded under Receive: an amount and a memo, checked as
    * they're typed, as Send will check them. Once there's either, the QR holds
-   * the request, and its link can be copied or shared, beside each other: a
-   * link for a payer on any wallet, which opens the web wallet's Send, filled
-   * in. Opened with a tap, it comes into view at its Amount.
+   * the request, and it can be copied or shared, beside each other, as Copy
+   * request and Share request, which lead while it's made: a line saying what
+   * it asks and a link for a payer on any wallet, which opens the web
+   * wallet's Send, filled in. Opened with a tap, it comes into view at its
+   * Amount. Whether it's open is bound (`isOpen`).
    */
   import { mdiChevronDown, mdiShareVariantOutline } from "@mdi/js";
   import { tick } from "svelte";
@@ -58,7 +60,9 @@
 
   let amount = typedBefore?.amount ?? "";
   let memo = typedBefore?.memo ?? "";
-  let isOpen = Boolean(amount || memo);
+
+  /** Whether it's open, as it is where something was typed before. */
+  export let isOpen = Boolean(amount || memo);
 
   // Where a browser has a share sheet: most phones, some computers.
   const hasShare = canShare();
@@ -245,23 +249,23 @@
       <div class="request__actions">
         <CopyButton
           className="request__copy"
-          name="request link"
+          name="request"
           onCopied={onUse}
-          text="Copy request link"
+          text="Copy request"
           value={requestText(request, {
             language,
             name: requestName,
             net: $nodeNetwork,
           })}
-          variant="secondary"
+          variant="primary"
         />
         {#if hasShare}
           <Button
             className="request__share"
             icon={{ path: mdiShareVariantOutline }}
             on:click={share}
-            text="Share"
-            variant="secondary"
+            text="Share request"
+            variant="primary"
           />
         {/if}
       </div>
