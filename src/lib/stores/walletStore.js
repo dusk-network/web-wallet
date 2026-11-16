@@ -20,6 +20,7 @@ import {
   isHistoryEnabled,
   isToAnotherProfile,
   noteSentOutcome,
+  noteUnconfirmed,
   stopActivity,
 } from "$lib/activity";
 import { closeContacts, openContacts } from "$lib/contacts";
@@ -191,11 +192,12 @@ function historyOf(profile) {
  * it, once (`record`): in the history of the profile that sends it, taken as
  * the send begins, which keeps nothing after a reset since (activityStore's
  * epoch). One the node refused as it was asked to broadcast it went nowhere,
- * and goes from it again (`forget`), once it's in it.
+ * and goes from it again (`forget`), once it's in it. One whose answer got
+ * lost is said not to be confirmed yet (`unconfirmed`), once it's in it.
  *
  * @param {Profile} profile
  * @param {SentDetails} details
- * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void }}
+ * @returns {{ forget: (txInfo: TransactionInfo) => void, record: (txInfo: TransactionInfo) => void, unconfirmed: (txInfo: TransactionInfo) => void }}
  */
 const recordInHistory = (profile, details) => {
   const history = historyOf(profile);
@@ -227,6 +229,11 @@ const recordInHistory = (profile, details) => {
           tellTabs(() => history?.recordSent({ ...details, hash }))
         );
       }
+    },
+    unconfirmed({ hash }) {
+      void Promise.resolve(recorded.get(hash))
+        .then(() => noteUnconfirmed(hash))
+        .catch(() => {});
     },
   };
 };
@@ -542,7 +549,7 @@ const sendAs = (
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
-  const { forget, record } = recordInHistory(profile, details);
+  const { forget, record, unconfirmed } = recordInHistory(profile, details);
   const lookFor = lookForArrival(profile, details);
 
   /** The hash of the transaction the node was asked to broadcast, if any. */
@@ -760,6 +767,8 @@ const sendAs = (
       if (hash) {
         followRemoval(/** @type {TransactionInfo} */ ({ hash }));
         record(/** @type {TransactionInfo} */ ({ hash }));
+        // Its answer got lost: History says so, not that it's on its way.
+        unconfirmed(/** @type {TransactionInfo} */ ({ hash }));
         lookFor(/** @type {TransactionInfo} */ ({ hash }));
       } else if (handedOver) {
         // Refused as it was handed over: it went nowhere, and its nonce is

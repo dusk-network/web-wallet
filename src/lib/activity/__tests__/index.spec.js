@@ -12,6 +12,7 @@ import {
   activityState,
   currentActivity,
   noteSentOutcome,
+  noteUnconfirmed,
   stopActivity,
 } from "..";
 
@@ -123,6 +124,47 @@ describe("activityFor", () => {
       error: "Panic: out of gas",
       fee: 2_000_000n,
       status: "failed",
+    });
+  });
+
+  // Marek's: a send whose answer never came was "Sent · Pending" until
+  // another send proved it never went out.
+  it("says a send whose answer never came isn't confirmed yet, until the chain says what became of it, and never over what it said", async () => {
+    fakeArchive();
+
+    const hash = "6f".repeat(32);
+    const rowOf = () =>
+      get(activityState).rows.find((row) => row.hash === hash);
+    const sender = activityFor(optionsFor(B));
+
+    await sender.start();
+    await sender.recordSent({
+      amount: "20000000",
+      direction: "out",
+      hash,
+      kind: "transfer",
+      privacy: "public",
+      to: A,
+    });
+
+    expect(rowOf()).toMatchObject({ status: "pending" });
+
+    await noteUnconfirmed(hash);
+
+    expect(rowOf()).toMatchObject({ status: "unknown" });
+
+    // The chain has it: that's what's said, and stays said.
+    await noteSentOutcome(hash, {
+      blockHeight: 4_833_701n,
+      error: null,
+      fee: 1_000_000n,
+      timestamp: null,
+    });
+    await noteUnconfirmed(hash);
+
+    expect(rowOf()).toMatchObject({
+      blockHeight: 4_833_701,
+      status: "executed",
     });
   });
 

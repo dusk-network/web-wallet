@@ -167,6 +167,27 @@ describe("describeRow", () => {
     ).toBeNull();
   });
 
+  // Marek's: a send whose page died before the node answered read "Sent ·
+  // Pending" though the chain never saw it.
+  it("says a send whose answer never came isn't confirmed yet, never Sent", () => {
+    const unconfirmed = describeRow(
+      row({ direction: "out", source: "local", status: "unknown" }),
+      context
+    );
+
+    expect(unconfirmed).toMatchObject({
+      line: "Not confirmed yet",
+      shortLine: "Not confirmed yet",
+      status: "unknown",
+    });
+    expect(
+      describeRow(
+        row({ direction: "out", source: "local", status: "submitted" }),
+        context
+      ).line
+    ).toBe("Sent");
+  });
+
   it("names staking, shielding and the bridge by what they did", () => {
     expect(describeRow(row({ kind: "stake" }), context)).toMatchObject({
       category: "staking",

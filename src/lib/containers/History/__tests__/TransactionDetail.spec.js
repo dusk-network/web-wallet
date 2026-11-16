@@ -401,6 +401,26 @@ describe("TransactionDetail", () => {
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
+  // Marek's: a send whose page died before the node answered read as sent.
+  it("should say a send whose answer never came isn't confirmed yet, naming whom it's to, never that it was sent", () => {
+    const unconfirmed = row({
+      amount: "10000000",
+      blockHeight: undefined,
+      contractId: undefined,
+      kind: "transfer",
+      source: "local",
+      status: "unknown",
+      submittedAt: Date.now() - 60_000,
+      timestamp: undefined,
+      to: OWN,
+    });
+    const { container, getByText } = show(unconfirmed, { walletNames });
+
+    expect(getByText("To Wallet 2 · Profile 1")).toBeInTheDocument();
+    expect(getByText("Not confirmed yet")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(/Sent to|Pending|Completed/);
+  });
+
   it("should name a migration's payout by its route, with the route's account by what the network's file calls it, on any network", () => {
     // A network the wallet only knows from its node, as a local one.
     const local = /** @type {import("@dusk-network/networks").Network} */ ({

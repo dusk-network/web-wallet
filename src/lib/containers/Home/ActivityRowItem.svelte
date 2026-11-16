@@ -25,11 +25,13 @@
 
   const SEPARATOR = " · ";
 
-  /** @type {Record<string, string>} */
-  const STATUS_WORDS = {
-    pending: "Pending",
-    unknown: "Not confirmed",
-  };
+  /**
+   * Said beside the amount: one not confirmed yet says so in its line, in
+   * place of Sent.
+   *
+   * @type {Record<string, string>}
+   */
+  const STATUS_WORDS = { pending: "Pending" };
 
   $: p = presentation;
   $: time = row.time;
@@ -190,10 +192,6 @@
 
     &--pending {
       color: var(--calm-pending);
-    }
-
-    &--unknown {
-      color: var(--calm-muted);
     }
   }
 </style>

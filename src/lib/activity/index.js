@@ -20,7 +20,7 @@ export {
   isToAnotherProfile,
 } from "./arrivals";
 export { getShieldedHistory } from "./shieldedHistory";
-export { onTheirWay } from "./sends";
+export { notConfirmed, onTheirWay } from "./sends";
 export { TX_KIND } from "./constants";
 
 export { ACTIVITY_PAGE, ActivitySession };
@@ -142,6 +142,32 @@ export async function noteSentOutcome(
     ...(error ? { error } : {}),
     ...(timestamp ? { timestamp } : {}),
   });
+
+  if (owners.length) {
+    if (current && owners.includes(current.ownerKey)) {
+      await current.keptChanged();
+    }
+
+    tellOtherTabs({ type: "sent" });
+  }
+}
+
+/**
+ * A transaction the wallet sent whose answer never came, as its page went
+ * before it did, or the node's answer got lost: it may have gone out, and
+ * History and Home say it's not confirmed yet, never sent or on its way,
+ * for whichever profile sent it, until the chain says what became of it
+ * (`noteSentOutcome`), or another took its nonce (`noteNeverSent`). Only
+ * while nothing else is said of it.
+ *
+ * @param {string} hash
+ */
+export async function noteUnconfirmed(hash) {
+  const owners = await changeLocalTransactions(
+    hash,
+    { status: "unknown" },
+    ({ status }) => status === "submitted" || status === "mempool"
+  );
 
   if (owners.length) {
     if (current && owners.includes(current.ownerKey)) {

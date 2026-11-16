@@ -136,6 +136,9 @@
   // Whether it's held, as its account sent something else while it waited,
   // for the person to say whether to send it too.
   $: gateAsks = gate?.asking ?? readable(false);
+  // Whether it goes out, as the node was asked to check it: nothing to call
+  // off from then on.
+  $: gateGoesOut = gate?.goingOut ?? readable(false);
   $: isHandedOver = gate
     ? $gateState !== "open"
     : $broadcastsAsked > askedBefore;
@@ -199,7 +202,7 @@
       </p>
       <!-- A way back while it waits: called off, or left waiting, as Home
         shows it. -->
-      {#if gate && $gateState === "open"}
+      {#if gate && $gateState === "open" && !$gateGoesOut}
         <Button
           className="transaction-result__button"
           on:click={() => gate?.cancel()}

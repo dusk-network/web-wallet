@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
 - Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
+- Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it
+- Say Sending of a waiting send on Home from the moment the node is asked to check it, with no Cancel, whatever the network's pill finds
 - Go on to the next box with Enter, or a phone keyboard's Next, in Check your recovery words, suggestions or not, and check only once every box holds a word, never saying a check half filled in doesn't match
 - Go on to the next word box with a space typed on a phone's keyboard, as with the space key
 - Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
@@ -68,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send a payment that couldn't reach the network, as when the Wi-Fi drops right after Send, once the network answers, as on a silent network, with Cancel and Home until then
 - Send every payment that waited for the network once it answers, one after another, not only the first
 - Say "Not sent" where a send couldn't reach the network, and that nothing was sent and no fee was charged, or for a migration whose approval went through, that it did, with Try again
-- Show a send on Home and in History as pending, with its amount, from the moment the node is asked to broadcast it, also where its answer never comes
+- Show a send on Home and in History, with its amount, from the moment the node is asked to broadcast it: as pending, or where its answer never comes, as not confirmed yet
 - Keep Home on a send's screen from the moment it may have gone out, whether or not the network answers
 - Say a send went through on Home and in History as soon as its screen says it was sent, or the wallet tells it arrived, not Pending until the network's history has it
 - Say on Home's total and public balance that they may be out of date where they couldn't be read, also after a sync that failed, and on the total where the stake it counts couldn't be read

@@ -23,9 +23,10 @@ import { keepUnsent } from "./unsentSends";
  * Profile 2", and to which address, from which of the wallet's accounts or
  * addresses, with what memo, when it was sent, the most its fee can be, what
  * calls it off, while it can be, whether it waits for the network, which it
- * couldn't reach, and whether it's held for the person to say whether to
- * send it too, as its account sent something else while it waited (`asks`),
- * which `sendToo` says. Its amount is said as balances are shown when it's
+ * couldn't reach, whether it's held for the person to say whether to send
+ * it too, as its account sent something else while it waited (`asks`),
+ * which `sendToo` says, and whether it goes out, as the node was asked to
+ * check it (`goesOut`). Its amount is said as balances are shown when it's
  * said (waitingText), not as they were when it was sent.
  *
  * @typedef {{
@@ -34,6 +35,7 @@ import { keepUnsent } from "./unsentSends";
  *   at: number,
  *   cancel: (reason?: Error) => boolean,
  *   from: string,
+ *   goesOut: boolean,
  *   id: string,
  *   lux: bigint,
  *   maxFee: bigint,
@@ -186,6 +188,7 @@ export function keepWaiting({
       at,
       cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
       from,
+      goesOut: false,
       id,
       lux,
       maxFee,
@@ -215,6 +218,7 @@ export function keepWaiting({
       }
     }),
     gate.waitsForNetwork.subscribe((waits) => say({ waitsForNetwork: waits })),
+    gate.goingOut.subscribe((goesOut) => say({ goesOut })),
     gate.asking.subscribe((asks) => {
       say({ asks });
 

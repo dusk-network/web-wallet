@@ -163,7 +163,7 @@
     <Banner
       className="unsent-send unsent-send--handed-over"
       role="status"
-      title={`Not confirmed: ${whatOf(send, hideBalances)}.`}
+      title={`Not confirmed yet: ${whatOf(send, hideBalances)}.`}
       variant="warning"
     >
       <p class="unsent-send__when">

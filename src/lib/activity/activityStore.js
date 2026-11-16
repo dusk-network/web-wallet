@@ -413,13 +413,19 @@ export async function putLocalTransaction(ownerKey, record, epoch) {
 
 /**
  * Change the wallet's own records of a transaction, by its hash, whichever
- * account's they are: none is made where there's none.
+ * account's they are, where `isToChange` says so of one: none is made where
+ * there's none.
  *
  * @param {string} hash
  * @param {Partial<ActivityLocalRecord>} change
+ * @param {(record: ActivityLocalRecord) => boolean} [isToChange]
  * @returns {Promise<string[]>} The owners whose record changed
  */
-export async function changeLocalTransactions(hash, change) {
+export async function changeLocalTransactions(
+  hash,
+  change,
+  isToChange = () => true
+) {
   const lower = String(hash).toLowerCase();
 
   /** @type {string[]} */
@@ -428,7 +434,7 @@ export async function changeLocalTransactions(hash, change) {
   await db.transaction("rw", "local", async () => {
     const kept = await db
       .table("local")
-      .filter((record) => record.hash === lower)
+      .filter((record) => record.hash === lower && isToChange(record))
       .toArray();
 
     for (const record of kept) {

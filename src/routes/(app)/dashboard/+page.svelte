@@ -178,12 +178,14 @@
       couldn't be reached: called off from here, or they go out once it
       answers. Each with its memo and when it was sent, to tell them apart,
       and one state at a time: not sent yet while it waits for the network,
-      sending as it goes out. One whose account sent something else while it
-      waited goes out only as the person says so here. Once handed over,
+      sending as it goes out, and from when the node is asked to check it,
+      with nothing to call off. One whose account sent something else while
+      it waited goes out only as the person says so here. Once handed over,
       Activity lists it. -->
     {#each $waitingSends as send (send.id)}
       {@const isSending =
-        $networkReach === "answering" && !send.waitsForNetwork}
+        send.goesOut ||
+        ($networkReach === "answering" && !send.waitsForNetwork)}
       {#if send.asks}
         <Banner
           className="home__waiting"
@@ -227,13 +229,15 @@
           {#if !isSending}
             <p>It goes out once the network answers.</p>
           {/if}
-          <Button
-            className="home__waiting-cancel"
-            on:click={() => cancelSend(send)}
-            size="small"
-            text="Cancel"
-            variant="secondary"
-          />
+          {#if !send.goesOut}
+            <Button
+              className="home__waiting-cancel"
+              on:click={() => cancelSend(send)}
+              size="small"
+              text="Cancel"
+              variant="secondary"
+            />
+          {/if}
         </Banner>
       {/if}
     {/each}

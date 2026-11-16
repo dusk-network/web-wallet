@@ -1916,6 +1916,34 @@ describe("Send", () => {
       );
     });
 
+    // Marek's: a send whose page died before the node answered was "on its
+    // way" here, though the chain never saw it.
+    it("should say what this profile sent whose answer never came isn't confirmed yet, never on its way, for as long as the wallet waits for it", () => {
+      const { getAllByRole, getByRole } = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({ status: "unknown" }),
+          // Given up on long since: History says it.
+          sentRow({
+            hash: "ef".repeat(32),
+            status: "unknown",
+            time: Date.now() - 16 * 60_000,
+          }),
+        ],
+      });
+
+      expect(
+        getAllByRole("status").map((status) => status.textContent?.trim())
+      ).toStrictEqual([
+        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)}. See in History`,
+      ]);
+      expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
+        "href",
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+      );
+      expect(document.body).not.toHaveTextContent("on its way");
+    });
+
     it("should say what's on its way, with no amount while the balances are hidden", () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
@@ -2049,6 +2077,23 @@ describe("Send", () => {
 
       expect(onItsWay.getByRole("alert")).toHaveTextContent(
         `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
+      );
+      cleanup();
+
+      // Its answer never came: not on its way for all that's known.
+      const unconfirmed = render(Send, {
+        ...baseProps,
+        historyRows: [sentRow({ memo: "Factura 044", status: "unknown" })],
+        initialAmount: "0.0019",
+        initialMemo: "Factura 044",
+        initialRecipient: otherAccount,
+      });
+
+      expect(unconfirmed.getByRole("alert")).toHaveTextContent(
+        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It may have reached the network.`
+      );
+      expect(unconfirmed.getByRole("alert")).not.toHaveTextContent(
+        /You sent|on its way/
       );
     });
 

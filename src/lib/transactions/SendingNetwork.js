@@ -43,6 +43,14 @@ export default class SendingNetwork extends Network {
   #handOvers = new WeakMap();
 
   /**
+   * What each transaction does as the node is asked to check it, by its
+   * bytes: its gate says it goes out.
+   *
+   * @type {WeakMap<object, () => void>}
+   */
+  #checks = new WeakMap();
+
+  /**
    * The socket of the last attempt to connect: w3sper keeps its own to itself.
    *
    * @type {WebSocket | null}
@@ -58,8 +66,17 @@ export default class SendingNetwork extends Network {
 
     const broadcasts = this.#broadcasts;
     const handOvers = this.#handOvers;
+    const checks = this.#checks;
     const { transactions } = this;
+    const preverify = transactions.preverify.bind(transactions);
     const propagate = transactions.propagate.bind(transactions);
+
+    // As the node is asked to check it, it goes out: its gate says so.
+    transactions.preverify = (/** @type {any} */ tx) => {
+      checks.get(tx)?.();
+
+      return preverify(tx);
+    };
 
     transactions.propagate = async (/** @type {any} */ tx) => {
       // Called off before this, it never reaches the node; kept, it's kept
@@ -131,6 +148,7 @@ export default class SendingNetwork extends Network {
   execute(tx, { gate, onHandOver } = {}) {
     /** @type {any} */
     let built = tx;
+    const checks = this.#checks;
     const handOvers = this.#handOvers;
 
     // The transaction its builder makes, to know it by its bytes.
@@ -145,6 +163,7 @@ export default class SendingNetwork extends Network {
 
             built = made;
             gate?.check();
+            checks.set(made.buffer, () => gate?.checking());
             handOvers.set(made.buffer, async () => {
               await gate?.handOver({
                 hash,

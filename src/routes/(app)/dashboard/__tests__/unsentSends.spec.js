@@ -637,7 +637,7 @@ describe("A send that never went out", () => {
     try {
       const notConfirmed = [
         expect.stringMatching(
-          /^Not confirmed: 0\.01 DUSK to your Profile 2\. nonce used · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
+          /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. nonce used · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
         ),
       ];
 
@@ -772,7 +772,7 @@ describe("A send that never went out", () => {
       await reopenWithNonces(() => listed);
 
     try {
-      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
 
       // Its block final, the archive lists it: said as not sent once its
       // nonce is looked up again, a minute on, and kept so. Another
@@ -865,7 +865,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not confirmed: 0\.01 DUSK to your Profile 2\. sent now · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
+            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. sent now · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
           ),
         ])
       );
@@ -943,7 +943,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not confirmed: 0\.01 DUSK to your Profile 2\. sent again · .+ It may have reached the network\./
+            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. sent again · .+ It may have reached the network\./
           ),
         ])
       );
@@ -972,7 +972,7 @@ describe("A send that never went out", () => {
       );
 
       try {
-        await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+        await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
         await vi.waitFor(() =>
           expect(query).toHaveBeenCalledWith(
             expect.stringMatching(/^t0: tx\(hash:/),
@@ -1004,11 +1004,11 @@ describe("A send that never went out", () => {
       await reopenWith(null);
 
     try {
-      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
 
       expect(noticesOf(container)).toStrictEqual([
         expect.stringMatching(
-          /^Not confirmed: 0\.01 DUSK to your Profile 2\. kept only · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
+          /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. kept only · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/
         ),
       ]);
       expect(container).not.toHaveTextContent("Not sent");
@@ -1068,11 +1068,11 @@ describe("A send that never went out", () => {
     try {
       await vi.waitFor(() => expect(app.refreshBalance).toHaveBeenCalled());
 
-      // Found: nothing said of it yet, nor in History, until the balances
-      // are read.
+      // Found: not said sent yet, nor in History, until the balances are
+      // read; History says it's not confirmed yet, as its answer never came.
       expect(container).not.toHaveTextContent("Sent:");
       expect(await listLocalTransactions(owner)).toStrictEqual([
-        expect.objectContaining({ hash: sentTx.hash, status: "submitted" }),
+        expect.objectContaining({ hash: sentTx.hash, status: "unknown" }),
       ]);
 
       read.resolve(undefined);
@@ -1172,7 +1172,7 @@ describe("A send that never went out", () => {
     const { container, findByText, page, query } = await reopenWith(null);
 
     try {
-      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
 
       expect(container).not.toHaveTextContent("Not sent");
 
@@ -1215,7 +1215,7 @@ describe("A send that never went out", () => {
     const { container, findByText, query } = await reopenWith(null);
 
     try {
-      await findByText("Not confirmed: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
 
       // Past its first minutes: looked up once a minute from then on.
       await vi.advanceTimersByTimeAsync(200_000);

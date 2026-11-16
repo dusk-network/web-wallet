@@ -15,7 +15,7 @@
 
 import { get, writable } from "svelte/store";
 
-import { noteNeverSent, noteSentOutcome } from "$lib/activity";
+import { noteNeverSent, noteSentOutcome, noteUnconfirmed } from "$lib/activity";
 import { networkStore, walletStore } from "$lib/stores";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
@@ -272,7 +272,8 @@ const isKeptAs = (id, hash) =>
  * sync takes longer. Its nonce is looked up once a minute, from the first
  * look on: once another transaction of its account took it, in a final
  * block, History no longer shows it, and its send is kept as one that never
- * went out. Its send is changed only while it's kept as it.
+ * went out. Its send is changed only while it's kept as it. Until the chain
+ * says, History says it's not confirmed yet.
  *
  * @param {import("./unsentSends").UnsentSend} send
  */
@@ -292,6 +293,9 @@ export function followHandedOver(send) {
 
   followed.add(key);
   setState(hash, "checking");
+  // Its answer never came in the page that sent it: History says it's not
+  // confirmed yet, never that it's on its way, until the chain says.
+  noteUnconfirmed(hash).catch(() => {});
 
   const often = Date.now() + FOLLOW_TIMEOUT;
 

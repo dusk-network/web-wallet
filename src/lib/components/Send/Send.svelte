@@ -47,10 +47,11 @@
     sendGate,
     takeUnsentRefill,
     unsentRefill,
+    unsentSends,
     waitingSends,
     waitingText,
   } from "$lib/transactions";
-  import { onTheirWay } from "$lib/activity/sends";
+  import { notConfirmed, onTheirWay } from "$lib/activity/sends";
   import { paidInSentence } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { readPastedLink, readPaymentLink } from "$lib/payment-requests";
@@ -1603,17 +1604,21 @@
   /**
    * The same payment, made already, in a sentence: when a block took it, to
    * the second, as the request it paid and its Sent screen say it, or that
-   * it's on its way: its time is a block's, once one has it.
+   * it's on its way: its time is a block's, once one has it. One whose
+   * answer never came isn't on its way for all that's known: it may have
+   * gone out.
    *
    * @param {ActivityRow} row
    * @param {Parameters<typeof paymentOf>[1]} known
    */
   const sentBefore = (row, known) =>
-    `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
-      row.status === "executed" && row.time !== null
-        ? ` ${paidInSentence(row.time, known.locale)}.`
-        : ". It's on its way."
-    }`;
+    row.status === "unknown"
+      ? `Not confirmed yet: ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}. It may have reached the network.`
+      : `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
+          row.status === "executed" && row.time !== null
+            ? ` ${paidInSentence(row.time, known.locale)}.`
+            : ". It's on its way."
+        }`;
 
   /**
    * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
@@ -1640,6 +1645,15 @@
   // What this profile sent that's on its way: a reload or another tab's
   // send doesn't hide it.
   $: underWay = onTheirWay(historyRows);
+  // And what it sent whose answer never came: not confirmed yet, never on
+  // its way. One kept as handed over says so itself, in its notice.
+  $: unconfirmed = notConfirmed(historyRows).filter(
+    ({ hash }) =>
+      !$unsentSends.some(
+        ({ handedOver }) =>
+          handedOver?.hash.toLowerCase() === hash.toLowerCase()
+      )
+  );
   // The same payment, made already: moments ago, or with the same memo.
   $: madeAgain = addressInfo.isValid
     ? sentAlready(historyRows, {
@@ -1711,6 +1725,20 @@
           role="status"
           title={`Your ${paymentOf(row, known)} is on its way.`}
           variant="info"
+        >
+          <AppAnchor
+            className="text-link"
+            href={`/dashboard/transactions?tx=${row.hash}`}
+            >See in History</AppAnchor
+          >
+        </Banner>
+      {/each}
+      {#each unconfirmed as row (row.hash)}
+        <Banner
+          className="send__under-way"
+          role="status"
+          title={`Not confirmed yet: ${paymentOf(row, known)}.`}
+          variant="warning"
         >
           <AppAnchor
             className="text-link"

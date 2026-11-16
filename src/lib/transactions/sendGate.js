@@ -7,7 +7,9 @@
  * couldn't reach the network waits for it, as on a network that doesn't
  * answer, and is made again once it answers (`untilHandedOver`). One that
  * waited can be held until the person says to send it all the same (`ask`),
- * as its account sent something else meanwhile.
+ * as its account sent something else meanwhile. From the moment the node is
+ * asked to check it, it goes out (`goingOut`): it's no longer offered to call
+ * off, though it's handed over only once the node passed it.
  */
 
 import { writable } from "svelte/store";
@@ -52,6 +54,8 @@ const ANSWER_WITHIN = 10_000;
  *   cancel: (reason?: Error) => boolean,
  *   cancelled: Promise<never>,
  *   check: () => void,
+ *   checking: () => void,
+ *   goingOut: import("svelte/store").Readable<boolean>,
  *   handOver: (sent?: HandedOver) => Promise<void>,
  *   keepFirst: (keep: (sent: HandedOver) => Promise<void>) => void,
  *   sendToo: () => boolean,
@@ -71,7 +75,9 @@ const ANSWER_WITHIN = 10_000;
  *   says whether it waits for that, until it's handed over or called off;
  *   `ask` holds it until the person says to send it all the same
  *   (`sendToo`, true where it was held), and rejects with why as it's
- *   called off meanwhile; `asking` says whether it's held so.
+ *   called off meanwhile; `asking` says whether it's held so; `checking`
+ *   says the node is asked to check it, and `goingOut` whether it was and
+ *   it doesn't wait for the network again since.
  */
 
 /** @returns {SendGate} */
@@ -79,6 +85,7 @@ export function sendGate() {
   const state = writable(/** @type {SendGateState} */ ("open"));
   const waiting = writable(false);
   const held = writable(false);
+  const out = writable(false);
   let now = /** @type {SendGateState} */ ("open");
 
   /**
@@ -202,6 +209,12 @@ export function sendGate() {
     },
     cancelled,
     check,
+    checking() {
+      if (now === "open") {
+        out.set(true);
+      }
+    },
+    goingOut: { subscribe: out.subscribe },
     handOver(sent = { hash: "", nonce: "" }) {
       check();
       set("handed-over");
@@ -236,6 +249,8 @@ export function sendGate() {
           }
         }
 
+        // Not out: it waits for the network again.
+        out.set(false);
         waiting.set(true);
         await networkAnswers(answers);
         // It answers: the send is being made again, no longer waiting.
