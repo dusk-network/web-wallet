@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
 - Go on to the next word box with a space typed on a phone's keyboard, as with the space key
 - Refuse a payment link with any space in its amount, a no-break, thin or ideographic space or a tab, pasted or typed
 - Ask about a name that looks like a contact's with l, 1, ! or | for an i, and catch a .dusk name in small capitals, circled letters or after a fullwidth point, as a profile's or a contact's name

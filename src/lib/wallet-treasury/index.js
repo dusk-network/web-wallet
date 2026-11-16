@@ -26,6 +26,15 @@ class WalletTreasury {
   #sentNonces = new Map();
 
   /**
+   * Every transaction this wallet handed to the node since it opened, by the
+   * account's index: its hash by its nonce. The account's other
+   * transactions are another device's, or another tab's.
+   *
+   * @type {Map<number, Map<bigint, string>>}
+   */
+  #handedOverNonces = new Map();
+
+  /**
    * @param {bigint} lastBlockHeight
    * @param {ReturnType<typeof currentWalletCache>} walletCache
    * @returns {Promise<WalletCacheSyncInfo>}
@@ -75,6 +84,60 @@ class WalletTreasury {
     }
 
     return { ...balance, nonce: sent };
+  }
+
+  /**
+   * The account's nonce as the last sync read it from the network: what it
+   * had sent then, none of what's sent from here since counted. Undefined
+   * before a sync read it.
+   *
+   * @param {Profile} profile
+   * @returns {bigint | undefined}
+   */
+  nonceRead(profile) {
+    return this.#accountBalances.at(+profile.account)?.nonce;
+  }
+
+  /**
+   * Keeps a transaction this wallet handed to the node, by its nonce, with
+   * its hash.
+   *
+   * @param {Profile} profile
+   * @param {bigint} nonce
+   * @param {string} hash
+   */
+  noteHandedOver(profile, nonce, hash) {
+    const index = +profile.account;
+    const sent = this.#handedOverNonces.get(index) ?? new Map();
+
+    this.#handedOverNonces.set(index, sent.set(nonce, hash));
+  }
+
+  /**
+   * Forgets a transaction this wallet handed to the node, as the node
+   * refused it: it went nowhere, and its nonce is free for another.
+   *
+   * @param {Profile} profile
+   * @param {bigint} nonce
+   */
+  forgetHandedOver(profile, nonce) {
+    this.#handedOverNonces.get(+profile.account)?.delete(nonce);
+  }
+
+  /**
+   * The transactions this wallet handed to the node with a nonce past
+   * `from`, up to `to`: their nonces and hashes. Whether one is the
+   * account's at its nonce is for a block to say.
+   *
+   * @param {Profile} profile
+   * @param {bigint} from
+   * @param {bigint} to
+   * @returns {Array<{ hash: string, nonce: bigint }>}
+   */
+  handedOverBetween(profile, from, to) {
+    return [...(this.#handedOverNonces.get(+profile.account) ?? [])]
+      .filter(([nonce]) => nonce > from && nonce <= to)
+      .map(([nonce, hash]) => ({ hash, nonce }));
   }
 
   /**
@@ -152,6 +215,7 @@ class WalletTreasury {
     this.#accountBalances = [];
     this.#accountStakeInfo = [];
     this.#sentNonces.clear();
+    this.#handedOverNonces.clear();
     this.#profiles = [];
     this.#generation++;
   }
@@ -185,6 +249,7 @@ class WalletTreasury {
     this.#accountBalances = [];
     this.#accountStakeInfo = [];
     this.#sentNonces.clear();
+    this.#handedOverNonces.clear();
     this.#profiles = profiles;
     this.#generation++;
   }

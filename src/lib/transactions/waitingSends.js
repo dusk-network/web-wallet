@@ -22,12 +22,15 @@ import { keepUnsent } from "./unsentSends";
  * A send waiting to go out: the DUSK it sends, in Lux, to whom, as "your
  * Profile 2", and to which address, from which of the wallet's accounts or
  * addresses, with what memo, when it was sent, the most its fee can be, what
- * calls it off, while it can be, and whether it waits for the network, which
- * it couldn't reach. Its amount is said as balances are shown when it's said
- * (waitingText), not as they were when it was sent.
+ * calls it off, while it can be, whether it waits for the network, which it
+ * couldn't reach, and whether it's held for the person to say whether to
+ * send it too, as its account sent something else while it waited (`asks`),
+ * which `sendToo` says. Its amount is said as balances are shown when it's
+ * said (waitingText), not as they were when it was sent.
  *
  * @typedef {{
  *   address: string,
+ *   asks: boolean,
  *   at: number,
  *   cancel: (reason?: Error) => boolean,
  *   from: string,
@@ -35,6 +38,7 @@ import { keepUnsent } from "./unsentSends";
  *   lux: bigint,
  *   maxFee: bigint,
  *   memo: string,
+ *   sendToo: () => boolean,
  *   to: string,
  *   waitsForNetwork: boolean,
  * }} WaitingSend
@@ -157,10 +161,24 @@ export function keepWaiting({
     leave();
   };
 
+  /**
+   * Changes what's said of it, while it waits.
+   *
+   * @param {Partial<WaitingSend>} change
+   */
+  const say = (change) => {
+    if (isWaiting) {
+      sends.update((list) =>
+        list.map((each) => (each.id === id ? { ...each, ...change } : each))
+      );
+    }
+  };
+
   sends.update((list) => [
     ...list,
     {
       address,
+      asks: false,
       at,
       cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
       from,
@@ -168,6 +186,7 @@ export function keepWaiting({
       lux,
       maxFee,
       memo,
+      sendToo: () => gate.sendToo(),
       to,
       waitsForNetwork: false,
     },
@@ -191,15 +210,8 @@ export function keepWaiting({
         done(isKeptAfter(why, () => false));
       }
     }),
-    gate.waitsForNetwork.subscribe((waits) => {
-      if (isWaiting) {
-        sends.update((list) =>
-          list.map((each) =>
-            each.id === id ? { ...each, waitsForNetwork: waits } : each
-          )
-        );
-      }
-    }),
+    gate.waitsForNetwork.subscribe((waits) => say({ waitsForNetwork: waits })),
+    gate.asking.subscribe((asks) => say({ asks })),
   ];
 
   // Gone out or called off already as it was followed.

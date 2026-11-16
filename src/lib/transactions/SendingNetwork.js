@@ -119,12 +119,13 @@ export default class SendingNetwork extends Network {
    * Builds, checks and broadcasts a transaction, as w3sper does: with a
    * `gate`, only while it isn't called off, which it checks once it's built,
    * and as it's handed over, with its hash and nonce, before the node is
-   * asked to broadcast it. As it is, `onHandOver` is told its hash, whatever
-   * the node answers, or if no answer comes.
+   * asked to broadcast it. As it is, `onHandOver` is told its hash, and its
+   * nonce where it has one, whatever the node answers, or if no answer
+   * comes.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
-   * @param {{ gate?: import("./sendGate").SendGate, onHandOver?: (hash: string) => void }} [options]
+   * @param {{ gate?: import("./sendGate").SendGate, onHandOver?: (hash: string, nonce?: bigint) => void }} [options]
    * @returns {ReturnType<T["build"]>}
    */
   execute(tx, { gate, onHandOver } = {}) {
@@ -152,7 +153,10 @@ export default class SendingNetwork extends Network {
 
               // Whoever's told can't stop it going out.
               try {
-                onHandOver?.(hash);
+                onHandOver?.(
+                  hash,
+                  typeof made.nonce === "bigint" ? made.nonce : undefined
+                );
               } catch {
                 // Nothing to do: it goes out all the same.
               }

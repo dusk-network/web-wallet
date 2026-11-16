@@ -290,6 +290,97 @@ describe("Dashboard", () => {
     }
   });
 
+  // Chen's, on two phones: the payment waiting on phone A went out by itself
+  // after she paid the same from phone B. Held, it says so here, with the
+  // payment, and goes only as she says.
+  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and sends it too, or not, only as the person says", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
+    const { toastList } = await import("$lib/dusk/components/Toast/store");
+
+    toastList.set([]);
+    render(Dashboard, props);
+
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    /** @param {string} name */
+    const button = (name) =>
+      /** @type {HTMLElement} */ (
+        Array.from(document.querySelectorAll(".home__waiting button")).find(
+          (each) => each.textContent?.trim() === name
+        )
+      );
+
+    /**
+     * A send that waited, held as the person is asked.
+     *
+     * @param {string} memo
+     */
+    async function held(memo) {
+      const gate = sendGate();
+      let goesOn = false;
+
+      keepWaiting({
+        gate,
+        lux: 10_000_000n,
+        memo,
+        operation: new Promise(() => {}),
+        to: "your Profile 2",
+      });
+      gate.ask().then(
+        () => {
+          goesOn = true;
+        },
+        () => {}
+      );
+      await act();
+
+      return { gate, goesOn: () => goesOn };
+    }
+
+    const sent = await held("night shift 6");
+
+    try {
+      const at = timeLabel(get(waitingSends)[0].at, "en");
+
+      expect(banner()).toBe(
+        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`
+      );
+      expect(
+        Array.from(document.querySelectorAll(".home__waiting button"), (b) =>
+          b.textContent?.trim()
+        )
+      ).toStrictEqual(["Send it too", "Don't send"]);
+
+      // Send it too: it goes on, no longer held.
+      await fireEvent.click(button("Send it too"));
+      await vi.waitFor(() => expect(sent.goesOn()).toBe(true));
+      expect(get(sent.gate)).toBe("open");
+      expect(banner()).not.toContain("sent something else");
+    } finally {
+      sent.gate.cancel();
+    }
+
+    const dropped = await held("night shift 7");
+
+    try {
+      // Don't send: called off, nothing goes out, and it's said.
+      await fireEvent.click(button("Don't send"));
+
+      expect(get(dropped.gate)).toBe("cancelled");
+      expect(dropped.goesOn()).toBe(false);
+      expect(banner()).toBeUndefined();
+      expect(get(toastList).map(({ message }) => message)).toContain(
+        "Not sent: 0.01 DUSK to your Profile 2."
+      );
+    } finally {
+      dropped.gate.cancel();
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
