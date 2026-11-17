@@ -92,6 +92,12 @@
    */
   export let gate = undefined;
 
+  /**
+   * Whether what was sent isn't sent, as the node doesn't have it: not sent
+   * yet, or not at all, as the person chose (TransactionStatus).
+   */
+  let notSent = false;
+
   function handleGoHomeClick() {
     onBeforeLeave?.();
   }
@@ -225,6 +231,7 @@
   </svelte:fragment>
   <svelte:fragment slot="success-content" let:result={{ hash, unconfirmed }}>
     <TransactionStatus
+      bind:notSent
       {extra}
       {extraToCome}
       {hash}
@@ -235,7 +242,8 @@
       {unconfirmed}
       {what}
     />
-    {#if hash && hasHistory}
+    <!-- History has nothing of one not sent. -->
+    {#if hash && hasHistory && !notSent}
       <AppAnchorButton
         className="transaction-result__button"
         href={`/dashboard/transactions?tx=${hash}`}

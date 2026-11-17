@@ -194,9 +194,11 @@ declare module "@dusk/w3sper" {
         : T
       : T;
 
-    preverify<T extends BasicTransfer>(tx: T): Promise<T>;
+    /** Asks the node to check a transaction: its bytes, as a built one's buffer. */
+    preverify<T extends BasicTransfer | Uint8Array>(tx: T): Promise<T>;
 
-    propagate<T extends BasicTransfer>(tx: T): Promise<T>;
+    /** Asks the node to broadcast a transaction: its bytes, as a built one's buffer. */
+    propagate<T extends BasicTransfer | Uint8Array>(tx: T): Promise<T>;
   }
 
   interface Treasury {

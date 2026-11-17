@@ -240,6 +240,7 @@ describe("Send page", () => {
   it("should count out of Available and Max what the sends waiting to go out from that balance take, and say so", async () => {
     const public_ = currentProfile.account.toString();
     const shielded = currentProfile.address.toString();
+    const answered = Promise.withResolvers();
     const waiting = (/** @type {string} */ from) => {
       const gate = sendGate();
 
@@ -249,7 +250,7 @@ describe("Send page", () => {
         gate,
         lux: 10_000_000n,
         maxFee: 2_500_000n,
-        operation: new Promise(() => {}),
+        operation: answered.promise,
         to: "Lena",
       });
 
@@ -281,17 +282,27 @@ describe("Send page", () => {
         formatDuskPlain(left - gasLimit * gasPrice - get(feeToKeep).lux)
       );
 
-      // Gone out, or called off: all of it again.
+      // Handed over, it's counted out until the node took it.
       await act(() => fromPublic.handOver());
       await act(() => fromShielded.cancel());
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK from your public balance, after what's waiting to go out`
+      );
+
+      // Gone out, or called off: all of it again.
+      answered.resolve(undefined);
+
+      await vi.waitFor(() =>
+        expect(available(container)).toHaveTextContent(
+          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+        )
       );
       expect(available(container)).not.toHaveTextContent("waiting");
     } finally {
       fromPublic.cancel();
       fromShielded.cancel();
+      answered.resolve(undefined);
     }
   });
 

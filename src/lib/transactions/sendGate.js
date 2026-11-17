@@ -41,10 +41,11 @@ const ANSWER_WITHIN = 10_000;
  */
 
 /**
- * The transaction handed over: its hash, and its nonce, "" for one that has
- * none, as a shielded transfer.
+ * The transaction handed over: its hash, its nonce, "" for one that has
+ * none, as a shielded transfer, and its signed bytes, as hex, to broadcast
+ * it again as it is.
  *
- * @typedef {{ hash: string, nonce: string }} HandedOver
+ * @typedef {{ hash: string, nonce: string, tx?: string }} HandedOver
  */
 
 /**

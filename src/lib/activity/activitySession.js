@@ -24,6 +24,7 @@ import { get } from "svelte/store";
 
 import { bridgeNetwork } from "$lib/bridge/bridgeCalls";
 import { sozuPools } from "$lib/sozu/config";
+import { tellOtherTabs } from "$lib/wallets/tabs";
 
 import {
   activityNetworkKey,
@@ -42,7 +43,9 @@ import {
   listLocalTransactions,
   putCounterpartyNames,
   putLocalTransaction,
+  recoverUnfinishedHandOvers,
 } from "./activityStore";
+import { NOT_SHOWN, THIS_PAGE } from "./constants";
 import {
   NAME_CHECK_TTL_MS,
   lookupCounterpartyNames,
@@ -460,6 +463,7 @@ export class ActivitySession {
       return;
     }
 
+    await this.#recoverHandOvers();
     await this.#reload().catch(() => {});
     await this.#settleLocal();
     this.#emit();
@@ -491,6 +495,8 @@ export class ActivitySession {
   #rowsOf({ entries, local, meta, shielded }) {
     const { account, profileIndex } = this.options;
 
+    // None of the wallet's own the node doesn't have (NOT_SHOWN), unless
+    // the chain has it.
     return activityRows({
       account,
       nameCall: nameFacts,
@@ -502,7 +508,7 @@ export class ActivitySession {
       public: entries,
       shielded,
       state: meta,
-    });
+    }).filter((row) => !row.dropped);
   }
 
   /**
@@ -657,16 +663,25 @@ export class ActivitySession {
 
   /**
    * Keep one of the wallet's own transactions, shown until the archive has
-   * it, and look for it once it went through.
+   * it, and look for it once it went through. With `handing`, it's kept
+   * unseen, as the node was asked to broadcast it and hasn't taken it yet,
+   * as being handed over by this page: where the page goes first, the next
+   * says it's not confirmed yet (`recoverUnfinishedHandOvers`).
    *
    * @param {Omit<ActivityLocalRecord, "id" | "ownerKey" | "status" | "submittedAt">} record
+   * @param {{ handing?: boolean }} [options]
    */
-  async recordSent(record) {
+  async recordSent(record, { handing = false } = {}) {
     const epoch = await this.#epoch;
 
     await putLocalTransaction(
       this.ownerKey,
-      { ...record, status: "submitted", submittedAt: Date.now() },
+      {
+        ...record,
+        ...(handing ? { handing: THIS_PAGE } : {}),
+        status: handing ? NOT_SHOWN : "submitted",
+        submittedAt: Date.now(),
+      },
       epoch
     );
     await this.#reload();
@@ -753,8 +768,22 @@ export class ActivitySession {
     }
   }
 
+  /**
+   * Says the wallet's own transactions whose hand-over never finished, as
+   * the page handing them over went first, aren't confirmed yet: they may
+   * have gone out. The other tabs' History says so too.
+   */
+  async #recoverHandOvers() {
+    const owners = await recoverUnfinishedHandOvers(THIS_PAGE).catch(() => []);
+
+    if (owners.length) {
+      tellOtherTabs({ type: "sent" });
+    }
+  }
+
   async #start() {
     try {
+      await this.#recoverHandOvers();
       await this.#reload();
       await this.#keptNames();
     } catch {

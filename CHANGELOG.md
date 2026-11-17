@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say "Not sent yet" of a send the node doesn't have, its nonce still free, with Send it now, which sends that very transaction again, and Don't send, which still says it if it arrives after all, on Home and on its own screen, and never Sent or Pending before the node took it
+- Say "Not confirmed yet" in History of a send, a stake or anything else handed to the node as its page closed, before the node answered
 - Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
 - Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
 - Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it

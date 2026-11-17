@@ -56,6 +56,13 @@ type ActivityLocalRecord = {
   error?: string;
   feePaid?: string;
   fnName?: string;
+
+  /**
+   * The page handing it to the node, while it's kept unseen as that page
+   * hasn't heard back (`THIS_PAGE`): none once the node answered, or once
+   * it's known not to have it.
+   */
+  handing?: string;
   hash: string;
   id: string;
   kind: ActivityKind;

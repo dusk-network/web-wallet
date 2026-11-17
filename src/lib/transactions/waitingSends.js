@@ -1,11 +1,14 @@
 /**
  * The sends that haven't gone out yet, wherever the wallet is: each from when
- * it's sent until the node is asked to broadcast it, it's called off, or it
- * ends. Home says each waits, with Cancel (sendGate). One kept on this device
- * meanwhile ($lib/transactions/unsentSends) stays kept where it never went
- * out and nothing said so: as its page closed, reloaded or locked first. It's
- * kept as handed over, with its transaction's hash and nonce, before the node
- * is asked to broadcast it, and until it ends: its page may go before then.
+ * it's sent until the node answered its broadcast, it's called off, or it
+ * ends. Home says each waits, with Cancel until the node is asked to
+ * broadcast it (sendGate). One kept on this device meanwhile
+ * ($lib/transactions/unsentSends) stays kept where it never went out and
+ * nothing said so: as its page closed, reloaded or locked first. It's kept as
+ * handed over, with its transaction's hash, nonce and signed bytes, before
+ * the node is asked to broadcast it, and until it ends: its page may go
+ * before then. One whose answer got lost stays kept so, for the chain and
+ * the node to say what became of it.
  */
 
 import { writable } from "svelte/store";
@@ -15,6 +18,7 @@ import WalletChangedError from "$lib/errors/wallet-changed-error";
 import { BALANCE_MASK } from "$lib/constants";
 import { formatDuskExact } from "$lib/dusk/currency";
 
+import { unconfirmedHash } from "./describeFailure";
 import { SendCancelledError } from "./sendGate";
 import { keepUnsent } from "./unsentSends";
 
@@ -25,9 +29,10 @@ import { keepUnsent } from "./unsentSends";
  * calls it off, while it can be, whether it waits for the network, which it
  * couldn't reach, whether it's held for the person to say whether to send
  * it too, as its account sent something else while it waited (`asks`),
- * which `sendToo` says, and whether it goes out, as the node was asked to
- * check it (`goesOut`). Its amount is said as balances are shown when it's
- * said (waitingText), not as they were when it was sent.
+ * which `sendToo` says, whether it goes out, as the node was asked to check
+ * it (`goesOut`), and whether the node was asked to broadcast it, its
+ * answer not in yet (`handedOver`). Its amount is said as balances are
+ * shown when it's said (waitingText), not as they were when it was sent.
  *
  * @typedef {{
  *   address: string,
@@ -36,6 +41,7 @@ import { keepUnsent } from "./unsentSends";
  *   cancel: (reason?: Error) => boolean,
  *   from: string,
  *   goesOut: boolean,
+ *   handedOver: boolean,
  *   id: string,
  *   lux: bigint,
  *   maxFee: bigint,
@@ -87,7 +93,9 @@ const isKeptAfter = (why, isSaid) =>
  * person called it off or its own screen said how it ended (`kept.isSaid`).
  * Before the node is asked to broadcast it, it's kept as handed over, and
  * it goes out only once it is: one whose page goes from then on may have
- * gone out, and is never said as one that didn't. It's forgotten as it ends.
+ * gone out, and is said as one that didn't only as the chain and the node
+ * say so. It's said here until the node answers: forgotten once it took
+ * it, and kept as handed over where its answer got lost.
  * One sent again from what's kept of it takes its place (`kept.id`). What's
  * kept of it has its account's nonce as the wallet knew it (`kept.seen`),
  * and says so where it's held as its account sent something else while it
@@ -158,9 +166,9 @@ export function keepWaiting({
   };
 
   /**
-   * Ended: kept, as one that never went out, or not.
+   * Ended: kept, as one that never went out, or as handed over, or not.
    *
-   * @param {boolean} keep
+   * @param {boolean | "handed-over"} keep
    */
   const done = (keep) => {
     keeping?.end(keep);
@@ -189,6 +197,7 @@ export function keepWaiting({
       cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
       from,
       goesOut: false,
+      handedOver: false,
       id,
       lux,
       maxFee,
@@ -201,10 +210,11 @@ export function keepWaiting({
   stops = [
     gate.subscribe((state) => {
       if (state === "handed-over") {
-        // It may go out from now on: History shows it. What's kept of it
-        // says so until it ends.
+        // It may go out from now on: said as it's sent, with nothing to
+        // call off, until the node answers. What's kept of it says so
+        // until it ends.
         isHandedOver = true;
-        leave();
+        say({ handedOver: true });
       } else if (state === "cancelled") {
         let why;
 
@@ -233,11 +243,16 @@ export function keepWaiting({
     stopFollowing();
   }
 
-  // Once handed over, its own screen and History say what became of it.
+  // Once the node took it, its own screen and History say what became of
+  // it; one whose answer got lost stays kept as handed over.
   operation.then(
     () => done(false),
     (error) =>
-      done(!isHandedOver && isKeptAfter(error, () => kept?.isSaid() ?? true))
+      done(
+        isHandedOver
+          ? Boolean(unconfirmedHash(error)) && "handed-over"
+          : isKeptAfter(error, () => kept?.isSaid() ?? true)
+      )
   );
 }
 

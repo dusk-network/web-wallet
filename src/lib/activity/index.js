@@ -10,6 +10,7 @@ import {
   forgetLocalTransaction,
 } from "./activityStore";
 import { awaitedArrivals } from "./arrivals";
+import { NOT_SHOWN, THIS_PAGE } from "./constants";
 
 export { clearActivityStore, forgetWalletActivity } from "./activityStore";
 export {
@@ -138,6 +139,7 @@ export async function noteSentOutcome(
   const owners = await changeLocalTransactions(hash, {
     blockHeight: Number(blockHeight),
     feePaid: String(fee),
+    handing: undefined,
     status: error ? "failed" : "executed",
     ...(error ? { error } : {}),
     ...(timestamp ? { timestamp } : {}),
@@ -153,21 +155,16 @@ export async function noteSentOutcome(
 }
 
 /**
- * A transaction the wallet sent whose answer never came, as its page went
- * before it did, or the node's answer got lost: it may have gone out, and
- * History and Home say it's not confirmed yet, never sent or on its way,
- * for whichever profile sent it, until the chain says what became of it
- * (`noteSentOutcome`), or another took its nonce (`noteNeverSent`). Only
- * while nothing else is said of it.
+ * Changes the wallet's records of a transaction it sent, for whichever
+ * profile sent it, where `isToChange` says so of one: History and Home say
+ * it as changed, here and in the other tabs.
  *
  * @param {string} hash
+ * @param {Partial<ActivityLocalRecord>} change
+ * @param {(record: ActivityLocalRecord) => boolean} isToChange
  */
-export async function noteUnconfirmed(hash) {
-  const owners = await changeLocalTransactions(
-    hash,
-    { status: "unknown" },
-    ({ status }) => status === "submitted" || status === "mempool"
-  );
+async function changeSent(hash, change, isToChange) {
+  const owners = await changeLocalTransactions(hash, change, isToChange);
 
   if (owners.length) {
     if (current && owners.includes(current.ownerKey)) {
@@ -177,6 +174,104 @@ export async function noteUnconfirmed(hash) {
     tellOtherTabs({ type: "sent" });
   }
 }
+
+/**
+ * Whether a record is kept unseen as being handed to the node by another
+ * page, which went before the node answered: its hand-over never finished.
+ *
+ * @param {ActivityLocalRecord} record
+ */
+const isHandingElsewhere = ({ handing, status }) =>
+  status === NOT_SHOWN && Boolean(handing) && handing !== THIS_PAGE;
+
+/**
+ * A transaction the wallet sent whose answer never came, as its page went
+ * before it did, or the node's answer got lost: it may have gone out, and
+ * History and Home say it's not confirmed yet, never sent or on its way,
+ * for whichever profile sent it, until the chain says what became of it
+ * (`noteSentOutcome`), the node does (`noteInQueue`, `noteNotSentYet`), or
+ * another took its nonce (`noteNeverSent`). Only while nothing else is said
+ * of it, and of one not shown as its hand-over never finished, its page
+ * gone first: with `handing`, also of one not shown yet, as the node was
+ * asked to broadcast it and hadn't answered.
+ *
+ * @param {string} hash
+ * @param {{ handing?: boolean }} [options]
+ */
+export const noteUnconfirmed = (hash, { handing = false } = {}) =>
+  changeSent(
+    hash,
+    { handing: undefined, status: "unknown" },
+    (record) =>
+      record.status === "submitted" ||
+      record.status === "mempool" ||
+      isHandingElsewhere(record) ||
+      (handing && record.status === NOT_SHOWN)
+  );
+
+/**
+ * A transaction the wallet sent that the node didn't have, handed to it
+ * again as it is: kept unseen as being handed over by this page until the
+ * node answers, for whichever profile sent it, so that it's said not to be
+ * confirmed yet where the page goes first.
+ *
+ * @param {string} hash
+ */
+export const noteHanding = (hash) =>
+  changeSent(
+    hash,
+    { handing: THIS_PAGE },
+    ({ status }) => status === NOT_SHOWN
+  );
+
+/**
+ * A transaction the wallet sent that the node took as it was asked to
+ * broadcast it, now or again: History and Home say it's sent, on its way,
+ * from now, for whichever profile sent it, where they didn't show it or
+ * said it wasn't confirmed.
+ *
+ * @param {string} hash
+ */
+export const noteSentAccepted = (hash) =>
+  changeSent(
+    hash,
+    { handing: undefined, status: "submitted", submittedAt: Date.now() },
+    ({ status }) => status === NOT_SHOWN || status === "unknown"
+  );
+
+/**
+ * A transaction the wallet sent that the node has in its mempool: History
+ * and Home say it's sent, on its way, for whichever profile sent it, for as
+ * long as it's there.
+ *
+ * @param {string} hash
+ */
+export const noteInQueue = (hash) =>
+  changeSent(
+    hash,
+    { handing: undefined, status: "mempool" },
+    ({ status }) =>
+      status === NOT_SHOWN || status === "submitted" || status === "unknown"
+  );
+
+/**
+ * A transaction the wallet sent that the node doesn't have, in a block or
+ * in its mempool, while its nonce is still free: History and Home don't
+ * show it, for whichever profile sent it, as not being handed over either,
+ * until it's sent again as it is (`noteSentAccepted`).
+ *
+ * @param {string} hash
+ */
+export const noteNotSentYet = (hash) =>
+  changeSent(
+    hash,
+    { handing: undefined, status: NOT_SHOWN },
+    ({ handing, status }) =>
+      status === "submitted" ||
+      status === "mempool" ||
+      status === "unknown" ||
+      (status === NOT_SHOWN && Boolean(handing))
+  );
 
 /**
  * A transaction the wallet sent that can never be in a block, as another

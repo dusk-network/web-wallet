@@ -179,12 +179,13 @@
       answers. Each with its memo and when it was sent, to tell them apart,
       and one state at a time: not sent yet while it waits for the network,
       sending as it goes out, and from when the node is asked to check it,
-      with nothing to call off. One whose account sent something else while
-      it waited goes out only as the person says so here. Once handed over,
-      Activity lists it. -->
+      with nothing to call off, until the node answered its broadcast. One
+      whose account sent something else while it waited goes out only as
+      the person says so here. Once the node took it, Activity lists it. -->
     {#each $waitingSends as send (send.id)}
       {@const isSending =
         send.goesOut ||
+        send.handedOver ||
         ($networkReach === "answering" && !send.waitsForNetwork)}
       {#if send.asks}
         <Banner
@@ -229,7 +230,7 @@
           {#if !isSending}
             <p>It goes out once the network answers.</p>
           {/if}
-          {#if !send.goesOut}
+          {#if !send.goesOut && !send.handedOver}
             <Button
               className="home__waiting-cancel"
               on:click={() => cancelSend(send)}

@@ -49,6 +49,9 @@ const mockedWalletStore = {
 
   /** The block a resync syncs from, while it runs: null for none. */
   resyncing: writable(/** @type {bigint | null} */ (null)),
+
+  /** Nothing is sent again here. */
+  sendAgain: () => Promise.resolve(),
 };
 
 export default mockedWalletStore;

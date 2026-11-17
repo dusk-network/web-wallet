@@ -225,6 +225,17 @@ type WalletStoreServices = {
   resyncing: Readable<bigint | null>;
 
   /**
+   * Sends a transaction handed over before again as it is: its signed bytes
+   * (`tx`, as hex), from the profile whose public account is `account`.
+   */
+  sendAgain: (sent: {
+    account: string;
+    hash: string;
+    nonce: string;
+    tx: string;
+  }) => Promise<void>;
+
+  /**
    * Proves or claims a DuskEVM withdrawal: the Portal's call as
    * `@dusk-network/app-core/duskevm-withdrawals` gave it, signed as it is.
    */

@@ -177,6 +177,7 @@ describe("Dashboard", () => {
 
     const first = sendGate();
     const second = sendGate();
+    const answered = Promise.withResolvers();
 
     keepWaiting({
       gate: first,
@@ -189,7 +190,7 @@ describe("Dashboard", () => {
       gate: second,
       lux: 10_000_000n,
       memo: "ward round 2",
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "Profile 2",
     });
 
@@ -224,21 +225,29 @@ describe("Dashboard", () => {
         "Not sent: 0.01 DUSK to Profile 2."
       );
 
-      // The other goes out once the network answers: no longer waiting.
+      // The other goes out once the network answers: sent, with nothing to
+      // call off, until the node took it.
       await act(() => setNetworkReach("answering"));
       await act(() => second.handOver());
 
-      expect(banners()).toStrictEqual([]);
+      expect(banners()).toStrictEqual([
+        `Sending: 0.01 DUSK to Profile 2. ward round 2 · ${two}`,
+      ]);
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() => expect(banners()).toStrictEqual([]));
     } finally {
       first.cancel();
       second.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });
 
   // Then M19's: "Not sent yet … It's being sent. Cancel" as it went out.
   // One state at a time: Sending as it goes out, Not sent yet while it waits
-  // for the network, and nothing once it's handed over, as Activity has it.
+  // for the network, and nothing once the node took it, as Activity has it.
   it("says a send goes out as it does, and that one that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
@@ -247,6 +256,7 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
+    const answered = Promise.withResolvers();
     const banner = () =>
       document
         .querySelector(".home__waiting")
@@ -256,7 +266,7 @@ describe("Dashboard", () => {
     keepWaiting({
       gate,
       lux: 10_000_000n,
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "Profile 2",
     });
 
@@ -280,12 +290,18 @@ describe("Dashboard", () => {
         )
       );
 
-      // Handed over: no longer said here.
+      // Handed over: sent, with nothing to call off, until the node took
+      // it, and then no longer said here.
       await act(() => gate.handOver());
 
-      expect(banner()).toBeUndefined();
+      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at}`);
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() => expect(banner()).toBeUndefined());
     } finally {
       gate.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });
@@ -300,6 +316,7 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
+    const answered = Promise.withResolvers();
     const banner = () =>
       document
         .querySelector(".home__waiting")
@@ -309,7 +326,7 @@ describe("Dashboard", () => {
     keepWaiting({
       gate,
       lux: 10_000_000n,
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "your Profile 2",
     });
 
@@ -328,12 +345,19 @@ describe("Dashboard", () => {
       expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
       expect(document.querySelector(".home__waiting button")).toBeNull();
 
-      // Handed over: no longer said here, as Activity has it.
+      // Handed over: sent, with nothing to call off, until the node took
+      // it, and then no longer said here, as Activity has it.
       await act(() => gate.handOver());
 
-      expect(banner()).toBeUndefined();
+      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
+      expect(document.querySelector(".home__waiting button")).toBeNull();
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() => expect(banner()).toBeUndefined());
     } finally {
       gate.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });

@@ -5,12 +5,17 @@ import { get } from "svelte/store";
 import { noteSozuPool } from "$lib/sozu";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
+import { putLocalTransaction } from "../activityStore";
+import { THIS_PAGE } from "../constants";
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
 import {
   activityFor,
   activityState,
   currentActivity,
+  noteInQueue,
+  noteNotSentYet,
+  noteSentAccepted,
   noteSentOutcome,
   noteUnconfirmed,
   stopActivity,
@@ -166,6 +171,119 @@ describe("activityFor", () => {
       blockHeight: 4_833_701,
       status: "executed",
     });
+  });
+
+  // Chen's, on hospital Wi-Fi: "Sent · Pending" while the hand-over hung,
+  // though the node never got it.
+  it("shows a send only once the node took it: never while its broadcast isn't answered, nor while the node doesn't have it, its nonce free", async () => {
+    fakeArchive();
+
+    const hash = "7e".repeat(32);
+    const rowOf = () =>
+      get(activityState).rows.find((row) => row.hash === hash);
+    const sender = activityFor(optionsFor(B));
+
+    await sender.start();
+    await sender.recordSent(
+      {
+        amount: "20000000",
+        direction: "out",
+        hash,
+        kind: "transfer",
+        privacy: "public",
+        to: A,
+      },
+      { handing: true }
+    );
+
+    // Asked to broadcast it, the node hasn't answered: nothing shows.
+    expect(rowOf()).toBeUndefined();
+    expect((await sender.keptRows()).some((row) => row.hash === hash)).toBe(
+      false
+    );
+
+    // Its answer got lost: not confirmed yet.
+    await noteUnconfirmed(hash, { handing: true });
+
+    expect(rowOf()).toMatchObject({ status: "unknown" });
+
+    // The node doesn't have it, its nonce free: nothing shows, nor in a
+    // search of all that's kept.
+    await noteNotSentYet(hash);
+
+    expect(rowOf()).toBeUndefined();
+    expect((await sender.keptRows()).some((row) => row.hash === hash)).toBe(
+      false
+    );
+
+    // Sent again as it is, the node took it: sent, on its way.
+    await noteSentAccepted(hash);
+
+    expect(rowOf()).toMatchObject({ direction: "out", status: "pending" });
+
+    // In its mempool: on its way, still.
+    await noteInQueue(hash);
+
+    expect(rowOf()).toMatchObject({ status: "pending" });
+  });
+
+  // Astra's: a page that went before the node answered left its send, or
+  // its stake, unseen in History for good, though it may have gone out.
+  it("says what a page handed to the node and went before it answered isn't confirmed yet, as History opens again: never one the node doesn't have, nor one this page is handing over", async () => {
+    fakeArchive();
+
+    const first = activityFor(optionsFor(B));
+    const { ownerKey } = first;
+    /**
+     * Kept unseen, as handed over by `handing`, or as one the node doesn't
+     * have where there's none.
+     *
+     * @param {string} hash
+     * @param {ActivityKind} kind
+     * @param {string} [handing]
+     */
+    const keepUnseen = (hash, kind, handing) =>
+      putLocalTransaction(ownerKey, {
+        amount: "20000000",
+        direction: "out",
+        hash,
+        kind,
+        privacy: "public",
+        status: "removed",
+        submittedAt: Date.now(),
+        to: A,
+        ...(handing ? { handing } : {}),
+      });
+    const sendGone = "71".repeat(32);
+    const stakeGone = "72".repeat(32);
+    const notHad = "73".repeat(32);
+    const handedHere = "74".repeat(32);
+
+    await first.start();
+    await keepUnseen(sendGone, "transfer", "a page gone");
+    await keepUnseen(stakeGone, "stake", "a page gone");
+    await keepUnseen(notHad, "transfer");
+    await keepUnseen(handedHere, "transfer", THIS_PAGE);
+
+    // History opens again.
+    stopActivity();
+    await activityFor(optionsFor(B)).start();
+
+    const rowOf = (/** @type {string} */ hash) =>
+      get(activityState).rows.find((row) => row.hash === hash);
+
+    expect(rowOf(sendGone)).toMatchObject({ status: "unknown" });
+    expect(rowOf(stakeGone)).toMatchObject({ status: "unknown" });
+    expect(rowOf(notHad)).toBeUndefined();
+    expect(rowOf(handedHere)).toBeUndefined();
+
+    // Once the node says it doesn't have one, it's not shown again, nor
+    // said not confirmed the next time History opens.
+    await noteNotSentYet(sendGone);
+    stopActivity();
+    await activityFor(optionsFor(B)).start();
+
+    expect(rowOf(sendGone)).toBeUndefined();
   });
 
   it("forgets the session and its rows when stopped, as for a lock", async () => {

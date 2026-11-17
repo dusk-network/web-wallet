@@ -26,6 +26,7 @@ import { startIncarnation } from "$lib/wallets/dataNames";
 const app = vi.hoisted(() => ({
   goto: vi.fn(() => Promise.resolve()),
   refreshBalance: vi.fn(() => Promise.resolve()),
+  sendAgain: vi.fn(() => Promise.resolve()),
   transfer: vi.fn(),
 }));
 
@@ -55,9 +56,11 @@ vi.mock("$lib/stores", async (importOriginal) => {
     walletStore: {
       ...wallet,
       refreshBalance: app.refreshBalance,
+      sendAgain: app.sendAgain,
       setCurrentProfile: () => Promise.resolve(),
       startHistory: () => ({ refresh: () => Promise.resolve() }),
       transfer: app.transfer,
+      whileOpen: () => (/** @type {unknown} */ value) => value,
     },
   };
 });
@@ -111,13 +114,20 @@ describe("A send that never went out", () => {
       Home: (await import("../+page.svelte")).default,
       SendingNetwork: (await import("$lib/transactions/SendingNetwork"))
         .default,
+      TransactionResult: (
+        await import("$lib/components/TransactionResult/TransactionResult.svelte")
+      ).default,
       errors: await import("$lib/errors"),
       fireEvent: testing.fireEvent,
-      /** @param {any} Component */
-      render: (Component) => testing.render(Component, props),
+      /**
+       * @param {any} Component
+       * @param {Record<string, unknown>} [given] Its props, Home's by default
+       */
+      render: (Component, given = props) => testing.render(Component, given),
       toasts: await import("$lib/dusk/components/Toast/store"),
       transactions: await import("$lib/transactions"),
       unsent: await import("$lib/transactions/unsentSends"),
+      within: testing.within,
     };
   }
 
@@ -311,6 +321,8 @@ describe("A send that never went out", () => {
     app.goto.mockClear();
     app.refreshBalance.mockReset();
     app.refreshBalance.mockImplementation(() => Promise.resolve());
+    app.sendAgain.mockReset();
+    app.sendAgain.mockImplementation(() => Promise.resolve());
     app.transfer.mockClear();
   });
 
@@ -516,7 +528,7 @@ describe("A send that never went out", () => {
     expect(noticesOf(container)[0]).toContain("its tab goes");
   });
 
-  it("is kept as handed over, with its hash and nonce, before the node is asked to broadcast it, and the node isn't asked until it is", async () => {
+  it("is kept as handed over, with its hash, nonce and signed bytes, before the node is asked to broadcast it, and the node isn't asked until it is", async () => {
     const page = await openPage();
     const sends = page.unsent.keptSendsDatabase.table("sends");
     const put = sends.put.bind(sends);
@@ -564,7 +576,7 @@ describe("A send that never went out", () => {
     expect(get(page.transactions.broadcastsAsked)).toBe(asked + 1);
     expect(await keptNow()).toStrictEqual([
       expect.objectContaining({
-        handedOver: { hash: sentTx.hash, nonce: "107" },
+        handedOver: { hash: sentTx.hash, nonce: "107", tx: "07" },
         memo: "on disk first",
       }),
     ]);
@@ -948,6 +960,7 @@ describe("A send that never went out", () => {
         ])
       );
       expect(container).not.toHaveTextContent("Nothing left your wallet");
+      expect(container).not.toHaveTextContent("If it still arrives");
     } finally {
       query.mockRestore();
       vi.useRealTimers();
@@ -983,7 +996,7 @@ describe("A send that never went out", () => {
         expect(container).not.toHaveTextContent("Not sent");
         expect(await keptNow()).toStrictEqual([
           expect.objectContaining({
-            handedOver: { hash: sentTx.hash, nonce: "107" },
+            handedOver: { hash: sentTx.hash, nonce: "107", tx: "07" },
           }),
         ]);
       } finally {
@@ -1013,6 +1026,7 @@ describe("A send that never went out", () => {
       ]);
       expect(container).not.toHaveTextContent("Not sent");
       expect(container).not.toHaveTextContent("Nothing left your wallet");
+      expect(container).not.toHaveTextContent("If it still arrives");
       expect(getByRole("link", { name: "Open History" })).toHaveAttribute(
         "href",
         `/some-base-path/dashboard/transactions?tx=${sentTx.hash}`
@@ -1032,6 +1046,763 @@ describe("A send that never went out", () => {
     }
 
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Opens the wallet again after its page died, the node saying of the
+   * transaction sent which block has it (`inBlock()`, none by default), and
+   * whether its mempool has it (`queued()`), the chain that its account's
+   * nonce is `nonce()`, and the archive which transactions of its account
+   * took which nonce in final blocks (`taken()`, none by default).
+   *
+   * @param {{ inBlock?: () => { blockHeight: number, err: string | null } | null, nonce: () => bigint, queued: () => boolean, taken?: () => Array<{ hash: string, nonce: number }> }} node
+   */
+  async function reopenWithNode({
+    inBlock = () => null,
+    nonce,
+    queued,
+    taken = () => [],
+  }) {
+    const page = await openPage();
+    const { AccountSyncer, Network } = await import("@dusk/w3sper");
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        const text = String(gql);
+
+        if (text.includes(`mempoolTx(hash: "${sentTx.hash}")`)) {
+          return { queued: queued() ? { id: sentTx.hash } : null };
+        }
+
+        // Its account's transactions in final blocks, as the archive lists
+        // them, and the nonce each took.
+        if (text.startsWith(`out: moonlightHistory(sender: "${from}"`)) {
+          return {
+            out: {
+              json: taken().map(({ hash }, i) => ({
+                block_height: 4_850_160 + i,
+                events: [],
+                origin: hash,
+              })),
+            },
+          };
+        }
+
+        if (text.startsWith("t0: ")) {
+          return Object.fromEntries(
+            Array.from(
+              text.matchAll(/(t\d+): tx\(hash: "(\w+)"\)/g),
+              ([, alias, hash]) => [
+                alias,
+                {
+                  tx: {
+                    json: JSON.stringify({
+                      nonce: taken().find((tx) => tx.hash === hash)?.nonce,
+                      sender: from,
+                    }),
+                  },
+                },
+              ]
+            )
+          );
+        }
+
+        if (text.startsWith("block(height: -1)")) {
+          return { block: { header: { height: 4_850_200 } } };
+        }
+
+        if (text.includes(`tx(hash: "${sentTx.hash}")`)) {
+          return { tx: inBlock() };
+        }
+
+        throw new Error("Not asked here");
+      });
+    const balances = vi
+      .spyOn(AccountSyncer.prototype, "balances")
+      .mockImplementation(async () => [{ nonce: nonce(), value: 0n }]);
+
+    return {
+      page,
+      restore: () => {
+        query.mockRestore();
+        balances.mockRestore();
+      },
+      ...page.render(page.Home),
+    };
+  }
+
+  // Chen's, on hospital Wi-Fi: the node never got it, and it was "Not
+  // confirmed yet" for good, with nothing to tap.
+  it("is said as not sent yet where its page died once it was kept as handed over, and the node doesn't have it, in a block or its mempool, its nonce still free: nothing left the wallet, History doesn't show it, and Send it now sends the very same transaction again, once", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "not known", dies.promise, "kept");
+    // History's record of it, as an older wallet kept it.
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    let isQueued = false;
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({ nonce: () => 106n, queued: () => isQueued });
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+
+      expect(noticesOf(container)).toStrictEqual([
+        expect.stringMatching(
+          /^Not sent yet: 0\.01 DUSK to your Profile 2\. not known · .+ If it still arrives, it will show here\. Send it now Don't send$/
+        ),
+      ]);
+      expect(container).not.toHaveTextContent("Not confirmed");
+      // Never sent or on its way in History: not shown.
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({ hash: sentTx.hash, status: "removed" }),
+        ])
+      );
+      expect(app.sendAgain).not.toHaveBeenCalled();
+
+      // Send it now: its very bytes, hash and nonce, again; the node has it
+      // then, and it's on its way.
+      app.sendAgain.mockImplementation(async () => {
+        isQueued = true;
+      });
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
+      expect(app.sendAgain).toHaveBeenCalledExactlyOnceWith({
+        account: from,
+        hash: sentTx.hash,
+        nonce: "107",
+        tx: "07",
+      });
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({
+            hash: sentTx.hash,
+            status: expect.stringMatching(/^(submitted|mempool)$/),
+          }),
+        ])
+      );
+      expect(await keptNow()).toStrictEqual([
+        expect.objectContaining({
+          handedOver: { hash: sentTx.hash, nonce: "107", tx: "07" },
+        }),
+      ]);
+    } finally {
+      restore();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is on its way as the node takes it again, though its mempool doesn't show it for a moment, and not sent yet again where the node still doesn't have it past that", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "taken again", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({ nonce: () => 106n, queued: () => false });
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() => expect(app.sendAgain).toHaveBeenCalledOnce());
+      await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
+
+      // Looked up again for a while: on its way, though the node's mempool
+      // doesn't show it.
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      expect(noticesOf(container)).toStrictEqual([]);
+
+      // Past that, the node still doesn't have it: not sent yet again.
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not sent yet: 0\.01 DUSK to your Profile 2\. taken again · .+ If it still arrives, it will show here\. Send it now Don't send$/
+          ),
+        ])
+      );
+      expect(app.sendAgain).toHaveBeenCalledOnce();
+    } finally {
+      restore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("is still not sent yet where the network refuses it as it's sent again, or can't be reached, and says so", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "refused again", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({ nonce: () => 106n, queued: () => false });
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+
+      app.sendAgain.mockRejectedValueOnce(
+        new Error("Tx not accepted: value spent larger than account holds")
+      );
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not sent yet: .+ The network refused it\. If it still arrives, it will show here\. Send it now Don't send$/
+          ),
+        ])
+      );
+
+      app.sendAgain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not sent yet: .+ Couldn't reach the network\. If it still arrives, it will show here\. Send it now Don't send$/
+          ),
+        ])
+      );
+      expect(app.sendAgain).toHaveBeenCalledTimes(2);
+    } finally {
+      restore();
+    }
+  });
+
+  // Astra's: Don't send forgot it and its record in History, though the
+  // broadcast whose answer got lost could still go through, and the wallet
+  // would then have said nothing was sent.
+  it("is kept with Don't send where the node doesn't have it, its nonce still free: never sent again, said so, and said as sent after all once the chain has it", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "not wanted", dies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    /** @type {{ blockHeight: number, err: string | null } | null} */
+    let inBlock = null;
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({
+        inBlock: () => inBlock,
+        nonce: () => 106n,
+        queued: () => false,
+      });
+    const { lookAgainNow } = await import("$lib/transactions/handedOverSends");
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      // Toasts stay as long as the app keeps them.
+      page.toasts.toastTimer.set(5_000);
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+      await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
+      await vi.waitFor(() =>
+        expect(toastsOf(page)).toStrictEqual([
+          "Not sent yet: 0.01 DUSK to your Profile 2. If it still arrives, it will show here.",
+        ])
+      );
+      // Kept, its bytes forgotten, and History keeps it unseen.
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: { dismissed: true, hash: sentTx.hash, nonce: "107" },
+          }),
+        ])
+      );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "removed" }),
+      ]);
+
+      // The broadcast went through after all: said so, in History too.
+      inBlock = { blockHeight: 4_850_170, err: null };
+      lookAgainNow();
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Sent after all: 0\.01 DUSK to your Profile 2\. not wanted · .+ In block 4,850,170\.$/
+          ),
+        ])
+      );
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({
+          blockHeight: 4_850_170,
+          hash: sentTx.hash,
+          status: "executed",
+        }),
+      ]);
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+      expect(app.sendAgain).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is done with, unsaid, after Don't send, once another transaction of its account took its nonce in a final block", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "taken after", dies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+
+    let nonce = 106n;
+    /** @type {Array<{ hash: string, nonce: number }>} */
+    let taken = [{ hash: "a1".repeat(32), nonce: 106 }];
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({
+        nonce: () => nonce,
+        queued: () => false,
+        taken: () => taken,
+      });
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: expect.objectContaining({ dismissed: true }),
+          }),
+        ])
+      );
+
+      // The next send took its nonce, in a final block.
+      nonce = 107n;
+      taken = [...taken, { hash: "b2".repeat(32), nonce: 107 }];
+      await vi.advanceTimersByTimeAsync(60_000);
+
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+      expect(await listLocalTransactions(owner)).toStrictEqual([]);
+      // Never said as not sent, its account having sent something else.
+      expect(noticesOf(container)).toStrictEqual([]);
+    } finally {
+      restore();
+      vi.useRealTimers();
+    }
+
+    expect(app.sendAgain).not.toHaveBeenCalled();
+  });
+
+  it("is never sent again in another tab once Don't send was chosen in one, though that tab still shows Send it now", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "two tabs", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    const one = await reopenWithNode({
+      nonce: () => 106n,
+      queued: () => false,
+    });
+
+    try {
+      await one.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+
+      // Another tab, showing it as not sent yet too.
+      const other = await openPage();
+      const otherSends = await import("$lib/transactions/handedOverSends");
+      const { container } = other.render(other.Home);
+      const otherTab = other.within(container);
+
+      await otherTab.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+
+      // Don't send in the first: the other hasn't heard of it yet.
+      await one.page.fireEvent.click(
+        one.page.within(one.container).getByRole("button", {
+          name: "Don't send",
+        })
+      );
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: expect.objectContaining({ dismissed: true }),
+          }),
+        ])
+      );
+
+      await other.fireEvent.click(
+        otherTab.getByRole("button", { name: "Send it now" })
+      );
+
+      await vi.waitFor(() =>
+        expect(get(otherSends.handedOverStates).get(sentTx.hash)).toBe(
+          "not-sent"
+        )
+      );
+      expect(app.sendAgain).not.toHaveBeenCalled();
+    } finally {
+      one.restore();
+    }
+  });
+
+  // Astra's: sent again, its answer lost, History still had nothing of it
+  // while it might go out.
+  it("is said as not confirmed yet in History too where Send it now's answer gets lost", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "lost again", dies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "submitted",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+
+    let isReached = true;
+    const { container, findByText, getByRole, page, restore } =
+      await reopenWithNode({
+        nonce: () => 106n,
+        queued: () => {
+          if (!isReached) {
+            throw new TypeError("Failed to fetch");
+          }
+
+          return false;
+        },
+      });
+    const { outcomeUnknown } = await import("$lib/transactions/outcomeUnknown");
+
+    try {
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({ status: "removed" }),
+        ])
+      );
+
+      // Its answer gets lost, and the node can't be asked of it since.
+      app.sendAgain.mockImplementationOnce(async () => {
+        isReached = false;
+
+        throw outcomeUnknown(new TypeError("Failed to fetch"), sentTx.hash);
+      });
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. lost again · /
+          ),
+        ])
+      );
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({ hash: sentTx.hash, status: "unknown" }),
+        ])
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("is said as not sent yet where the node's answer to its broadcast got lost in the page that sent it, and the node doesn't have it, its nonce still free, and still once the wallet opens again: never sent, pending or not confirmed for good", async () => {
+    const page = await openPage();
+    const { Network } = await import("@dusk/w3sper");
+    const network = new page.SendingNetwork(new URL("https://nodes.example/"));
+    // The node's check answers, and the broadcast's connection drops.
+    const execute = vi.spyOn(Network.prototype, "execute").mockImplementation(
+      /** @this {any} */
+      async function (/** @type {any} */ tx) {
+        const transaction = await tx.build(this);
+
+        await this.transactions.preverify(transaction.buffer);
+        await this.transactions.propagate(transaction.buffer);
+
+        throw new TypeError("Failed to fetch");
+      }
+    );
+    const gate = page.transactions.sendGate();
+    const operation = network.execute(
+      /** @type {any} */ ({
+        build: async () => ({ ...sentTx, buffer: new Uint8Array([7]) }),
+      }),
+      { gate }
+    );
+
+    operation.catch(() => {});
+
+    try {
+      await sendWaiting(page, "cancel race 4", new Promise(() => {}), {
+        gate,
+        operation,
+      });
+      await expect(operation).rejects.toThrow("Failed to fetch");
+    } finally {
+      execute.mockRestore();
+    }
+
+    // Kept as handed over: it may have gone out, for the node to say.
+    await vi.waitFor(async () =>
+      expect(await keptNow()).toStrictEqual([
+        expect.objectContaining({
+          handedOver: { hash: sentTx.hash, nonce: "107", tx: "07" },
+          memo: "cancel race 4",
+        }),
+      ])
+    );
+
+    const later = await reopenWithNode({
+      nonce: () => 106n,
+      queued: () => false,
+    });
+
+    try {
+      await later.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+
+      expect(noticesOf(later.container)).toStrictEqual([
+        expect.stringMatching(
+          /^Not sent yet: 0\.01 DUSK to your Profile 2\. cancel race 4 · .+ If it still arrives, it will show here\. Send it now Don't send$/
+        ),
+      ]);
+      expect(later.getByRole("button", { name: "Send it now" })).toBeEnabled();
+    } finally {
+      later.restore();
+    }
+
+    expect(app.sendAgain).not.toHaveBeenCalled();
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Sends 0.01 DUSK to Profile 2 from a page, as Send does, and the node's
+   * answer to its broadcast gets lost: its own screen shows it, its page
+   * staying, the node saying of it that no block has it, and whether its
+   * mempool has it (`queued()`), the chain that its account's nonce is
+   * `nonce()`.
+   *
+   * @param {string} memo
+   * @param {{ nonce: () => bigint, queued: () => boolean }} node
+   */
+  async function loseAnswerOnScreen(memo, { nonce, queued }) {
+    const page = await openPage();
+    const { AccountSyncer, Network } = await import("@dusk/w3sper");
+    const network = new page.SendingNetwork(new URL("https://nodes.example/"));
+    const execute = vi.spyOn(Network.prototype, "execute").mockImplementation(
+      /** @this {any} */
+      async function (/** @type {any} */ tx) {
+        const transaction = await tx.build(this);
+
+        await this.transactions.preverify(transaction.buffer);
+        await this.transactions.propagate(transaction.buffer);
+
+        throw new TypeError("Failed to fetch");
+      }
+    );
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        const text = String(gql);
+
+        if (text.includes(`mempoolTx(hash: "${sentTx.hash}")`)) {
+          return { queued: queued() ? { id: sentTx.hash } : null };
+        }
+
+        if (text.includes(`tx(hash: "${sentTx.hash}")`)) {
+          return { tx: null };
+        }
+
+        throw new Error("Not asked here");
+      });
+    const balances = vi
+      .spyOn(AccountSyncer.prototype, "balances")
+      .mockImplementation(async () => [{ nonce: nonce(), value: 0n }]);
+    const gate = page.transactions.sendGate();
+    const operation = network.execute(
+      /** @type {any} */ ({
+        build: async () => ({ ...sentTx, buffer: new Uint8Array([7]) }),
+      }),
+      { gate }
+    );
+
+    operation.catch(() => {});
+    await sendWaiting(page, memo, new Promise(() => {}), { gate, operation });
+
+    const screen = page.render(page.TransactionResult, {
+      gate,
+      maxFee: 2_500_000n,
+      memo,
+      operation,
+      what: "0.01 DUSK to your Profile 2",
+    });
+
+    return {
+      page,
+      restore: () => {
+        execute.mockRestore();
+        query.mockRestore();
+        balances.mockRestore();
+      },
+      ...screen,
+    };
+  }
+
+  /** @param {HTMLElement} container */
+  const resultOf = (container) =>
+    container
+      .querySelector(".transaction-status__summary")
+      ?.textContent?.replace(/\s+/g, " ")
+      .trim();
+
+  it("is said as not sent yet on its own screen too, where the node's answer to its broadcast got lost and the node doesn't have it, its nonce free: Don't send drops it, nothing sent", async () => {
+    const { container, findByText, getByRole, page, queryByRole, restore } =
+      await loseAnswerOnScreen("on its screen", {
+        nonce: () => 106n,
+        queued: () => false,
+      });
+
+    try {
+      await findByText("Not sent yet");
+
+      expect(resultOf(container)).toBe(
+        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here."
+      );
+      // History and the explorer have nothing of it.
+      expect(queryByRole("link", { name: "See in History" })).toBeNull();
+      expect(queryByRole("link", { name: "View in Dusk explorer" })).toBeNull();
+
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+      // It may still arrive: said so, and kept, never to send again.
+      await vi.waitFor(() =>
+        expect(queryByRole("button", { name: "Send it now" })).toBeNull()
+      );
+      expect(resultOf(container)).toBe(
+        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here."
+      );
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: { dismissed: true, hash: sentTx.hash, nonce: "107" },
+          }),
+        ])
+      );
+      expect(app.sendAgain).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+
+    expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("is sent again as it is from its own screen with Send it now, where the node doesn't have it: on its way once the node has it", async () => {
+    let isQueued = false;
+    const { container, findByText, getByRole, page, restore } =
+      await loseAnswerOnScreen("sent from its screen", {
+        nonce: () => 106n,
+        queued: () => isQueued,
+      });
+
+    try {
+      await findByText("Not sent yet");
+
+      app.sendAgain.mockImplementation(async () => {
+        isQueued = true;
+      });
+      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+
+      await vi.waitFor(() =>
+        expect(resultOf(container)).toBe(
+          "Sending… 0.01 DUSK to your Profile 2 This usually takes under a minute."
+        )
+      );
+      await vi.waitFor(() => expect(app.sendAgain).toHaveBeenCalled());
+      expect(app.sendAgain).toHaveBeenCalledExactlyOnceWith({
+        account: from,
+        hash: sentTx.hash,
+        nonce: "107",
+        tx: "07",
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it("is never said as not sent yet where the node has it in its mempool, nor where its account's nonce moved on: on its way, or not confirmed until the chain says", async () => {
+    const owner = `testnet::${from}`;
+    const queuedDies = Promise.withResolvers();
+
+    // The node has it in its mempool: on its way, in History too.
+    await sendThrough(await openPage(), "queued", queuedDies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "unknown",
+      submittedAt: Date.now(),
+    });
+    queuedDies.resolve(undefined);
+
+    const queued = await reopenWithNode({
+      nonce: () => 106n,
+      queued: () => true,
+    });
+
+    try {
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({ hash: sentTx.hash, status: "mempool" }),
+        ])
+      );
+      expect(noticesOf(queued.container)).toStrictEqual([]);
+    } finally {
+      queued.restore();
+      cleanups.forEach((cleanup) => cleanup());
+      cleanups = [];
+    }
+
+    // Its account's nonce moved on, by what isn't known yet: not confirmed.
+    const usedDies = Promise.withResolvers();
+
+    await keptSendsDatabase.table("sends").clear();
+    await sendThrough(
+      await openPage(),
+      "nonce moved",
+      usedDies.promise,
+      "kept"
+    );
+    usedDies.resolve(undefined);
+
+    const used = await reopenWithNode({
+      nonce: () => 107n,
+      queued: () => false,
+    });
+
+    try {
+      await used.findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+
+      expect(used.container).not.toHaveTextContent("Not sent yet");
+      expect(used.container).not.toHaveTextContent("Nothing left your wallet");
+      expect(used.container).not.toHaveTextContent("If it still arrives");
+    } finally {
+      used.restore();
+    }
   });
 
   // Then Chen's: the notice went with no word that it went out, and the
@@ -1243,6 +2014,56 @@ describe("A send that never went out", () => {
     } finally {
       query.mockRestore();
       mockedWalletStore.setMockedStoreValue(before);
+      vi.useRealTimers();
+    }
+  });
+
+  // Chen's, on flaky Wi-Fi: not confirmed while the network was out of
+  // reach, it's looked up as soon as the network answers again.
+  it("is looked up at once, not at its next turn, as the network answers again: not sent yet, where the node doesn't have it", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "back online", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    // The node can't be reached for now.
+    let isReached = false;
+    const { container, findByText, page, restore } = await reopenWithNode({
+      nonce: () => 106n,
+      queued: () => {
+        if (!isReached) {
+          throw new TypeError("Failed to fetch");
+        }
+
+        return false;
+      },
+    });
+    const { setNetworkReach } = await import("$lib/stores/networkReach");
+
+    try {
+      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      setNetworkReach("offline");
+
+      // Past its first minutes: looked up once a minute from then on.
+      await vi.advanceTimersByTimeAsync(200_000);
+
+      // The network answers again: looked up at once.
+      isReached = true;
+      setNetworkReach("answering");
+
+      await vi.waitFor(() =>
+        expect(noticesOf(container)).toStrictEqual([
+          expect.stringMatching(
+            /^Not sent yet: 0\.01 DUSK to your Profile 2\. back online · .+ If it still arrives, it will show here\. Send it now Don't send$/
+          ),
+        ])
+      );
+      expect(page.unsent).toBeDefined();
+    } finally {
+      restore();
+      setNetworkReach("answering");
       vi.useRealTimers();
     }
   });
