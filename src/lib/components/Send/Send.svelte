@@ -13,6 +13,7 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     NAME_SAVE_YES,
+    duskNameLookAlike,
     lookAlikes,
     sameName,
   } from "@dusk-network/app-core/names";
@@ -20,6 +21,7 @@
     contactNameProblem,
     contactNameText,
     contactsStore,
+    duskNameIn,
     markContactNameChecked,
     markContactNameMoved,
     passesForDuskName,
@@ -52,7 +54,7 @@
     waitingText,
   } from "$lib/transactions";
   import { notConfirmed, onTheirWay } from "$lib/activity/sends";
-  import { paidInSentence } from "$lib/activity/present";
+  import { paidInSentence, strangersMemo } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { ownersOf } from "$lib/dusk-domains/nameOwners";
   import {
@@ -345,10 +347,10 @@
   let step = "form";
 
   /**
-   * The transfer once sent, the most it can cost, and what calls it off
-   * until it goes out.
+   * The transfer once sent, the most it can cost, what calls it off until
+   * it goes out, and what takes it back to its review where it's held.
    *
-   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
+   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, what: string } | null}
    */
   let sent = null;
 
@@ -1060,7 +1062,7 @@
     // amount as balances are shown there. It's kept on this device
     // meanwhile: where its page closes, reloads or locks before it goes
     // out, it's said once the wallet opens again.
-    keepWaiting({
+    const { review } = keepWaiting({
       address: recipientAddress,
       from,
       gate,
@@ -1102,6 +1104,7 @@
       maxFee: maxGasFee,
       memo: transactionMemo,
       operation,
+      review,
       what,
     };
     step = "done";
@@ -1129,6 +1132,22 @@
   function goToReview() {
     if (canSend) {
       showReview();
+    }
+  }
+
+  /**
+   * Back to the review of a transfer held as its account sent something
+   * else while it waited, to send it too from there: it's called off, kept
+   * as not sent, and the form filled in with it, as one that never went out.
+   */
+  function sendTooFromReview() {
+    const kept = sent?.review();
+
+    if (kept) {
+      sent = null;
+      canTryAgain = false;
+      step = "form";
+      fillIn(kept);
     }
   }
 
@@ -1396,7 +1415,20 @@
     );
   }
 
-  $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
+  // What only looks like a .dusk name, by a point or a letter that isn't
+  // one, as "sofiadesign·dusk" or a Cyrillic "ѕ": no name to look up, and
+  // said at once, as it's typed, naming the one it looks like. A name with
+  // a full stop after it is offered as it was.
+  $: lookAlike = asDuskName(sendToAddress)
+    ? null
+    : duskNameLookAlike(sendToAddress);
+
+  // What it says, its first sentence first, as "Not a valid address." is.
+  $: [, lookAlikeLead = "", lookAlikeRest = ""] =
+    lookAlike?.words.match(/^(.+?[.!?])\s+(.*)$/s) ?? [];
+
+  $: recipientName =
+    isDuskName(sendToAddress) && !lookAlike ? sendToAddress.trim() : "";
 
   // What's known of the name in the field, read from the name itself: with
   // another name typed, the answer for the one before is out at once, so its
@@ -1664,7 +1696,7 @@
     "send__to-input--blocked": isRecipientBlocklisted,
     "send__to-input--invalid": recipientName
       ? nameLookup?.error
-      : isRecipientInvalid,
+      : isRecipientInvalid || Boolean(lookAlike),
   });
 
   // A name as the lookup gives it, once it has: in its canonical form.
@@ -1743,6 +1775,27 @@
           handedOver?.hash.toLowerCase() === hash.toLowerCase()
       )
   );
+  // Whom a memo that came in isn't a stranger's from, as History has it:
+  // the profiles here, every wallet's, and the contacts.
+  $: memoAmong = {
+    contacts,
+    profiles: [
+      ...$profilesHere.map(({ address }) => ({ account: address })),
+      { address: shieldedAddress },
+    ],
+  };
+  // What the recipient said last in a memo of a payment to this profile,
+  // where it isn't a contact or a profile here (Amélie's: paying a
+  // stranger's "URGENT… send it back" looked as calm as paying a grandson).
+  $: strangerSaid = addressInfo.isValid
+    ? (historyRows
+        .filter(
+          (row) =>
+            row.direction === "in" && row.counterparty === recipientAddress
+        )
+        .map((row) => strangersMemo(row, memoAmong))
+        .find(Boolean) ?? null)
+    : null;
   // The same payment, made already: moments ago, or with the same memo.
   $: madeAgain = addressInfo.isValid
     ? sentAlready(historyRows, {
@@ -1783,6 +1836,7 @@
     maxFee={sent.maxFee}
     memo={sent.memo}
     onRetry={tryAgain}
+    onSendToo={sendTooFromReview}
     operation={sent.operation}
     tellArrival
     what={sent.what}
@@ -1843,10 +1897,10 @@
         <label class="send__label" for="{id}-to">To</label>
         <div class="send__to">
           <Textbox
-            aria-describedby={isRecipientInvalid
+            aria-describedby={isRecipientInvalid || lookAlike
               ? invalidRecipientId
               : undefined}
-            aria-invalid={isRecipientInvalid}
+            aria-invalid={isRecipientInvalid || Boolean(lookAlike)}
             autocapitalize="off"
             autocomplete="off"
             autocorrect="off"
@@ -1936,6 +1990,14 @@
               variant="secondary"
             />
           {/if}
+        {:else if lookAlike}
+          <p class="send__error" id={invalidRecipientId} role="alert">
+            {#if lookAlikeLead}
+              <strong>{lookAlikeLead}</strong> {lookAlikeRest}
+            {:else}
+              {lookAlike.words}
+            {/if}
+          </p>
         {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
@@ -2231,7 +2293,8 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="send__hint" role="alert">
-                    That looks like a .dusk name. Choose another name.
+                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Choose another name.
                   </p>
                 {:else if contactNameIssue}
                   <p class="send__hint" role="alert">
@@ -2521,6 +2584,20 @@
           </dd>
         </div>
       </dl>
+      {#if step === "review" && strangerSaid}
+        <!-- A stranger's words to this wallet, as History marks them. -->
+        <Banner
+          className="send__stranger"
+          role="note"
+          title="This address sent you:"
+          variant="warning"
+        >
+          <p class="send__stranger-said">
+            “<MemoText inline text={strangerSaid.memo} />” · not in your
+            contacts.
+          </p>
+        </Banner>
+      {/if}
       {#if waitingAgain}
         <!-- Said, not stopped, as for one sent: the same twice can be meant. -->
         <Banner
@@ -3004,6 +3081,11 @@
     color: var(--calm-muted);
     font-size: 0.8125rem;
     text-align: center;
+  }
+
+  .send__stranger-said {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .send__visible {

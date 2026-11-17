@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
-import { timeLabel } from "$lib/activity/present";
+import { lastReadText, timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 import routesStopped from "$lib/test-helpers/routesStopped";
@@ -12,6 +12,7 @@ import Dashboard from "../+page.svelte";
 import { networks } from "@dusk-network/networks";
 
 const mocks = vi.hoisted(() => ({
+  activityRefresh: vi.fn(() => Promise.resolve()),
   refresh: vi.fn(() => Promise.resolve()),
   refreshBalance: vi.fn(() => Promise.resolve()),
 }));
@@ -66,7 +67,11 @@ vi.mock("$lib/activity", async (importOriginal) => {
     syncing: false,
   });
 
-  return { ...original, activityState: history.state };
+  return {
+    ...original,
+    activityState: history.state,
+    currentActivity: () => ({ refresh: mocks.activityRefresh }),
+  };
 });
 
 const sozu = vi.hoisted(() => ({
@@ -177,6 +182,7 @@ describe("Dashboard", () => {
 
     const first = sendGate();
     const second = sendGate();
+    const answered = Promise.withResolvers();
 
     keepWaiting({
       gate: first,
@@ -189,7 +195,7 @@ describe("Dashboard", () => {
       gate: second,
       lux: 10_000_000n,
       memo: "ward round 2",
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "Profile 2",
     });
 
@@ -221,24 +227,32 @@ describe("Dashboard", () => {
         `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to Profile 2."
+        "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet."
       );
 
-      // The other goes out once the network answers: no longer waiting.
+      // The other goes out once the network answers: sent, with nothing to
+      // call off, until the node took it.
       await act(() => setNetworkReach("answering"));
       await act(() => second.handOver());
 
-      expect(banners()).toStrictEqual([]);
+      expect(banners()).toStrictEqual([
+        `Sending: 0.01 DUSK to Profile 2. ward round 2 · ${two}`,
+      ]);
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() => expect(banners()).toStrictEqual([]));
     } finally {
       first.cancel();
       second.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });
 
   // Then M19's: "Not sent yet … It's being sent. Cancel" as it went out.
   // One state at a time: Sending as it goes out, Not sent yet while it waits
-  // for the network, and nothing once it's handed over, as Activity has it.
+  // for the network, and nothing once the node took it, as Activity has it.
   it("says a send goes out as it does, and that one that couldn't reach the network goes out once it answers, while the pill still finds it answering", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
@@ -247,6 +261,7 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
+    const answered = Promise.withResolvers();
     const banner = () =>
       document
         .querySelector(".home__waiting")
@@ -256,7 +271,7 @@ describe("Dashboard", () => {
     keepWaiting({
       gate,
       lux: 10_000_000n,
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "Profile 2",
     });
 
@@ -280,19 +295,26 @@ describe("Dashboard", () => {
         )
       );
 
-      // Handed over: no longer said here.
+      // Handed over: sent, with nothing to call off, until the node took
+      // it, and then no longer said here.
       await act(() => gate.handOver());
 
-      expect(banner()).toBeUndefined();
+      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at}`);
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() => expect(banner()).toBeUndefined());
     } finally {
       gate.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });
 
   // Chen's, on slow Wi-Fi: "Not sent yet … It goes out once the network
-  // answers. Cancel" for 30 s while the node checked it and took it.
-  it("says a waiting send is being sent, with nothing to call off, from the moment the node is asked to check it, though the pill finds the network silent", async () => {
+  // answers. Cancel" for 30 s while the node checked it and took it. Then
+  // Lena's: no Cancel while the node's check hung, though nothing had left.
+  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Cancel until it's handed over", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -300,6 +322,7 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
+    const answered = Promise.withResolvers();
     const banner = () =>
       document
         .querySelector(".home__waiting")
@@ -309,7 +332,7 @@ describe("Dashboard", () => {
     keepWaiting({
       gate,
       lux: 10_000_000n,
-      operation: new Promise(() => {}),
+      operation: answered.promise,
       to: "your Profile 2",
     });
 
@@ -322,29 +345,41 @@ describe("Dashboard", () => {
         `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`
       );
 
-      // The node is asked to check it: it goes out, its answer slow.
+      // The node is asked to check it: it goes out, its answer slow, and can
+      // still be called off.
       await act(() => gate.checking());
+
+      expect(banner()).toBe(
+        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`
+      );
+
+      // Handed over: sent, with nothing to call off, until the node took
+      // it, and then no longer said here, as Activity has it.
+      await act(() => gate.handOver());
 
       expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
       expect(document.querySelector(".home__waiting button")).toBeNull();
 
-      // Handed over: no longer said here, as Activity has it.
-      await act(() => gate.handOver());
+      answered.resolve(undefined);
 
-      expect(banner()).toBeUndefined();
+      await vi.waitFor(() => expect(banner()).toBeUndefined());
     } finally {
       gate.cancel();
+      answered.resolve(undefined);
       setNetworkReach("answering");
     }
   });
 
   // Chen's, on two phones: the payment waiting on phone A went out by itself
   // after she paid the same from phone B. Held, it says so here, with the
-  // payment, and goes only as she says.
-  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and sends it too, or not, only as the person says", async () => {
-    const { keepWaiting, sendGate, waitingSends } =
+  // payment, and goes only as she says. Then, as Send it too paid at once,
+  // twice: it goes to Send's review, as Send it now does.
+  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and takes it to Send's review with Send it too, or doesn't send it, only as the person says", async () => {
+    const { keepWaiting, sendGate, takeUnsentRefill, waitingSends } =
       await import("$lib/transactions");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
 
     toastList.set([]);
     render(Dashboard, props);
@@ -372,7 +407,14 @@ describe("Dashboard", () => {
       let goesOn = false;
 
       keepWaiting({
+        address: ALICE,
         gate,
+        kept: {
+          account,
+          isSaid: () => true,
+          network: "mainnet",
+          typed: { amount: "0.01", memo, to: ALICE },
+        },
         lux: 10_000_000n,
         memo,
         operation: new Promise(() => {}),
@@ -403,11 +445,20 @@ describe("Dashboard", () => {
         )
       ).toStrictEqual(["Send it too", "Don't send"]);
 
-      // Send it too: it goes on, no longer held.
+      // Send it too: to Send's review, filled in with it, to send from
+      // there; never sent from here.
       await fireEvent.click(button("Send it too"));
-      await vi.waitFor(() => expect(sent.goesOn()).toBe(true));
-      expect(get(sent.gate)).toBe("open");
-      expect(banner()).not.toContain("sent something else");
+
+      expect(get(sent.gate)).toBe("cancelled");
+      expect(sent.goesOn()).toBe(false);
+      expect(banner()).toBeUndefined();
+      expect(takeUnsentRefill({ account, network: "mainnet" })).toMatchObject({
+        lux: "10000000",
+        memo: "night shift 6",
+        sentElsewhere: true,
+        to: ALICE,
+        typed: { amount: "0.01", memo: "night shift 6", to: ALICE },
+      });
     } finally {
       sent.gate.cancel();
     }
@@ -421,11 +472,121 @@ describe("Dashboard", () => {
       expect(get(dropped.gate)).toBe("cancelled");
       expect(dropped.goesOn()).toBe(false);
       expect(banner()).toBeUndefined();
-      expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to your Profile 2."
+      expect(get(toastList)).toContainEqual(
+        expect.objectContaining({
+          message:
+            "Not sent: 0.01 DUSK to your Profile 2. Nothing left your wallet.",
+          type: "info",
+        })
       );
     } finally {
       dropped.gate.cancel();
+    }
+  });
+
+  // Marek's, Lena's and Chen's: the hold called the very same payment
+  // "something else", said nothing of what was sent or when, and Activity
+  // didn't list it for minutes.
+  it("names what the account sent while a held send waited, from the chain, says it looks like the same payment where it is, and has Activity read again", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
+    const { Network } = await import("@dusk/w3sper");
+    const { shortenAddress } = await import("$lib/dusk/string");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
+    const sentAt = Date.now() - 30_000;
+    const hex = (/** @type {string} */ text) =>
+      Array.from(new TextEncoder().encode(text), (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("");
+    // The archive lists what the account sent meanwhile: the same payment.
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        const text = String(gql);
+
+        if (text.startsWith("block(height: -1)")) {
+          return { block: { header: { height: 4_881_400 } } };
+        }
+
+        if (text.startsWith("out: moonlightHistory(")) {
+          return {
+            out: {
+              json: [
+                {
+                  block_height: 4_881_399,
+                  events: [
+                    {
+                      data: {
+                        memo: hex("night shift 9"),
+                        receiver: ALICE,
+                        sender: account,
+                        value: "10000000",
+                      },
+                      // The transfer contract's, which says what it paid.
+                      target: "01".padEnd(64, "0"),
+                      topic: "moonlight",
+                    },
+                  ],
+                  origin: "9a".repeat(32),
+                },
+              ],
+            },
+          };
+        }
+
+        if (text.startsWith("t0: tx(")) {
+          return {
+            t0: {
+              blockTimestamp: sentAt / 1000,
+              tx: { json: JSON.stringify({ nonce: 1234, sender: account }) },
+            },
+          };
+        }
+
+        throw new Error("Not asked here");
+      });
+
+    mocks.activityRefresh.mockClear();
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    keepWaiting({
+      address: ALICE,
+      gate,
+      kept: {
+        account,
+        isSaid: () => true,
+        network: "mainnet",
+        typed: { amount: "0.01", memo: "night shift 9", to: ALICE },
+      },
+      lux: 10_000_000n,
+      memo: "night shift 9",
+      operation: new Promise(() => {}),
+      to: "Alice",
+    });
+
+    const at = timeLabel(get(waitingSends)[0].at, "en");
+
+    gate.ask({ account, from: 1233n, to: 1234n }).catch(() => {});
+
+    try {
+      await vi.waitFor(() =>
+        expect(banner()).toBe(
+          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`
+        )
+      );
+      // Read again as it was held, and as what was sent was found.
+      expect(mocks.activityRefresh).toHaveBeenCalledTimes(2);
+    } finally {
+      gate.cancel();
+      query.mockRestore();
     }
   });
 
@@ -474,7 +635,7 @@ describe("Dashboard", () => {
 
       expect(get(gate)).toBe("cancelled");
       expect(get(toastList).map(({ message }) => message)).toContain(
-        `Not sent: ${BALANCE_MASK} DUSK to Profile 2.`
+        `Not sent: ${BALANCE_MASK} DUSK to Profile 2. Nothing left your wallet.`
       );
       expect(
         get(toastList).filter(({ message }) => message.includes("0.01 DUSK"))
@@ -693,42 +854,51 @@ describe("Dashboard", () => {
     expect(total()).not.toContain("out of date");
     expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
 
-    // Neither the balances nor the stake, as offline or with a silent node.
+    // Neither the balances nor the stake, as offline or with a silent node:
+    // each says when it was last read (Lena's, for the sixth round), the
+    // total when the one read longest ago was.
+    const balanceAt = NOW - 300_000;
+    const stakeAt = NOW - 600_000;
+    const lastRead = (/** @type {number} */ at) => lastReadText(at, "en");
+
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
+        balanceReadAt: balanceAt,
         balanceReadFailed: true,
+        stakeReadAt: stakeAt,
         stakeReadFailed: true,
       })
     );
 
     expect(total()).toContain(
-      "Your balance and stake couldn't be read just now. This total may be out of date."
+      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`
     );
     expect(card(0)).toBe(
-      "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date."
+      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(1)).toBe(
-      "Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date."
+      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(2)).toContain(
-      "Your stake couldn't be read just now. This may be out of date."
+      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`
     );
 
     // The balances alone.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
+        balanceReadAt: balanceAt,
         balanceReadFailed: true,
       })
     );
 
     expect(total()).toContain(
-      "Your balance couldn't be read just now. This may be out of date."
+      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(2)).not.toContain("out of date");
 
-    // The stake alone.
+    // The stake alone; where it was never read, nothing's said of when.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -739,6 +909,7 @@ describe("Dashboard", () => {
     expect(total()).toContain(
       "Your stake couldn't be read just now. This total may be out of date."
     );
+    expect(total()).not.toContain("Last read");
     expect([card(0), card(1)].join(" ")).not.toContain("out of date");
 
     // Read again: said no more.
@@ -808,14 +979,17 @@ describe("Dashboard", () => {
     const { container, getByRole } = render(Dashboard, props);
 
     // Unlocked as the node stalls: Sozu's read fails, what it held as read
-    // last here shows, counted in the total, and said not to be read now.
+    // last here shows, counted in the total, and said not to be read now,
+    // with when it was.
+    const keptAt = NOW - 3_600_000;
+
     await sozuSays({
       error: new Error("timed out"),
-      kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+      kept: { at: keptAt, balance: 2_747_100_000n, stDusk: 864_521_348n },
     });
 
     expect(card()).toBe(
-      "Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. Try again Open staking"
+      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`
     );
     expect(total()).toBe("3,520.2471");
 
@@ -1076,6 +1250,51 @@ describe("Dashboard", () => {
 
     expect(items()).toEqual([
       expect.stringMatching(/^wallet-both\.dusk Received/),
+    ]);
+  });
+
+  // Amélie's: a stranger's "URGENT… send 0.1 DUSK back" payment showed on
+  // Home as a plain "+0,005 DUSK", while History marked it.
+  it("marks a stranger's payment with a memo as History does: who it's from, not in your contacts, and their words in quotes, never a profile's", async () => {
+    const STRANGER =
+      "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
+    const { profiles } = mockedWalletStore.getMockedStoreValue();
+    /**
+     * @param {string} hash
+     * @param {string} from
+     * @param {string} memo
+     */
+    const received = (hash, from, memo) =>
+      rowOf({
+        amount: "5000000",
+        blockHeight: 4_687_100,
+        direction: "in",
+        from,
+        hash,
+        memo,
+        status: "executed",
+        timestamp: NOW - 30_000,
+      });
+
+    await setHistory({
+      rows: [
+        received("e1".repeat(32), STRANGER, "URGENT: send 0.1 DUSK back"),
+        received("e2".repeat(32), String(profiles[1].account), "lunch"),
+      ],
+    });
+
+    const { container } = render(Dashboard, props);
+    const marks = () =>
+      Array.from(container.querySelectorAll(".activity-row"), (row) =>
+        row
+          .querySelector(".activity-row__theirs")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim()
+      );
+
+    expect(marks()).toStrictEqual([
+      `From ${STRANGER.slice(0, 6)}…${STRANGER.slice(-6)} · not in your contacts“URGENT: send 0.1 DUSK back”`,
+      undefined,
     ]);
   });
 

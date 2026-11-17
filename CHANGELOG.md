@@ -49,10 +49,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a pasted message that names another amount, network or .dusk name than its link anywhere before it, one hidden or look-alike letter in its wording included, each .dusk name looked up first
+- Say at once in To that a name like sofiadesign·dusk only looks like sofiadesign.dusk, in place of "Not a valid address."
+- Take a profile's or a contact's name with a dot above, a Braille dot or spaces around its point for the .dusk name it reads as, and name the .dusk name a contact's name looks like
+- Hide recovery words as soon as you leave the page, in Restore, Add wallet, Unlock, a wallet's words and their check, until Show words
+- Say what an unstake from Sozu brings back on its review, "You receive about …", its network fee apart
+- Say when the figures were last read on every "may be out of date", on Home, Staking and the network's pill: "Last read 10:02 pm.", also after an unlock
+- Mark a stranger's payment with a memo on Home as History does, and say on Review what a recipient that isn't a contact or a profile sent you: "This address sent you: “…” · not in your contacts."
+- Copy a request from Your requests as Share gives it, its line and then its link, with Copy request in place of Copy link
+- Make Check and Try again the main buttons of Check your recovery words while creating or adding a wallet, Skip for now a quieter one
+- Say what your account sent while a held payment waited, from the chain, with its amount, whom it paid, its memo and its time, and that it looks like this same payment where it does, Activity reading it in at once
+- Take a payment held as your account sent something else while it waited to Send's review with Send it too, never paying it at once, and say Don't send's "Not sent … Nothing left your wallet." plainly, the two choices leading on its screen
+- Say "Not sent yet" of a send the node doesn't have, its nonce still free, with Send it now, which sends that very transaction again, and Don't send, which still says it if it arrives after all, on Home and on its own screen, and never Sent or Pending before the node took it
+- Say "Not confirmed yet" in History of a send, a stake or anything else handed to the node as its page closed, before the node answered
 - Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
 - Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
 - Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it
-- Say Sending of a waiting send on Home from the moment the node is asked to check it, with no Cancel, whatever the network's pill finds
+- Say Sending of a waiting send on Home from the moment the node is asked to check it, whatever the network's pill finds, with Cancel there and on its own screen until it's handed to the node
 - Refuse a pasted request whose line says another amount, memo or name than its link, its .dusk name looked up first, Amount and Memo shown as being filled in meanwhile: "The message and its link don't agree."
 - Refuse a pasted link with words after it, whatever part of it comes last, as words after the link, and never take them into its memo, reading what was pasted line breaks and all
 - Take a profile's or a contact's name with a middle dot, an ideographic full stop or another point for the .dusk name it reads as

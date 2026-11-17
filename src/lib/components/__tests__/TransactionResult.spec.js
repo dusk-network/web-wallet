@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { get } from "svelte/store";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { WalletChangedError } from "$lib/errors";
@@ -120,9 +121,10 @@ describe("TransactionResult", () => {
     }
   });
 
-  // Chen's, on slow Wi-Fi: Cancel was offered while the node was checking
-  // the payment and took it.
-  it("should offer no Cancel once the node is asked to check a send, its answer slow and the network found silent, and keep a way Home", async () => {
+  // Lena's, the node silent: "Nothing has left your wallet yet" with only
+  // Home for half a minute, as the node's check hung. The check sends
+  // nothing: Cancel stays until the node is asked to broadcast it.
+  it("should offer Cancel while the node checks a send, its answer slow and the network found silent, until it's handed over, and keep a way Home", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {
       ...baseProps,
@@ -132,15 +134,43 @@ describe("TransactionResult", () => {
 
     try {
       await act(() => setNetworkReach("silent"));
-
-      expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-
       await act(() => gate.checking());
+
+      expect(getByRole("status")).toHaveTextContent(
+        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers."
+      );
+      expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+
+      // Handed over: it may go out, with nothing to call off.
+      await act(() => gate.handOver());
 
       expect(queryByRole("button", { name: "Cancel" })).toBeNull();
       expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
     } finally {
       gate.cancel();
+      setNetworkReach("answering");
+    }
+  });
+
+  it("should call off a send the node is checking with Cancel: it's never handed over", async () => {
+    const gate = sendGate();
+    const { getByRole } = render(TransactionResult, {
+      ...baseProps,
+      gate,
+      operation: new Promise(() => {}),
+    });
+
+    try {
+      await act(() => setNetworkReach("silent"));
+      await act(() => gate.checking());
+      await fireEvent.click(getByRole("button", { name: "Cancel" }));
+
+      expect(get(gate)).toBe("cancelled");
+      expect(() => gate.handOver()).toThrow(
+        "The send was cancelled before it went out."
+      );
+    } finally {
       setNetworkReach("answering");
     }
   });

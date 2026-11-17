@@ -7,6 +7,7 @@
   } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
+  import { lastReadText } from "$lib/activity/present";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { addBasePath } from "$lib/navigation";
 
@@ -56,6 +57,17 @@
   export let stakeReading = false;
 
   /**
+   * When the balances, and what's staked, were last read whole: said with
+   * what may be out of date. Null where that isn't known.
+   *
+   * @type {number | null}
+   */
+  export let balanceReadAt = null;
+
+  /** @type {number | null} */
+  export let stakeReadAt = null;
+
+  /**
    * Reads what's staked again.
    *
    * @type {() => Promise<unknown> | void}
@@ -95,7 +107,10 @@
     </p>
     {#if balanceUnread}
       <p class="explainer-card__text">
-        It couldn't be read just now. This may be out of date.
+        It couldn't be read just now. This may be out of date. {lastReadText(
+          balanceReadAt,
+          locale
+        )}
       </p>
     {/if}
   </li>
@@ -115,7 +130,10 @@
     </p>
     {#if balanceUnread}
       <p class="explainer-card__text">
-        It couldn't be read just now. This may be out of date.
+        It couldn't be read just now. This may be out of date. {lastReadText(
+          balanceReadAt,
+          locale
+        )}
       </p>
     {/if}
   </li>
@@ -186,7 +204,10 @@
       {#if stakeUnread}
         {#if staked || liquid > 0n}
           <p class="explainer-card__text">
-            Your stake couldn't be read just now. This may be out of date.
+            Your stake couldn't be read just now. This may be out of date. {lastReadText(
+              stakeReadAt,
+              locale
+            )}
           </p>
         {/if}
         <Button

@@ -1144,19 +1144,15 @@
             </dd>
           </div>
         {:else}
-          <!-- What an unstake brings back once the fee's paid, at the most it costs. -->
+          <!-- What an unstake brings back, about, as the pool's rate is when
+            it's taken: its fee apart, above, never a total to pay. -->
           <div>
-            <dt>Back after the fee</dt>
+            <dt>You receive</dt>
             <dd class:stake-flow__muted={isTypedOff}>
               {#if typedAmount === 0n}
                 —
-              {:else if typedAmount > maxGasFee}
-                At least <BalanceValue
-                  hidden={isAmountMasked}
-                  value={formatDuskExact(typedAmount - maxGasFee, language)}
-                /> DUSK
               {:else}
-                Up to <BalanceValue
+                About <BalanceValue
                   hidden={isAmountMasked}
                   value={formatDuskExact(typedAmount, language)}
                 /> DUSK

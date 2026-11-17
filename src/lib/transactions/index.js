@@ -13,7 +13,11 @@ export {
   FOLLOW_TIMEOUT,
   default as followTransaction,
 } from "./followTransaction";
-export { SendCancelledError, sendGate } from "./sendGate";
+export {
+  SendCancelledError,
+  SendTakenToReviewError,
+  sendGate,
+} from "./sendGate";
 export {
   dropUnsent,
   forgetSameUnsent,

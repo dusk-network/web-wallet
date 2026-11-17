@@ -22,6 +22,7 @@ const unshielded = { nonce: 1234n, value: shielded.value / 2n };
 const content = {
   balance: { shielded, unshielded },
   balanceRead: true,
+  balanceReadAt: null,
   balanceReadFailed: false,
   currentProfile,
   initialized: true,
@@ -29,6 +30,7 @@ const content = {
   pendingStakes: [],
   profiles,
   stakeInfo,
+  stakeReadAt: null,
   stakeReadFailed: false,
   syncStatus: {
     error: null,
@@ -49,6 +51,9 @@ const mockedWalletStore = {
 
   /** The block a resync syncs from, while it runs: null for none. */
   resyncing: writable(/** @type {bigint | null} */ (null)),
+
+  /** Nothing is sent again here. */
+  sendAgain: () => Promise.resolve(),
 };
 
 export default mockedWalletStore;

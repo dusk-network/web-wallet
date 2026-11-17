@@ -47,6 +47,7 @@
     contactNameProblem,
     contactNameText,
     contactsStore,
+    duskNameIn,
     passesForDuskName,
     saveContact,
   } from "$lib/contacts";
@@ -505,7 +506,8 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="tx-detail__note" role="alert">
-                    That looks like a .dusk name. Choose another name.
+                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Choose another name.
                   </p>
                 {:else if contactNameIssue}
                   <p class="tx-detail__note" role="alert">

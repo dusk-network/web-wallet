@@ -13,6 +13,8 @@
 
 import { Dexie } from "dexie";
 
+import { NOT_SHOWN } from "./constants";
+
 /** The row of the meta table that counts wallet resets. */
 const LIFECYCLE = "lifecycle";
 
@@ -439,6 +441,41 @@ export async function changeLocalTransactions(
 
     for (const record of kept) {
       await db.table("local").put({ ...record, ...change, hash: lower });
+      owners.push(record.ownerKey);
+    }
+  });
+
+  return owners;
+}
+
+/**
+ * Says the wallet's own transactions whose hand-over never finished aren't
+ * confirmed yet, whichever account's they are: kept unseen as being handed
+ * to the node by a page other than `page`, which went before the node
+ * answered. They may have gone out.
+ *
+ * @param {string} page The page asking: its own are its to finish
+ * @returns {Promise<string[]>} The owners whose record changed
+ */
+export async function recoverUnfinishedHandOvers(page) {
+  /** @type {string[]} */
+  const owners = [];
+
+  await db.transaction("rw", "local", async () => {
+    const kept = await db
+      .table("local")
+      .filter(
+        (record) =>
+          record.status === NOT_SHOWN &&
+          typeof record.handing === "string" &&
+          record.handing !== page
+      )
+      .toArray();
+
+    for (const record of kept) {
+      await db
+        .table("local")
+        .put({ ...record, handing: undefined, status: "unknown" });
       owners.push(record.ownerKey);
     }
   });

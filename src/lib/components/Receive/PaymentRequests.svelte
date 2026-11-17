@@ -5,8 +5,9 @@
    * The requests this profile made, kept on this device, each marked by what
    * came in after it, in words that say what matched, and what a payment
    * that paid it brought. One paid already says so, with when, beside its
-   * Copy link and Share, which ask on its card first: given out again, its
-   * link would ask a second payment.
+   * Copy request and Share, which ask on its card first: given out again,
+   * its link would ask a second payment. Both give what it asks in a line,
+   * then its link, as its own Copy request and Share did.
    */
   import { onDestroy } from "svelte";
   import { refundOf, sentAlready } from "@dusk-network/app-core/requests";
@@ -420,21 +421,29 @@
   };
 
   /**
-   * Shares a request again through the phone's share sheet: what it asks in
-   * a line, then its link, as the request's own Share and Copy give it.
+   * What a request asks, in a line, then its link, as its own Share and
+   * Copy request gave it, and as Share and Copy request give it here.
+   *
+   * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   */
+  const messageOf = (request) =>
+    requestText(
+      {
+        link: linkOf(request),
+        lux: request.lux === null ? null : BigInt(request.lux),
+        memo: request.memo,
+      },
+      { language, name: requestName, net: $nodeNetwork }
+    );
+
+  /**
+   * Shares a request again through the phone's share sheet: its message.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
    */
   const share = (request) =>
     shareText({
-      text: requestText(
-        {
-          link: linkOf(request),
-          lux: request.lux === null ? null : BigInt(request.lux),
-          memo: request.memo,
-        },
-        { language, name: requestName, net: $nodeNetwork }
-      ),
+      text: messageOf(request),
       title: "Dusk payment request",
     });
 
@@ -447,7 +456,7 @@
   let asking = null;
 
   /**
-   * Each card's Copy link, by its request's ID, to copy once asked.
+   * Each card's Copy request, by its request's ID, to copy once asked.
    *
    * @type {Record<string, CopyButton>}
    */
@@ -683,10 +692,10 @@
             <CopyButton
               bind:this={copyButtons[request.id]}
               hold={() => asksFirst(request.id, "Copy", paidOn)}
-              name={`link of the request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
+              name={`request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               size="small"
-              text="Copy link"
-              value={linkOf(request)}
+              text="Copy request"
+              value={messageOf(request)}
               variant="tertiary"
             />
             {#if hasShare}

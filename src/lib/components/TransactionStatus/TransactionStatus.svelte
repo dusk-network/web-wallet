@@ -5,6 +5,7 @@
   import {
     mdiAlertDecagramOutline,
     mdiCheckDecagramOutline,
+    mdiDecagramOutline,
     mdiTimerSand,
   } from "@mdi/js";
 
@@ -20,7 +21,14 @@
   } from "$lib/dusk/components";
   import { settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
-  import { followTransaction } from "$lib/transactions";
+  import { followTransaction, unsentSends } from "$lib/transactions";
+  import {
+    dontSendHandedOver,
+    followHandedOver,
+    handedOverStates,
+    sendHandedOverAgain,
+    sentAgainRefusals,
+  } from "$lib/transactions/handedOverSends";
 
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import ArrivalNotice from "../Bridge/ArrivalNotice.svelte";
@@ -85,6 +93,13 @@
   export let tellArrival = false;
 
   /**
+   * Whether it's not sent, as the node doesn't have it: not sent yet, or
+   * not sent at all, as the person chose. Said to whoever shows this, as
+   * History has nothing of it then.
+   */
+  export let notSent = false;
+
+  /**
    * Pending until the block with the transaction is final, or late
    * once the wallet stops following it.
    *
@@ -102,6 +117,9 @@
 
   /** @type {AbortController | undefined} */
   let controller;
+
+  /** Whether the person chose not to send it here, as the node didn't have it. */
+  let isDroppedHere = false;
 
   // The wallet it was sent from: nothing's said of it once another opens.
   const stillOpen = walletStore.whileOpen();
@@ -200,23 +218,88 @@
       controller?.abort();
 
       // Left before a block took it: the wallet tells, wherever it is.
-      if (tellArrival && hash && !outcome) {
+      if (tellArrival && hash && !outcome && !notSent) {
         handOverSend({ hash, stillOpen, what });
       }
     };
   });
 
+  /**
+   * Doesn't send it, as the node doesn't have it, its nonce still free:
+   * still followed, as it may arrive all the same.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
+   */
+  async function dontSend(send) {
+    isDroppedHere = await dontSendHandedOver(send);
+  }
+
+  /**
+   * Sends it again as it is, its very bytes, as the node doesn't have it:
+   * followed again here once the node takes it.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
+   */
+  async function sendItNow(send) {
+    await sendHandedOverAgain(send);
+
+    if (
+      $handedOverStates.get(hash ?? "") === "pending" &&
+      status !== "pending"
+    ) {
+      follow();
+    }
+  }
+
+  // Kept on this device as handed over, its answer lost: the node and the
+  // chain say where it is, and it's said here as everywhere.
+  $: kept =
+    unconfirmed && hash
+      ? $unsentSends.find(
+          (send) => send.handedOver?.hash.toLowerCase() === hash?.toLowerCase()
+        )
+      : undefined;
+  $: if (kept) {
+    followHandedOver(kept);
+  }
+  $: keptState =
+    kept?.handedOver && status !== "completed" && status !== "failed"
+      ? $handedOverStates.get(kept.handedOver.hash)
+      : undefined;
+  // Not sent, as the person chose, here or in another tab, until it
+  // arrives all the same.
+  $: isDropped =
+    (isDroppedHere || Boolean(kept?.handedOver?.dismissed)) && !outcome;
+  // Not sent yet: the node doesn't have it, and it's sent again as it is,
+  // or not at all.
+  $: isNotSentYet = !isDropped && keptState === "not-sent";
+  // Sent again, or in the node's mempool: on its way.
+  $: isOnItsWay =
+    !isDropped && (keptState === "sending" || keptState === "pending");
+  $: notSent = isDropped || isNotSentYet;
+  $: refusal = kept?.handedOver
+    ? ($sentAgainRefusals.get(kept.handedOver.hash) ?? "")
+    : "";
   // Without an answer, it may not have gone out: until the chain has it.
-  $: isUnconfirmed = unconfirmed && (status === "pending" || status === "late");
-  $: ({ icon } = headings[status]);
+  $: isUnconfirmed =
+    unconfirmed &&
+    !notSent &&
+    !isOnItsWay &&
+    (status === "pending" || status === "late");
+  // Not sent, as the person chose: neither sent nor failed.
+  $: icon = isDropped ? mdiDecagramOutline : headings[status].icon;
   // Without a hash there's nothing to follow: it was sent.
   $: title = !hash
     ? "Sent"
     : status === "completed" && outcome
       ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language, { seconds: true })}`
-      : isUnconfirmed
-        ? "Not confirmed"
-        : headings[status].title;
+      : isDropped || isNotSentYet
+        ? "Not sent yet"
+        : isOnItsWay
+          ? headings.pending.title
+          : isUnconfirmed
+            ? "Not confirmed"
+            : headings[status].title;
 </script>
 
 <div class="transaction-status transaction-status--{status}">
@@ -228,6 +311,13 @@
     {/if}
     {#if !hash}
       <p>The wallet updates automatically.</p>
+    {:else if notSent}
+      <p>
+        {refusal && !isDropped ? `${refusal} ` : ""}If it still arrives, it will
+        show here.
+      </p>
+    {:else if isOnItsWay}
+      <p>This usually takes under a minute.</p>
     {:else if isUnconfirmed && status === "pending"}
       <p>
         It may have reached the network. Wait for it here before you send it
@@ -258,7 +348,24 @@
       <p>It didn't go through. The network fee was charged.</p>
     {/if}
   </div>
-  {#if tellArrival && hash && status === "pending"}
+  {#if isNotSentYet && kept}
+    {@const send = kept}
+    <div class="transaction-status__choices">
+      <Button
+        className="transaction-status__button"
+        on:click={() => sendItNow(send)}
+        text="Send it now"
+        variant="primary"
+      />
+      <Button
+        className="transaction-status__button"
+        on:click={() => dontSend(send)}
+        text="Don't send"
+        variant="secondary"
+      />
+    </div>
+  {/if}
+  {#if tellArrival && hash && status === "pending" && !notSent}
     <ArrivalNotice />
   {/if}
   {#if hash}
@@ -306,14 +413,17 @@
         summary="Details"
       />
     {/if}
-    <AnchorButton
-      className="transaction-status__button"
-      href={`/explorer/transactions/transaction?id=${hash}`}
-      rel="noopener noreferrer"
-      target="_blank"
-      text="View in Dusk explorer"
-    />
-    {#if status === "late"}
+    <!-- The explorer has nothing of one not sent. -->
+    {#if !notSent}
+      <AnchorButton
+        className="transaction-status__button"
+        href={`/explorer/transactions/transaction?id=${hash}`}
+        rel="noopener noreferrer"
+        target="_blank"
+        text="View in Dusk explorer"
+      />
+    {/if}
+    {#if status === "late" && !notSent && !isOnItsWay}
       <Button
         className="transaction-status__button"
         on:click={follow}
@@ -393,6 +503,12 @@
 
     :global(.transaction-status__button) {
       width: 100%;
+    }
+
+    &__choices {
+      display: flex;
+      flex-direction: column;
+      gap: var(--small-gap);
     }
   }
 

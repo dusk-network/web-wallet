@@ -105,6 +105,11 @@ type WalletStoreContent = {
    * `balance` is then the one read before, or the cached one.
    */
   balanceReadFailed: boolean;
+  /**
+   * When the balances shown were last read whole from the network, here or
+   * before this unlock: null where that isn't known.
+   */
+  balanceReadAt: number | null;
   currentProfile: Profile | null;
   initialized: boolean;
   minimumStake: bigint;
@@ -122,6 +127,11 @@ type WalletStoreContent = {
    * `stakeInfo` is then the one read before, or the cached one.
    */
   stakeReadFailed: boolean;
+  /**
+   * When the stake shown was last read from the network, here or before
+   * this unlock: null where that isn't known.
+   */
+  stakeReadAt: number | null;
   syncStatus: {
     from: bigint;
     isInProgress: boolean;
@@ -223,6 +233,17 @@ type WalletStoreServices = {
 
   /** The block a resync syncs from, while it runs: null for none. */
   resyncing: Readable<bigint | null>;
+
+  /**
+   * Sends a transaction handed over before again as it is: its signed bytes
+   * (`tx`, as hex), from the profile whose public account is `account`.
+   */
+  sendAgain: (sent: {
+    account: string;
+    hash: string;
+    nonce: string;
+    tx: string;
+  }) => Promise<void>;
 
   /**
    * Proves or claims a DuskEVM withdrawal: the Portal's call as

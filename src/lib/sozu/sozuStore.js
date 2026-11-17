@@ -14,10 +14,12 @@ import { readSozuStatus } from "./status";
  *   error: Error | null,
  *   kept: WalletCacheSozuPosition | null,
  *   loading: boolean,
+ *   readAt: number | null,
  *   status: SozuStatus | null,
  * }} SozuState
  *   `kept`: what the account held as read last on this device, before this
- *   unlock, for what shows while no status is read: unknown isn't nothing.
+ *   unlock, for what shows while no status is read: unknown isn't nothing;
+ *   `readAt`: when the status shown was read.
  */
 
 /** How long a read may take before it counts as failed. */
@@ -36,6 +38,7 @@ const initialState = {
   error: null,
   kept: null,
   loading: false,
+  readAt: null,
   status: null,
 };
 
@@ -158,6 +161,7 @@ function read(account, contracts, nodeUrl) {
           error: null,
           kept: state.kept,
           loading: false,
+          readAt: Date.now(),
           status,
         }));
         keep(account, status);
@@ -225,6 +229,7 @@ async function readAlong(profile) {
             account,
             available: true,
             error: null,
+            readAt: Date.now(),
             status,
           }));
           keep(account, status);
@@ -269,6 +274,7 @@ function load({ force = false } = {}) {
     error: isNew ? null : state.error,
     kept: isNew ? null : state.kept,
     loading: true,
+    readAt: isNew ? null : state.readAt,
     status: isNew ? null : state.status,
   }));
 

@@ -16,6 +16,24 @@ export const broadcastsAsked = { subscribe: asked.subscribe };
 const ABANDON_TIMEOUT = 3000;
 
 /**
+ * A transaction's bytes as hex, as they're kept to send it again.
+ *
+ * @param {ArrayBufferLike | ArrayLike<number>} bytes
+ */
+export const hexOfBytes = (bytes) =>
+  Array.from(new Uint8Array(/** @type {ArrayBufferLike} */ (bytes)), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+
+/**
+ * A transaction's bytes from the hex they're kept as.
+ *
+ * @param {string} hex
+ */
+export const bytesOfHex = (hex) =>
+  Uint8Array.from(hex.match(/../g) ?? [], (byte) => parseInt(byte, 16));
+
+/**
  * The network as the wallet sends on it, which tells a send that failed
  * before its transaction was handed to the node from one that may have
  * gone out. Building it, proving it and the node's check of it (preverify)
@@ -135,10 +153,10 @@ export default class SendingNetwork extends Network {
   /**
    * Builds, checks and broadcasts a transaction, as w3sper does: with a
    * `gate`, only while it isn't called off, which it checks once it's built,
-   * and as it's handed over, with its hash and nonce, before the node is
-   * asked to broadcast it. As it is, `onHandOver` is told its hash, and its
-   * nonce where it has one, whatever the node answers, or if no answer
-   * comes.
+   * and as it's handed over, with its hash, nonce and signed bytes, before
+   * the node is asked to broadcast it. As it is, `onHandOver` is told its
+   * hash, and its nonce where it has one, whatever the node answers, or if
+   * no answer comes.
    *
    * @template {import("@dusk/w3sper").BasicTransfer} T
    * @param {T} tx A transaction's builder
@@ -168,6 +186,7 @@ export default class SendingNetwork extends Network {
               await gate?.handOver({
                 hash,
                 nonce: made.nonce === undefined ? "" : String(made.nonce),
+                tx: hexOfBytes(made.buffer),
               });
 
               // Whoever's told can't stop it going out.

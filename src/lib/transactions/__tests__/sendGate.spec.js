@@ -80,11 +80,11 @@ describe("A send that can be called off", () => {
     expect(said).toMatchObject({
       canRetry: true,
       heading: "Not sent",
-      sentence: "You cancelled it, so nothing was sent.",
+      sentence: "Nothing left your wallet.",
     });
   });
 
-  it("is broadcast only once what's kept of it says it's handed over, with its hash and nonce, and never where that can't be", async () => {
+  it("is broadcast only once what's kept of it says it's handed over, with its hash, nonce and signed bytes, and never where that can't be", async () => {
     const network = new SendingNetwork(new URL("https://nodes.example/"));
     const asked = get(broadcastsAsked);
     const kept = Promise.withResolvers();
@@ -105,7 +105,11 @@ describe("A send that can be called off", () => {
     );
 
     await vi.waitFor(() =>
-      expect(keep).toHaveBeenCalledWith({ hash: "ab".repeat(32), nonce: "107" })
+      expect(keep).toHaveBeenCalledWith({
+        hash: "ab".repeat(32),
+        nonce: "107",
+        tx: "07",
+      })
     );
 
     // It can't be called off now, and isn't broadcast until it's kept.
@@ -313,12 +317,21 @@ describe("The sends waiting to go out", () => {
         waitingText(send, { hidden: false, locale: "en" })
       );
 
-    // Handed over: it's on its way, no longer waiting.
-    const out = waiting(new Promise(() => {}));
+    // Handed over: listed, as handed over, until the node took it.
+    const answered = Promise.withResolvers();
+    const out = waiting(answered.promise);
 
     expect(whats()).toStrictEqual(["0.01 DUSK to Profile 2"]);
 
     out.handOver();
+
+    expect(get(waitingSends)).toStrictEqual([
+      expect.objectContaining({ handedOver: true }),
+    ]);
+
+    answered.resolve(undefined);
+    await answered.promise;
+    await Promise.resolve();
 
     expect(whats()).toStrictEqual([]);
 

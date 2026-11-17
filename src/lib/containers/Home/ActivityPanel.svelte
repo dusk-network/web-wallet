@@ -9,8 +9,9 @@
     groupByDay,
     matchesFilters,
   } from "$lib/activity/present";
+  import { walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import walletAccountNames from "$lib/wallets/accountNames";
+  import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
   import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "./ActivityRowItem.svelte";
@@ -60,6 +61,15 @@
     locale,
     net: $nodeNetwork,
     walletNames: $walletAccountNames,
+  };
+  // Whom a memo that came in isn't a stranger's from, as History has it:
+  // the profiles here, every wallet's, and the contacts.
+  $: memoAmong = {
+    contacts: $contactsStore,
+    profiles: [
+      ...$profilesHere.map(({ address }) => ({ account: address })),
+      { address: String($walletStore.currentProfile?.address ?? "") },
+    ],
   };
   $: described = state.rows.map((row) => ({
     presentation: describeRow(row, context),
@@ -119,6 +129,7 @@
         {#each group.items as item (item.row.hash)}
           <ActivityRowItem
             {locale}
+            {memoAmong}
             presentation={item.presentation}
             row={item.row}
           />

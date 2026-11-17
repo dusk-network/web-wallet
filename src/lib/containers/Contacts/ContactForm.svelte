@@ -8,6 +8,7 @@
     addressType,
     contactNameProblem,
     contactNameText,
+    duskNameIn,
     findContact,
     passesForDuskName,
     saveContact,
@@ -209,8 +210,8 @@
 
     {#if isFalseName}
       <p class="contact-form__error" role="alert">
-        That looks like a .dusk name. Enter it as the address below, or choose
-        another name.
+        That looks like {duskNameIn(name) || "a .dusk name"}. Enter it as the
+        address below, or choose another name.
       </p>
     {/if}
 

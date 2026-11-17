@@ -331,7 +331,7 @@ describe("A send that fails", () => {
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
       expect(
@@ -690,10 +690,17 @@ describe("A send that fails", () => {
     try {
       await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
 
-      // Nothing went out by itself: it's held, and said.
+      // Nothing went out by itself: it's held, and said, with what its
+      // account sent meanwhile to look up: the nonce past the one known as
+      // it was sent.
       expect(executeSpy).not.toHaveBeenCalled();
       expect(get(broadcastsAsked)).toBe(asked);
       expect(get(gate)).toBe("open");
+      expect(get(gate.askedAbout)).toStrictEqual({
+        account: String(get(walletStore).profiles[0].account),
+        from: 20_000n,
+        to: 20_001n,
+      });
       expect(rendered.getByRole("status")).toHaveTextContent(
         "Your account sent something else while this waited."
       );
@@ -740,7 +747,7 @@ describe("A send that fails", () => {
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
       expect(executeSpy).not.toHaveBeenCalled();
@@ -1040,7 +1047,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
           offersRetry: true,
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
 

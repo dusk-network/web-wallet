@@ -306,12 +306,13 @@
         variant="primary"
       />
     {:else if step === "verify"}
+      <!-- Quieter than Check and Try again until the words match. -->
       <Button
         on:click={() => {
           step = "password";
         }}
         text={areWordsChecked ? "Next" : "Skip for now"}
-        variant="primary"
+        variant={areWordsChecked ? "primary" : "secondary"}
       />
     {:else if step === "words"}
       <Button

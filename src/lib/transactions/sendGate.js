@@ -8,8 +8,8 @@
  * answer, and is made again once it answers (`untilHandedOver`). One that
  * waited can be held until the person says to send it all the same (`ask`),
  * as its account sent something else meanwhile. From the moment the node is
- * asked to check it, it goes out (`goingOut`): it's no longer offered to call
- * off, though it's handed over only once the node passed it.
+ * asked to check it, it goes out (`goingOut`), and it can be called off still
+ * until it's handed over, once the node passed it: the check sends nothing.
  */
 
 import { writable } from "svelte/store";
@@ -21,6 +21,17 @@ export class SendCancelledError extends Error {
   constructor() {
     super("The send was cancelled before it went out.");
     this.name = "SendCancelledError";
+  }
+}
+
+/**
+ * A send held for the person, called off as they take it to Send's review
+ * instead, to send it from there.
+ */
+export class SendTakenToReviewError extends Error {
+  constructor() {
+    super("The send was taken to its review before it went out.");
+    this.name = "SendTakenToReviewError";
   }
 }
 
@@ -41,15 +52,25 @@ const ANSWER_WITHIN = 10_000;
  */
 
 /**
- * The transaction handed over: its hash, and its nonce, "" for one that has
- * none, as a shielded transfer.
+ * The transaction handed over: its hash, its nonce, "" for one that has
+ * none, as a shielded transfer, and its signed bytes, as hex, to broadcast
+ * it again as it is.
  *
- * @typedef {{ hash: string, nonce: string }} HandedOver
+ * @typedef {{ hash: string, nonce: string, tx?: string }} HandedOver
+ */
+
+/**
+ * What a send held for the person is held for: what its account sent while
+ * it waited, by the nonces past the one the wallet knew as it was sent
+ * (`from`), up to the one read since (`to`).
+ *
+ * @typedef {{ account: string, from: bigint, to: bigint }} SentElsewhere
  */
 
 /**
  * @typedef {{
- *   ask: () => Promise<void>,
+ *   ask: (about?: SentElsewhere) => Promise<void>,
+ *   askedAbout: import("svelte/store").Readable<SentElsewhere | null>,
  *   asking: import("svelte/store").Readable<boolean>,
  *   cancel: (reason?: Error) => boolean,
  *   cancelled: Promise<never>,
@@ -75,7 +96,8 @@ const ANSWER_WITHIN = 10_000;
  *   says whether it waits for that, until it's handed over or called off;
  *   `ask` holds it until the person says to send it all the same
  *   (`sendToo`, true where it was held), and rejects with why as it's
- *   called off meanwhile; `asking` says whether it's held so; `checking`
+ *   called off meanwhile; `asking` says whether it's held so, and
+ *   `askedAbout` what its account sent meanwhile, where that's known; `checking`
  *   says the node is asked to check it, and `goingOut` whether it was and
  *   it doesn't wait for the network again since.
  */
@@ -85,6 +107,7 @@ export function sendGate() {
   const state = writable(/** @type {SendGateState} */ ("open"));
   const waiting = writable(false);
   const held = writable(false);
+  const about = writable(/** @type {SentElsewhere | null} */ (null));
   const out = writable(false);
   let now = /** @type {SendGateState} */ ("open");
 
@@ -184,16 +207,18 @@ export function sendGate() {
   }
 
   return {
-    async ask() {
+    async ask(sentElsewhere) {
       check();
 
       const answered = Promise.withResolvers();
 
       goOn = () => answered.resolve(undefined);
+      about.set(sentElsewhere ?? null);
       held.set(true);
       // Called off meanwhile, it stops at once, with why.
       await Promise.race([answered.promise, cancelled]);
     },
+    askedAbout: { subscribe: about.subscribe },
     asking: { subscribe: held.subscribe },
     cancel(reason = new SendCancelledError()) {
       if (now !== "open") {

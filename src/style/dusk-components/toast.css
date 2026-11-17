@@ -33,6 +33,11 @@
   background-color: var(--info-color);
 }
 
+/* Neutral: the icon as a pill's text, on the text's colour. */
+.dusk-toast__item-icon-wrapper--info .dusk-toast__item-icon {
+  color: var(--calm-on-pill);
+}
+
 .dusk-toast__item-icon-wrapper--success {
   background-color: var(--success-color);
 }

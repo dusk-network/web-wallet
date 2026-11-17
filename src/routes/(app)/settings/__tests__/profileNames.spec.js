@@ -553,13 +553,19 @@ describe("Settings › Profiles", () => {
       ],
       // Q14, Marek's: a middle dot, an ideographic full stop or a bullet for
       // the point saved without a word, and History filed his own
-      // transfers under it, right above Sofía's.
-      ...["sofiadesign·dusk", "sofiadesign。dusk", "sofiadesign•dusk"].map(
-        (styled) => [
-          styled,
-          "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
-        ]
-      ),
+      // transfers under it, right above Sofía's. Then a dot above, a Braille
+      // dot, and a middle dot with a space after it.
+      ...[
+        "sofiadesign·dusk",
+        "sofiadesign。dusk",
+        "sofiadesign•dusk",
+        "sofiadesign˙dusk",
+        "sofiadesign⠄dusk",
+        "sofiadesign· dusk",
+      ].map((styled) => [
+        styled,
+        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
+      ]),
     ]) {
       await nameProfile(settings, 2, name, "enter");
 

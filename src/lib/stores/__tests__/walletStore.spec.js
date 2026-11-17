@@ -31,6 +31,12 @@ import {
   keepVerifiedName,
 } from "$lib/dusk-domains/verifiedNames";
 
+import {
+  deleteLocalTransactions,
+  listLocalTransactions,
+  putLocalTransaction,
+} from "$lib/activity/activityStore";
+import { unconfirmedHash } from "$lib/transactions";
 import WalletTreasury from "$lib/wallet-treasury";
 import {
   keptMigrations,
@@ -190,6 +196,7 @@ describe("Wallet store", async () => {
       },
     },
     balanceRead: false,
+    balanceReadAt: null,
     balanceReadFailed: false,
     currentProfile: null,
     initialized: false,
@@ -202,6 +209,7 @@ describe("Wallet store", async () => {
       hardFaults: 0,
       reward: 0n,
     },
+    stakeReadAt: null,
     stakeReadFailed: false,
     syncStatus: {
       error: null,
@@ -307,14 +315,15 @@ describe("Wallet store", async () => {
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        readAt: expect.any(Number),
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        defaultProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(defaultProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: expect.any(Number),
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );
@@ -741,6 +750,93 @@ describe("Wallet store", async () => {
         treasuryUpdateSpy.mock.invocationCallOrder[0]
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
+    });
+
+    // Astra's: a profile switch, or a sync that failed, stamped what the
+    // treasury already held as read just then; and a failed sync dropped,
+    // from what's kept for after an unlock, when they were read last.
+    it("should say the balances and the stake were read as the last sync that got through read them, not as a profile switch or a failed sync reads them again", async () => {
+      const other = {
+        account: { toString: () => "some-other-account" },
+        address: { toString: () => "some-other-address" },
+      };
+      /**
+       * Waits for `promise`, the timers running meanwhile.
+       *
+       * @param {Promise<unknown>} promise
+       */
+      const settled = async (promise) => {
+        let isDone = false;
+
+        promise.finally(() => {
+          isDone = true;
+        });
+        await vi.waitUntil(() => isDone);
+
+        return promise;
+      };
+
+      // @ts-expect-error we don't care for it to be a real profile
+      get(walletStore).profiles.push(other);
+
+      try {
+        // A sync that gets through, begun at 10:00.
+        const at1000 = new Date(2026, 10, 17, 10, 0).getTime();
+
+        vi.setSystemTime(at1000);
+        treasuryUpdateSpy.mockResolvedValueOnce(undefined);
+        await settled(walletStore.refreshBalance());
+
+        const readAt = /** @type {number} */ (get(walletStore).balanceReadAt);
+
+        expect(readAt).toBeGreaterThanOrEqual(at1000);
+        expect(readAt).toBeLessThan(at1000 + 60_000);
+        expect(get(walletStore).stakeReadAt).toBe(readAt);
+
+        // Another profile at 10:05: read from what that sync read.
+        vi.setSystemTime(new Date(2026, 10, 17, 10, 5));
+        setCachedBalanceSpy.mockClear();
+        setCachedStakeInfoSpy.mockClear();
+        // @ts-expect-error we don't care for it to be a real profile
+        await settled(walletStore.setCurrentProfile(other));
+
+        expect(get(walletStore)).toMatchObject({
+          balanceReadAt: readAt,
+          stakeReadAt: readAt,
+        });
+        expect(setCachedBalanceSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+        expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+
+        // A sync that fails at 10:10: what that sync read still, kept so for
+        // after an unlock.
+        vi.setSystemTime(new Date(2026, 10, 17, 10, 10));
+        setCachedBalanceSpy.mockClear();
+        setCachedStakeInfoSpy.mockClear();
+        treasuryUpdateSpy.mockRejectedValueOnce(new Error("Node unreachable"));
+        await settled(walletStore.refreshBalance());
+
+        expect(get(walletStore).syncStatus.error).not.toBeNull();
+        expect(get(walletStore)).toMatchObject({
+          balanceReadAt: readAt,
+          stakeReadAt: readAt,
+        });
+        expect(setCachedBalanceSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+        expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+      } finally {
+        get(walletStore).profiles.pop();
+      }
     });
 
     it("should show the balances and the stake read together, never one read with the other from before", async () => {
@@ -1269,14 +1365,15 @@ describe("Wallet store", async () => {
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        readAt: expect.any(Number),
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        defaultProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(defaultProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: expect.any(Number),
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );
@@ -1335,8 +1432,33 @@ describe("Wallet store", async () => {
       updateCachedPendingNotesSpy.mockRestore();
     });
 
-    it("should show a send in the history as soon as the node is asked to broadcast it, while its answer doesn't come", async () => {
+    /**
+     * Has the history keep what the wallet records of its sends, as the
+     * wallet's own does, under `owner`: unseen while the node hasn't taken
+     * one ("removed"), else sent.
+     *
+     * @param {string} owner
+     */
+    const keepRecords = (owner) =>
+      history.session.recordSent.mockImplementation(
+        /** @type {any} */ (
+          async (/** @type {any} */ record, { handing = false } = {}) =>
+            putLocalTransaction(owner, {
+              ...record,
+              status: handing ? "removed" : "submitted",
+              submittedAt: Date.now(),
+            })
+        )
+      );
+
+    // Chen's, on hospital Wi-Fi: the node never got it, and Activity said
+    // "Sent · Pending" while the hand-over hung.
+    it("should keep a send for the history as the node is asked to broadcast it, unseen while its answer doesn't come, and sent once the node took it", async () => {
       vi.useRealTimers();
+
+      const owner = "localnet::handing";
+      const hash = "ef".repeat(32);
+      const answered = Promise.withResolvers();
 
       // Its transaction, as w3sper builds it.
       const toBuild = vi.spyOn(Transfer.prototype, "to").mockImplementation(
@@ -1344,7 +1466,7 @@ describe("Wallet store", async () => {
           /** @type {any} */ ({
             build: async () => ({
               buffer: new Uint8Array([9]),
-              hash: "ef".repeat(32),
+              hash,
               nonce: 4n,
             }),
             gas() {
@@ -1357,9 +1479,10 @@ describe("Wallet store", async () => {
       );
 
       history.session.recordSent.mockClear();
+      keepRecords(owner);
 
       try {
-        // The node takes it, and its answer never comes back.
+        // The node is asked to broadcast it, and its answer takes its time.
         executeSpy.mockImplementationOnce(
           /** @this {any} */
           async function (/** @type {any} */ tx) {
@@ -1367,19 +1490,19 @@ describe("Wallet store", async () => {
 
             await this.transactions.preverify(transaction.buffer);
             void this.transactions.propagate(transaction.buffer);
+            await answered.promise;
 
-            return new Promise(() => {});
+            return transaction;
           }
         );
 
         let isSettled = false;
 
-        walletStore
+        const sending = walletStore
           .transfer(toMoonlight, amount, memo, gas)
           .finally(() => {
             isSettled = true;
-          })
-          .catch(() => {});
+          });
 
         await vi.waitUntil(
           () => history.session.recordSent.mock.calls.length === 1
@@ -1388,13 +1511,96 @@ describe("Wallet store", async () => {
           expect.objectContaining({
             amount: String(amount),
             direction: "out",
-            hash: "ef".repeat(32),
+            hash,
             to: toMoonlight,
-          })
+          }),
+          { handing: true }
+        );
+        await vi.waitFor(async () =>
+          expect(await listLocalTransactions(owner)).toStrictEqual([
+            expect.objectContaining({ hash, status: "removed" }),
+          ])
         );
         expect(isSettled).toBe(false);
+
+        // The node takes it: sent, on its way.
+        answered.resolve(undefined);
+        await sending;
+
+        await vi.waitFor(async () =>
+          expect(await listLocalTransactions(owner)).toStrictEqual([
+            expect.objectContaining({ hash, status: "submitted" }),
+          ])
+        );
+        expect(history.session.recordSent).toHaveBeenCalledOnce();
       } finally {
         toBuild.mockRestore();
+        history.session.recordSent.mockReset();
+        history.session.recordSent.mockImplementation(async () => {});
+        await deleteLocalTransactions(owner, [hash]);
+        vi.useFakeTimers();
+      }
+    });
+
+    // Chen's: a send the node never got, its nonce still free, is sent
+    // again as it is, so it can never pay twice.
+    it("should send a transaction handed over before again as it is: its very bytes checked and broadcast, its nonce kept for the next send, nothing broadcast where the node refuses it, and a lost answer said as such", async () => {
+      vi.useRealTimers();
+
+      const network = await networkStore.connect();
+      const preverify = vi.spyOn(network.transactions, "preverify");
+      const propagate = vi.spyOn(network.transactions, "propagate");
+      const { currentProfile } = get(walletStore);
+      const sent = {
+        account: String(currentProfile?.account),
+        hash: "ab".repeat(32),
+        nonce: "41",
+        tx: "0a0b0c",
+      };
+      const bytes = new Uint8Array([10, 11, 12]);
+
+      updateNonceSpy.mockClear();
+
+      try {
+        await walletStore.sendAgain(sent);
+
+        expect(preverify).toHaveBeenCalledExactlyOnceWith(bytes);
+        expect(propagate).toHaveBeenCalledExactlyOnceWith(bytes);
+        expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(
+          currentProfile,
+          41n
+        );
+
+        // Refused as the node checks it: nothing is broadcast.
+        preverify.mockRejectedValueOnce(
+          new Error("Tx not accepted: value spent larger than account holds")
+        );
+        propagate.mockClear();
+
+        await expect(walletStore.sendAgain(sent)).rejects.toThrow(
+          "value spent larger"
+        );
+        expect(propagate).not.toHaveBeenCalled();
+
+        // Its broadcast's answer lost: it may have gone out.
+        propagate.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+        const lost = await walletStore
+          .sendAgain(sent)
+          .catch((/** @type {Error} */ error) => error);
+
+        expect(unconfirmedHash(lost)).toBe(sent.hash);
+
+        // A profile the wallet open doesn't have: nothing is sent.
+        preverify.mockClear();
+
+        await expect(
+          walletStore.sendAgain({ ...sent, account: "nobody" })
+        ).rejects.toThrow();
+        expect(preverify).not.toHaveBeenCalled();
+      } finally {
+        preverify.mockRestore();
+        propagate.mockRestore();
         vi.useFakeTimers();
       }
     });
@@ -1776,7 +1982,7 @@ describe("Wallet store", async () => {
       expect(get(walletStore).syncStatus.error).toBeNull();
     });
 
-    it("should show a send whose answer got lost in the history at once, as it may have gone out, but never one the node refused", async () => {
+    it("should say a send whose answer got lost is not confirmed yet in the history at once, as it may have gone out, but never one the node refused", async () => {
       vi.useRealTimers();
 
       const built = {
@@ -1811,7 +2017,10 @@ describe("Wallet store", async () => {
           }
         );
 
+      const owner = "localnet::lost";
+
       history.session.recordSent.mockClear();
+      keepRecords(owner);
       handedOver(new TypeError("Failed to fetch"));
 
       await expect(
@@ -1823,8 +2032,18 @@ describe("Wallet store", async () => {
           direction: "out",
           hash: built.hash,
           to: toMoonlight,
-        })
+        }),
+        { handing: true }
       );
+      // Not confirmed yet, never sent or on its way.
+      await vi.waitFor(async () =>
+        expect(await listLocalTransactions(owner)).toStrictEqual([
+          expect.objectContaining({ hash: built.hash, status: "unknown" }),
+        ])
+      );
+      history.session.recordSent.mockReset();
+      history.session.recordSent.mockImplementation(async () => {});
+      await deleteLocalTransactions(owner, [built.hash]);
 
       history.session.forgetSent.mockClear();
       handedOver(
@@ -1835,7 +2054,7 @@ describe("Wallet store", async () => {
         walletStore.transfer(toMoonlight, amount, memo, gas)
       ).rejects.toThrow("not accepted");
 
-      // Shown as the node was asked to broadcast it, it's taken out again.
+      // Kept as the node was asked to broadcast it, it's taken out again.
       await vi.waitUntil(
         () => history.session.forgetSent.mock.calls.length === 1
       );
@@ -2806,15 +3025,19 @@ describe("Wallet store", async () => {
       expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
       expect(stakeInfoSpy).toHaveBeenCalledWith(fakeExtraProfile.account);
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      // Read from what the last sync that got through read, though the one
+      // since failed: kept with when that was.
+      expect(get(walletStore).syncStatus.error).not.toBeNull();
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(fakeExtraProfile, {
+        readAt: get(walletStore).balanceReadAt,
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        fakeExtraProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(fakeExtraProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: get(walletStore).stakeReadAt,
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );

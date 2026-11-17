@@ -5,18 +5,23 @@
  *
  * One that never reached the node never went out: it's said as not sent, to
  * send again through Review or to drop. Before the node is asked to
- * broadcast one, it's kept as handed over, with its transaction's hash and
- * nonce, and only then broadcast: from then on it may have gone out, and
- * only the chain says whether it did ($lib/transactions/handedOverSends). It's
- * said as not sent only once the chain shows another transaction took its
- * nonce.
+ * broadcast one, it's kept as handed over, with its transaction's hash,
+ * nonce and signed bytes, and only then broadcast: from then on it may have
+ * gone out, and only the chain and the node say whether it did
+ * ($lib/transactions/handedOverSends). One whose answer got lost stays kept
+ * so. It's said as not sent yet while the node doesn't have it and its
+ * nonce is still free, to send again as it is, and as not sent once another
+ * transaction took its nonce. One the person chose not to send then stays
+ * kept, unsaid and never sent again, here or in another tab, until its
+ * nonce is taken: it may still arrive.
  *
  * They're kept in IndexedDB, each write on disk before it's done (strict
  * durability): a browser that dies just after finds it there. Storage that
  * keeps a write for later, as localStorage does, would give back the send as
- * it was before it was handed over. What's kept is what Send showed of it and
- * what its form held, never a password or a key, nor a memo that reads as a
- * recovery phrase.
+ * it was before it was handed over. What's kept is what Send showed of it,
+ * what its form held and the transaction it was signed as, never a password
+ * or a key, nor a memo that reads as a recovery phrase, nor a transaction
+ * that carries one.
  *
  * A send still being sent in another tab isn't said: that tab holds a lock
  * named after it (Web Locks) while it sends it, and writes it only once it
@@ -62,7 +67,7 @@ export const keptSendsDatabase = db;
  * @typedef {{
  *   account: string,
  *   at: number,
- *   handedOver?: { hash: string, nonce: string },
+ *   handedOver?: { dismissed?: true, hash: string, nonce: string, tx?: string },
  *   id: string,
  *   label: string,
  *   lux: string,
@@ -76,9 +81,12 @@ export const keptSendsDatabase = db;
  *   `account` the public account of the profile it goes from; `handedOver`
  *   the hash and the nonce of the transaction the node was asked to broadcast,
  *   none for one never handed over, and "" for a nonce it has none of, as a
- *   shielded send; `label` whom it goes to, as Send said it ("your Profile
- *   2"); `lux` its amount; `seen` its account's nonce as the wallet knew it
- *   as it was sent; `sentElsewhere` that its account sent something else
+ *   shielded send, with its signed bytes as hex (`tx`), to broadcast it
+ *   again as it is, none where they're not kept, and `dismissed` once the
+ *   person chose not to send it, its bytes forgotten; `label` whom it goes to,
+ *   as Send said it ("your Profile 2"); `lux` its amount; `seen` its
+ *   account's nonce as the wallet knew it as it was sent;
+ *   `sentElsewhere` that its account sent something else
  *   while it waited, as it was held for the person to say whether to send it
  *   too, or another transaction took its nonce; `to` the address it goes to;
  *   `typed` what Send's form held, to fill it in again.
@@ -91,7 +99,10 @@ const isHandedOver = (handed) =>
   typeof handed.hash === "string" &&
   /^[0-9a-f]{64}$/i.test(handed.hash) &&
   typeof handed.nonce === "string" &&
-  /^\d*$/.test(handed.nonce);
+  /^\d*$/.test(handed.nonce) &&
+  (handed.dismissed === undefined || handed.dismissed === true) &&
+  (handed.tx === undefined ||
+    (typeof handed.tx === "string" && /^(?:[0-9a-f]{2})+$/i.test(handed.tx)));
 
 /**
  * @param {any} kept
@@ -517,27 +528,37 @@ function keptOf(send) {
 /**
  * A send as it's sent, kept for the wallet open now:
  * - `handOver` keeps it as handed over to the node, with its transaction's
- *   hash and nonce, done once that's on disk: before the node is asked to
- *   broadcast it. Where storage refuses that, it's kept as never sent no
- *   more; where storage refuses that too, it rejects, and it mustn't go:
- *   what's kept of it would say nothing left the wallet;
- * - `end(true)` leaves it kept, as one that never went out, and `end(false)`
- *   forgets it;
+ *   hash, nonce and signed bytes, done once that's on disk: before the node
+ *   is asked to broadcast it. Where storage refuses that, it's kept as never
+ *   sent no more; where storage refuses that too, it rejects, and it mustn't
+ *   go: what's kept of it would say nothing left the wallet. The bytes of a
+ *   transaction whose memo reads as a recovery phrase aren't kept;
+ * - `end(true)` leaves it kept, as one that never went out, `end(false)`
+ *   forgets it, and `end("handed-over")` leaves it kept as handed over, as
+ *   its answer got lost: it may have gone out, for the chain and the node
+ *   to say;
  * - `hold()` keeps it as held for the person to say whether to send it too,
  *   as its account sent something else while it waited: it's said so, kept
- *   as never sent, where its page goes, or the wallet locks, before then.
+ *   as never sent, where its page goes, or the wallet locks, before then;
+ * - `kept()` gives what's kept of it now: null once it's not to be kept.
  *
  * While it's being sent, this tab holds its lock, and it's first written
  * only once the tab does: no other tab finds it kept with its lock free
  * while it's being sent. Storage says how it ended before the lock goes.
  *
  * @param {UnsentSend} send
- * @returns {{ end: (keep: boolean) => void, handOver: (sent: { hash: string, nonce: string }) => Promise<void>, hold: () => void }}
+ * @returns {{ end: (keep: boolean | "handed-over") => void, handOver: (sent: import("./sendGate").HandedOver) => Promise<void>, hold: () => void, kept: () => UnsentSend | null }}
  */
 export function keepUnsent(send) {
   const scope = walletDataScope();
   let record = keptOf(send);
   let isEnded = false;
+
+  /**
+   * Whether its signed bytes are kept: not where its memo reads as a
+   * recovery phrase, which they carry.
+   */
+  const keepsBytes = record.memo === send.memo;
 
   /**
    * What's kept of it now: as sent, then as handed over; null once it's
@@ -615,7 +636,15 @@ export function keepUnsent(send) {
       isEnded = true;
       sending.delete(record.id);
 
-      if (keep) {
+      if (keep === "handed-over" && current?.handedOver) {
+        // Its answer got lost: kept as handed over, as it's on disk, and
+        // no tab sends it, as this one knows.
+        const handedOver = current;
+
+        isOver(record.id);
+        show(scope, (list) => withSend(list, handedOver));
+        writes.finally(release);
+      } else if (keep === true) {
         // It never went out: no tab sends it, as this one knows.
         current = record;
         isOver(record.id);
@@ -644,8 +673,12 @@ export function keepUnsent(send) {
         write().catch(() => {});
       }
     },
-    async handOver({ hash, nonce }) {
-      const handedOver = { ...record, handedOver: { hash, nonce } };
+    kept: () => current,
+    async handOver({ hash, nonce, tx = "" }) {
+      const handedOver = {
+        ...record,
+        handedOver: { hash, nonce, ...(tx && keepsBytes ? { tx } : {}) },
+      };
 
       current = handedOver;
       show(scope, (list) => withSend(list, handedOver));
@@ -673,6 +706,9 @@ export function keepUnsent(send) {
 export function forgetSameUnsent({ account, lux, memo, network, to }) {
   for (const same of get(unsentSends).filter(
     (kept) =>
+      // One the person chose not to send is followed until its nonce is
+      // taken, as it may still arrive.
+      !kept.handedOver?.dismissed &&
       kept.account === account &&
       kept.lux === lux &&
       kept.memo === memo &&
@@ -781,6 +817,63 @@ export const keepNotSent = (id, hash) =>
 
     return notSent;
   });
+
+/**
+ * Keeps a send that was handed over as the transaction `hash` as one the
+ * person chose not to send: never sent again, its bytes forgotten, and not
+ * said, but kept until its nonce is taken, as it may still arrive. Only
+ * while it's kept as that transaction: see `changeHandedOver`.
+ *
+ * @param {string} id
+ * @param {string} hash
+ * @returns {Promise<boolean>}
+ */
+export const dismissHandedOver = (id, hash) =>
+  changeHandedOver(id, hash, (send) => ({
+    ...send,
+    handedOver: {
+      dismissed: true,
+      hash: /** @type {{ hash: string }} */ (send.handedOver).hash,
+      nonce: /** @type {{ nonce: string }} */ (send.handedOver).nonce,
+    },
+  }));
+
+/**
+ * Runs `act` on what's kept of a send handed over as the transaction
+ * `hash`, as storage has it then, while no tab sends it, nor acts on it so:
+ * under its lock (Web Locks), so that one tab's Send it now and another's
+ * Don't send never cross, and one the person chose not to send is never
+ * sent again. `act` is given null where it's no longer kept as that
+ * transaction.
+ *
+ * @template T
+ * @param {string} id
+ * @param {string} hash
+ * @param {(send: UnsentSend | null) => Promise<T>} act
+ * @returns {Promise<T>}
+ */
+export function actOnHandedOver(id, hash, act) {
+  const scope = walletDataScope();
+  const run = async () => {
+    const row = await db.table("sends").get(id);
+    const send =
+      row?.wallet === scope.name(KEY) && row.owner === scope.owner
+        ? sendOf(row)
+        : null;
+
+    return act(
+      isUnsent(send) &&
+        send.handedOver?.hash.toLowerCase() === hash.toLowerCase()
+        ? send
+        : null
+    );
+  };
+  const { locks } = navigator;
+
+  return locks?.request
+    ? /** @type {Promise<T>} */ (locks.request(`${LOCK}${id}`, run))
+    : run();
+}
 
 /**
  * Forgets a send that was handed over as the transaction `hash`, once the

@@ -18,8 +18,12 @@
    * goes on to the next box, whether or not suggestions show, and never
    * checks: Check, and Enter in the last box, check only once every box
    * holds a recovery word, and a check half filled in says nothing.
+   *
+   * What's typed is hidden the moment the page is (onPageHidden), where
+   * anything is, each box's as a password is, with no suggestions, until
+   * Show words.
    */
-  import { createEventDispatcher, tick } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import {
     RECOVERY_WORDS_MISMATCH,
     RECOVERY_WORDS_SHOW,
@@ -28,6 +32,7 @@
 
   import { Button, Textbox } from "$lib/dusk/components";
   import { randomUUID } from "$lib/dusk/string";
+  import onPageHidden from "$lib/security/onPageHidden";
 
   import {
     NOT_A_WORD,
@@ -234,7 +239,21 @@
     }
   }
 
-  $: suggestions = suggesting >= 0 ? suggestionsFor(typed[suggesting]) : [];
+  /** Whether what's typed is hidden, as the page was: until Show words. */
+  let isHidden = false;
+
+  onMount(() =>
+    onPageHidden(() => {
+      if (typed.some(Boolean)) {
+        isHidden = true;
+        suggesting = -1;
+      }
+    })
+  );
+
+  // None while what's typed is hidden: they'd say what it is.
+  $: suggestions =
+    !isHidden && suggesting >= 0 ? suggestionsFor(typed[suggesting]) : [];
 
   /** The same three again, empty, the first to type in. */
   async function tryAgain() {
@@ -269,7 +288,20 @@
     <p class="recovery-check__lead">
       Type words {numbersOf(asked)} as you wrote them down.
     </p>
-    <div class="recovery-check__words">
+    {#if isHidden}
+      <Button
+        className="recovery-check__show-typed"
+        on:click={() => {
+          isHidden = false;
+        }}
+        text="Show words"
+        variant="secondary"
+      />
+    {/if}
+    <div
+      class="recovery-check__words"
+      class:recovery-check__words--hidden={isHidden}
+    >
       {#each asked as place, i (place)}
         {@const isSuggesting = suggesting === i && suggestions.length > 0}
         <div class="recovery-check__cell">
@@ -316,11 +348,13 @@
         </div>
       {/each}
     </div>
+    <!-- The check's own button leads: Skip for now, where a flow has it,
+      is quieter. -->
     <Button
       disabled={!typed.every(holdsWord)}
       text="Check"
       type="submit"
-      variant="secondary"
+      variant="primary"
     />
     {#if result === "match"}
       <p class="recovery-check__match" role="status">They match.</p>
@@ -343,6 +377,15 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+
+  /* Hidden, what's typed shows as a password does. */
+  .recovery-check__words--hidden :global(input) {
+    -webkit-text-security: disc;
+  }
+
+  :global(.recovery-check__show-typed) {
+    align-self: flex-start;
   }
 
   /* A box, what's said of its word under it, and its suggestions over what follows. */

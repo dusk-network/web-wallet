@@ -6,7 +6,8 @@
   import { Button, Icon } from "$lib/dusk/components";
   import { SyncBar } from "$lib/components";
   import { handlePageClick } from "$lib/dusk/ui-helpers/handlePageClick";
-  import { networkStore, walletStore } from "$lib/stores";
+  import { lastReadText } from "$lib/activity/present";
+  import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import { setNetworkReach } from "$lib/stores/networkReach";
 
   import { networkLabel } from "./navigation";
@@ -192,6 +193,12 @@
 
   $: ({ networkName } = $networkStore);
   $: ({ syncStatus } = $walletStore);
+  // When the balances shown were last read whole, said with what may be
+  // out of date.
+  $: lastRead = lastReadText(
+    $walletStore.balanceReadAt,
+    $settingsStore.language
+  );
   $: watchStall(
     syncStatus.isInProgress,
     syncStatus.progress,
@@ -411,10 +418,12 @@
       {/if}
       {#if state === "offline"}
         <p class="network-pill__error">
-          Your balance may be out of date until you're back online.
+          Your balance may be out of date until you're back online. {lastRead}
         </p>
       {:else if state === "unreachable"}
-        <p class="network-pill__error">Your balance may be out of date.</p>
+        <p class="network-pill__error">
+          Your balance may be out of date. {lastRead}
+        </p>
         <Button
           disabled={isRetrying}
           on:click={retry}
@@ -423,7 +432,9 @@
         />
       {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
-        <p class="network-pill__error">Your balance may be out of date.</p>
+        <p class="network-pill__error">
+          Your balance may be out of date. {lastRead}
+        </p>
         <Button
           disabled={isRetrying}
           on:click={retry}

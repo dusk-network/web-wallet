@@ -199,6 +199,12 @@ describe("Add wallet", () => {
     // that doesn't says no more than that (Nandini's and Amélie's), and Show
     // my recovery words goes back to them, to be checked again.
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+    expect(getByRole("button", { name: "Check" })).toHaveClass(
+      "dusk-button--variant--primary"
+    );
+    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+      "dusk-button--variant--secondary"
+    );
 
     for (const box of container.querySelectorAll(
       ".recovery-check__word input"
@@ -210,6 +216,13 @@ describe("Add wallet", () => {
 
     expect(getByRole("alert")).toHaveTextContent(
       "That doesn't match your recovery words. Check the words you wrote down."
+    );
+    // Try again leads, Skip for now quieter.
+    expect(getByRole("button", { name: "Try again" })).toHaveClass(
+      "dusk-button--variant--primary"
+    );
+    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+      "dusk-button--variant--secondary"
     );
     expect(container.querySelector(".dusk-words")).toBeNull();
 

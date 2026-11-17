@@ -1,4 +1,5 @@
 <script>
+  import { lastReadText } from "$lib/activity/present";
   import { mdiEyeOffOutline, mdiEyeOutline } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
@@ -40,6 +41,17 @@
 
   /** Whether the stake the total counts couldn't be read: it's said too. */
   export let stakeUnread = false;
+
+  /**
+   * When the balances, and the stake the total counts, were last read
+   * whole: said with what may be out of date. Null where that isn't known.
+   *
+   * @type {number | null}
+   */
+  export let readAt = null;
+
+  /** @type {number | null} */
+  export let stakeReadAt = null;
 
   /**
    * Whether the stake the total counts is being read, with nothing read
@@ -113,15 +125,24 @@
   {#if unread && stakeUnread}
     <p class="home-balance__unread">
       Your balance and stake couldn't be read just now. This total may be out of
-      date.
+      date. {lastReadText(
+        readAt && stakeReadAt ? Math.min(readAt, stakeReadAt) : null,
+        locale
+      )}
     </p>
   {:else if unread}
     <p class="home-balance__unread">
-      Your balance couldn't be read just now. This may be out of date.
+      Your balance couldn't be read just now. This may be out of date. {lastReadText(
+        readAt,
+        locale
+      )}
     </p>
   {:else if stakeUnread}
     <p class="home-balance__unread">
-      Your stake couldn't be read just now. This total may be out of date.
+      Your stake couldn't be read just now. This total may be out of date. {lastReadText(
+        stakeReadAt,
+        locale
+      )}
     </p>
   {:else if stakeReading}
     <p class="home-balance__unread">Reading your stake…</p>

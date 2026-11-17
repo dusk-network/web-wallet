@@ -1,12 +1,12 @@
 <script>
   import {
+    mdiCheck,
     mdiEyeOffOutline,
     mdiLayersOutline,
     mdiSendOutline,
     mdiSwapHorizontal,
     mdiTrayArrowDown,
   } from "@mdi/js";
-  import { mdiCheck } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
@@ -25,6 +25,13 @@
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
   import { waitingSends, waitingText } from "$lib/transactions";
+  import reviewUnsent from "$lib/transactions/reviewUnsent";
+  import {
+    meanwhileKey,
+    sayMeanwhile,
+    sentMeanwhileTold,
+  } from "$lib/transactions/sentMeanwhile";
+  import accountNamer from "$lib/wallets/accountNamer";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -80,10 +87,12 @@
 
   $: ({
     balance,
+    balanceReadAt,
     balanceReadFailed,
     currentProfile,
     minimumStake,
     stakeInfo,
+    stakeReadAt,
     stakeReadFailed,
   } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
@@ -118,6 +127,17 @@
     ? (sozuStatus?.position.balance ?? sozuKept?.balance ?? 0n)
     : 0n;
   $: stakeUnread = stakeReadFailed || (isSozuShown && sozuError !== null);
+  // When what's staked was last read: of what couldn't be read again,
+  // natively or with Sozu, the one read longest ago.
+  $: stakeLastRead = Math.min(
+    ...[
+      stakeReadFailed ? stakeReadAt : null,
+      isSozuShown && sozuError !== null
+        ? ($sozuStore.readAt ?? sozuKept?.at ?? null)
+        : null,
+    ].filter((time) => time !== null),
+    Infinity
+  );
   $: stakeReading = isSozuShown && sozuLoading && !sozuStatus && !sozuKept;
 
   /** Reads what's staked again, with Sozu too where it couldn't be read. */
@@ -138,18 +158,33 @@
     waitingText(send, { hidden, locale: language });
 
   /**
-   * Calls off a send that hasn't gone out, and says so: one that went out
-   * meanwhile is no longer listed, as it's on its way.
+   * Calls off a send that hasn't gone out, and says so, plainly: one that
+   * went out meanwhile is no longer listed, as it's on its way.
    *
    * @param {import("$lib/transactions/waitingSends").WaitingSend} send
    */
   function cancelSend(send) {
     if (send.cancel(undefined)) {
       toast(
-        "success",
-        `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}.`,
+        "info",
+        `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}. Nothing left your wallet.`,
         mdiCheck
       );
+    }
+  }
+
+  /**
+   * Takes a send held for the person, as its account sent something else
+   * while it waited, to Send's review, to send it from there: it's called
+   * off here, and kept as not sent until it's sent there.
+   *
+   * @param {import("$lib/transactions/waitingSends").WaitingSend} send
+   */
+  function sendTooFromReview(send) {
+    const kept = send.review();
+
+    if (kept) {
+      void reviewUnsent(kept);
     }
   }
 </script>
@@ -160,6 +195,8 @@
       fiatCurrency={currency}
       fiatPrice={networkName === "mainnet" ? fiatPrice : undefined}
       locale={language}
+      readAt={balanceReadAt}
+      stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
       {stakeReading}
@@ -178,21 +215,50 @@
       couldn't be reached: called off from here, or they go out once it
       answers. Each with its memo and when it was sent, to tell them apart,
       and one state at a time: not sent yet while it waits for the network,
-      sending as it goes out, and from when the node is asked to check it,
-      with nothing to call off. One whose account sent something else while
-      it waited goes out only as the person says so here. Once handed over,
+      sending as it goes out, from when the node is asked to check it, and
+      until the node answered its broadcast, with Cancel until the node is
+      asked to broadcast it. One whose account sent something else while it
+      waited goes out only as the person says so here. Once the node took it,
       Activity lists it. -->
     {#each $waitingSends as send (send.id)}
       {@const isSending =
         send.goesOut ||
+        send.handedOver ||
         ($networkReach === "answering" && !send.waitsForNetwork)}
       {#if send.asks}
+        <!-- What the account sent meanwhile, from the chain, once it's
+          found, and whether it's the same payment. -->
+        {@const told = sayMeanwhile(
+          send.meanwhile
+            ? $sentMeanwhileTold.get(meanwhileKey(send.meanwhile))
+            : null,
+          send,
+          {
+            hidden: $settingsStore.hideBalances,
+            locale: language,
+            nameOf: $accountNamer,
+          }
+        )}
         <Banner
           className="home__waiting"
           role="status"
-          title="Your account sent something else while this waited."
+          title={told.title}
           variant="warning"
         >
+          {#if told.memo}
+            <p class="home__waiting-when">
+              <MemoText inline text={told.memo} />
+            </p>
+          {/if}
+          {#each told.items as item, i (i)}
+            <p class="home__waiting-when">
+              {item.text}{#if item.memo}
+                · <MemoText inline text={item.memo} />{/if}
+            </p>
+          {/each}
+          {#if told.same}
+            <p>{told.same}</p>
+          {/if}
           <p>
             Not sent yet: {waitingWhat(send, $settingsStore.hideBalances)}.
           </p>
@@ -202,7 +268,7 @@
           </p>
           <div class="home__waiting-actions">
             <Button
-              on:click={() => send.sendToo()}
+              on:click={() => sendTooFromReview(send)}
               size="small"
               text="Send it too"
               variant="secondary"
@@ -229,7 +295,7 @@
           {#if !isSending}
             <p>It goes out once the network answers.</p>
           {/if}
-          {#if !send.goesOut}
+          {#if !send.handedOver}
             <Button
               className="home__waiting-cancel"
               on:click={() => cancelSend(send)}
@@ -260,6 +326,7 @@
 
   <div class="home__cards">
     <ExplainerCards
+      {balanceReadAt}
       balanceUnread={balanceReadFailed}
       {hasPastStaking}
       {liquid}
@@ -270,6 +337,7 @@
       shielded={balance.shielded.value}
       sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
+      stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       {stakeReading}
       {stakeUnread}
       {staked}

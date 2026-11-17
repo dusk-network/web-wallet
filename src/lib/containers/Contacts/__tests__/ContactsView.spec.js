@@ -899,7 +899,8 @@ describe("ContactsView", () => {
 
     // In small capitals and after a fullwidth point too: Marek's. And after
     // any point that reads as one: a middle dot, an ideographic full stop,
-    // a bullet (Q14).
+    // a bullet (Q14), a dot above, a Braille dot, or one with spaces around
+    // it (Sofía's and Marek's), each naming the name it looks like.
     for (const value of [
       "alice.dusk",
       "ALICE.Dusk",
@@ -910,14 +911,21 @@ describe("ContactsView", () => {
       "alice·dusk",
       "alice。dusk",
       "alice•dusk",
+      "alice˙dusk",
+      "alice⠄dusk",
+      "alice · dusk",
     ]) {
       await name(value);
-      expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
+      expect(
+        getByText(
+          "That looks like alice.dusk. Enter it as the address below, or choose another name."
+        )
+      ).toBeInTheDocument();
       expect(save()).toBeDisabled();
     }
 
     await name("Alice");
-    expect(queryByText(/looks like a \.dusk name/)).toBeNull();
+    expect(queryByText(/^That looks like/)).toBeNull();
     expect(save()).toBeEnabled();
 
     // Saved from that very name, it's what the contact is.
@@ -927,7 +935,7 @@ describe("ContactsView", () => {
       { target: { value: "alice.dusk" } }
     );
     await findByText(/points to a public account/);
-    expect(queryByText(/looks like a \.dusk name/)).toBeNull();
+    expect(queryByText(/^That looks like/)).toBeNull();
     expect(save()).toBeEnabled();
   });
 });

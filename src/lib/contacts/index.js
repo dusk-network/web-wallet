@@ -8,6 +8,7 @@ export {
   contactsStore,
   contactsWritten,
   deleteContacts,
+  duskNameIn,
   findContact,
   forgetContactsOf,
   getContact,
