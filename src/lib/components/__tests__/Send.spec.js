@@ -484,6 +484,145 @@ describe("Send", () => {
       ]);
     });
 
+    // Nandini's, in both wallets: "You're asked to pay 0.012 DUSK to
+    // alice.dusk on Testnet …" over a link to Amélie filled in Amélie and
+    // never said a word of alice.dusk, nor of alice·dusk.
+    it("should look up a .dusk name anywhere in a pasted message, and refuse the message where it pays another account than its link", async () => {
+      const { getByRole, getByText, queryByRole } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const link = `https://apps.testnet.dusk.network/wallet/dashboard/send?to=${otherAccount}&amount=0.012&memo=Invoice+NOV-17c+r37&network=testnet`;
+      /** @param {string} to */
+      const message = (to) =>
+        `You're asked to pay 0.012 DUSK${to} on Testnet · Invoice NOV-17c r37\nPay here: ${link}`;
+
+      for (const name of ["alice.dusk", "alice·dusk"]) {
+        const lookup = Promise.withResolvers();
+
+        baseProps.resolveName.mockImplementationOnce(() => lookup.promise);
+        await fireEvent.paste(fields.to(), {
+          clipboardData: { getData: () => message(` to ${name}`) },
+        });
+        await fireEvent.input(fields.to(), {
+          target: { value: message(` to ${name}`).replace("\n", "") },
+        });
+        await tick();
+
+        // Looked up first: nothing filled in, nor said wrong, meanwhile.
+        expect(baseProps.resolveName).toHaveBeenLastCalledWith("alice.dusk");
+        expect(getByText("Looking up alice.dusk…")).toBeInTheDocument();
+        expect(filled(fields).slice(1)).toStrictEqual(["", ""]);
+        expect(queryByRole("alert")).toBeNull();
+
+        // Someone else's: refused, nothing filled in.
+        lookup.resolve({
+          account: bep20BridgeAddress,
+          address: "",
+          name: "alice.dusk",
+        });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await tick();
+        await tick();
+
+        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+        expect(fields.review()).toBeDisabled();
+      }
+
+      // Naming no one, it fills in what its link asks.
+      await pasteAsBrowser(fields, message(""));
+
+      expect(filled(fields)).toStrictEqual([
+        otherAccount,
+        "0.012",
+        "Invoice NOV-17c r37",
+      ]);
+    });
+
+    // Marek's, in both wallets: one character switched the check off, the
+    // link's 0.15 filled in under his line saying 0.002. The web wallet
+    // already refused a line apart from its link.
+    describe("Marek's line, changed", () => {
+      /**
+       * What Copy gives of his request for `amount`, as Lux too.
+       *
+       * @param {string} amount
+       * @param {bigint} lux
+       */
+      const line = (amount, lux) =>
+        requestText(
+          {
+            link: httpsLink
+              .replace("amount=0.15", `amount=${amount}`)
+              .replace("memo=Factura+33", "memo=r37+marek+T2"),
+            lux,
+            memo: "r37 marek T2",
+          },
+          { language: "en", name: "", net: networks.testnet }
+        );
+      const own = line("0.002", 2_000_000n);
+      const [ownLine] = own.split("\n");
+      const theirs = line("0.15", 150_000_000n);
+      const theirLink = theirs.split("Pay here: ")[1];
+
+      it.each([
+        ["with a zero-width space after You're", "You're", "You're\u200b"],
+        ["with a Cyrillic о in to pay", "to pay", "t\u043e pay"],
+        ["with a Cyrillic К in DUSK", "DUSK on", "DUS\u041a on"],
+        ["as You are asked", "You're asked", "You are asked"],
+      ])(
+        "should refuse it %s over a link asking another amount, and fill it in over its own",
+        async (_, was, is) => {
+          const { getByRole } = render(Send, baseProps);
+          const fields = fieldsOf(getByRole);
+          const changed = own.replace(was, is);
+
+          expect(changed).not.toBe(own);
+
+          await pasteAsBrowser(
+            fields,
+            changed.replace("amount=0.002", "amount=0.15")
+          );
+
+          expect(filled(fields)).toStrictEqual(["", "", ""]);
+          expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+          expect(fields.review()).toBeDisabled();
+
+          await pasteAsBrowser(fields, changed);
+
+          expect(filled(fields)).toStrictEqual([
+            otherAccount,
+            "0.002",
+            "r37 marek T2",
+          ]);
+        }
+      );
+
+      it.each([
+        [
+          "Thanks! between it and Pay here",
+          `${ownLine}\nThanks!\nPay here: ${theirLink}`,
+        ],
+        [
+          "a blank line between it and Pay here",
+          `${ownLine}\n\nPay here: ${theirLink}`,
+        ],
+        ["Pay me here", `${ownLine}\nPay me here: ${theirLink}`],
+        ["a second line saying the link's amount", `${ownLine}\n${theirs}`],
+      ])(
+        "should refuse it with %s over a link asking another amount",
+        async (_, pasted) => {
+          const { getByRole } = render(Send, baseProps);
+          const fields = fieldsOf(getByRole);
+
+          await pasteAsBrowser(fields, pasted);
+
+          expect(filled(fields)).toStrictEqual(["", "", ""]);
+          expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+          expect(fields.review()).toBeDisabled();
+        }
+      );
+    });
+
     // Anything put in To while a request's names are looked up comes first:
     // a contact picked, a recipient typed, To cleared. The lookup's answer,
     // when it comes, fills in nothing.
@@ -1350,6 +1489,42 @@ describe("Send", () => {
 
       expect(getByText("Not a valid address.")).toBeInTheDocument();
       expect(to).toHaveClass("send__to-input--invalid");
+    });
+
+    // Sofía's and Marek's: "sofiadesign·dusk" typed in To said only "Not a
+    // valid address.", and only once the box was left.
+    it("says at once, as it's typed, that what only looks like a .dusk name isn't one, naming the one it looks like, and looks nothing up", async () => {
+      const { getByRole, queryByText } = render(Send, baseProps);
+      const fields = fieldsOf(getByRole);
+      const to = fields.to();
+
+      baseProps.resolveName.mockClear();
+
+      for (const typed of [
+        "sofiadesign·dusk",
+        "sofiadesign˙dusk",
+        "sofiadesign⠄dusk",
+        "sofiadesign · dusk",
+        // A Cyrillic ѕ.
+        "\u0455ofiadesign.dusk",
+      ]) {
+        await fireEvent.input(to, { target: { value: "" } });
+
+        // A key at a time, never leaving the box.
+        for (let end = 1; end <= typed.length; end++) {
+          await fireEvent.input(to, { target: { value: typed.slice(0, end) } });
+        }
+
+        expect(getByRole("alert")).toHaveTextContent(
+          "That looks like sofiadesign.dusk, but it isn't. Check it, or paste it again."
+        );
+        expect(to).toHaveAttribute("aria-invalid", "true");
+        expect(to).toHaveClass("send__to-input--invalid");
+        expect(queryByText("Not a valid address.")).toBeNull();
+        expect(fields.review()).toBeDisabled();
+      }
+
+      expect(baseProps.resolveName).not.toHaveBeenCalled();
     });
 
     it("offers contacts one way at a time: links for what's typed, or the list", async () => {
@@ -4391,12 +4566,19 @@ describe("Send", () => {
         target: { value: otherAccount },
       });
       await fireEvent.click(getByRole("button", { name: "Save to contacts" }));
-      await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
-        target: { value: "alice.dusk" },
-      });
 
-      expect(getByText(/looks like a \.dusk name/)).toBeInTheDocument();
-      expect(getByRole("button", { name: "Save" })).toBeDisabled();
+      // With a dot above for the point too, naming the name it looks like.
+      for (const name of ["alice.dusk", "alice˙dusk"]) {
+        await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
+          target: { value: name },
+        });
+
+        expect(
+          getByText("That looks like alice.dusk. Choose another name.")
+        ).toBeInTheDocument();
+        expect(getByRole("button", { name: "Save" })).toBeDisabled();
+      }
+
       expect(listContacts()).toStrictEqual([]);
     });
 

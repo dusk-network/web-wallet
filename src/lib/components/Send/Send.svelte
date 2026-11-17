@@ -13,6 +13,7 @@
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     NAME_SAVE_YES,
+    duskNameLookAlike,
     lookAlikes,
     sameName,
   } from "@dusk-network/app-core/names";
@@ -20,6 +21,7 @@
     contactNameProblem,
     contactNameText,
     contactsStore,
+    duskNameIn,
     markContactNameChecked,
     markContactNameMoved,
     passesForDuskName,
@@ -1413,7 +1415,20 @@
     );
   }
 
-  $: recipientName = isDuskName(sendToAddress) ? sendToAddress.trim() : "";
+  // What only looks like a .dusk name, by a point or a letter that isn't
+  // one, as "sofiadesign·dusk" or a Cyrillic "ѕ": no name to look up, and
+  // said at once, as it's typed, naming the one it looks like. A name with
+  // a full stop after it is offered as it was.
+  $: lookAlike = asDuskName(sendToAddress)
+    ? null
+    : duskNameLookAlike(sendToAddress);
+
+  // What it says, its first sentence first, as "Not a valid address." is.
+  $: [, lookAlikeLead = "", lookAlikeRest = ""] =
+    lookAlike?.words.match(/^(.+?[.!?])\s+(.*)$/s) ?? [];
+
+  $: recipientName =
+    isDuskName(sendToAddress) && !lookAlike ? sendToAddress.trim() : "";
 
   // What's known of the name in the field, read from the name itself: with
   // another name typed, the answer for the one before is out at once, so its
@@ -1681,7 +1696,7 @@
     "send__to-input--blocked": isRecipientBlocklisted,
     "send__to-input--invalid": recipientName
       ? nameLookup?.error
-      : isRecipientInvalid,
+      : isRecipientInvalid || Boolean(lookAlike),
   });
 
   // A name as the lookup gives it, once it has: in its canonical form.
@@ -1882,10 +1897,10 @@
         <label class="send__label" for="{id}-to">To</label>
         <div class="send__to">
           <Textbox
-            aria-describedby={isRecipientInvalid
+            aria-describedby={isRecipientInvalid || lookAlike
               ? invalidRecipientId
               : undefined}
-            aria-invalid={isRecipientInvalid}
+            aria-invalid={isRecipientInvalid || Boolean(lookAlike)}
             autocapitalize="off"
             autocomplete="off"
             autocorrect="off"
@@ -1975,6 +1990,14 @@
               variant="secondary"
             />
           {/if}
+        {:else if lookAlike}
+          <p class="send__error" id={invalidRecipientId} role="alert">
+            {#if lookAlikeLead}
+              <strong>{lookAlikeLead}</strong> {lookAlikeRest}
+            {:else}
+              {lookAlike.words}
+            {/if}
+          </p>
         {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
@@ -2270,7 +2293,8 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="send__hint" role="alert">
-                    That looks like a .dusk name. Choose another name.
+                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Choose another name.
                   </p>
                 {:else if contactNameIssue}
                   <p class="send__hint" role="alert">

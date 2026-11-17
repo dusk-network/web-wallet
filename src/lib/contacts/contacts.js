@@ -20,7 +20,9 @@
 
 import {
   contactNameCheck,
+  duskNameLookAlike,
   lookAlikes,
+  nameDuskNames,
   nameHides,
 } from "@dusk-network/app-core/names";
 import { displayText, searchKey } from "@dusk-network/app-core/text";
@@ -39,6 +41,16 @@ import {
 // as a name that points elsewhere, read in plain letters, as both wallets
 // read it: its name shows where a `.dusk` name would.
 export { passesForDuskName } from "@dusk-network/app-core/names";
+
+/**
+ * The `.dusk` name a contact's name passes for, to say it: the one it looks
+ * like, as "sofiadesign.dusk" for "sofiadesign·dusk", or the one it holds;
+ * "" where none can be told.
+ *
+ * @param {string} name
+ */
+export const duskNameIn = (name) =>
+  duskNameLookAlike(name)?.name ?? nameDuskNames(name)[0] ?? "";
 
 /** The most contacts kept: past it, the least recently changed go. */
 const LIMIT = 200;

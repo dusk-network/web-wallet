@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a pasted message that names another amount, network or .dusk name than its link anywhere before it, one hidden or look-alike letter in its wording included, each .dusk name looked up first
+- Say at once in To that a name like sofiadesign·dusk only looks like sofiadesign.dusk, in place of "Not a valid address."
+- Take a profile's or a contact's name with a dot above, a Braille dot or spaces around its point for the .dusk name it reads as, and name the .dusk name a contact's name looks like
 - Hide recovery words as soon as you leave the page, in Restore, Add wallet, Unlock, a wallet's words and their check, until Show words
 - Say what an unstake from Sozu brings back on its review, "You receive about …", its network fee apart
 - Say when the figures were last read on every "may be out of date", on Home, Staking and the network's pill: "Last read 10:02 pm.", also after an unlock
