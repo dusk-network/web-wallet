@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Copy a request from Your requests as Share gives it, its line and then its link, with Copy request in place of Copy link
 - Make Check and Try again the main buttons of Check your recovery words while creating or adding a wallet, Skip for now a quieter one
 - Say what your account sent while a held payment waited, from the chain, with its amount, whom it paid, its memo and its time, and that it looks like this same payment where it does, Activity reading it in at once
 - Take a payment held as your account sent something else while it waited to Send's review with Send it too, never paying it at once, and say Don't send's "Not sent … Nothing left your wallet." plainly, the two choices leading on its screen

@@ -556,7 +556,7 @@ describe("Receive", () => {
 
       expect(get(requestsStore)).toHaveLength(1);
 
-      // In the list, each its own, beside its Copy link.
+      // In the list, each its own, beside its Copy request.
       await fireEvent.click(
         screen.getByRole("button", { name: "Share the request for 2 DUSK" })
       );
@@ -573,7 +573,7 @@ describe("Receive", () => {
           document.querySelectorAll(".requests__actions button"),
           (b) => b.textContent?.trim()
         )
-      ).toStrictEqual(["Copy link", "Share", "Remove"]);
+      ).toStrictEqual(["Copy request", "Share", "Remove"]);
 
       // No two buttons of the page share a name.
       const names = buttonNames();
@@ -944,19 +944,19 @@ describe("Receive", () => {
 
       // On the card, beside its Copy and Share: Paid, with when.
       expect(actionsOf(once)).toHaveTextContent(
-        `Paid ${inSentence(paidAt(at + 500))} Copy link Share Remove`
+        `Paid ${inSentence(paidAt(at + 500))} Copy request Share Remove`
       );
       expect(actionsOf(twice)).toHaveTextContent(
-        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy link Share Remove`
+        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy request Share Remove`
       );
 
-      // Copy link asks first, on the card, brought into view: nothing
+      // Copy request asks first, on the card, brought into view: nothing
       // copied yet.
       const scrolled = vi.spyOn(Element.prototype, "scrollIntoView");
 
       await fireEvent.click(
         screen.getByRole("button", {
-          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+          name: "Copy request for 0.013 DUSK, Factura 2026-071",
         })
       );
 
@@ -977,10 +977,12 @@ describe("Receive", () => {
       expect(once.querySelector("[role=alert]")).toBeNull();
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
 
-      // Copy anyway: the link, as before.
+      // Copy anyway: what Share gives, a line saying what it asks, then its
+      // link, as the request's own Copy request gave it (Sofía's and
+      // Chen's: a bare link, while Share gave the message).
       await fireEvent.click(
         screen.getByRole("button", {
-          name: "Copy link of the request for 0.013 DUSK, Factura 2026-071",
+          name: "Copy request for 0.013 DUSK, Factura 2026-071",
         })
       );
       await fireEvent.click(
@@ -988,10 +990,15 @@ describe("Receive", () => {
       );
       await vi.advanceTimersByTimeAsync(0);
 
+      const copied = String(
+        vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0]
+      );
+
+      expect(copied).toMatch(
+        /^You're asked to pay 0\.013 DUSK on Testnet · Factura 2026-071\nPay here: https:\/\/\S+$/
+      );
       expect(
-        parsePaymentLink(
-          String(vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0])
-        )
+        parsePaymentLink(copied.slice(copied.indexOf("https:")))
       ).toMatchObject({ amountDusk: "0.013", memo: "Factura 2026-071" });
       expect(once.querySelector("[role=alert]")).toBeNull();
 
