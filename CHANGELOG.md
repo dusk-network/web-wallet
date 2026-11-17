@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mark a stranger's payment with a memo on Home as History does, and say on Review what a recipient that isn't a contact or a profile sent you: "This address sent you: “…” · not in your contacts."
 - Copy a request from Your requests as Share gives it, its line and then its link, with Copy request in place of Copy link
 - Make Check and Try again the main buttons of Check your recovery words while creating or adding a wallet, Skip for now a quieter one
 - Say what your account sent while a held payment waited, from the chain, with its amount, whom it paid, its memo and its time, and that it looks like this same payment where it does, Activity reading it in at once

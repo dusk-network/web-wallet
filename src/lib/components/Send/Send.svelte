@@ -52,7 +52,7 @@
     waitingText,
   } from "$lib/transactions";
   import { notConfirmed, onTheirWay } from "$lib/activity/sends";
-  import { paidInSentence } from "$lib/activity/present";
+  import { paidInSentence, strangersMemo } from "$lib/activity/present";
   import { getAddressInfo } from "$lib/wallet";
   import { ownersOf } from "$lib/dusk-domains/nameOwners";
   import {
@@ -1760,6 +1760,27 @@
           handedOver?.hash.toLowerCase() === hash.toLowerCase()
       )
   );
+  // Whom a memo that came in isn't a stranger's from, as History has it:
+  // the profiles here, every wallet's, and the contacts.
+  $: memoAmong = {
+    contacts,
+    profiles: [
+      ...$profilesHere.map(({ address }) => ({ account: address })),
+      { address: shieldedAddress },
+    ],
+  };
+  // What the recipient said last in a memo of a payment to this profile,
+  // where it isn't a contact or a profile here (Amélie's: paying a
+  // stranger's "URGENT… send it back" looked as calm as paying a grandson).
+  $: strangerSaid = addressInfo.isValid
+    ? (historyRows
+        .filter(
+          (row) =>
+            row.direction === "in" && row.counterparty === recipientAddress
+        )
+        .map((row) => strangersMemo(row, memoAmong))
+        .find(Boolean) ?? null)
+    : null;
   // The same payment, made already: moments ago, or with the same memo.
   $: madeAgain = addressInfo.isValid
     ? sentAlready(historyRows, {
@@ -2539,6 +2560,20 @@
           </dd>
         </div>
       </dl>
+      {#if step === "review" && strangerSaid}
+        <!-- A stranger's words to this wallet, as History marks them. -->
+        <Banner
+          className="send__stranger"
+          role="note"
+          title="This address sent you:"
+          variant="warning"
+        >
+          <p class="send__stranger-said">
+            “<MemoText inline text={strangerSaid.memo} />” · not in your
+            contacts.
+          </p>
+        </Banner>
+      {/if}
       {#if waitingAgain}
         <!-- Said, not stopped, as for one sent: the same twice can be meant. -->
         <Banner
@@ -3022,6 +3057,11 @@
     color: var(--calm-muted);
     font-size: 0.8125rem;
     text-align: center;
+  }
+
+  .send__stranger-said {
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .send__visible {

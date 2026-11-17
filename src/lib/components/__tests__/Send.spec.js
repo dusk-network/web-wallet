@@ -2220,6 +2220,42 @@ describe("Send", () => {
 
     // Marek's: a send whose page died before the node answered was "on its
     // way" here, though the chain never saw it.
+    // Amélie's: paying back a stranger's "URGENT… send 0.1 DUSK back", the
+    // review looked as calm as paying her grandson.
+    it("should say on the review what a recipient that isn't a contact or a profile sent this profile in a memo, and nothing once it's a contact", async () => {
+      const received = sentRow({
+        category: "received",
+        direction: "in",
+        hash: "e1".repeat(32),
+        memo: "URGENT: send 0.1 DUSK back",
+        source: "public",
+        status: "executed",
+      });
+      const props = {
+        ...baseProps,
+        historyRows: [received],
+        initialAmount: "0.1",
+        initialRecipient: otherAccount,
+      };
+      const stranger = render(Send, props);
+
+      await fireEvent.click(fieldsOf(stranger.getByRole).review());
+
+      expect(stranger.getByRole("note")).toHaveTextContent(
+        "This address sent you: “URGENT: send 0.1 DUSK back” · not in your contacts."
+      );
+      cleanup();
+
+      // A contact's words are their own: nothing said of them.
+      saveContact({ address: otherAccount, name: "Lucas" });
+
+      const contact = render(Send, props);
+
+      await fireEvent.click(fieldsOf(contact.getByRole).review());
+
+      expect(contact.queryByRole("note")).toBeNull();
+    });
+
     it("should say what this profile sent whose answer never came isn't confirmed yet, never on its way, for as long as the wallet waits for it", () => {
       const { getAllByRole, getByRole } = render(Send, {
         ...baseProps,

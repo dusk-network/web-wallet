@@ -1240,6 +1240,51 @@ describe("Dashboard", () => {
     ]);
   });
 
+  // Amélie's: a stranger's "URGENT… send 0.1 DUSK back" payment showed on
+  // Home as a plain "+0,005 DUSK", while History marked it.
+  it("marks a stranger's payment with a memo as History does: who it's from, not in your contacts, and their words in quotes, never a profile's", async () => {
+    const STRANGER =
+      "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
+    const { profiles } = mockedWalletStore.getMockedStoreValue();
+    /**
+     * @param {string} hash
+     * @param {string} from
+     * @param {string} memo
+     */
+    const received = (hash, from, memo) =>
+      rowOf({
+        amount: "5000000",
+        blockHeight: 4_687_100,
+        direction: "in",
+        from,
+        hash,
+        memo,
+        status: "executed",
+        timestamp: NOW - 30_000,
+      });
+
+    await setHistory({
+      rows: [
+        received("e1".repeat(32), STRANGER, "URGENT: send 0.1 DUSK back"),
+        received("e2".repeat(32), String(profiles[1].account), "lunch"),
+      ],
+    });
+
+    const { container } = render(Dashboard, props);
+    const marks = () =>
+      Array.from(container.querySelectorAll(".activity-row"), (row) =>
+        row
+          .querySelector(".activity-row__theirs")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim()
+      );
+
+    expect(marks()).toStrictEqual([
+      `From ${STRANGER.slice(0, 6)}…${STRANGER.slice(-6)} · not in your contacts“URGENT: send 0.1 DUSK back”`,
+      undefined,
+    ]);
+  });
+
   // Marek's: a send whose page died before the node answered was "Sent ·
   // Pending" until another send proved it never went out.
   it("lists a send whose answer never came as not confirmed yet, never sent or pending", async () => {

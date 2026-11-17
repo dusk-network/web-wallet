@@ -2,8 +2,12 @@
 
 <script>
   import { Icon } from "$lib/dusk/components";
-  import { BalanceValue } from "$lib/components";
-  import { fullDateTime, timeLabel } from "$lib/activity/present";
+  import { BalanceValue, MemoText } from "$lib/components";
+  import {
+    fullDateTime,
+    strangersMemo,
+    timeLabel,
+  } from "$lib/activity/present";
   import { addBasePath } from "$lib/navigation";
 
   import { ACTIVITY_ICONS } from "./activityIcons";
@@ -22,6 +26,14 @@
    * it then says what happened, not who with.
    */
   export let withoutCounterparty = false;
+
+  /**
+   * Whom a memo that came in isn't a stranger's from, as History has it:
+   * the profiles here and the contacts. Without it, no memo is marked.
+   *
+   * @type {Parameters<typeof strangersMemo>[1] | undefined}
+   */
+  export let memoAmong = undefined;
 
   const SEPARATOR = " · ";
 
@@ -46,6 +58,9 @@
       ];
   // A withdrawal's claim date, on a line of its own: it doesn't fit after.
   $: note = withoutCounterparty ? null : p.note;
+  // A stranger's memo, marked as History marks it: who it's from, then
+  // their words, in quotes.
+  $: theirs = memoAmong && row.memo ? strangersMemo(row, memoAmong) : null;
 </script>
 
 <a
@@ -71,6 +86,14 @@
     >
     {#if note}
       <span class="activity-row__line">{note}</span>
+    {/if}
+    {#if theirs}
+      <span class="activity-row__theirs"
+        ><span class="activity-row__theirs-from">{theirs.from}</span><span
+          class="activity-row__theirs-memo"
+          >“<MemoText inline text={theirs.memo} />”</span
+        ></span
+      >
     {/if}
   </span>
   <span class="activity-row__right">
@@ -160,6 +183,25 @@
 
   .activity-row__failed {
     color: var(--calm-danger);
+  }
+
+  /* A stranger's memo: who it's from, then their words, muted. */
+  .activity-row__theirs {
+    display: flex;
+    flex-direction: column;
+    color: var(--calm-muted);
+    font-size: 0.78125rem;
+    overflow-wrap: anywhere;
+  }
+
+  /* Their words: two lines at most, its details have all of it; who it's
+     from above them, which a long memo never cuts off. */
+  .activity-row__theirs-memo {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
 
   .activity-row__right {
