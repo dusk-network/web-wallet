@@ -316,11 +316,13 @@
         </div>
       {/each}
     </div>
+    <!-- The check's own button leads: Skip for now, where a flow has it,
+      is quieter. -->
     <Button
       disabled={!typed.every(holdsWord)}
       text="Check"
       type="submit"
-      variant="secondary"
+      variant="primary"
     />
     {#if result === "match"}
       <p class="recovery-check__match" role="status">They match.</p>

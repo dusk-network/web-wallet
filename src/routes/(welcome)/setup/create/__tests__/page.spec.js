@@ -337,6 +337,13 @@ describe("Create", async () => {
     }
 
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+    // Amélie's: Skip for now was the big black button, Check a pale one.
+    expect(getByRole("button", { name: "Check" })).toHaveClass(
+      "dusk-button--variant--primary"
+    );
+    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+      "dusk-button--variant--secondary"
+    );
 
     const words = mnemonic.split(" ");
 
@@ -364,6 +371,13 @@ describe("Create", async () => {
       expect(container.querySelector(".dusk-words")).toBeNull();
       expect(boxesShown()).toStrictEqual([]);
       expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+      // Try again leads, Skip for now quieter.
+      expect(getByRole("button", { name: "Try again" })).toHaveClass(
+        "dusk-button--variant--primary"
+      );
+      expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+        "dusk-button--variant--secondary"
+      );
 
       // Try again: the same three, empty, the first to type in.
       await fireEvent.click(getByRole("button", { name: "Try again" }));
