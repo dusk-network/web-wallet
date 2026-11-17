@@ -222,7 +222,7 @@ describe("Dashboard", () => {
         `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to Profile 2."
+        "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet."
       );
 
       // The other goes out once the network answers: sent, with nothing to
@@ -367,11 +367,14 @@ describe("Dashboard", () => {
 
   // Chen's, on two phones: the payment waiting on phone A went out by itself
   // after she paid the same from phone B. Held, it says so here, with the
-  // payment, and goes only as she says.
-  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and sends it too, or not, only as the person says", async () => {
-    const { keepWaiting, sendGate, waitingSends } =
+  // payment, and goes only as she says. Then, as Send it too paid at once,
+  // twice: it goes to Send's review, as Send it now does.
+  it("says a waiting send whose account sent something else meanwhile is held, with the payment, and takes it to Send's review with Send it too, or doesn't send it, only as the person says", async () => {
+    const { keepWaiting, sendGate, takeUnsentRefill, waitingSends } =
       await import("$lib/transactions");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
 
     toastList.set([]);
     render(Dashboard, props);
@@ -399,7 +402,14 @@ describe("Dashboard", () => {
       let goesOn = false;
 
       keepWaiting({
+        address: ALICE,
         gate,
+        kept: {
+          account,
+          isSaid: () => true,
+          network: "mainnet",
+          typed: { amount: "0.01", memo, to: ALICE },
+        },
         lux: 10_000_000n,
         memo,
         operation: new Promise(() => {}),
@@ -430,11 +440,20 @@ describe("Dashboard", () => {
         )
       ).toStrictEqual(["Send it too", "Don't send"]);
 
-      // Send it too: it goes on, no longer held.
+      // Send it too: to Send's review, filled in with it, to send from
+      // there; never sent from here.
       await fireEvent.click(button("Send it too"));
-      await vi.waitFor(() => expect(sent.goesOn()).toBe(true));
-      expect(get(sent.gate)).toBe("open");
-      expect(banner()).not.toContain("sent something else");
+
+      expect(get(sent.gate)).toBe("cancelled");
+      expect(sent.goesOn()).toBe(false);
+      expect(banner()).toBeUndefined();
+      expect(takeUnsentRefill({ account, network: "mainnet" })).toMatchObject({
+        lux: "10000000",
+        memo: "night shift 6",
+        sentElsewhere: true,
+        to: ALICE,
+        typed: { amount: "0.01", memo: "night shift 6", to: ALICE },
+      });
     } finally {
       sent.gate.cancel();
     }
@@ -448,8 +467,12 @@ describe("Dashboard", () => {
       expect(get(dropped.gate)).toBe("cancelled");
       expect(dropped.goesOn()).toBe(false);
       expect(banner()).toBeUndefined();
-      expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to your Profile 2."
+      expect(get(toastList)).toContainEqual(
+        expect.objectContaining({
+          message:
+            "Not sent: 0.01 DUSK to your Profile 2. Nothing left your wallet.",
+          type: "info",
+        })
       );
     } finally {
       dropped.gate.cancel();
@@ -501,7 +524,7 @@ describe("Dashboard", () => {
 
       expect(get(gate)).toBe("cancelled");
       expect(get(toastList).map(({ message }) => message)).toContain(
-        `Not sent: ${BALANCE_MASK} DUSK to Profile 2.`
+        `Not sent: ${BALANCE_MASK} DUSK to Profile 2. Nothing left your wallet.`
       );
       expect(
         get(toastList).filter(({ message }) => message.includes("0.01 DUSK"))

@@ -7,12 +7,10 @@
   import { isHistoryEnabled } from "$lib/activity";
   import { Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
-  import { goto } from "$lib/navigation";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import {
     CHECK_BALANCE_FIRST,
     dropUnsent,
-    sendUnsentAgain,
     unsentSends,
     waitingText,
   } from "$lib/transactions";
@@ -25,6 +23,7 @@
     sendHandedOverAgain,
     sentAgainRefusals,
   } from "$lib/transactions/handedOverSends";
+  import reviewUnsent from "$lib/transactions/reviewUnsent";
   import { walletAccountNames } from "$lib/wallets";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
@@ -38,26 +37,8 @@
    * Takes a send that never went out to Send's review, filled in with it,
    * on the profile it was sent from: it's sent from there, and said here
    * until it is.
-   *
-   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
    */
-  async function sendNow(send) {
-    const profile = profiles.find(
-      (each) => String(each.account) === send.account
-    );
-
-    if (!profile) {
-      return;
-    }
-
-    // The profile it's sent from first: Send takes it for that one alone.
-    if (profile !== currentProfile) {
-      walletStore.setCurrentProfile(profile).catch(() => {});
-    }
-
-    sendUnsentAgain(send);
-    await goto("/dashboard/send");
-  }
+  const sendNow = reviewUnsent;
 
   /**
    * Sends a send handed over, whose transaction the node doesn't have, its

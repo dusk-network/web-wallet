@@ -345,10 +345,10 @@
   let step = "form";
 
   /**
-   * The transfer once sent, the most it can cost, and what calls it off
-   * until it goes out.
+   * The transfer once sent, the most it can cost, what calls it off until
+   * it goes out, and what takes it back to its review where it's held.
    *
-   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, what: string } | null}
+   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, what: string } | null}
    */
   let sent = null;
 
@@ -1060,7 +1060,7 @@
     // amount as balances are shown there. It's kept on this device
     // meanwhile: where its page closes, reloads or locks before it goes
     // out, it's said once the wallet opens again.
-    keepWaiting({
+    const { review } = keepWaiting({
       address: recipientAddress,
       from,
       gate,
@@ -1102,6 +1102,7 @@
       maxFee: maxGasFee,
       memo: transactionMemo,
       operation,
+      review,
       what,
     };
     step = "done";
@@ -1129,6 +1130,22 @@
   function goToReview() {
     if (canSend) {
       showReview();
+    }
+  }
+
+  /**
+   * Back to the review of a transfer held as its account sent something
+   * else while it waited, to send it too from there: it's called off, kept
+   * as not sent, and the form filled in with it, as one that never went out.
+   */
+  function sendTooFromReview() {
+    const kept = sent?.review();
+
+    if (kept) {
+      sent = null;
+      canTryAgain = false;
+      step = "form";
+      fillIn(kept);
     }
   }
 
@@ -1783,6 +1800,7 @@
     maxFee={sent.maxFee}
     memo={sent.memo}
     onRetry={tryAgain}
+    onSendToo={sendTooFromReview}
     operation={sent.operation}
     tellArrival
     what={sent.what}

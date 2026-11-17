@@ -80,7 +80,7 @@ describe("A send that can be called off", () => {
     expect(said).toMatchObject({
       canRetry: true,
       heading: "Not sent",
-      sentence: "You cancelled it, so nothing was sent.",
+      sentence: "Nothing left your wallet.",
     });
   });
 

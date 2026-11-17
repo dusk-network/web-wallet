@@ -3165,6 +3165,99 @@ describe("Send", () => {
         historyAt({});
       });
 
+      // Chen's: Send it too, on the held send's screen, paid at once, with
+      // no Review, while Send it now opens Review first.
+      it("should take a send held as its account sent something else while it waited back to its review with Send it too, the two choices leading, nothing sent from the hold", async () => {
+        /** @type {import("$lib/transactions/sendGate").SendGate | null} */
+        let held = null;
+
+        baseProps.execute.mockImplementationOnce(
+          // @ts-ignore
+          async (_to, _lux, _memo, _price, _limit, _name, gate) => {
+            held = gate;
+            await gate.ask();
+
+            return new Promise(() => {});
+          }
+        );
+
+        const { container, getAllByRole, getByRole } = render(Send, baseProps);
+        const fields = fieldsOf(getByRole);
+
+        await sendWith(getByRole, filled);
+        await vi.waitFor(() =>
+          expect(
+            getByRole("button", { name: "Send it too" })
+          ).toBeInTheDocument()
+        );
+
+        // The two choices lead, the way Home under them.
+        expect(
+          getAllByRole("button").map((button) => [
+            button.textContent?.trim(),
+            button.className.match(/dusk-button--variant--(\w+)/)?.[1],
+          ])
+        ).toStrictEqual([
+          ["Send it too", "primary"],
+          ["Don't send", "secondary"],
+        ]);
+        expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+
+        await fireEvent.click(getByRole("button", { name: "Send it too" }));
+
+        // Its review, as it was, with nothing sent from the hold.
+        await vi.waitFor(() => expectReview(container));
+        expect(fields.to()).toHaveValue(otherAccount);
+        expect(fields.amount()).toHaveValue("2");
+        expect(fields.memo()).toHaveValue("Invoice 118");
+        expect(get(/** @type {any} */ (held))).toBe("cancelled");
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+
+        // Sent from there: in its place, as a send of its own.
+        await afterConfirmDelay();
+        await fireEvent.click(fields.send());
+        await vi.advanceTimersToNextTimerAsync();
+
+        expect(baseProps.execute).toHaveBeenCalledTimes(2);
+        expect(baseProps.execute).toHaveBeenLastCalledWith(
+          otherAccount,
+          duskToLux(2),
+          "Invoice 118",
+          gasPrice,
+          gasLimit,
+          undefined,
+          aGate
+        );
+      });
+
+      it("should say a send held so is not sent, plainly, with Don't send: nothing left the wallet", async () => {
+        baseProps.execute.mockImplementationOnce(
+          // @ts-ignore
+          async (_to, _lux, _memo, _price, _limit, _name, gate) => {
+            await gate.ask();
+
+            return new Promise(() => {});
+          }
+        );
+
+        const { getByRole, getByText, queryByText } = render(Send, baseProps);
+
+        await sendWith(getByRole, filled);
+        await vi.waitFor(() =>
+          expect(
+            getByRole("button", { name: "Don't send" })
+          ).toBeInTheDocument()
+        );
+        await fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+        await vi.waitFor(() =>
+          expect(getByText("Not sent")).toBeInTheDocument()
+        );
+        expect(getByText("Nothing left your wallet.")).toBeInTheDocument();
+        expect(queryByText("Transaction failed")).toBeNull();
+        expect(baseProps.execute).toHaveBeenCalledOnce();
+      });
+
       it("should go back to the review with Try again, the address, the amount and the memo kept, when nothing went out", async () => {
         baseProps.execute.mockRejectedValueOnce(
           new TypeError("Failed to fetch")

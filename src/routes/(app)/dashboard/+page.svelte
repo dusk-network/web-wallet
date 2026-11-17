@@ -1,12 +1,12 @@
 <script>
   import {
+    mdiCheck,
     mdiEyeOffOutline,
     mdiLayersOutline,
     mdiSendOutline,
     mdiSwapHorizontal,
     mdiTrayArrowDown,
   } from "@mdi/js";
-  import { mdiCheck } from "@mdi/js";
   import { activityState, isHistoryEnabled } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
@@ -25,6 +25,7 @@
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
   import { waitingSends, waitingText } from "$lib/transactions";
+  import reviewUnsent from "$lib/transactions/reviewUnsent";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -138,18 +139,33 @@
     waitingText(send, { hidden, locale: language });
 
   /**
-   * Calls off a send that hasn't gone out, and says so: one that went out
-   * meanwhile is no longer listed, as it's on its way.
+   * Calls off a send that hasn't gone out, and says so, plainly: one that
+   * went out meanwhile is no longer listed, as it's on its way.
    *
    * @param {import("$lib/transactions/waitingSends").WaitingSend} send
    */
   function cancelSend(send) {
     if (send.cancel(undefined)) {
       toast(
-        "success",
-        `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}.`,
+        "info",
+        `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}. Nothing left your wallet.`,
         mdiCheck
       );
+    }
+  }
+
+  /**
+   * Takes a send held for the person, as its account sent something else
+   * while it waited, to Send's review, to send it from there: it's called
+   * off here, and kept as not sent until it's sent there.
+   *
+   * @param {import("$lib/transactions/waitingSends").WaitingSend} send
+   */
+  function sendTooFromReview(send) {
+    const kept = send.review();
+
+    if (kept) {
+      void reviewUnsent(kept);
     }
   }
 </script>
@@ -204,7 +220,7 @@
           </p>
           <div class="home__waiting-actions">
             <Button
-              on:click={() => send.sendToo()}
+              on:click={() => sendTooFromReview(send)}
               size="small"
               text="Send it too"
               variant="secondary"

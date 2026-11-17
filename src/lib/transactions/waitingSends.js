@@ -11,7 +11,7 @@
  * the node to say what became of it.
  */
 
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 
 import SendPasswordDeclinedError from "$lib/errors/send-password-declined-error";
 import WalletChangedError from "$lib/errors/wallet-changed-error";
@@ -19,7 +19,7 @@ import { BALANCE_MASK } from "$lib/constants";
 import { formatDuskExact } from "$lib/dusk/currency";
 
 import { unconfirmedHash } from "./describeFailure";
-import { SendCancelledError } from "./sendGate";
+import { SendCancelledError, SendTakenToReviewError } from "./sendGate";
 import { keepUnsent } from "./unsentSends";
 
 /**
@@ -29,10 +29,11 @@ import { keepUnsent } from "./unsentSends";
  * calls it off, while it can be, whether it waits for the network, which it
  * couldn't reach, whether it's held for the person to say whether to send
  * it too, as its account sent something else while it waited (`asks`),
- * which `sendToo` says, whether it goes out, as the node was asked to check
- * it (`goesOut`), and whether the node was asked to broadcast it, its
- * answer not in yet (`handedOver`). Its amount is said as balances are
- * shown when it's said (waitingText), not as they were when it was sent.
+ * which `sendToo` says, or `review` takes to Send's review instead,
+ * whether it goes out, as the node was asked to check it (`goesOut`), and
+ * whether the node was asked to broadcast it, its answer not in yet
+ * (`handedOver`). Its amount is said as balances are shown when it's said
+ * (waitingText), not as they were when it was sent.
  *
  * @typedef {{
  *   address: string,
@@ -46,6 +47,7 @@ import { keepUnsent } from "./unsentSends";
  *   lux: bigint,
  *   maxFee: bigint,
  *   memo: string,
+ *   review: () => import("./unsentSends").UnsentSend | null,
  *   sendToo: () => boolean,
  *   to: string,
  *   waitsForNetwork: boolean,
@@ -79,6 +81,7 @@ export const waitingText = ({ lux, to }, { hidden, locale }) =>
  */
 const isKeptAfter = (why, isSaid) =>
   why instanceof WalletChangedError ||
+  why instanceof SendTakenToReviewError ||
   !(
     why instanceof SendCancelledError ||
     why instanceof SendPasswordDeclinedError ||
@@ -100,6 +103,9 @@ const isKeptAfter = (why, isSaid) =>
  * kept of it has its account's nonce as the wallet knew it (`kept.seen`),
  * and says so where it's held as its account sent something else while it
  * waited: it's said so once the wallet opens again, if it never went out.
+ * Held so, it can be taken to Send's review instead (`review`): it's called
+ * off, kept as never sent, and given back, to fill Send in with. That's
+ * given back too, to whoever sent it.
  *
  * @param {{
  *   address?: string,
@@ -112,6 +118,7 @@ const isKeptAfter = (why, isSaid) =>
  *   operation: Promise<unknown>,
  *   to: string,
  * }} send
+ * @returns {{ review: () => import("./unsentSends").UnsentSend | null }}
  */
 export function keepWaiting({
   address = "",
@@ -188,6 +195,18 @@ export function keepWaiting({
     }
   };
 
+  /**
+   * Takes it to Send's review instead, while it's held for the person: it's
+   * called off, kept as never sent, and given back, to fill Send in with;
+   * null where it isn't held, or nothing is kept of it.
+   *
+   * @returns {import("./unsentSends").UnsentSend | null}
+   */
+  const review = () =>
+    keeping && get(gate.asking) && gate.cancel(new SendTakenToReviewError())
+      ? keeping.kept()
+      : null;
+
   sends.update((list) => [
     ...list,
     {
@@ -202,6 +221,7 @@ export function keepWaiting({
       lux,
       maxFee,
       memo,
+      review,
       sendToo: () => gate.sendToo(),
       to,
       waitsForNetwork: false,
@@ -254,6 +274,8 @@ export function keepWaiting({
           : isKeptAfter(error, () => kept?.isSaid() ?? true)
       )
   );
+
+  return { review };
 }
 
 /**

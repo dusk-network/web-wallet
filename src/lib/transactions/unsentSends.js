@@ -539,14 +539,15 @@ function keptOf(send) {
  *   to say;
  * - `hold()` keeps it as held for the person to say whether to send it too,
  *   as its account sent something else while it waited: it's said so, kept
- *   as never sent, where its page goes, or the wallet locks, before then.
+ *   as never sent, where its page goes, or the wallet locks, before then;
+ * - `kept()` gives what's kept of it now: null once it's not to be kept.
  *
  * While it's being sent, this tab holds its lock, and it's first written
  * only once the tab does: no other tab finds it kept with its lock free
  * while it's being sent. Storage says how it ended before the lock goes.
  *
  * @param {UnsentSend} send
- * @returns {{ end: (keep: boolean | "handed-over") => void, handOver: (sent: import("./sendGate").HandedOver) => Promise<void>, hold: () => void }}
+ * @returns {{ end: (keep: boolean | "handed-over") => void, handOver: (sent: import("./sendGate").HandedOver) => Promise<void>, hold: () => void, kept: () => UnsentSend | null }}
  */
 export function keepUnsent(send) {
   const scope = walletDataScope();
@@ -672,6 +673,7 @@ export function keepUnsent(send) {
         write().catch(() => {});
       }
     },
+    kept: () => current,
     async handOver({ hash, nonce, tx = "" }) {
       const handedOver = {
         ...record,

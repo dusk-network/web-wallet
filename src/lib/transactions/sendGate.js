@@ -25,6 +25,17 @@ export class SendCancelledError extends Error {
 }
 
 /**
+ * A send held for the person, called off as they take it to Send's review
+ * instead, to send it from there.
+ */
+export class SendTakenToReviewError extends Error {
+  constructor() {
+    super("The send was taken to its review before it went out.");
+    this.name = "SendTakenToReviewError";
+  }
+}
+
+/**
  * How long a send that couldn't reach the network waits before it asks the
  * network again, where the browser doesn't say first that it's back online,
  * in milliseconds.

@@ -17,7 +17,7 @@
  * answer got lost. Its own message stays under Details either way.
  */
 
-import { mdiTimerSand } from "@mdi/js";
+import { mdiDecagramOutline, mdiTimerSand } from "@mdi/js";
 
 import { getErrorFrom } from "$lib/dusk/error";
 
@@ -232,12 +232,17 @@ export default function describeFailure(
     };
   }
 
-  // Called off before the node was asked to broadcast it (sendGate).
-  if (error?.name === "SendCancelledError") {
+  // Called off before the node was asked to broadcast it, or taken to its
+  // review instead (sendGate): nothing went wrong.
+  if (
+    error?.name === "SendCancelledError" ||
+    error?.name === "SendTakenToReviewError"
+  ) {
     return {
       canRetry: true,
       heading: "Not sent",
-      sentence: "You cancelled it, so nothing was sent.",
+      icon: mdiDecagramOutline,
+      sentence: "Nothing left your wallet.",
     };
   }
 

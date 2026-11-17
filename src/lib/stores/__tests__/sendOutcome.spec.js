@@ -331,7 +331,7 @@ describe("A send that fails", () => {
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
       expect(
@@ -740,7 +740,7 @@ describe("A send that fails", () => {
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
       expect(executeSpy).not.toHaveBeenCalled();
@@ -1040,7 +1040,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
           offersRetry: true,
-          sentence: "You cancelled it, so nothing was sent.",
+          sentence: "Nothing left your wallet.",
         })
       );
 

@@ -93,6 +93,15 @@
   export let gate = undefined;
 
   /**
+   * Takes it to its review, held as its account sent something else while
+   * it waited, to send it too from there: Send it too does, where it's
+   * given.
+   *
+   * @type {(() => void) | undefined}
+   */
+  export let onSendToo = undefined;
+
+  /**
    * Whether what was sent isn't sent, as the node doesn't have it: not sent
    * yet, or not at all, as the person chose (TransactionStatus).
    */
@@ -178,17 +187,18 @@
       <p class="transaction-result__waiting" role="status">
         Your account sent something else while this waited.
       </p>
+      <!-- The two choices lead: to its review, or not at all. -->
       <Button
         className="transaction-result__button"
-        on:click={() => gate?.sendToo()}
+        on:click={() => (onSendToo ? onSendToo() : gate?.sendToo())}
         text="Send it too"
-        variant="secondary"
+        variant="primary"
       />
       <Button
         className="transaction-result__button"
         on:click={() => gate?.cancel()}
         text="Don't send"
-        variant="tertiary"
+        variant="secondary"
       />
     {:else if isWaiting}
       <p class="transaction-result__waiting" role="status">
