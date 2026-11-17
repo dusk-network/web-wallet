@@ -26,6 +26,12 @@
   import networkReach from "$lib/stores/networkReach";
   import { waitingSends, waitingText } from "$lib/transactions";
   import reviewUnsent from "$lib/transactions/reviewUnsent";
+  import {
+    meanwhileKey,
+    sayMeanwhile,
+    sentMeanwhileTold,
+  } from "$lib/transactions/sentMeanwhile";
+  import accountNamer from "$lib/wallets/accountNamer";
 
   /** @type {import("./$types").PageData} */
   export let data;
@@ -205,12 +211,39 @@
         send.handedOver ||
         ($networkReach === "answering" && !send.waitsForNetwork)}
       {#if send.asks}
+        <!-- What the account sent meanwhile, from the chain, once it's
+          found, and whether it's the same payment. -->
+        {@const told = sayMeanwhile(
+          send.meanwhile
+            ? $sentMeanwhileTold.get(meanwhileKey(send.meanwhile))
+            : null,
+          send,
+          {
+            hidden: $settingsStore.hideBalances,
+            locale: language,
+            nameOf: $accountNamer,
+          }
+        )}
         <Banner
           className="home__waiting"
           role="status"
-          title="Your account sent something else while this waited."
+          title={told.title}
           variant="warning"
         >
+          {#if told.memo}
+            <p class="home__waiting-when">
+              <MemoText inline text={told.memo} />
+            </p>
+          {/if}
+          {#each told.items as item, i (i)}
+            <p class="home__waiting-when">
+              {item.text}{#if item.memo}
+                · <MemoText inline text={item.memo} />{/if}
+            </p>
+          {/each}
+          {#if told.same}
+            <p>{told.same}</p>
+          {/if}
           <p>
             Not sent yet: {waitingWhat(send, $settingsStore.hideBalances)}.
           </p>

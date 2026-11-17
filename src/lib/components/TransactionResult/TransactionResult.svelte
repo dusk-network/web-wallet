@@ -5,13 +5,21 @@
 
   import { isHistoryEnabled } from "$lib/activity";
   import { Button, Suspense, Throbber } from "$lib/dusk/components";
+  import { settingsStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
   import {
     CHECK_BALANCE_FIRST,
     broadcastsAsked,
     describeFailure,
     unconfirmedHash,
+    waitingSends,
   } from "$lib/transactions";
+  import {
+    meanwhileKey,
+    sayMeanwhile,
+    sentMeanwhileTold,
+  } from "$lib/transactions/sentMeanwhile";
+  import accountNamer from "$lib/wallets/accountNamer";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
@@ -155,6 +163,20 @@
     ? $gateState !== "open"
     : $broadcastsAsked > askedBefore;
   $: isWaiting = $networkReach !== "answering" || (!isHandedOver && $gateWaits);
+  // The send as it waits, held as its account sent something else
+  // meanwhile, and what that was, once it's found.
+  $: held = gate ? $waitingSends.find((each) => each.gate === gate) : undefined;
+  $: told = sayMeanwhile(
+    held?.meanwhile
+      ? $sentMeanwhileTold.get(meanwhileKey(held.meanwhile))
+      : null,
+    held ?? { address: "", lux: 0n, memo: "" },
+    {
+      hidden: $settingsStore.hideBalances,
+      locale: $settingsStore.language,
+      nameOf: $accountNamer,
+    }
+  );
 </script>
 
 <!-- A send that failed before it went out says why in plain words, with
@@ -184,9 +206,23 @@
       while it waited; else said where it waits, not only on the pill: what
       it means for it. -->
     {#if $gateAsks}
-      <p class="transaction-result__waiting" role="status">
-        Your account sent something else while this waited.
-      </p>
+      <!-- What its account sent meanwhile, from the chain, once it's found,
+        and whether it's the same payment. -->
+      <div class="transaction-result__waiting" role="status">
+        <p>{told.title}</p>
+        {#if told.memo}
+          <p><MemoText inline text={told.memo} /></p>
+        {/if}
+        {#each told.items as item, i (i)}
+          <p>
+            {item.text}{#if item.memo}
+              · <MemoText inline text={item.memo} />{/if}
+          </p>
+        {/each}
+        {#if told.same}
+          <p>{told.same}</p>
+        {/if}
+      </div>
       <!-- The two choices lead: to its review, or not at all. -->
       <Button
         className="transaction-result__button"
@@ -313,6 +349,11 @@
       .transaction-result__waiting {
         margin: 0;
         text-align: center;
+
+        & p {
+          margin: 0;
+          overflow-wrap: anywhere;
+        }
       }
 
       .transaction-result__what {

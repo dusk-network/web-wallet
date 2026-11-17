@@ -24,7 +24,14 @@
     sentAgainRefusals,
   } from "$lib/transactions/handedOverSends";
   import reviewUnsent from "$lib/transactions/reviewUnsent";
+  import {
+    followSentMeanwhile,
+    meanwhileKey,
+    sayMeanwhile,
+    sentMeanwhileTold,
+  } from "$lib/transactions/sentMeanwhile";
   import { walletAccountNames } from "$lib/wallets";
+  import accountNamer from "$lib/wallets/accountNamer";
 
   import AppAnchorButton from "../AppAnchorButton/AppAnchorButton.svelte";
   import Banner from "../Banner/Banner.svelte";
@@ -106,6 +113,28 @@
       nonce > BigInt(send.seen));
 
   /**
+   * What a send's account sent while it waited, to look up and say: by the
+   * nonces past the one the wallet knew as it was sent, up to the one of
+   * the profile shown as last read, where it's that profile's. Null where
+   * that can't be said.
+   *
+   * @param {import("$lib/transactions/unsentSends").UnsentSend} send
+   * @param {bigint} nonce The nonce of the profile shown, as last read
+   * @returns {import("$lib/transactions/sentMeanwhile").Meanwhile | null}
+   */
+  const meanwhileOf = (send, nonce) =>
+    send.seen !== undefined &&
+    send.account === String(currentProfile?.account ?? "") &&
+    nonce > BigInt(send.seen)
+      ? {
+          account: send.account,
+          from: BigInt(send.seen),
+          since: send.at,
+          to: nonce,
+        }
+      : null;
+
+  /**
    * What the balances are as last read: once they change, the sends handed
    * over are looked up at once, as a block with one may have changed them.
    */
@@ -133,10 +162,16 @@
       profiles.some((each) => String(each.account) === send.account)
   );
   // One handed over is looked up on the chain, and said once it isn't found
-  // there.
+  // there; for one held as its account sent something else, what that was.
   $: for (const send of kept) {
+    const meanwhile = send.handedOver
+      ? null
+      : meanwhileOf(send, balance.unshielded.nonce);
+
     if (send.handedOver) {
       followHandedOver(send);
+    } else if (meanwhile) {
+      followSentMeanwhile(meanwhile);
     }
   }
   // Found on the chain a moment ago, said so in its notice's place.
@@ -264,6 +299,12 @@
     </Banner>
   {:else}
     {@const isElsewhere = isSentElsewhere(send, balance.unshielded.nonce)}
+    {@const meanwhile = meanwhileOf(send, balance.unshielded.nonce)}
+    {@const told = sayMeanwhile(
+      meanwhile ? $sentMeanwhileTold.get(meanwhileKey(meanwhile)) : null,
+      { address: send.to, lux: send.lux, memo: send.memo },
+      { hidden: hideBalances, locale: language, nameOf: $accountNamer }
+    )}
     <Banner
       className="unsent-send"
       role="status"
@@ -274,11 +315,25 @@
         {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
         {formatTime(send.at, { locale: language || undefined })}
       </p>
-      <p>
-        {isElsewhere
-          ? "Your account sent something else while this waited."
-          : "Nothing left your wallet."}
-      </p>
+      <!-- What its account sent meanwhile, from the chain, once it's found,
+        and whether it's the same payment. -->
+      {#if isElsewhere}
+        <p>{told.title}</p>
+        {#if told.memo}
+          <p class="unsent-send__when"><MemoText inline text={told.memo} /></p>
+        {/if}
+        {#each told.items as item, i (i)}
+          <p class="unsent-send__when">
+            {item.text}{#if item.memo}
+              · <MemoText inline text={item.memo} />{/if}
+          </p>
+        {/each}
+        {#if told.same}
+          <p>{told.same}</p>
+        {/if}
+      {:else}
+        <p>Nothing left your wallet.</p>
+      {/if}
       <div class="unsent-send__actions">
         <Button
           on:click={() => sendNow(send)}

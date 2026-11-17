@@ -19,6 +19,7 @@ import { BALANCE_MASK } from "$lib/constants";
 import { formatDuskExact } from "$lib/dusk/currency";
 
 import { unconfirmedHash } from "./describeFailure";
+import { followSentMeanwhile } from "./sentMeanwhile";
 import { SendCancelledError, SendTakenToReviewError } from "./sendGate";
 import { keepUnsent } from "./unsentSends";
 
@@ -29,10 +30,12 @@ import { keepUnsent } from "./unsentSends";
  * calls it off, while it can be, whether it waits for the network, which it
  * couldn't reach, whether it's held for the person to say whether to send
  * it too, as its account sent something else while it waited (`asks`),
- * which `sendToo` says, or `review` takes to Send's review instead,
- * whether it goes out, as the node was asked to check it (`goesOut`), and
- * whether the node was asked to broadcast it, its answer not in yet
- * (`handedOver`). Its amount is said as balances are shown when it's said
+ * which `sendToo` says, or `review` takes to Send's review instead, with
+ * what its account sent meanwhile, where that's known (`meanwhile`, looked
+ * up in `$lib/transactions/sentMeanwhile`), whether it goes out, as the node
+ * was asked to check it (`goesOut`), and whether the node was asked to
+ * broadcast it, its answer not in yet (`handedOver`), and the gate it's
+ * sent through. Its amount is said as balances are shown when it's said
  * (waitingText), not as they were when it was sent.
  *
  * @typedef {{
@@ -41,11 +44,13 @@ import { keepUnsent } from "./unsentSends";
  *   at: number,
  *   cancel: (reason?: Error) => boolean,
  *   from: string,
+ *   gate: import("./sendGate").SendGate,
  *   goesOut: boolean,
  *   handedOver: boolean,
  *   id: string,
  *   lux: bigint,
  *   maxFee: bigint,
+ *   meanwhile: import("./sentMeanwhile").Meanwhile | null,
  *   memo: string,
  *   review: () => import("./unsentSends").UnsentSend | null,
  *   sendToo: () => boolean,
@@ -215,11 +220,13 @@ export function keepWaiting({
       at,
       cancel: (/** @type {Error | undefined} */ reason) => gate.cancel(reason),
       from,
+      gate,
       goesOut: false,
       handedOver: false,
       id,
       lux,
       maxFee,
+      meanwhile: null,
       memo,
       review,
       sendToo: () => gate.sendToo(),
@@ -250,10 +257,18 @@ export function keepWaiting({
     gate.waitsForNetwork.subscribe((waits) => say({ waitsForNetwork: waits })),
     gate.goingOut.subscribe((goesOut) => say({ goesOut })),
     gate.asking.subscribe((asks) => {
-      say({ asks });
+      // What its account sent meanwhile, looked up as it's held.
+      const about = asks ? get(gate.askedAbout) : null;
+      const meanwhile = about ? { ...about, since: at } : null;
+
+      say({ asks, meanwhile });
 
       if (asks) {
         keeping?.hold();
+      }
+
+      if (meanwhile) {
+        followSentMeanwhile(meanwhile);
       }
     }),
   ];

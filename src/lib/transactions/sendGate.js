@@ -60,8 +60,17 @@ const ANSWER_WITHIN = 10_000;
  */
 
 /**
+ * What a send held for the person is held for: what its account sent while
+ * it waited, by the nonces past the one the wallet knew as it was sent
+ * (`from`), up to the one read since (`to`).
+ *
+ * @typedef {{ account: string, from: bigint, to: bigint }} SentElsewhere
+ */
+
+/**
  * @typedef {{
- *   ask: () => Promise<void>,
+ *   ask: (about?: SentElsewhere) => Promise<void>,
+ *   askedAbout: import("svelte/store").Readable<SentElsewhere | null>,
  *   asking: import("svelte/store").Readable<boolean>,
  *   cancel: (reason?: Error) => boolean,
  *   cancelled: Promise<never>,
@@ -87,7 +96,8 @@ const ANSWER_WITHIN = 10_000;
  *   says whether it waits for that, until it's handed over or called off;
  *   `ask` holds it until the person says to send it all the same
  *   (`sendToo`, true where it was held), and rejects with why as it's
- *   called off meanwhile; `asking` says whether it's held so; `checking`
+ *   called off meanwhile; `asking` says whether it's held so, and
+ *   `askedAbout` what its account sent meanwhile, where that's known; `checking`
  *   says the node is asked to check it, and `goingOut` whether it was and
  *   it doesn't wait for the network again since.
  */
@@ -97,6 +107,7 @@ export function sendGate() {
   const state = writable(/** @type {SendGateState} */ ("open"));
   const waiting = writable(false);
   const held = writable(false);
+  const about = writable(/** @type {SentElsewhere | null} */ (null));
   const out = writable(false);
   let now = /** @type {SendGateState} */ ("open");
 
@@ -196,16 +207,18 @@ export function sendGate() {
   }
 
   return {
-    async ask() {
+    async ask(sentElsewhere) {
       check();
 
       const answered = Promise.withResolvers();
 
       goOn = () => answered.resolve(undefined);
+      about.set(sentElsewhere ?? null);
       held.set(true);
       // Called off meanwhile, it stops at once, with why.
       await Promise.race([answered.promise, cancelled]);
     },
+    askedAbout: { subscribe: about.subscribe },
     asking: { subscribe: held.subscribe },
     cancel(reason = new SendCancelledError()) {
       if (now !== "open") {

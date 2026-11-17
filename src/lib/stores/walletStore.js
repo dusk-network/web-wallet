@@ -758,7 +758,13 @@ const sendAs = (
             const told = treasury.nonceRead(profile);
 
             gate.check();
-            await gate.ask();
+            // What it sent meanwhile, where both nonces are known, for the
+            // person to see.
+            await gate.ask(
+              seen === undefined || told === undefined
+                ? undefined
+                : { account: String(profile.account), from: seen, to: told }
+            );
             seen = told ?? seen;
             await sync().catch((error) => {
               throw stillOpen(error);

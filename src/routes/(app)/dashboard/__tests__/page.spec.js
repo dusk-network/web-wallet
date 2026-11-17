@@ -12,6 +12,7 @@ import Dashboard from "../+page.svelte";
 import { networks } from "@dusk-network/networks";
 
 const mocks = vi.hoisted(() => ({
+  activityRefresh: vi.fn(() => Promise.resolve()),
   refresh: vi.fn(() => Promise.resolve()),
   refreshBalance: vi.fn(() => Promise.resolve()),
 }));
@@ -66,7 +67,11 @@ vi.mock("$lib/activity", async (importOriginal) => {
     syncing: false,
   });
 
-  return { ...original, activityState: history.state };
+  return {
+    ...original,
+    activityState: history.state,
+    currentActivity: () => ({ refresh: mocks.activityRefresh }),
+  };
 });
 
 const sozu = vi.hoisted(() => ({
@@ -476,6 +481,112 @@ describe("Dashboard", () => {
       );
     } finally {
       dropped.gate.cancel();
+    }
+  });
+
+  // Marek's, Lena's and Chen's: the hold called the very same payment
+  // "something else", said nothing of what was sent or when, and Activity
+  // didn't list it for minutes.
+  it("names what the account sent while a held send waited, from the chain, says it looks like the same payment where it is, and has Activity read again", async () => {
+    const { keepWaiting, sendGate, waitingSends } =
+      await import("$lib/transactions");
+    const { Network } = await import("@dusk/w3sper");
+    const { shortenAddress } = await import("$lib/dusk/string");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
+    const sentAt = Date.now() - 30_000;
+    const hex = (/** @type {string} */ text) =>
+      Array.from(new TextEncoder().encode(text), (byte) =>
+        byte.toString(16).padStart(2, "0")
+      ).join("");
+    // The archive lists what the account sent meanwhile: the same payment.
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        const text = String(gql);
+
+        if (text.startsWith("block(height: -1)")) {
+          return { block: { header: { height: 4_881_400 } } };
+        }
+
+        if (text.startsWith("out: moonlightHistory(")) {
+          return {
+            out: {
+              json: [
+                {
+                  block_height: 4_881_399,
+                  events: [
+                    {
+                      data: {
+                        memo: hex("night shift 9"),
+                        receiver: ALICE,
+                        sender: account,
+                        value: "10000000",
+                      },
+                      // The transfer contract's, which says what it paid.
+                      target: "01".padEnd(64, "0"),
+                      topic: "moonlight",
+                    },
+                  ],
+                  origin: "9a".repeat(32),
+                },
+              ],
+            },
+          };
+        }
+
+        if (text.startsWith("t0: tx(")) {
+          return {
+            t0: {
+              blockTimestamp: sentAt / 1000,
+              tx: { json: JSON.stringify({ nonce: 1234, sender: account }) },
+            },
+          };
+        }
+
+        throw new Error("Not asked here");
+      });
+
+    mocks.activityRefresh.mockClear();
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+    keepWaiting({
+      address: ALICE,
+      gate,
+      kept: {
+        account,
+        isSaid: () => true,
+        network: "mainnet",
+        typed: { amount: "0.01", memo: "night shift 9", to: ALICE },
+      },
+      lux: 10_000_000n,
+      memo: "night shift 9",
+      operation: new Promise(() => {}),
+      to: "Alice",
+    });
+
+    const at = timeLabel(get(waitingSends)[0].at, "en");
+
+    gate.ask({ account, from: 1233n, to: 1234n }).catch(() => {});
+
+    try {
+      await vi.waitFor(() =>
+        expect(banner()).toBe(
+          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`
+        )
+      );
+      // Read again as it was held, and as what was sent was found.
+      expect(mocks.activityRefresh).toHaveBeenCalledTimes(2);
+    } finally {
+      gate.cancel();
+      query.mockRestore();
     }
   });
 
