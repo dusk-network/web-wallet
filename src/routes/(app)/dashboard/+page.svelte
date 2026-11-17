@@ -87,10 +87,12 @@
 
   $: ({
     balance,
+    balanceReadAt,
     balanceReadFailed,
     currentProfile,
     minimumStake,
     stakeInfo,
+    stakeReadAt,
     stakeReadFailed,
   } = $walletStore);
   // Test DUSK has no value: no money value off mainnet.
@@ -125,6 +127,17 @@
     ? (sozuStatus?.position.balance ?? sozuKept?.balance ?? 0n)
     : 0n;
   $: stakeUnread = stakeReadFailed || (isSozuShown && sozuError !== null);
+  // When what's staked was last read: of what couldn't be read again,
+  // natively or with Sozu, the one read longest ago.
+  $: stakeLastRead = Math.min(
+    ...[
+      stakeReadFailed ? stakeReadAt : null,
+      isSozuShown && sozuError !== null
+        ? ($sozuStore.readAt ?? sozuKept?.at ?? null)
+        : null,
+    ].filter((time) => time !== null),
+    Infinity
+  );
   $: stakeReading = isSozuShown && sozuLoading && !sozuStatus && !sozuKept;
 
   /** Reads what's staked again, with Sozu too where it couldn't be read. */
@@ -182,6 +195,8 @@
       fiatCurrency={currency}
       fiatPrice={networkName === "mainnet" ? fiatPrice : undefined}
       locale={language}
+      readAt={balanceReadAt}
+      stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       shielded={balance.shielded.value}
       staked={(staked ?? 0n) + liquid}
       {stakeReading}
@@ -311,6 +326,7 @@
 
   <div class="home__cards">
     <ExplainerCards
+      {balanceReadAt}
       balanceUnread={balanceReadFailed}
       {hasPastStaking}
       {liquid}
@@ -321,6 +337,7 @@
       shielded={balance.shielded.value}
       sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
+      stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       {stakeReading}
       {stakeUnread}
       {staked}

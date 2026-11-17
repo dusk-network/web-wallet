@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { networks, routes } from "@dusk-network/networks";
 
 import { claimDay } from "$lib/bridge/claimDate";
@@ -10,6 +10,7 @@ import {
   describeRow,
   fullDateTime,
   groupByDay,
+  lastReadText,
   matchesFilters,
   routeLabel,
   timeLabel,
@@ -635,6 +636,34 @@ describe("matchesFilters", () => {
       false
     );
     expect(matchesFilters(p, sent, { since: Date.UTC(2026, 9, 1) })).toBe(true);
+  });
+});
+
+// Lena's, for the sixth round: "may be out of date" never said when the
+// figures were last read.
+describe("lastReadText", () => {
+  it("says when figures were last read: the time alone today, yesterday or the day before that, and nothing where it isn't known", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 17, 15, 0));
+
+    try {
+      expect(
+        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "nl-NL")
+      ).toBe("Last read 10:02.");
+      expect(
+        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "en-US")
+      ).toBe("Last read 10:02 AM.");
+      expect(
+        lastReadText(new Date(2026, 10, 16, 22, 2).getTime(), "nl-NL")
+      ).toMatch(/^Last read yesterday, 22:02 \S+\.$/);
+      expect(
+        lastReadText(new Date(2026, 10, 12, 22, 2).getTime(), "nl-NL")
+      ).toMatch(/^Last read on 12 Nov, 22:02 \S+\.$/);
+      expect(lastReadText(null, "en")).toBe("");
+      expect(lastReadText(undefined, "en")).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

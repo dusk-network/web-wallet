@@ -1,6 +1,7 @@
 <script>
   import { mdiOpenInNew, mdiServerOutline, mdiWaterOutline } from "@mdi/js";
 
+  import { lastReadText } from "$lib/activity/present";
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
@@ -79,6 +80,14 @@
 
   /** Whether the stake couldn't be read: what shows is what was read before. */
   export let stakeReadFailed = false;
+
+  /**
+   * When the stake was last read: said with what may be out of date. Null
+   * where that isn't known.
+   *
+   * @type {number | null}
+   */
+  export let stakeReadAt = null;
 
   /** The chain's height, once known. */
   /** @type {bigint | undefined} */
@@ -273,7 +282,10 @@
         <p class="staking__note">A staking transaction is pending.</p>
       {:else if stale || stakeReadFailed}
         <p class="staking__note">
-          Your stake couldn't be read again. These amounts may be out of date.
+          Your stake couldn't be read again. These amounts may be out of date. {lastReadText(
+            stakeReadAt,
+            locale
+          )}
         </p>
       {/if}
 
@@ -281,7 +293,7 @@
         <div class="staking__note staking__note--retry">
           <p>
             {hasLiquid
-              ? "Your stake with Sozu couldn't be read just now. It may be out of date."
+              ? `Your stake with Sozu couldn't be read just now. It may be out of date. ${lastReadText(sozu.readAt ?? sozu.kept?.at, locale)}`.trim()
               : "Your stake with Sozu couldn't be read."}
           </p>
           <Button

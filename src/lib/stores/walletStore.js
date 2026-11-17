@@ -71,6 +71,16 @@ let syncPromise = null;
 /** How many syncs started: the number of the one running, or the last. */
 let syncNumber = 0;
 
+/**
+ * When the network last gave the treasury the balances and the stake: as
+ * the last sync that got through began, null before one did since the
+ * wallet opened. A read of them from the treasury alone, as for another
+ * profile or after a sync that failed, is of what was read then.
+ *
+ * @type {number | null}
+ */
+let networkReadAt = null;
+
 let walletSession = 0;
 
 /** @type {WalletStoreContent} */
@@ -86,6 +96,7 @@ const initialState = {
     },
   },
   balanceRead: false,
+  balanceReadAt: null,
   balanceReadFailed: false,
   currentProfile: null,
   initialized: false,
@@ -98,6 +109,7 @@ const initialState = {
     hardFaults: 0,
     reward: 0n,
   },
+  stakeReadAt: null,
   stakeReadFailed: false,
   syncStatus: {
     error: null,
@@ -971,11 +983,48 @@ async function updateStaticInfo() {
     return [balance, stake];
   }
 
+  // When they were read from the network, as the last sync that got
+  // through began: what's read here comes from what it read. Kept with
+  // them, for what may be out of date to say so after an unlock too, and
+  // as it was kept where no sync got through since the wallet opened.
+  const readAt = networkReadAt;
+
+  /**
+   * When what's kept was read, as it was kept: undefined where it wasn't.
+   *
+   * @param {Promise<{ readAt?: number } | undefined>} kept
+   */
+  const keptReadAt = (kept) =>
+    readAt === null
+      ? kept.then((was) => was?.readAt).catch(() => undefined)
+      : Promise.resolve(readAt);
+
   await Promise.all([
     balance.status === "fulfilled" &&
-      treasury.setCachedBalance(profile, balance.value).catch(() => {}),
+      keptReadAt(treasury.getCachedBalance(profile))
+        .then((at) =>
+          treasury.setCachedBalance(profile, {
+            ...balance.value,
+            ...(at === undefined ? {} : { readAt: at }),
+          })
+        )
+        .catch(() => {}),
     stake.status === "fulfilled" &&
-      treasury.setCachedStakeInfo(profile, stake.value).catch(() => {}),
+      keptReadAt(
+        /** @type {Promise<StakeInfo & { readAt?: number }>} */ (
+          treasury.getCachedStakeInfo(profile)
+        )
+      )
+        .then((at) =>
+          treasury.setCachedStakeInfo(
+            profile,
+            /** @type {StakeInfo} */ ({
+              ...stake.value,
+              ...(at === undefined ? {} : { readAt: at }),
+            })
+          )
+        )
+        .catch(() => {}),
   ]);
 
   if (isCurrent()) {
@@ -994,13 +1043,21 @@ async function updateStaticInfo() {
       ...(balance.status === "fulfilled"
         ? { balance: balance.value, balanceRead: true }
         : {}),
+      ...(balance.status === "fulfilled" && readAt !== null
+        ? { balanceReadAt: readAt }
+        : {}),
       // What shows of balances that couldn't be read is what was read
       // before, as for the stake: also what the sync read before one that
       // failed, as the network couldn't be reached.
       balanceReadFailed:
         balance.status !== "fulfilled" ||
         currentStore.syncStatus.error !== null,
-      ...(stake.status === "fulfilled" ? { stakeInfo: stake.value } : {}),
+      ...(stake.status === "fulfilled"
+        ? {
+            stakeInfo: stake.value,
+            stakeReadAt: readAt ?? currentStore.stakeReadAt,
+          }
+        : {}),
       // What shows of a stake that couldn't be read is what was read before.
       stakeReadFailed: stake.status !== "fulfilled",
     }));
@@ -1151,7 +1208,7 @@ async function init(
     await openContactsOf(profileGeneratorInstance, profiles[0], session);
   }
 
-  const [balance, stakeInfo, minimumStake] = await Promise.all([
+  const [cachedBalance, cachedStake, minimumStake] = await Promise.all([
     treasury.getCachedBalance(currentProfile),
     treasury.getCachedStakeInfo(currentProfile),
     bookkeeper.minimumStake,
@@ -1162,15 +1219,23 @@ async function init(
   }
 
   treasury.setProfiles(profiles);
+  networkReadAt = null;
+
+  // As kept, with when each was read, where that was kept with it.
+  const { readAt: balanceReadAt = null, ...balance } = cachedBalance;
+  const { readAt: stakeReadAt = null, ...stakeInfo } =
+    /** @type {StakeInfo & { readAt?: number }} */ (cachedStake);
 
   set({
     ...initialState,
     balance,
+    balanceReadAt,
     currentProfile,
     initialized: true,
     minimumStake,
     profiles,
     stakeInfo,
+    stakeReadAt,
     walletKey: key,
     wallets: heldList(),
   });
@@ -1345,6 +1410,7 @@ function resetSession() {
   forgetArrivals();
   closeContacts();
   treasury.reset();
+  networkReadAt = null;
 }
 
 /**
@@ -1523,6 +1589,9 @@ async function sync(fromBlock, { clear = false } = {}) {
       }
     };
 
+    /** When this sync began to read from the network. */
+    let readFrom = 0;
+
     const currentSyncPromise = (async () => {
       const { block, bookmark, lastFinalizedBlockHeight } =
         await treasury.getCachedSyncInfo();
@@ -1581,6 +1650,7 @@ async function sync(fromBlock, { clear = false } = {}) {
         }));
       };
 
+      readFrom = Date.now();
       await treasury.update(from, syncIterationListener, controller.signal);
     })()
       .then(ensureCurrent)
@@ -1588,6 +1658,9 @@ async function sync(fromBlock, { clear = false } = {}) {
         if (session !== walletSession) {
           return;
         }
+
+        // What the treasury holds now was read from the network then.
+        networkReadAt = readFrom;
 
         update((currentStore) => ({
           ...currentStore,

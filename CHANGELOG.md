@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say when the figures were last read on every "may be out of date", on Home, Staking and the network's pill: "Last read 10:02 pm.", also after an unlock
 - Mark a stranger's payment with a memo on Home as History does, and say on Review what a recipient that isn't a contact or a profile sent you: "This address sent you: “…” · not in your contacts."
 - Copy a request from Your requests as Share gives it, its line and then its link, with Copy request in place of Copy link
 - Make Check and Try again the main buttons of Check your recovery words while creating or adding a wallet, Skip for now a quieter one

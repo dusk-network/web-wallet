@@ -10,7 +10,12 @@ type NotesSyncInfo = {
 
 type WalletCacheBalanceInfo = {
   address: string;
-  balance: { shielded: AddressBalance; unshielded: AccountBalance };
+  /** `readAt`: when it was read whole from the network, where known. */
+  balance: {
+    readAt?: number;
+    shielded: AddressBalance;
+    unshielded: AccountBalance;
+  };
 };
 
 type WalletCacheCriteria =

@@ -105,6 +105,11 @@ type WalletStoreContent = {
    * `balance` is then the one read before, or the cached one.
    */
   balanceReadFailed: boolean;
+  /**
+   * When the balances shown were last read whole from the network, here or
+   * before this unlock: null where that isn't known.
+   */
+  balanceReadAt: number | null;
   currentProfile: Profile | null;
   initialized: boolean;
   minimumStake: bigint;
@@ -122,6 +127,11 @@ type WalletStoreContent = {
    * `stakeInfo` is then the one read before, or the cached one.
    */
   stakeReadFailed: boolean;
+  /**
+   * When the stake shown was last read from the network, here or before
+   * this unlock: null where that isn't known.
+   */
+  stakeReadAt: number | null;
   syncStatus: {
     from: bigint;
     isInProgress: boolean;

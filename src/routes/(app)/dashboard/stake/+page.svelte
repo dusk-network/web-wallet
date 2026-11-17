@@ -509,6 +509,7 @@
       bind:rewardsValued
       sozu={$sozuStore}
       {stakeInfo}
+      stakeReadAt={$walletStore.stakeReadAt}
       stakeReadFailed={$walletStore.stakeReadFailed}
     />
   {/if}

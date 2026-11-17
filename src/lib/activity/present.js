@@ -697,6 +697,29 @@ export const fullDateTime = (time, locale, { seconds = false } = {}) =>
   formatTime(time, { date: "full", locale: locale || undefined, seconds });
 
 /**
+ * When figures that may be out of date were last read, as a note saying so
+ * ends: "Last read 10:02 pm." today, "Last read yesterday, 10:02 pm SGT."
+ * or "Last read on Mon 16 Nov, 10:02 pm SGT." before; "" where it isn't
+ * known.
+ *
+ * @param {number | null | undefined} time
+ * @param {string} locale
+ */
+export function lastReadText(time, locale) {
+  if (!time) {
+    return "";
+  }
+
+  const label = formatTime(time, { locale: locale || undefined });
+
+  return /^Today,/.test(label)
+    ? `Last read ${timeLabel(time, locale)}.`
+    : /^Yesterday,/.test(label)
+      ? `Last read ${label.charAt(0).toLowerCase()}${label.slice(1)}.`
+      : `Last read on ${label}.`;
+}
+
+/**
  * When a payment was made, to the second, as a sentence says it after what
  * was paid: "today, 16:42:05 SGT", "yesterday, …" or "on 5 Nov, …". Two in
  * the same minute read apart, as a request's payments do.

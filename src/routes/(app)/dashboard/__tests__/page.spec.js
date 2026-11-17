@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
-import { timeLabel } from "$lib/activity/present";
+import { lastReadText, timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 import routesStopped from "$lib/test-helpers/routesStopped";
@@ -854,42 +854,51 @@ describe("Dashboard", () => {
     expect(total()).not.toContain("out of date");
     expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
 
-    // Neither the balances nor the stake, as offline or with a silent node.
+    // Neither the balances nor the stake, as offline or with a silent node:
+    // each says when it was last read (Lena's, for the sixth round), the
+    // total when the one read longest ago was.
+    const balanceAt = NOW - 300_000;
+    const stakeAt = NOW - 600_000;
+    const lastRead = (/** @type {number} */ at) => lastReadText(at, "en");
+
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
+        balanceReadAt: balanceAt,
         balanceReadFailed: true,
+        stakeReadAt: stakeAt,
         stakeReadFailed: true,
       })
     );
 
     expect(total()).toContain(
-      "Your balance and stake couldn't be read just now. This total may be out of date."
+      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`
     );
     expect(card(0)).toBe(
-      "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date."
+      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(1)).toBe(
-      "Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date."
+      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(2)).toContain(
-      "Your stake couldn't be read just now. This may be out of date."
+      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`
     );
 
     // The balances alone.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
+        balanceReadAt: balanceAt,
         balanceReadFailed: true,
       })
     );
 
     expect(total()).toContain(
-      "Your balance couldn't be read just now. This may be out of date."
+      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
     );
     expect(card(2)).not.toContain("out of date");
 
-    // The stake alone.
+    // The stake alone; where it was never read, nothing's said of when.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -900,6 +909,7 @@ describe("Dashboard", () => {
     expect(total()).toContain(
       "Your stake couldn't be read just now. This total may be out of date."
     );
+    expect(total()).not.toContain("Last read");
     expect([card(0), card(1)].join(" ")).not.toContain("out of date");
 
     // Read again: said no more.
@@ -969,14 +979,17 @@ describe("Dashboard", () => {
     const { container, getByRole } = render(Dashboard, props);
 
     // Unlocked as the node stalls: Sozu's read fails, what it held as read
-    // last here shows, counted in the total, and said not to be read now.
+    // last here shows, counted in the total, and said not to be read now,
+    // with when it was.
+    const keptAt = NOW - 3_600_000;
+
     await sozuSays({
       error: new Error("timed out"),
-      kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
+      kept: { at: keptAt, balance: 2_747_100_000n, stDusk: 864_521_348n },
     });
 
     expect(card()).toBe(
-      "Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. Try again Open staking"
+      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`
     );
     expect(total()).toBe("3,520.2471");
 

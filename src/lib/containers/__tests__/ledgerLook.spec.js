@@ -217,6 +217,7 @@ describe("The ledger look", () => {
         error: null,
         kept: null,
         loading: false,
+        readAt: null,
         status: null,
       },
       stakeInfo: { amount: null, faults: 0, hardFaults: 0, reward: 0n },

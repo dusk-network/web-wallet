@@ -196,6 +196,7 @@ describe("Wallet store", async () => {
       },
     },
     balanceRead: false,
+    balanceReadAt: null,
     balanceReadFailed: false,
     currentProfile: null,
     initialized: false,
@@ -208,6 +209,7 @@ describe("Wallet store", async () => {
       hardFaults: 0,
       reward: 0n,
     },
+    stakeReadAt: null,
     stakeReadFailed: false,
     syncStatus: {
       error: null,
@@ -313,14 +315,15 @@ describe("Wallet store", async () => {
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        readAt: expect.any(Number),
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        defaultProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(defaultProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: expect.any(Number),
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );
@@ -747,6 +750,93 @@ describe("Wallet store", async () => {
         treasuryUpdateSpy.mock.invocationCallOrder[0]
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
+    });
+
+    // Astra's: a profile switch, or a sync that failed, stamped what the
+    // treasury already held as read just then; and a failed sync dropped,
+    // from what's kept for after an unlock, when they were read last.
+    it("should say the balances and the stake were read as the last sync that got through read them, not as a profile switch or a failed sync reads them again", async () => {
+      const other = {
+        account: { toString: () => "some-other-account" },
+        address: { toString: () => "some-other-address" },
+      };
+      /**
+       * Waits for `promise`, the timers running meanwhile.
+       *
+       * @param {Promise<unknown>} promise
+       */
+      const settled = async (promise) => {
+        let isDone = false;
+
+        promise.finally(() => {
+          isDone = true;
+        });
+        await vi.waitUntil(() => isDone);
+
+        return promise;
+      };
+
+      // @ts-expect-error we don't care for it to be a real profile
+      get(walletStore).profiles.push(other);
+
+      try {
+        // A sync that gets through, begun at 10:00.
+        const at1000 = new Date(2026, 10, 17, 10, 0).getTime();
+
+        vi.setSystemTime(at1000);
+        treasuryUpdateSpy.mockResolvedValueOnce(undefined);
+        await settled(walletStore.refreshBalance());
+
+        const readAt = /** @type {number} */ (get(walletStore).balanceReadAt);
+
+        expect(readAt).toBeGreaterThanOrEqual(at1000);
+        expect(readAt).toBeLessThan(at1000 + 60_000);
+        expect(get(walletStore).stakeReadAt).toBe(readAt);
+
+        // Another profile at 10:05: read from what that sync read.
+        vi.setSystemTime(new Date(2026, 10, 17, 10, 5));
+        setCachedBalanceSpy.mockClear();
+        setCachedStakeInfoSpy.mockClear();
+        // @ts-expect-error we don't care for it to be a real profile
+        await settled(walletStore.setCurrentProfile(other));
+
+        expect(get(walletStore)).toMatchObject({
+          balanceReadAt: readAt,
+          stakeReadAt: readAt,
+        });
+        expect(setCachedBalanceSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+        expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+
+        // A sync that fails at 10:10: what that sync read still, kept so for
+        // after an unlock.
+        vi.setSystemTime(new Date(2026, 10, 17, 10, 10));
+        setCachedBalanceSpy.mockClear();
+        setCachedStakeInfoSpy.mockClear();
+        treasuryUpdateSpy.mockRejectedValueOnce(new Error("Node unreachable"));
+        await settled(walletStore.refreshBalance());
+
+        expect(get(walletStore).syncStatus.error).not.toBeNull();
+        expect(get(walletStore)).toMatchObject({
+          balanceReadAt: readAt,
+          stakeReadAt: readAt,
+        });
+        expect(setCachedBalanceSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+        expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
+          other,
+          expect.objectContaining({ readAt })
+        );
+      } finally {
+        get(walletStore).profiles.pop();
+      }
     });
 
     it("should show the balances and the stake read together, never one read with the other from before", async () => {
@@ -1275,14 +1365,15 @@ describe("Wallet store", async () => {
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
+        readAt: expect.any(Number),
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        defaultProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(defaultProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: expect.any(Number),
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );
@@ -2934,15 +3025,19 @@ describe("Wallet store", async () => {
       expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
       expect(stakeInfoSpy).toHaveBeenCalledWith(fakeExtraProfile.account);
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
+      // Read from what the last sync that got through read, though the one
+      // since failed: kept with when that was.
+      expect(get(walletStore).syncStatus.error).not.toBeNull();
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(fakeExtraProfile, {
+        readAt: get(walletStore).balanceReadAt,
         shielded: await balanceSpy.mock.results[0].value,
         unshielded: await balanceSpy.mock.results[1].value,
       });
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
-      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
-        fakeExtraProfile,
-        await stakeInfoSpy.mock.results[0].value
-      );
+      expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(fakeExtraProfile, {
+        ...(await stakeInfoSpy.mock.results[0].value),
+        readAt: get(walletStore).stakeReadAt,
+      });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
         balanceSpy.mock.invocationCallOrder[1]
       );
