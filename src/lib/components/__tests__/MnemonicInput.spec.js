@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
+import { tick } from "svelte";
 
 import { MnemonicInput } from "..";
 
@@ -380,6 +381,75 @@ describe("MnemonicInput", () => {
         "Not a recovery word"
       )
     ).toBeNull();
+  });
+
+  // Marek's, in Firefox for Android: the app switcher and the tab list kept
+  // a picture of all twelve words, as nothing hid them again.
+  it.each([
+    [
+      "the window loses the focus",
+      () => window.dispatchEvent(new Event("blur")),
+    ],
+    ["the page is left", () => window.dispatchEvent(new Event("pagehide"))],
+    [
+      "the page goes to the background",
+      () => {
+        const visibility = vi
+          .spyOn(document, "visibilityState", "get")
+          .mockReturnValue("hidden");
+
+        document.dispatchEvent(new Event("visibilitychange"));
+        visibility.mockRestore();
+      },
+    ],
+  ])(
+    "hides the words as %s, each as a password, with no suggestions, until Show words",
+    async (_, hide) => {
+      const { container, getByLabelText, getByRole, queryByRole } =
+        render(MnemonicInput);
+      const grid = /** @type {HTMLElement} */ (
+        container.querySelector(".mnemonic-input__grid")
+      );
+
+      await pasteInto(getByLabelText("Word 1"), TWELVE);
+
+      expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
+      expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+      hide();
+      await tick();
+
+      expect(grid).toHaveClass("mnemonic-input__grid--hidden");
+
+      // Typed in meanwhile: still hidden, and nothing suggested.
+      await typeInto(getByLabelText("Word 12"), "ab");
+
+      expect(queryByRole("listbox")).toBeNull();
+      expect(grid).toHaveClass("mnemonic-input__grid--hidden");
+
+      // Shown again only as asked.
+      await fireEvent.click(getByRole("button", { name: "Show words" }));
+
+      expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
+      expect(queryByRole("button", { name: "Show words" })).toBeNull();
+      expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
+    }
+  );
+
+  it("leaves empty boxes as they are as the page is hidden: a phrase pasted on coming back shows", async () => {
+    const { container, getByLabelText, queryByRole } = render(MnemonicInput);
+    const grid = container.querySelector(".mnemonic-input__grid");
+
+    // Gone to copy the phrase.
+    window.dispatchEvent(new Event("blur"));
+    await tick();
+
+    expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+    await pasteInto(getByLabelText("Word 1"), TWELVE);
+
+    expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
+    expect(queryByRole("button", { name: "Show words" })).toBeNull();
   });
 
   it("tells of each change, and shows a refusal from outside where its own problems show", async () => {

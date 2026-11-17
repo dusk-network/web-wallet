@@ -26,13 +26,17 @@
    * - What was pasted goes from the clipboard, where the browser lets a page
    *   write it, in the paste's own gesture; where it doesn't, that it's
    *   still there is said once.
+   * - The words are hidden the moment the page is (onPageHidden), where
+   *   any are in, each box's as a password is, with no suggestions, until
+   *   Show words.
    */
-  import { createEventDispatcher, tick } from "svelte";
+  import { createEventDispatcher, onMount, tick } from "svelte";
   import { mdiAlertOutline, mdiContentPaste } from "@mdi/js";
 
   import { Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { randomUUID } from "$lib/dusk/string";
+  import onPageHidden from "$lib/security/onPageHidden";
 
   import { phraseProblem, wordsOf } from "./phraseProblem";
   import {
@@ -400,8 +404,22 @@
     dispatch("change");
   }
 
+  /** Whether the words are hidden, as the page was: until Show words. */
+  let isHidden = false;
+
+  onMount(() =>
+    onPageHidden(() => {
+      if (values.some(Boolean)) {
+        isHidden = true;
+        suggesting = -1;
+      }
+    })
+  );
+
   $: shown = values.slice(0, count);
-  $: suggestions = suggesting >= 0 ? suggestionsFor(values[suggesting]) : [];
+  // None while the words are hidden: they'd say what's typed.
+  $: suggestions =
+    !isHidden && suggesting >= 0 ? suggestionsFor(values[suggesting]) : [];
   // The phrase as the list spells it: a word typed with an accent too.
   $: mnemonic = shown.filter(Boolean).map(listWord).join(" ");
   $: isValid =
@@ -423,7 +441,15 @@
         >
       {/each}
     </div>
-    {#if canPaste}
+    {#if isHidden}
+      <Button
+        on:click={() => {
+          isHidden = false;
+        }}
+        text="Show words"
+        variant="secondary"
+      />
+    {:else if canPaste}
       <Button
         aria-label="Paste recovery phrase"
         {disabled}
@@ -442,6 +468,7 @@
     aria-label={label}
     bind:this={grid}
     class="mnemonic-input__grid"
+    class:mnemonic-input__grid--hidden={isHidden}
     on:focusout={handleFocusOut}
     role="group"
   >
@@ -622,6 +649,11 @@
     color: var(--calm-text);
     font: inherit;
     font-size: 0.9375rem;
+  }
+
+  /* Hidden, each box's word shows as a password does. */
+  .mnemonic-input__grid--hidden .mnemonic-input__word input {
+    -webkit-text-security: disc;
   }
 
   .mnemonic-input__problem {

@@ -301,6 +301,73 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
   });
 
+  // Marek's, in Firefox for Android: the app switcher and the tab list kept
+  // a picture of the words, as nothing hid them again.
+  it("hides the words to write down the moment the page is hidden, and what's typed in their check, until Show words", async () => {
+    const { container, getAllByRole, getByRole, queryByRole } = render(
+      Create,
+      baseOptions
+    );
+    const words = mnemonic.split(" ");
+    /** Which of the phrase's words are on the page, by their whole word. */
+    const wordsShown = () =>
+      words.filter((word) =>
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+      );
+    const shownWords = () =>
+      Array.from(
+        container.querySelectorAll(".dusk-words__word"),
+        (word) => word.textContent?.trim() ?? ""
+      );
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    expect(shownWords()).toStrictEqual(words);
+
+    // The window loses the focus, as the app switcher opens: hidden at once.
+    window.dispatchEvent(new Event("blur"));
+    await tick();
+
+    expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
+    expect(wordsShown()).toStrictEqual([]);
+
+    // Back only as asked.
+    await fireEvent.click(getByRole("button", { name: "Show words" }));
+
+    expect(shownWords()).toStrictEqual(words);
+    expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+    // Their check: what's typed hidden as the page goes to the background.
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const boxes = container.querySelector(".recovery-check__words");
+
+    for (const box of container.querySelectorAll(
+      ".recovery-check__word input"
+    )) {
+      await fireInput(/** @type {HTMLInputElement} */ (box), "museum");
+    }
+
+    expect(boxes).not.toHaveClass("recovery-check__words--hidden");
+
+    const visibility = vi
+      .spyOn(document, "visibilityState", "get")
+      .mockReturnValue("hidden");
+
+    document.dispatchEvent(new Event("visibilitychange"));
+    visibility.mockRestore();
+    await tick();
+
+    expect(boxes).toHaveClass("recovery-check__words--hidden");
+
+    await fireEvent.click(getByRole("button", { name: "Show words" }));
+
+    expect(boxes).not.toHaveClass("recovery-check__words--hidden");
+  });
+
   // Then Nandini's and Amélie's: one word wrong, or three made up, put all
   // twelve on screen. A check is not a reveal.
   it("asks for three of the words as written down, with Check, and Skip for now until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {

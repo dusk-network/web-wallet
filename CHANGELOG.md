@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hide recovery words as soon as you leave the page, in Restore, Add wallet, Unlock, a wallet's words and their check, until Show words
 - Say what an unstake from Sozu brings back on its review, "You receive about …", its network fee apart
 - Say when the figures were last read on every "may be out of date", on Home, Staking and the network's pill: "Last read 10:02 pm.", also after an unlock
 - Mark a stranger's payment with a memo on Home as History does, and say on Review what a recipient that isn't a contact or a profile sent you: "This address sent you: “…” · not in your contacts."
