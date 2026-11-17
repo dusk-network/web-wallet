@@ -1350,8 +1350,9 @@ describe("LiquidStake", () => {
       "Back to Your public balance, in the same transaction",
       "Sozu's fee No unstake fee",
       "Fee paid from Public balance",
-      // What comes back once the fee's paid, at the most it costs.
-      "Back after the fee At least 14.99 DUSK",
+      // What comes back, its fee apart (Lena's: "Total up to" for money
+      // coming back).
+      "You receive About 15 DUSK",
     ]);
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1452,14 +1453,14 @@ describe("LiquidStake", () => {
       target: { value: "1" },
     });
 
-    expect(total()).toBe("Back after the fee At least 0.99 DUSK");
+    expect(total()).toBe("You receive About 1 DUSK");
 
     // So small the fee can take more than comes back: said on the review.
     await fireEvent.input(getByLabelText("Unstake amount"), {
       target: { value: "0.005" },
     });
 
-    expect(total()).toBe("Back after the fee Up to 0.005 DUSK");
+    expect(total()).toBe("You receive About 0.005 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 

@@ -1204,7 +1204,7 @@ describe("Staking", () => {
     // An unstake's: up to 10,000,000, as it can touch more provisioners,
     // paid from what comes back.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
-      "Back after the fee —"
+      "You receive —"
     );
     expect(textOf(container.querySelector(".gas-settings"))).toContain(
       "0.01 DUSK"
