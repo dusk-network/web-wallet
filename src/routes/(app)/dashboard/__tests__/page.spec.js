@@ -307,8 +307,9 @@ describe("Dashboard", () => {
   });
 
   // Chen's, on slow Wi-Fi: "Not sent yet … It goes out once the network
-  // answers. Cancel" for 30 s while the node checked it and took it.
-  it("says a waiting send is being sent, with nothing to call off, from the moment the node is asked to check it, though the pill finds the network silent", async () => {
+  // answers. Cancel" for 30 s while the node checked it and took it. Then
+  // Lena's: no Cancel while the node's check hung, though nothing had left.
+  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Cancel until it's handed over", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -339,11 +340,13 @@ describe("Dashboard", () => {
         `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`
       );
 
-      // The node is asked to check it: it goes out, its answer slow.
+      // The node is asked to check it: it goes out, its answer slow, and can
+      // still be called off.
       await act(() => gate.checking());
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
-      expect(document.querySelector(".home__waiting button")).toBeNull();
+      expect(banner()).toBe(
+        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`
+      );
 
       // Handed over: sent, with nothing to call off, until the node took
       // it, and then no longer said here, as Activity has it.

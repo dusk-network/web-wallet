@@ -142,9 +142,6 @@
   // Whether it's held, as its account sent something else while it waited,
   // for the person to say whether to send it too.
   $: gateAsks = gate?.asking ?? readable(false);
-  // Whether it goes out, as the node was asked to check it: nothing to call
-  // off from then on.
-  $: gateGoesOut = gate?.goingOut ?? readable(false);
   $: isHandedOver = gate
     ? $gateState !== "open"
     : $broadcastsAsked > askedBefore;
@@ -206,9 +203,9 @@
             ? "Nothing has left your wallet yet. It goes out once the network answers."
             : "Nothing has left your wallet yet."}
       </p>
-      <!-- A way back while it waits: called off, or left waiting, as Home
-        shows it. -->
-      {#if gate && $gateState === "open" && !$gateGoesOut}
+      <!-- A way back while it waits: called off, until the node is asked to
+        broadcast it, or left waiting, as Home shows it. -->
+      {#if gate && $gateState === "open"}
         <Button
           className="transaction-result__button"
           on:click={() => gate?.cancel()}

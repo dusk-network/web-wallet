@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hold a send that waited for the network where the account sent something else meanwhile, and say so with the payment, Send it too and Don't send, on Home and on its own screen
 - Say of a send that never went out, as the wallet opens again, that the account sent something else while it waited, where it did, with Send it too and Don't send
 - Say "Not confirmed yet" of a send whose answer never came, in Activity, History, its details and on Send, never Sent or on its way, until the chain says what became of it
-- Say Sending of a waiting send on Home from the moment the node is asked to check it, with no Cancel, whatever the network's pill finds
+- Say Sending of a waiting send on Home from the moment the node is asked to check it, whatever the network's pill finds, with Cancel there and on its own screen until it's handed to the node
 - Refuse a pasted request whose line says another amount, memo or name than its link, its .dusk name looked up first, Amount and Memo shown as being filled in meanwhile: "The message and its link don't agree."
 - Refuse a pasted link with words after it, whatever part of it comes last, as words after the link, and never take them into its memo, reading what was pasted line breaks and all
 - Take a profile's or a contact's name with a middle dot, an ideographic full stop or another point for the .dusk name it reads as

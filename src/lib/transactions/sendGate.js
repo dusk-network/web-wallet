@@ -8,8 +8,8 @@
  * answer, and is made again once it answers (`untilHandedOver`). One that
  * waited can be held until the person says to send it all the same (`ask`),
  * as its account sent something else meanwhile. From the moment the node is
- * asked to check it, it goes out (`goingOut`): it's no longer offered to call
- * off, though it's handed over only once the node passed it.
+ * asked to check it, it goes out (`goingOut`), and it can be called off still
+ * until it's handed over, once the node passed it: the check sends nothing.
  */
 
 import { writable } from "svelte/store";
