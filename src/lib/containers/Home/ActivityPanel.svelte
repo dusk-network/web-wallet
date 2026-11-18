@@ -6,6 +6,7 @@
   import { SectionHead } from "$lib/components";
   import { describeRow, groupByDay, isOfKind } from "$lib/activity/present";
   import { walletStore } from "$lib/stores";
+  import { sentAfterDontSend } from "$lib/transactions/sentAfterDontSend";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
   import { addBasePath } from "$lib/navigation";
@@ -62,6 +63,8 @@
   $: context = {
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
+    // What went out after Don't send, until it's opened.
+    declined: $sentAfterDontSend,
     locale,
     net: $nodeNetwork,
     walletNames: $walletAccountNames,

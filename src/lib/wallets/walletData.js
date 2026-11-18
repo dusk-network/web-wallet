@@ -2,7 +2,8 @@
  * What this device keeps of each wallet besides its phrase: its cache of
  * notes and balances, its bridge transfers and migrations, its contacts,
  * its history, its names, the payments it asked for, the EVM addresses
- * its exports were given and its sends that never went out. Each wallet's is its own, by the ending of
+ * its exports were given, its sends that never went out and those that
+ * went out after Don't send. Each wallet's is its own, by the ending of
  * its names ($lib/wallets/dataNames) or by its accounts, so that one
  * wallet's never shows in another, and a wallet removed takes its own
  * alone.
@@ -20,6 +21,10 @@ import {
   hydrateMigrations,
 } from "$lib/bridge/migrationActivity";
 import { hydrateWithdrawalActivity } from "$lib/bridge/withdrawalActivityStorage";
+import {
+  forgetWalletSentAfterDontSend,
+  hydrateSentAfterDontSend,
+} from "$lib/transactions/sentAfterDontSend";
 import {
   forgetWalletUnsentSends,
   hydrateUnsentSends,
@@ -65,6 +70,7 @@ export function useWalletData(key) {
   hydrateWithdrawalActivity();
   hydrateRequests();
   hydrateExportAddresses();
+  hydrateSentAfterDontSend();
   void hydrateUnsentSends();
 }
 
@@ -92,6 +98,7 @@ export async function forgetWalletData(key, { accounts, addresses }) {
       forgetWalletRouteTransfers(suffix);
       forgetWalletRequests(suffix);
       forgetWalletExportAddresses(suffix);
+      forgetWalletSentAfterDontSend(suffix);
       forgetVerifiedNamesOf(accounts);
     }),
     forgetWalletUnsentSends(suffix),
@@ -125,6 +132,7 @@ export async function forgetOtherWalletsData() {
     forgetWalletRouteTransfers(suffix);
     forgetWalletRequests(suffix);
     forgetWalletExportAddresses(suffix);
+    forgetWalletSentAfterDontSend(suffix);
   }
 
   await Promise.allSettled(suffixes.map(forgetWalletUnsentSends));
@@ -144,5 +152,6 @@ export async function forgetEveryWalletData() {
   forgetWalletRouteTransfers("");
   forgetWalletRequests("");
   forgetWalletExportAddresses("");
+  forgetWalletSentAfterDontSend("");
   await forgetWalletUnsentSends("").catch(() => {});
 }

@@ -21,6 +21,7 @@
   } from "$lib/activity/present";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+  import { sentAfterDontSend } from "$lib/transactions/sentAfterDontSend";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
@@ -189,6 +190,8 @@
   $: context = {
     claims: $withdrawalClaims,
     contactNames: contactNamesOf($contactsStore),
+    // What went out after Don't send, until it's opened.
+    declined: $sentAfterDontSend,
     locale,
     // What the network's file calls its routes' accounts.
     net: $nodeNetwork,

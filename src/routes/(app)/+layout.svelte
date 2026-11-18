@@ -15,7 +15,14 @@
     cancelSendPassword,
     sendPasswordAsk,
   } from "$lib/security/sendPassword";
-  import { gasPriceStore, settingsStore, walletStore } from "$lib/stores";
+  import {
+    gasPriceStore,
+    networkStore,
+    settingsStore,
+    walletStore,
+  } from "$lib/stores";
+  import { unsentSends } from "$lib/transactions";
+  import { followHandedOver } from "$lib/transactions/handedOverSends";
   import vault from "$lib/vault";
   import { followOtherTabs, noteOpenWallet } from "$lib/wallets";
 
@@ -68,6 +75,21 @@
   // The profile a reload or a lock comes back to.
   $: if (initialized && currentProfile) {
     keepProfile(walletKey, profiles.indexOf(currentProfile));
+  }
+
+  // A send handed over is looked up on the chain whichever page opens first,
+  // History too, not only where Home's or Send's notice says it: one the
+  // person chose not to send is said to have gone out once it's found,
+  // though the wallet opened straight into History.
+  $: ({ networkName } = $networkStore);
+  $: for (const send of $unsentSends) {
+    if (
+      send.handedOver &&
+      send.network === networkName &&
+      profiles.some((each) => String(each.account) === send.account)
+    ) {
+      followHandedOver(send);
+    }
   }
 
   // The wallet open, the one the next unlock opens.

@@ -5,6 +5,7 @@
   import { mdiCheck } from "@mdi/js";
 
   import { isHistoryEnabled } from "$lib/activity";
+  import { SENT_AFTER_DONT_SEND } from "$lib/activity/present";
   import { Button } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
@@ -208,7 +209,7 @@
     title={wentOut.error
       ? `Failed: ${whatOf(send, hideBalances)}. The network fee was charged.`
       : send.handedOver?.dismissed
-        ? `Sent after all: ${whatOf(send, hideBalances)}.`
+        ? `${SENT_AFTER_DONT_SEND}: ${whatOf(send, hideBalances)}.`
         : `Sent: ${whatOf(send, hideBalances)}.`}
     variant={wentOut.error ? "error" : "info"}
   >

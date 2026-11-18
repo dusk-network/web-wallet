@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mark a payment that went out after Don't send "Sent after you chose not to send", with when it landed, in Activity, History and its details, and on its own screen, until it's opened, never as an ordinary Sent
 - Say "Checking what your account sent…" on a held payment while what your account sent meanwhile is read, Send it too and Don't send off until it's found, or for a few seconds at most
 - Let go of a Send that's left, rather than open the next Send on it, say "Your unfinished payment." of one a lock or a reload kept, and clear what a link or a kept payment put in Amount and Memo once another recipient is chosen
 - Read all of the history, from the network where this device doesn't keep it yet, for Staking's activity and rewards by year, Home's past staking and filters, Review's "This address sent you", Contacts, Your requests and Bridge › Activity, never only the page History shows
