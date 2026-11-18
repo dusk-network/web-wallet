@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show a stranger's whole memo on Review in a memo's own small, muted style, in quotes, under the amber "This address sent you:"
 - Mask recovery words on a phone as they're typed, in Restore, Add wallet, Unlock and Check your recovery words, their suggestions kept, and show them, and the words to write down, only while Hold to show words is held
 - Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
 - Name Receive's buttons by what they give, Copy address and Share address, Copy request and Share request, the request's first and leading while Request payment is open, the address's below it

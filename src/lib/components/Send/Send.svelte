@@ -2754,7 +2754,9 @@
         </div>
       </dl>
       {#if step === "review" && strangerSaid}
-        <!-- A stranger's words to this wallet, as History marks them. -->
+        <!-- A stranger's words to this wallet, as History marks them: all of
+          them, wrapped, in quotes, in a memo's own small, muted style, under
+          the warning's amber title. -->
         <Banner
           className="send__stranger"
           role="note"
@@ -3254,6 +3256,8 @@
 
   .send__stranger-said {
     margin: 0;
+    color: var(--calm-muted);
+    font-size: 0.78125rem;
     overflow-wrap: anywhere;
   }
 

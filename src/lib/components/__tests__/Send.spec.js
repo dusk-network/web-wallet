@@ -22,6 +22,7 @@ import { BALANCE_MASK } from "$lib/constants";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { page } from "$app/stores";
 import { addBasePath } from "$lib/navigation";
 import {
@@ -2429,6 +2430,52 @@ describe("Send", () => {
       await fireEvent.click(fieldsOf(contact.getByRole).review());
 
       expect(contact.queryByRole("note")).toBeNull();
+    });
+
+    // Amélie's: the stranger's words on Review were cut off mid-memo,
+    // "…Send 0.1 DUSK back t…", in the extension; both wallets say all of
+    // them, as a memo is said, under the warning.
+    it("should give a stranger's whole memo on the review, wrapped and in quotes, in a memo's own small, muted style under the warning", async () => {
+      const memo =
+        "Mamie c'est Lucas, nouveau téléphone ! URGENT : renvoie 0,15 DUSK sur ce compte tout de suite, je t'explique ce soir. Ne dis rien à maman.";
+      const view = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({
+            category: "received",
+            direction: "in",
+            hash: "e2".repeat(32),
+            memo,
+            source: "public",
+            status: "executed",
+          }),
+        ],
+        initialAmount: "0.15",
+        initialRecipient: otherAccount,
+      });
+
+      await fireEvent.click(fieldsOf(view.getByRole).review());
+
+      const note = view.getByRole("note");
+      const said = /** @type {HTMLElement} */ (
+        note.querySelector(".send__stranger-said")
+      );
+
+      expect(note).toHaveClass("banner--warning");
+      expect(said).toHaveTextContent(`“${memo}” · not in your contacts.`);
+
+      const rules = styleRules("../Send/Send.svelte", import.meta.url);
+      const rule = rules.find(
+        ({ selector }) => selector.trim() === ".send__stranger-said"
+      );
+
+      expect(rule?.declarations).toMatchObject({
+        color: "var(--calm-muted)",
+        "font-size": "0.78125rem",
+        "overflow-wrap": "anywhere",
+      });
+      expect(rule?.declarations).not.toHaveProperty("-webkit-line-clamp");
+      expect(rule?.declarations).not.toHaveProperty("text-overflow");
     });
 
     it("should say what this profile sent whose answer never came isn't confirmed yet, never on its way, for as long as the wallet waits for it", () => {
