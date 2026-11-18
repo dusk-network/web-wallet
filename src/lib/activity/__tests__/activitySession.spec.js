@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { get } from "svelte/store";
 
 import fixture from "./fixtures/activity-testnet.json";
 import { fakeArchive } from "./fixtures/fakeArchive";
@@ -780,13 +781,209 @@ describe("ActivitySession", () => {
     expect(session.state.rows).toHaveLength(50);
 
     const asked = node.log.length;
-    const kept = await session.keptRows();
+    const { rows: kept } = await session.keptRows();
 
     expect(kept).toHaveLength(80);
     // The oldest too, which History shows only after Show more.
     expect(kept.map(({ hash }) => hash)).toContain(receiver[0].origin);
     expect(node.log).toHaveLength(asked);
   }, 30_000);
+
+  // Nandini's: Staking said "No staking yet." of a profile that staked with
+  // Sozu, as its stakes were further back than the page History had shown;
+  // Chen's: Review said nothing of a stranger's memo of three days before.
+  it("gives all of the history to what says what it holds, past the page History shows, reading from the archive what this device doesn't keep", async () => {
+    const sample = accounts[A].receiver[0];
+    const top = FINALIZED - 100;
+    // 1000 transfers, each in its own block, oldest first as the archive
+    // lists them: more than a session's first sync reads. Each with its
+    // details, as the archive has them.
+    const receiver = Array.from({ length: 1000 }, (_, i) => ({
+      ...sample,
+      ["block_height"]: top - 999 + i,
+      origin: (i + 1).toString(16).padStart(64, "0"),
+    }));
+    const details = Object.fromEntries(
+      receiver.map(({ origin }) => [
+        origin,
+        /** @type {any} */ (fixture.details)[sample.origin],
+      ])
+    );
+
+    fakeArchive({ accounts: { [A]: { receiver, sender: [] } }, details });
+
+    const activity = await import("..");
+    const session = activity.activityFor({
+      account: A,
+      namesNetwork: "testnet",
+      nodeUrl: NODE,
+      profileIndex: 0,
+    });
+
+    await session.start();
+
+    // The page History shows, of a history this device doesn't keep whole.
+    expect(get(activity.activityState)).toMatchObject({ complete: false });
+    expect(get(activity.activityState).rows).toHaveLength(50);
+
+    /** @type {import("..").WholeActivity[]} */
+    const seen = [];
+    const stop = activity.wholeActivity.subscribe((value) => seen.push(value));
+
+    await vi.waitFor(
+      () => expect(seen.at(-1)).toMatchObject({ reading: false, whole: true }),
+      { timeout: 50_000 }
+    );
+    stop();
+
+    const whole = /** @type {import("..").WholeActivity} */ (seen.at(-1));
+
+    expect(whole.rows).toHaveLength(1000);
+    expect(whole.rows.map(({ hash }) => hash)).toContain(receiver[0].origin);
+    expect(whole.failed).toBe(false);
+    // History's page stays as it was.
+    expect(get(activity.activityState).rows).toHaveLength(50);
+    activity.stopActivity();
+  }, 60_000);
+
+  // Codex's, round 40: a profile switched to, or the wallet locked, as all
+  // of the history was read went on reading it, details and all, for an
+  // account no longer shown.
+  it("reads nothing more of what this device doesn't keep of the history once its session stops", async () => {
+    const node = fakeArchive({ finalized: FINALIZED });
+    const session = sessionFor();
+    /** @param {string} query */
+    const isDetails = (query) => query.includes("tx(hash:");
+
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Its rows' details unread as it starts.
+    node.before = async (query) => {
+      if (isDetails(query)) {
+        throw new TypeError("fetch failed");
+      }
+    };
+    await session.start();
+
+    const reached = Promise.withResolvers();
+    const held = Promise.withResolvers();
+
+    node.before = async (query) => {
+      if (query.includes("moonlightHistory")) {
+        reached.resolve(undefined);
+        await held.promise;
+      }
+    };
+    session.readMissing();
+    await reached.promise;
+
+    // Another profile opens as a run reads the archive.
+    session.stop();
+
+    const asked = node.log.length;
+
+    node.before = null;
+    held.resolve(undefined);
+
+    await vi.waitFor(() => expect(session.missingRead).not.toBe("reading"));
+    expect(
+      node.log.slice(asked).filter(({ query }) => isDetails(query))
+    ).toStrictEqual([]);
+  });
+
+  // Codex's, round 40: once the archive's blocks were all read, all of the
+  // history said it was whole while its details were still read, or after
+  // they couldn't be: a call not read can't be said not to be a stake.
+  it("says all of the history isn't whole while its rows' details are read, and that it couldn't be read where they couldn't", async () => {
+    const node = fakeArchive({ finalized: FINALIZED });
+    const activity = await import("..");
+    const session = activity.activityFor({
+      account: A,
+      namesNetwork: "testnet",
+      nodeUrl: NODE,
+      profileIndex: 0,
+    });
+    /** @param {string} query */
+    const isDetails = (query) => query.includes("tx(hash:");
+
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Its rows' details unread as it starts.
+    node.before = async (query) => {
+      if (isDetails(query)) {
+        throw new TypeError("fetch failed");
+      }
+    };
+    await session.start();
+
+    const asked = Promise.withResolvers();
+    const answered = Promise.withResolvers();
+
+    node.before = async (query) => {
+      if (isDetails(query)) {
+        asked.resolve(undefined);
+        await answered.promise;
+        throw new TypeError("fetch failed");
+      }
+    };
+
+    /** @type {import("..").WholeActivity[]} */
+    const seen = [];
+    const stop = activity.wholeActivity.subscribe((value) => seen.push(value));
+
+    try {
+      // Its blocks all read: their details asked for.
+      await asked.promise;
+      await session.keptChanged();
+
+      await vi.waitFor(() =>
+        expect(seen.at(-1)).toMatchObject({
+          failed: false,
+          reading: true,
+          whole: false,
+        })
+      );
+
+      answered.resolve(undefined);
+
+      await vi.waitFor(() =>
+        expect(seen.at(-1)).toMatchObject({
+          failed: true,
+          reading: false,
+          whole: false,
+        })
+      );
+    } finally {
+      answered.resolve(undefined);
+      stop();
+      activity.stopActivity();
+    }
+  });
+
+  it("says where what this device doesn't keep of the history couldn't be read, and reads it again once asked", async () => {
+    const node = fakeArchive({ finalized: FINALIZED });
+    const session = sessionFor();
+
+    await session.start();
+    node.down = true;
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const listener = vi.fn();
+
+    session.subscribe(listener);
+    session.readMissing();
+
+    await vi.waitFor(() => expect(session.missingRead).toBe("failed"));
+    expect(listener).toHaveBeenCalled();
+
+    // Not again at each change of state: a minute later, or once asked.
+    session.readMissing();
+    expect(session.missingRead).toBe("failed");
+
+    node.down = false;
+    session.readMissing({ again: true });
+    expect(session.missingRead).toBe("reading");
+    await vi.waitFor(() => expect(session.missingRead).toBe("done"));
+    expect((await session.keptRows()).whole).toBe(true);
+  });
 
   it("keeps the archive's error for the state and still shows what it kept", async () => {
     const node = fakeArchive({ finalized: 4_656_000 });

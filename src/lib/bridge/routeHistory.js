@@ -12,7 +12,7 @@
 
 import { derived } from "svelte/store";
 
-import { activityState, currentActivity } from "$lib/activity";
+import { activityState, currentActivity, wholeActivity } from "$lib/activity";
 import { walletStore } from "$lib/stores";
 import nodeNetwork from "$lib/stores/nodeNetwork";
 
@@ -61,20 +61,21 @@ const shownAccount = derived(walletStore, ({ currentProfile }) =>
  * The transfers between Dusk and another chain of the account the wallet
  * shows, as Bridge › Activity lists them: worked out again as the history,
  * the migrations sent from here or what's known of the transfers out
- * change.
+ * change. From all of the history, not the page History has shown so far:
+ * a migration paid further back is paid all the same.
  *
  * @type {import("svelte/store").Readable<import("./migrationActivity").RouteTransfer[]>}
  */
 export const routeTransfers = derived(
-  [activityState, keptMigrations, transferArrivals, nodeNetwork, shownAccount],
-  ([$activity, $kept, $arrivals, $net, $account], set) => {
+  [wholeActivity, keptMigrations, transferArrivals, nodeNetwork, shownAccount],
+  ([$whole, $kept, $arrivals, $net, $account], set) => {
     let current = true;
 
     routeTransfersOf({
       account: $account,
       known: $arrivals,
       net: $net,
-      rows: $activity.rows,
+      rows: $whole.rows,
       sent: $kept,
     })
       .then((list) => current && set(list))

@@ -7,7 +7,11 @@
     mdiSwapHorizontal,
     mdiTrayArrowDown,
   } from "@mdi/js";
-  import { activityState, isHistoryEnabled } from "$lib/activity";
+  import {
+    activityState,
+    isHistoryEnabled,
+    wholeActivity,
+  } from "$lib/activity";
   import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
   import { Banner, MemoText, SectionHead, UnsentSends } from "$lib/components";
@@ -103,8 +107,10 @@
   $: staked = stakeInfo.amount
     ? stakeInfo.amount.value + stakeInfo.amount.locked
     : null;
-  $: ({ rows } = $activityState);
-  $: hasPastStaking = rows.some((row) => row.category === "staking");
+  // From all of the history, not the page History has shown so far.
+  $: hasPastStaking = $wholeActivity.rows.some(
+    (row) => row.category === "staking"
+  );
 
   // What is staked with Sozu, read for the profile shown as the wallet
   // opens and as another is chosen, where the network has Sozu: the history
@@ -350,12 +356,13 @@
       <ActivityPanel
         locale={language}
         onRetry={() => {
-          walletStore
-            .startHistory()
-            ?.refresh()
-            .catch(() => {});
+          const session = walletStore.startHistory();
+
+          session?.refresh().catch(() => {});
+          session?.readMissing({ again: true });
         }}
         state={$activityState}
+        whole={$wholeActivity}
       />
     {:else}
       <SectionHead>Activity</SectionHead>

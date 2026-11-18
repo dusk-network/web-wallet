@@ -540,6 +540,20 @@ function bridgeOf({ bridge, value }, { claims, locale }) {
 }
 
 /**
+ * Whether a row is of a kind, as its filter shows it: by its category, as
+ * it reads (`describeRow`), what's bridged as sent or received too.
+ *
+ * @param {Pick<ActivityRow, "category" | "direction">} row
+ * @param {ActivityKindFilter} kind
+ */
+export const isOfKind = ({ category, direction }, kind) =>
+  kind === "all" ||
+  category === kind ||
+  (category === "bridge" &&
+    ((kind === "sent" && direction === "out") ||
+      (kind === "received" && direction === "in")));
+
+/**
  * Whether a row answers the filters.
  *
  * @param {ActivityPresentation} presentation
@@ -551,12 +565,10 @@ export const matchesFilters = (
   row,
   { kind = "all", privacy = "all", since = null }
 ) =>
-  (kind === "all" ||
-    presentation.category === kind ||
-    // What's bridged was sent or received too.
-    (presentation.category === "bridge" &&
-      ((kind === "sent" && row.direction === "out") ||
-        (kind === "received" && row.direction === "in")))) &&
+  isOfKind(
+    { category: presentation.category, direction: row.direction },
+    kind
+  ) &&
   (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
   // A row with no time yet isn't in a range of days.
   (since === null || (row.time !== null && row.time >= since));

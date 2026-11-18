@@ -35,6 +35,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     activity: store({ rows: [] }),
+    // Rows of the history further back than the page History shows.
+    older: store([]),
     wallet: store({
       balance: { unshielded: { nonce: 0n, value: 0n } },
       currentProfile: null,
@@ -45,6 +47,36 @@ const mocks = vi.hoisted(() => {
 vi.mock("$lib/activity", () => ({
   activityState: { subscribe: mocks.activity.subscribe },
   currentActivity: () => null,
+  // All of the history: the page shown, then what's further back.
+  wholeActivity: {
+    /** @param {(value: any) => void} run */
+    subscribe(run) {
+      /** @type {any[]} */
+      let shown = [];
+      /** @type {any[]} */
+      let older = [];
+      const tell = () =>
+        run({
+          failed: false,
+          reading: false,
+          rows: [...shown, ...older],
+          whole: true,
+        });
+      const stopShown = mocks.activity.subscribe(({ rows }) => {
+        shown = rows;
+        tell();
+      });
+      const stopOlder = mocks.older.subscribe((rows) => {
+        older = rows;
+        tell();
+      });
+
+      return () => {
+        stopShown();
+        stopOlder();
+      };
+    },
+  },
 }));
 
 vi.mock("$lib/stores", () => ({
@@ -170,6 +202,28 @@ describe("waitsOnHistory", () => {
     expect(
       await waits({ rows: [{ ...out, status: "executed" }], sent: [] })
     ).toBe(false);
+  });
+});
+
+describe("routeTransfers", () => {
+  it("says a migration is paid by its payout further back than the page History has shown", async () => {
+    /** @type {import("../migrationActivity").RouteTransfer[][]} */
+    const seen = [];
+
+    mocks.older.set([payout]);
+
+    const stop = follow.routeTransfers.subscribe((list) => seen.push(list));
+
+    try {
+      await vi.waitFor(() =>
+        expect(
+          seen.at(-1)?.find(({ hash }) => hash === MIGRATION)
+        ).toMatchObject({ payout: payout.hash, stage: "paid" })
+      );
+    } finally {
+      stop();
+      mocks.older.set([]);
+    }
   });
 });
 

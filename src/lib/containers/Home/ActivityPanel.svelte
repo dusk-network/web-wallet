@@ -4,11 +4,7 @@
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
   import { SectionHead } from "$lib/components";
-  import {
-    describeRow,
-    groupByDay,
-    matchesFilters,
-  } from "$lib/activity/present";
+  import { describeRow, groupByDay, isOfKind } from "$lib/activity/present";
   import { walletStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
@@ -42,6 +38,14 @@
   /** What the panel says without a row to show. */
   export let emptyText = "Nothing here yet.";
 
+  /**
+   * All of the history, which the rows of one kind are found in, not only
+   * the page History has shown so far: null to find them there.
+   *
+   * @type {import("$lib/activity").WholeActivity | null}
+   */
+  export let whole = null;
+
   /** @type {{ id: import("$lib/activity/present").ActivityKindFilter, label: string }[]} */
   const FILTERS = [
     { id: "all", label: "All" },
@@ -71,15 +75,19 @@
       { address: String($walletStore.currentProfile?.address ?? "") },
     ],
   };
-  $: described = state.rows.map((row) => ({
-    presentation: describeRow(row, context),
-    row,
-  }));
-  $: shown = described
-    .filter(({ presentation, row }) =>
-      matchesFilters(presentation, row, { kind: only ?? kind })
-    )
-    .slice(0, limit);
+  $: shownKind = only ?? kind;
+  // The newest of a kind, from all of the history: a stake further back
+  // than the page History has shown is staking all the same. While what
+  // this device doesn't keep is read, or where it couldn't be, that none
+  // is found yet says nothing.
+  $: isFound = shownKind !== "all" && whole !== null;
+  $: rows = isFound && whole ? whole.rows : state.rows;
+  $: isLooking = state.syncing || Boolean(isFound && whole?.reading);
+  $: isUnread = Boolean(state.error || (isFound && whole?.failed));
+  $: shown = rows
+    .filter((row) => isOfKind(row, shownKind))
+    .slice(0, limit)
+    .map((row) => ({ presentation: describeRow(row, context), row }));
   $: groups = groupByDay(shown, ({ row }) => row.time, { locale });
 </script>
 
@@ -110,16 +118,23 @@
     </div>
   {/if}
 
-  <div aria-busy={!state.loaded || state.syncing} aria-live="polite">
+  <div aria-busy={!state.loaded || isLooking} aria-live="polite">
     {#if !state.loaded}
       <p class="activity-panel__note">Loading your history…</p>
-    {:else if !state.rows.length && state.error}
+    {:else if !rows.length && isUnread}
+      <!-- None among the rows it shows, as all of the history for a kind:
+        none yet says nothing while they're read, or where they couldn't be. -->
       <p class="activity-panel__note">Couldn't reach the network's history.</p>
       <Button on:click={onRetry} size="small" text="Try again" />
-    {:else if !state.rows.length && state.syncing}
+    {:else if !rows.length && isLooking}
       <p class="activity-panel__note">Looking for your transactions…</p>
-    {:else if !state.rows.length}
+    {:else if !rows.length}
       <p class="activity-panel__note">No transactions yet.</p>
+    {:else if !shown.length && isLooking}
+      <p class="activity-panel__note">Looking for your transactions…</p>
+    {:else if !shown.length && isUnread}
+      <p class="activity-panel__note">Couldn't reach the network's history.</p>
+      <Button on:click={onRetry} size="small" text="Try again" />
     {:else if !shown.length}
       <p class="activity-panel__note">{emptyText}</p>
     {:else}

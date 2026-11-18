@@ -4,7 +4,7 @@
   import { onMount } from "svelte";
   import { feeToKeep } from "$lib/wallet-reserve";
   import { page } from "$app/stores";
-  import { activityState } from "$lib/activity";
+  import { wholeActivity } from "$lib/activity";
   import { Send } from "$lib/components";
   import { executeSend, getGasLimits, getGasSettings } from "$lib/contracts";
   import { resolveDuskName } from "$lib/dusk-domains";
@@ -133,7 +133,12 @@
         (spendableSource === "shielded" ? shieldedAddress : publicAddress)
     )
     .reduce((sum, { lux, maxFee }) => sum + lux + maxFee, 0n);
-  $: knownNames = pastNames($activityState.rows);
+  // All of the history, not the page History has shown so far: what an
+  // address sent this profile days ago is on Review all the same (Chen's:
+  // nothing said of a stranger's "URGENT: wallet suspended" memo of three
+  // days before, as it was further back than that page).
+  $: historyRows = $wholeActivity.rows;
+  $: knownNames = pastNames(historyRows);
   $: ownAccounts = $walletStore.profiles.flatMap((profile) => {
     const label = profileLabel(
       $walletStore.profiles,
@@ -157,7 +162,7 @@
     execute={send}
     {gasLimits}
     {gasSettings}
-    historyRows={$activityState.rows}
+    {historyRows}
     initialAmount={asked?.amount ?? ""}
     initialAmountHidden={Boolean($page.state?.amountHidden)}
     initialElsewhere={asked?.elsewhere ?? null}

@@ -15,10 +15,10 @@
   import { formatTime } from "@dusk-network/networks/format";
 
   import {
-    activityState,
     arrivalsNotIn,
     awaitedArrivals,
     currentActivity,
+    wholeActivity,
   } from "$lib/activity";
   import { LOOK_FOR_MS } from "$lib/activity/arrivals";
   import { paidInSentence } from "$lib/activity/present";
@@ -201,7 +201,8 @@
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
    * @param {boolean} isChecking Whether a payment to it from another profile
-   *   here went out, which the history doesn't have yet
+   *   here went out, which the history doesn't have yet, or it's older than
+   *   the history read so far while the rest of it is read
    * @returns {Part[]}
    */
   function matchedParts(request, match, language, isChecking) {
@@ -514,8 +515,11 @@
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
   );
-  $: matches = matchRequests(shown, $activityState.rows);
-  $: refunds = refundsOf(shown, matches, $activityState.rows, $nodeNetwork);
+  // All of the history, not the page History has shown so far: a request
+  // paid days ago is paid all the same.
+  $: ({ rows: historyRows } = $wholeActivity);
+  $: matches = matchRequests(shown, historyRows);
+  $: refunds = refundsOf(shown, matches, historyRows, $nodeNetwork);
   $: keepRequestMatches(matches);
   // Looked for as one shows, and from then on, not again with each change.
   $: isShowing = shown.length > 0;
@@ -525,19 +529,24 @@
   $: awaited = arrivalsNotIn(
     $awaitedArrivals,
     addresses,
-    $activityState.rows,
+    historyRows,
     Math.max(Date.now(), checkedAt)
   );
   $: checkUntil(awaited);
-  // A payment may be further back than the history read so far.
-  $: oldestRead = Math.min(
-    ...$activityState.rows.map(({ time }) => time ?? Infinity)
+  // A payment may be further back than the history read so far: checked
+  // for while the rest is read, and said so where it couldn't be.
+  $: oldestRead = historyRows.reduce(
+    (oldest, { time }) => Math.min(oldest, time ?? Infinity),
+    Infinity
   );
-  $: isShort =
-    $activityState.hasMore &&
-    shown.some(
-      ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
-    );
+  $: olderThanRead = new Set(
+    shown
+      .filter(
+        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
+      )
+      .map(({ id }) => id)
+  );
+  $: isShort = $wholeActivity.failed && olderThanRead.size > 0;
 </script>
 
 {#if shown.length}
@@ -553,7 +562,8 @@
           request,
           match,
           language,
-          awaited.some(({ to }) => to === request.to)
+          awaited.some(({ to }) => to === request.to) ||
+            ($wholeActivity.reading && olderThanRead.has(request.id))
         )}
         <li class="requests__item">
           <p class="requests__head">

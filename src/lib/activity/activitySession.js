@@ -128,6 +128,14 @@ export class ActivitySession {
   /** @type {import("@dusk-network/app-core/history").HistoryState | null} */
   #meta = null;
 
+  /**
+   * Where reading what this device doesn't keep of the history is
+   * (`readMissing`): not asked yet, under way, done, or failed at `at`.
+   *
+   * @type {{ at: number, state: "done" | "failed" | "idle" | "reading" }}
+   */
+  #missing = { at: 0, state: "idle" };
+
   /** What each stake and unstake with Sozu did, read once. */
   /** @type {Map<string, string>} */
   #factsKept = new Map();
@@ -527,9 +535,11 @@ export class ActivitySession {
 
   /**
    * All of the account's rows this device keeps, newest first: not only the
-   * page shown, and nothing more read from the network.
+   * page shown, and nothing more read from the network. `whole` once they're
+   * all of its history, to its first block, each with its time, outcome and
+   * fee: not while the archive's blocks are read but their details aren't.
    *
-   * @returns {Promise<ActivityRow[]>}
+   * @returns {Promise<{ rows: ActivityRow[], whole: boolean }>}
    */
   async keptRows() {
     const history = await this.#publicHistory();
@@ -538,24 +548,29 @@ export class ActivitySession {
       listLocalTransactions(this.ownerKey),
     ]);
 
-    return this.#rowsOf({
-      entries: read.entries,
-      local,
-      meta: read.state,
-      shielded: this.#shielded,
-    });
+    return {
+      rows: this.#rowsOf({
+        entries: read.entries,
+        local,
+        meta: read.state,
+        shielded: this.#shielded,
+      }),
+      // To its first block, each entry with its time, outcome and fee: a
+      // call not read yet can't be said not to be a stake.
+      whole: read.complete && !read.entries.some(history.needsDetails),
+    };
   }
 
   /**
-   * All of the account's rows, read to its first block, with each one's time,
-   * outcome and fee: for what can't be said from part of it. A run that another
-   * overtook goes on from where that one got to. Without `publicOnly`, its
-   * shielded history too, and `shieldedWaiting` says it isn't whole yet.
+   * Reads the account's history to its first block, from the archive, where
+   * this device doesn't keep it yet, and each entry's time, outcome and fee:
+   * what's kept is then all of it. A run that another overtook goes on from
+   * where that one got to.
    *
-   * @param {{ publicOnly?: boolean }} [options]
-   * @returns {Promise<{ rows: ActivityRow[], shieldedWaiting: boolean }>}
+   * @returns {Promise<Awaited<ReturnType<import("@dusk-network/app-core/history").History["read"]>>>}
+   *   All that's kept, read once it's whole
    */
-  async whole({ publicOnly = false } = {}) {
+  async #readToFirstBlock() {
     if ((await this.#epoch) === undefined) {
       throw new Error("The activity store is out of reach");
     }
@@ -564,7 +579,10 @@ export class ActivitySession {
     let complete = false;
 
     // At least one run: newer blocks than the last one read may hold more.
+    // None more once the session stops, as another profile opens or the
+    // wallet locks: its archive isn't asked for an account no longer shown.
     for (let run = 0; run < WHOLE_RUNS && !complete; run += 1) {
+      this.#throwIfStopped();
       await history
         .sync({ maxDetailRequests: 0, maxRequests: WHOLE_RUN_REQUESTS })
         .catch((error) => {
@@ -579,14 +597,89 @@ export class ActivitySession {
       throw new Error("The history is too long to read at once");
     }
 
-    let read = await history.read(ALL_KEPT);
+    this.#throwIfStopped();
+
+    const read = await history.read(ALL_KEPT);
     const missing = read.entries.filter(history.needsDetails);
 
-    if (missing.length) {
-      await history.fillDetails(missing);
-      read = await history.read(ALL_KEPT);
+    if (!missing.length) {
+      return read;
     }
 
+    this.#throwIfStopped();
+    await history.fillDetails(missing);
+    this.#throwIfStopped();
+
+    return history.read(ALL_KEPT);
+  }
+
+  /** Stops what reads the history once the session stopped. */
+  #throwIfStopped() {
+    if (this.#stopped) {
+      throw new Error("Another profile opened");
+    }
+  }
+
+  /**
+   * Where reading what this device doesn't keep of the history is: not
+   * asked yet ("idle"), under way, done, or failed.
+   */
+  get missingRead() {
+    return this.#missing.state;
+  }
+
+  /**
+   * Reads what the archive has of the account's history that this device
+   * doesn't keep yet, to its first block, each entry with its time, outcome
+   * and fee (`#readToFirstBlock`): once a session, for whatever says what the
+   * history holds, never from the page History shows alone. One that failed
+   * is read again once asked a minute later at the soonest, or at once with
+   * `again`, as a Try again asks. The state says how it ended, so what's
+   * kept is read again once it's whole (`missingRead` says it's under way).
+   *
+   * @param {{ again?: boolean }} [options]
+   */
+  readMissing({ again = false } = {}) {
+    const { at, state } = this.#missing;
+
+    if (
+      this.#stopped ||
+      this.#stale ||
+      state === "reading" ||
+      state === "done" ||
+      (state === "failed" && !again && Date.now() - at < SHIELDED_RETRY_MS)
+    ) {
+      return;
+    }
+
+    this.#missing = { at: Date.now(), state: "reading" };
+    this.#readToFirstBlock().then(
+      async () => {
+        this.#missing = { at: Date.now(), state: "done" };
+
+        // Nothing's read again for a session that stopped meanwhile.
+        if (!this.#stopped) {
+          await this.keptChanged().catch(() => this.#emit());
+        }
+      },
+      () => {
+        this.#missing = { at: Date.now(), state: "failed" };
+        this.#emit();
+      }
+    );
+  }
+
+  /**
+   * All of the account's rows, read to its first block, with each one's time,
+   * outcome and fee: for what can't be said from part of it. A run that another
+   * overtook goes on from where that one got to. Without `publicOnly`, its
+   * shielded history too, and `shieldedWaiting` says it isn't whole yet.
+   *
+   * @param {{ publicOnly?: boolean }} [options]
+   * @returns {Promise<{ rows: ActivityRow[], shieldedWaiting: boolean }>}
+   */
+  async whole({ publicOnly = false } = {}) {
+    const read = await this.#readToFirstBlock();
     const local = await listLocalTransactions(this.ownerKey);
     const shielded =
       publicOnly || !this.options.shielded

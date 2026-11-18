@@ -11,6 +11,8 @@ import { feeToKeep } from "$lib/wallet-reserve";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks } from "@dusk-network/networks";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
+
 import SendPage from "../+page.svelte";
 
 const { resolveDuskName } = vi.hoisted(() => ({ resolveDuskName: vi.fn() }));
@@ -43,6 +45,31 @@ const openAt = (url) => {
   page.url = url;
   page.store?.set({ url });
 };
+
+const history = vi.hoisted(() => ({
+  /**
+   * All of the history, as the page reads it.
+   *
+   * @type {import("svelte/store").Writable<any> | null}
+   */
+  whole: null,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  history.whole = writable({
+    failed: false,
+    reading: false,
+    rows: [],
+    whole: true,
+  });
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    wholeActivity: history.whole,
+  };
+});
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {typeof import("$lib/dusk-domains")} */ (await importOriginal()),
@@ -95,6 +122,7 @@ describe("Send page", () => {
 
   afterAll(() => {
     vi.doUnmock("$app/stores");
+    vi.doUnmock("$lib/activity");
     vi.doUnmock("$lib/dusk-domains");
     vi.doUnmock("$lib/dusk/string");
     vi.doUnmock("$lib/stores");
@@ -529,6 +557,53 @@ describe("Send page", () => {
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
       "0.003"
     );
+  });
+
+  // Chen's: nothing said on Review of a stranger's "URGENT: wallet
+  // suspended" memos of three and six days before, as they were further
+  // back than the page History had shown, while Lena's of yesterday was.
+  it("should say on Review what an address sent this profile, from all of the history, not only the page History has shown", async () => {
+    const day = 86_400_000;
+    const URGENT = "URGENT: wallet suspended - pay now to restore";
+    const fromStranger = rowOf({
+      amount: "1000000",
+      blockHeight: 4_800_000,
+      direction: "in",
+      from: OTHER,
+      hash: "c3".repeat(32),
+      memo: URGENT,
+      status: "executed",
+      timestamp: Date.now() - 3 * day,
+    });
+
+    history.whole?.set({
+      failed: false,
+      reading: false,
+      rows: [fromStranger],
+      whole: true,
+    });
+    openAt(
+      new URL(
+        `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.01`
+      )
+    );
+
+    try {
+      const { getByRole } = render(SendPage);
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(getByRole("note")).toHaveTextContent(
+        `This address sent you: “${URGENT}” · not in your contacts.`
+      );
+    } finally {
+      history.whole?.set({
+        failed: false,
+        reading: false,
+        rows: [],
+        whole: true,
+      });
+    }
   });
 
   it("should open with the recipient in the address, as from Send again or a contact", () => {

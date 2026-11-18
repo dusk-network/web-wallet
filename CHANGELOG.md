@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read all of the history, from the network where this device doesn't keep it yet, for Staking's activity and rewards by year, Home's past staking and filters, Review's "This address sent you", Contacts, Your requests and Bridge › Activity, never only the page History shows
 - Refuse a pasted message that names another amount, network or .dusk name than its link anywhere before it, one hidden or look-alike letter in its wording included, each .dusk name looked up first
 - Say at once in To that a name like sofiadesign·dusk only looks like sofiadesign.dusk, in place of "Not a valid address."
 - Take a profile's or a contact's name with a dot above, a Braille dot or spaces around its point for the .dusk name it reads as, and name the .dusk name a contact's name looks like

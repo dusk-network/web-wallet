@@ -198,9 +198,9 @@ describe("activityFor", () => {
 
     // Asked to broadcast it, the node hasn't answered: nothing shows.
     expect(rowOf()).toBeUndefined();
-    expect((await sender.keptRows()).some((row) => row.hash === hash)).toBe(
-      false
-    );
+    expect(
+      (await sender.keptRows()).rows.some((row) => row.hash === hash)
+    ).toBe(false);
 
     // Its answer got lost: not confirmed yet.
     await noteUnconfirmed(hash, { handing: true });
@@ -212,9 +212,9 @@ describe("activityFor", () => {
     await noteNotSentYet(hash);
 
     expect(rowOf()).toBeUndefined();
-    expect((await sender.keptRows()).some((row) => row.hash === hash)).toBe(
-      false
-    );
+    expect(
+      (await sender.keptRows()).rows.some((row) => row.hash === hash)
+    ).toBe(false);
 
     // Sent again as it is, the node took it: sent, on its way.
     await noteSentAccepted(hash);

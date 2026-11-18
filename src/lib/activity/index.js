@@ -48,37 +48,90 @@ let unsubscribe = null;
 export const activityState = { subscribe: state.subscribe };
 
 /**
- * All of the history of the account shown that this device keeps, newest
- * first, read again as it changes: what a search covers, not only the page
- * History shows. The rows shown until it's read, and where it can't be.
+ * All of the history of the account shown (`wholeActivity`): its rows,
+ * newest first; `whole` once they're all of it, to its first block;
+ * `reading` while what this device doesn't keep of it is read from the
+ * archive, and `failed` where that couldn't be read.
+ *
+ * @typedef {{ failed: boolean, reading: boolean, rows: ActivityRow[], whole: boolean }} WholeActivity
+ */
+
+/** The session whose history `wholeActivity` says last: none yet. */
+let wholeOf = /** @type {ActivitySession | null} */ (null);
+
+/**
+ * All of the history of the account shown: what this device keeps, read
+ * again as it changes, and what the archive has of it that this device
+ * doesn't keep yet, read once while anything watches it
+ * (`ActivitySession#readMissing`). Whatever says what the history holds,
+ * as the staking in it, what an address sent, or whom the account paid,
+ * says it of all of it, never of the page History has shown so far. The
+ * rows shown until it's read, and where it can't be.
+ *
+ * @type {import("svelte/store").Readable<WholeActivity>}
+ */
+export const wholeActivity = derived(
+  state,
+  ($state, set) => {
+    let isCurrent = true;
+    const session = current;
+
+    session?.readMissing();
+
+    const reading = session?.missingRead === "reading";
+    const failed = session?.missingRead === "failed";
+
+    // Another account's said before, or none: the rows shown, until all of
+    // them are read.
+    if (wholeOf !== session) {
+      wholeOf = session;
+      set({ failed, reading, rows: $state.rows, whole: false });
+    }
+
+    session
+      ?.keptRows()
+      .then((kept) => {
+        if (isCurrent && session === current) {
+          // A row the history shows is the latest said of it.
+          const shown = new Map($state.rows.map((row) => [row.hash, row]));
+          const keptHashes = new Set(kept.rows.map(({ hash }) => hash));
+
+          set({
+            failed: failed && !kept.whole,
+            reading: reading && !kept.whole,
+            rows: [
+              ...$state.rows.filter(({ hash }) => !keptHashes.has(hash)),
+              ...kept.rows.map((row) => shown.get(row.hash) ?? row),
+            ],
+            whole: kept.whole,
+          });
+        }
+      })
+      .catch(() => {
+        if (isCurrent && session === current) {
+          set({ failed, reading, rows: $state.rows, whole: false });
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  },
+  /** @type {WholeActivity} */ ({
+    failed: false,
+    reading: false,
+    rows: [],
+    whole: false,
+  })
+);
+
+/**
+ * All of the history of the account shown, newest first (`wholeActivity`):
+ * what a search covers, not only the page History shows.
  *
  * @type {import("svelte/store").Readable<ActivityRow[]>}
  */
-export const keptActivity = derived(state, ($state, set) => {
-  let isCurrent = true;
-  const session = current;
-
-  set($state.rows);
-  session
-    ?.keptRows()
-    .then((kept) => {
-      if (isCurrent && session === current) {
-        // A row the history shows is the latest said of it.
-        const shown = new Map($state.rows.map((row) => [row.hash, row]));
-        const keptHashes = new Set(kept.map(({ hash }) => hash));
-
-        set([
-          ...$state.rows.filter(({ hash }) => !keptHashes.has(hash)),
-          ...kept.map((row) => shown.get(row.hash) ?? row),
-        ]);
-      }
-    })
-    .catch(() => {});
-
-  return () => {
-    isCurrent = false;
-  };
-});
+export const keptActivity = derived(wholeActivity, ({ rows }) => rows);
 
 /** Tells the shown history's state again: its rows are read again. */
 const tellAgain = () => current && state.set(current.state);

@@ -32,20 +32,43 @@ vi.useFakeTimers();
 const { getPrimaryName } = vi.hoisted(() => ({ getPrimaryName: vi.fn() }));
 
 const history = vi.hoisted(() => ({
+  /**
+   * Whether what's further back is read still, or couldn't be.
+   *
+   * @type {import("svelte/store").Writable<{ failed: boolean, reading: boolean }> | null}
+   */
+  flags: null,
+  /**
+   * Rows of the history further back than the page History shows.
+   *
+   * @type {import("svelte/store").Writable<any[]> | null}
+   */
+  older: null,
   refresh: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
 }));
 
 vi.mock("$lib/activity", async (importOriginal) => {
-  const { writable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
 
+  history.flags = writable({ failed: false, reading: false });
+  history.older = writable([]);
   history.state = writable({ hasMore: false, rows: [] });
 
   return {
     .../** @type {object} */ (await importOriginal()),
     activityState: history.state,
     currentActivity: () => ({ refresh: history.refresh }),
+    // All of the history: the page shown, then what's further back.
+    wholeActivity: derived(
+      [history.state, history.older, history.flags],
+      ([{ rows }, older, flags]) => ({
+        ...flags,
+        rows: [...rows, ...older],
+        whole: !flags.failed && !flags.reading,
+      })
+    ),
   };
 });
 
@@ -1222,6 +1245,122 @@ describe("Receive", () => {
 
       expect(history.refresh).not.toHaveBeenCalled();
       history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    it("should say a request paid further back than the page History has shown is paid, from all of the history", async () => {
+      const at = Date.now() - 5 * 86_400_000;
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "old",
+            lux: "150000000",
+            memo: "Factura 12",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      // The page History shows: fifty payments since, none of them its.
+      history.state?.set({
+        hasMore: true,
+        rows: Array.from({ length: 50 }, (_, i) => ({
+          category: "received",
+          hash: (i + 1).toString(16).padStart(64, "0"),
+          memo: "",
+          privacy: "public",
+          status: "executed",
+          time: Date.now() - i * 1000,
+          value: 1_000_000n,
+        })),
+      });
+      history.older?.set([
+        {
+          category: "received",
+          hash: "ab".repeat(32),
+          memo: "Factura 12",
+          privacy: "public",
+          status: "executed",
+          time: at + 500,
+          value: 150_000_000n,
+        },
+      ]);
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(
+          screen.getByRole("listitem").querySelector(".requests__state")
+        ).toHaveTextContent(/^Paid$/);
+        expect(screen.queryByText(/further back/)).toBeNull();
+      } finally {
+        history.state?.set({ hasMore: false, rows: [] });
+        history.older?.set([]);
+      }
+    });
+
+    // Codex's, round 40: as what's further back than the page History has
+    // shown was read, a request older than all of it said nothing matching
+    // had come in, and Copy request asked nothing, though its payment may
+    // be about to be found.
+    it("should say it's checking, not that nothing came in, for a request older than the history read so far, while the rest of it is read", async () => {
+      const at = Date.now() - 5 * 86_400_000;
+      /** @param {string} state */
+      const said = (state) =>
+        /** @type {HTMLElement} */ (
+          screen.getByRole("listitem").querySelector(".requests__line")
+        ).textContent?.includes(state);
+
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at,
+            id: "old",
+            lux: "150000000",
+            memo: "Factura 12",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      history.state?.set({
+        hasMore: true,
+        rows: [
+          {
+            category: "received",
+            hash: "01".repeat(32),
+            memo: "",
+            privacy: "public",
+            status: "executed",
+            time: Date.now() - 1000,
+            value: 1_000_000n,
+          },
+        ],
+      });
+      history.flags?.set({ failed: false, reading: true });
+
+      try {
+        render(Receive);
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(said("Checking for payments…")).toBe(true);
+        expect(said("Nothing matching has come in.")).toBe(false);
+
+        // All of it read: nothing of it came in.
+        history.flags?.set({ failed: false, reading: false });
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(said("Nothing matching has come in.")).toBe(true);
+      } finally {
+        history.state?.set({ hasMore: false, rows: [] });
+        history.flags?.set({ failed: false, reading: false });
+      }
     });
 
     it("should say it's checking, not that nothing came in, while a payment to it from another profile here is looked for, two minutes at most", async () => {
