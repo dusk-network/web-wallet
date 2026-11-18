@@ -795,18 +795,42 @@
   };
 
   /**
+   * What To holds of a paste refused whole, on its one line, while what's
+   * wrong with it is said under it: "" for none.
+   */
+  let refusedPaste = "";
+
+  /**
+   * Text on To's one line, as a keyboard's paste puts it there.
+   *
+   * @param {string} text
+   */
+  const oneLine = (text) =>
+    String(text)
+      .replace(/\s*[\r\n]+\s*/g, " ")
+      .trim();
+
+  /**
    * What's put in To whole, as pasted, scanned or finished: a link asking for
    * a payment fills in what it asks, and one refused, as for another network,
    * or as what Share and Copy give of a request that doesn't agree with its
-   * link, its .dusk names looked up first, says why and empties the form, so
-   * nothing in it reads as the refused link's. Anything else is a recipient
-   * as it is, leaving what's typed in the other fields. What's filled in is
-   * checked as if it were typed.
+   * link, its .dusk names looked up first, says why, what disagrees too, and
+   * empties Amount and Memo, so nothing in them reads as the refused link's.
+   * What was pasted or typed stays in To, to see what it said (Amélie's and
+   * Sofía's: To emptied, and nothing said what was wrong); a code scanned
+   * doesn't (`keep`). Anything else is a recipient as it is, leaving what's
+   * typed in the other fields. What's filled in is checked as if it were
+   * typed.
    *
    * @param {string} text
    * @param {string} [held] What To holds as it's put there
+   * @param {{ keep?: boolean }} [options]
    */
-  async function takeRecipient(text, held = sendToAddress) {
+  async function takeRecipient(
+    text,
+    held = sendToAddress,
+    { keep = true } = {}
+  ) {
     const taking = (takings += 1);
     const names = pastedNames(text, $nodeNetwork);
 
@@ -822,28 +846,37 @@
       }
 
       isReadingLink = false;
-      fillFrom(text, readPastedLink(text, $nodeNetwork, language, owners));
+      fillFrom(
+        text,
+        readPastedLink(text, $nodeNetwork, language, owners),
+        keep
+      );
     } else {
       isReadingLink = false;
-      fillFrom(text, readPastedLink(text, $nodeNetwork, language));
+      fillFrom(text, readPastedLink(text, $nodeNetwork, language), keep);
     }
   }
 
   /**
    * Fills the form in from what's put in To, as it's read: a link alone, or
-   * in what Share and Copy give of a request.
+   * in what Share and Copy give of a request. Refused, what was given stays
+   * in To, on its one line, where `keep` says.
    *
    * @param {string} text
    * @param {ReturnType<typeof readPastedLink>} asked
+   * @param {boolean} [keep]
    */
-  async function fillFrom(text, asked) {
+  async function fillFrom(text, asked, keep = true) {
     // The field holds what was given until now: what takes its place, or
     // nothing, then shows, whatever it held before.
     await tick();
 
+    const isKeptRefused = Boolean(keep && asked?.problem && !asked.to);
+
     linkProblem = asked?.problem ?? "";
     linkElsewhere = asked?.elsewhere ?? null;
-    sendToAddress = asked ? asked.to : text;
+    sendToAddress = asked ? (isKeptRefused ? oneLine(text) : asked.to) : text;
+    refusedPaste = isKeptRefused ? sendToAddress : "";
     linkRecipient = sendToAddress;
     isFromLink = Boolean(asked?.amount || asked?.memo);
     isRecipientChecked = Boolean(sendToAddress);
@@ -860,15 +893,46 @@
   }
 
   /**
+   * Whether `after` is `before` with one character put in or taken out, as a
+   * key does.
+   *
+   * @param {string} before
+   * @param {string} after
+   */
+  function isOneKeyFrom(before, after) {
+    if (Math.abs(before.length - after.length) !== 1) {
+      return false;
+    }
+
+    const [short, long] =
+      before.length < after.length ? [before, after] : [after, before];
+    let at = 0;
+
+    while (at < short.length && short[at] === long[at]) {
+      at += 1;
+    }
+
+    return short.slice(at) === long.slice(at + 1);
+  }
+
+  /**
    * Much more at once than a key gives is a paste, however a phone's keyboard
-   * does it: what's wrong with it is said at once, and a link is read.
+   * does it: what's wrong with it is said at once, and a link is read. Over a
+   * refused paste To still holds, anything but a key is one too, as another
+   * link put in its place, whatever its length.
    *
    * @param {Event} event
    */
   function handleRecipientInput({ target }) {
     const { value } = /** @type {HTMLInputElement} */ (target);
 
-    if (isPasting || value.length - typedLength > 1) {
+    if (
+      isPasting ||
+      value.length - typedLength > 1 ||
+      (refusedPaste !== "" &&
+        value !== "" &&
+        !isOneKeyFrom(refusedPaste, value))
+    ) {
       // As pasted, line breaks and all, where the paste is all the field
       // holds: "link" then "danke!" on the next line isn't "linkdanke!".
       const given =
@@ -880,10 +944,12 @@
       pasted = "";
       takeRecipient(given, value);
     } else {
-      // Typed: what was being read of a paste before fills in nothing.
+      // Typed: what was being read of a paste before fills in nothing, and
+      // what was refused is no more.
       takings += 1;
       isReadingLink = false;
       linkProblem = "";
+      refusedPaste = "";
       isFromLink = false;
       typedLength = value.length;
     }
@@ -1508,8 +1574,9 @@
     isRecipientChecked = false;
   }
 
-  // Another recipient, as a contact picked, is no more the link's doing.
-  $: if (sendToAddress) {
+  // Another recipient, as a contact picked, is no more the link's doing:
+  // what To holds of a refused paste is.
+  $: if (sendToAddress && sendToAddress !== refusedPaste) {
     linkProblem = "";
   }
 
@@ -2497,7 +2564,8 @@
           bind:this={scanQrComponent}
           bind:scanner
           check={scannedProblem}
-          on:scan={(event) => takeRecipient(event.detail)}
+          on:scan={(event) =>
+            takeRecipient(event.detail, sendToAddress, { keep: false })}
         />
         {#if addressInfo.isSelfReferential}
           <Banner variant="warning" title="This is your own address." />

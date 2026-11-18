@@ -368,6 +368,25 @@ describe("Send", () => {
       await paste(fields, text.replace(/[\r\n]/g, ""));
     };
 
+    /**
+     * What To keeps of a paste refused whole: what was pasted, on its one
+     * line; Amount and Memo empty.
+     *
+     * @param {string} text
+     */
+    const refusedAs = (text) => [
+      text.replace(/\s*[\r\n]+\s*/g, " ").trim(),
+      "",
+      "",
+    ];
+
+    /**
+     * An account as a refusal names it, cut as app-core cuts it.
+     *
+     * @param {string} account
+     */
+    const cut = (account) => `${account.slice(0, 6)}…${account.slice(-6)}`;
+
     // Lena's, in both wallets: her own link with " danke!" after it said
     // "This link's network can't be read", and her link whose memo came
     // last filled the memo "Lena r35 odd danke!", the word on the next line
@@ -381,7 +400,8 @@ describe("Send", () => {
         for (const after of [" danke!", "\ndanke!", "\r\ndanke!"]) {
           await pasteAsBrowser(fields, `${link}${after}`);
 
-          expect(filled(fields)).toStrictEqual(["", "", ""]);
+          // What was pasted stays in To, to see what it said.
+          expect(filled(fields)).toStrictEqual(refusedAs(`${link}${after}`));
           expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
           expect(fields.review()).toBeDisabled();
         }
@@ -417,15 +437,26 @@ describe("Send", () => {
         "Factura 33",
       ]);
 
-      for (const forged of [
-        copied.replace("amount=0.002", "amount=0.15"),
-        copied.replace("0.002 DUSK", "0.001 DUSK"),
-        copied.replace("· Factura 33", "· coffee"),
+      // Nandini's, Lena's and Amélie's: it said what disagreed with nothing
+      // but "The message and its link don't agree.", and emptied To.
+      for (const [forged, problem] of [
+        [
+          copied.replace("amount=0.002", "amount=0.15"),
+          "The message says 0.002 DUSK; its link asks 0.15 DUSK.",
+        ],
+        [
+          copied.replace("0.002 DUSK", "0.001 DUSK"),
+          "The message says 0.001 DUSK; its link asks 0.002 DUSK.",
+        ],
+        [
+          copied.replace("· Factura 33", "· coffee"),
+          "The message's memo is “coffee”; its link's is “Factura 33”.",
+        ],
       ]) {
         await pasteAsBrowser(fields, forged);
 
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
-        expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+        expect(filled(fields)).toStrictEqual(refusedAs(forged));
+        expect(getByRole("alert")).toHaveTextContent(problem);
         expect(fields.review()).toBeDisabled();
       }
     });
@@ -457,7 +488,7 @@ describe("Send", () => {
       expect(queryByRole("alert")).toBeNull();
       expect(fields.review()).toBeDisabled();
 
-      // Another account's: refused.
+      // Another account's: refused, saying whose the link is.
       lookup.resolve({
         account: bep20BridgeAddress,
         address: "",
@@ -467,8 +498,10 @@ describe("Send", () => {
       await tick();
       await tick();
 
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
-      expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+      expect(filled(fields)).toStrictEqual(refusedAs(copied));
+      expect(getByRole("alert")).toHaveTextContent(
+        `The message says sofiadesign.dusk; its link pays ${cut(otherAccount)}.`
+      );
 
       // The link's own: filled in.
       baseProps.resolveName.mockResolvedValueOnce({
@@ -514,7 +547,7 @@ describe("Send", () => {
         expect(filled(fields).slice(1)).toStrictEqual(["", ""]);
         expect(queryByRole("alert")).toBeNull();
 
-        // Someone else's: refused, nothing filled in.
+        // Someone else's: refused, nothing filled in, saying what.
         lookup.resolve({
           account: bep20BridgeAddress,
           address: "",
@@ -524,8 +557,10 @@ describe("Send", () => {
         await tick();
         await tick();
 
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
-        expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+        expect(filled(fields)).toStrictEqual(refusedAs(message(` to ${name}`)));
+        expect(getByRole("alert")).toHaveTextContent(
+          `The message says alice.dusk; its link pays ${cut(otherAccount)}.`
+        );
         expect(fields.review()).toBeDisabled();
       }
 
@@ -584,8 +619,12 @@ describe("Send", () => {
             changed.replace("amount=0.002", "amount=0.15")
           );
 
-          expect(filled(fields)).toStrictEqual(["", "", ""]);
-          expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+          expect(filled(fields)).toStrictEqual(
+            refusedAs(changed.replace("amount=0.002", "amount=0.15"))
+          );
+          expect(getByRole("alert")).toHaveTextContent(
+            "its link asks 0.15 DUSK."
+          );
           expect(fields.review()).toBeDisabled();
 
           await pasteAsBrowser(fields, changed);
@@ -617,9 +656,57 @@ describe("Send", () => {
 
           await pasteAsBrowser(fields, pasted);
 
-          expect(filled(fields)).toStrictEqual(["", "", ""]);
-          expect(getByRole("alert")).toHaveTextContent(LINK_DISAGREES);
+          expect(filled(fields)).toStrictEqual(refusedAs(pasted));
+          expect(getByRole("alert")).toHaveTextContent(
+            "The message says 0.002 DUSK; its link asks 0.15 DUSK."
+          );
           expect(fields.review()).toBeDisabled();
+        }
+      );
+
+      // Marek's of round 39, which still filled in: a request line naming
+      // the .dusk payee with a spaced dot over a link to someone else (z60),
+      // a bare "Total 0.15" with no unit (W19), and someone else's raw
+      // address in the text (W31).
+      it.each([
+        [
+          "z60, a spaced dot in the name who asks",
+          () => own.replace(/^You're asked/, "sofiadesign . dusk asks you"),
+          `The message says sofiadesign.dusk; its link pays ${cut(otherAccount)}.`,
+        ],
+        [
+          "W19, a bare Total over it",
+          () => `Total 0.15\n${own}`,
+          "The message says 0.15; its link asks 0.002 DUSK.",
+        ],
+        [
+          "W31, another's address over it",
+          () => `Pay to ${bep20BridgeAddress}\n${own}`,
+          `The message says ${cut(bep20BridgeAddress)}; its link pays ${cut(otherAccount)}.`,
+        ],
+      ])(
+        "should refuse his paste with %s, saying what disagrees, To keeping it",
+        async (_, pastedOf, problem) => {
+          const { getByRole } = render(Send, baseProps);
+          const fields = fieldsOf(getByRole);
+          const pasted = pastedOf();
+
+          // sofiadesign.dusk is Sofía's, not whom the link pays.
+          baseProps.resolveName.mockResolvedValue({
+            account: bep20BridgeAddress,
+            address: "",
+            name: "sofiadesign.dusk",
+          });
+
+          try {
+            await pasteAsBrowser(fields, pasted);
+
+            expect(filled(fields)).toStrictEqual(refusedAs(pasted));
+            expect(getByRole("alert")).toHaveTextContent(problem);
+            expect(fields.review()).toBeDisabled();
+          } finally {
+            baseProps.resolveName.mockReset();
+          }
         }
       );
     });
@@ -763,7 +850,9 @@ describe("Send", () => {
 
       await paste(fields, httpsLink.replace("amount=0.15", "amount=1 000"));
 
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(
+        refusedAs(httpsLink.replace("amount=0.15", "amount=1 000"))
+      );
       expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
       expect(fields.review()).toBeDisabled();
     });
@@ -785,7 +874,7 @@ describe("Send", () => {
         // Pasted alone: the link ends at the space.
         await paste(fields, link);
 
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(filled(fields)).toStrictEqual(refusedAs(link));
         expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
         expect(fields.review()).toBeDisabled();
 
@@ -795,7 +884,10 @@ describe("Send", () => {
           `You're asked to pay 1000 DUSK on Testnet\nPay here: ${link}`
         );
 
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        // Put in as a keyboard puts it, its line break gone.
+        expect(filled(fields)).toStrictEqual(
+          refusedAs(`You're asked to pay 1000 DUSK on TestnetPay here: ${link}`)
+        );
         expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
 
         // Put in a key at a time, as a phone's keyboard can, then left: its
@@ -813,7 +905,7 @@ describe("Send", () => {
         await tick();
         await tick();
 
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(filled(fields)).toStrictEqual(refusedAs(link));
         expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
         expect(fields.review()).toBeDisabled();
       }
@@ -825,7 +917,10 @@ describe("Send", () => {
 
       await paste(fields, `Pay here: ${httpsLink}\nOr here: ${duskLink}`);
 
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(
+        // Put in as a keyboard puts it, its line break gone.
+        refusedAs(`Pay here: ${httpsLink}Or here: ${duskLink}`)
+      );
       expect(getByRole("alert")).toHaveTextContent(LINK_SEVERAL);
       expect(fields.review()).toBeDisabled();
     });
@@ -844,7 +939,11 @@ describe("Send", () => {
           "This link asks for two different amounts. Ask for a new one."
         )
       ).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(
+        refusedAs(
+          `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`
+        )
+      );
 
       // The same amount both ways is the one asked.
       await paste(fields, `${httpsLink}&amountLux=150000000`);
@@ -894,7 +993,7 @@ describe("Send", () => {
         await paste(fields, link);
 
         expect(getByText(words)).toBeInTheDocument();
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(filled(fields)).toStrictEqual(refusedAs(link));
       }
     );
 
@@ -913,7 +1012,11 @@ describe("Send", () => {
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(
+        refusedAs(
+          `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
+        )
+      );
       expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
         "href",
         `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
@@ -940,19 +1043,18 @@ describe("Send", () => {
         name: "alice.dusk",
       });
 
-      await pasteAsBrowser(
-        fields,
-        requestText(
-          { link, lux: 150_000_000n, memo: "Factura 33" },
-          { language: "en", name: "alice.dusk", net: networks.mainnet }
-        )
+      const message = requestText(
+        { link, lux: 150_000_000n, memo: "Factura 33" },
+        { language: "en", name: "alice.dusk", net: networks.mainnet }
       );
+
+      await pasteAsBrowser(fields, message);
 
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
       expect(queryByText(LINK_DISAGREES)).toBeNull();
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(refusedAs(message));
       expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
         "href",
         link
@@ -998,7 +1100,9 @@ describe("Send", () => {
         expect(
           getByText("This request is for Mainnet. You are on Testnet.")
         ).toBeInTheDocument();
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(filled(fields)).toStrictEqual(
+          refusedAs(`dusk:public-${otherAccount}${rest}`)
+        );
         expect(queryByText("Not a valid address.")).toBeNull();
         expect(fields.review()).toBeDisabled();
       }
@@ -1018,7 +1122,11 @@ describe("Send", () => {
       expect(
         getByText("This request is for Mainnet. You are on Testnet.")
       ).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(
+        refusedAs(
+          `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
+        )
+      );
 
       // What's given next is on its own.
       await paste(fields, otherAccount);
@@ -1056,7 +1164,7 @@ describe("Send", () => {
       await paste(fields, value);
 
       expect(getByText(words)).toBeInTheDocument();
-      expect(filled(fields)).toStrictEqual(["", "", ""]);
+      expect(filled(fields)).toStrictEqual(refusedAs(value));
     });
 
     it.each([
@@ -1076,7 +1184,7 @@ describe("Send", () => {
         expect(
           getByText("This link's address isn't valid. Ask for a new one.")
         ).toBeInTheDocument();
-        expect(filled(fields)).toStrictEqual(["", "", ""]);
+        expect(filled(fields)).toStrictEqual(refusedAs(link()));
         expect(fields.review()).toBeDisabled();
       }
     );

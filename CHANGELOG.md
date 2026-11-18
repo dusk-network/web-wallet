@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say what a pasted message gets wrong against its link, as "The message says 0.002 DUSK; its link asks 0.15 DUSK.", and keep what was pasted in To
+- Refuse a pasted request whose line names its .dusk name with a spaced or look-alike dot, says a bare "Total 0.15", or names another's address, unlike its link
 - Read Activity again as soon as the balance moves, and every few seconds until it lists what came, so Home, History and Review know a payment as soon as the balance counts it
 - Give your name in Your requests' Copy request as Share does, once it's looked up, also right after an unlock
 - Mark a payment that went out after Don't send "Sent after you chose not to send", with when it landed, in Activity, History and its details, and on its own screen, until it's opened, never as an ordinary Sent

@@ -4,7 +4,6 @@ import { networks } from "@dusk-network/networks";
 import { LINK_BAD_AMOUNT } from "@dusk-network/app-core/payment-links";
 
 import {
-  LINK_DISAGREES,
   LINK_SEVERAL,
   LINK_UNCLEAR,
   pastedNames,
@@ -136,14 +135,17 @@ describe("What's pasted of a request", () => {
   // Marek's: the wallet's own message with only its link's amount changed
   // filled the link's 0.15 under a line saying 0.002, and a forged line's
   // name or memo was ignored.
-  it("refuses what Share and Copy give of a request whose line says another amount, memo or name than its link", () => {
-    const refused = {
+  // Nandini's, Lena's and Amélie's: "The message and its link don't agree."
+  // never said what disagreed.
+  it("refuses what Share and Copy give of a request whose line says another amount, memo or name than its link, saying what disagrees", () => {
+    /** @param {string} problem */
+    const refused = (problem) => ({
       amount: "",
       elsewhere: null,
       memo: "",
-      problem: LINK_DISAGREES,
+      problem,
       to: "",
-    };
+    });
     const said = (/** @type {string} */ link) =>
       requestText(
         { link, lux: 30_000_000n, memo: "Factura 71" },
@@ -160,7 +162,9 @@ describe("What's pasted of a request", () => {
         networks.testnet,
         "en"
       )
-    ).toStrictEqual(refused);
+    ).toStrictEqual(
+      refused("The message says 0.03 DUSK; its link asks 0.15 DUSK.")
+    );
     // The line's amount, or its memo.
     expect(
       readPastedLink(
@@ -168,14 +172,18 @@ describe("What's pasted of a request", () => {
         networks.testnet,
         "en"
       )
-    ).toStrictEqual(refused);
+    ).toStrictEqual(
+      refused("The message says 0.002 DUSK; its link asks 0.03 DUSK.")
+    );
     expect(
       readPastedLink(
         said(httpsLink).replace("· Factura 71", "· coffee"),
         networks.testnet,
         "en"
       )
-    ).toStrictEqual(refused);
+    ).toStrictEqual(
+      refused("The message's memo is “coffee”; its link's is “Factura 71”.")
+    );
     // Its name, where the name service says that name pays another account,
     // or no one.
     const another =
@@ -209,7 +217,11 @@ describe("What's pasted of a request", () => {
           "en",
           new Map([["sofiadesign.dusk", owner]])
         )
-      ).toStrictEqual(refused);
+      ).toStrictEqual(
+        refused(
+          "The message says sofiadesign.dusk; its link pays 25z9o6…5Etftt."
+        )
+      );
     }
 
     expect(
