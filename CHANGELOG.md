@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Ask "Leave this payment?" before a Send with a payment in it is left, a link's or one typed, Stay the main answer
 - Cancel a send that waits on a network that doesn't answer, on its screen or from Home, which lists it until it goes out
 - Review a revoke of an open approval on the Bridge before the EVM wallet signs it: what's approved now, from where, that nothing moves, and its network fee
 - Open a payment request in the Dusk Wallet extension from the page its link opens, where the extension takes it
@@ -50,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Let go of a Send that's left, rather than open the next Send on it, say "Your unfinished payment." of one a lock or a reload kept, and clear what a link or a kept payment put in Amount and Memo once another recipient is chosen
 - Read all of the history, from the network where this device doesn't keep it yet, for Staking's activity and rewards by year, Home's past staking and filters, Review's "This address sent you", Contacts, Your requests and Bridge › Activity, never only the page History shows
 - Refuse a pasted message that names another amount, network or .dusk name than its link anywhere before it, one hidden or look-alike letter in its wording included, each .dusk name looked up first
 - Say at once in To that a name like sofiadesign·dusk only looks like sofiadesign.dusk, in place of "Not a valid address."

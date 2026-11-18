@@ -32,10 +32,12 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
+  import { beforeNavigate, goto as navigateTo } from "$app/navigation";
   import { page } from "$app/stores";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import {
     addBasePath,
+    askedWith,
     formDraft,
     gasToKeep,
     keptGas,
@@ -105,6 +107,8 @@
     TransactionResult,
     UnsentSends,
   } from "$lib/components";
+
+  import LeavePayment from "./LeavePayment.svelte";
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string, gate?: import("$lib/transactions/sendGate").SendGate) => Promise<string>} */
   export let execute;
@@ -215,7 +219,10 @@
    */
   export let historyRows = [];
 
-  const draft = formDraft("send");
+  // Left, it goes, as Leave this payment? says (Amélie's: a payment back
+  // to a stranger, left with Back twice, was there again with its 0,1 the
+  // next time Send opened). A lock, a reload or a send that failed keep it.
+  const draft = formDraft("send", { keepsLeft: false });
 
   /** What the page was opened for, to tell another link from this one. */
   const openedFor = initialRecipient
@@ -313,6 +320,75 @@
   let isRefilled = Boolean(refilled);
 
   /**
+   * Whether the form holds a payment kept on purpose, through a lock or a
+   * reload: Your unfinished payment, until another recipient is chosen.
+   */
+  let isKept = Boolean(typedBefore && !refilled);
+
+  /**
+   * What a link or a payment kept put in Amount and Memo, for the recipient
+   * it came with, from what was filled in.
+   *
+   * @param {{ amount?: string, memo?: string, to?: string } | null} filled
+   * @returns {{ fields: Array<"amount" | "memo">, to: string }}
+   */
+  const carriedOf = (filled) => ({
+    fields: /** @type {Array<"amount" | "memo">} */ (
+      /** @type {const} */ (["amount", "memo"]).filter((field) =>
+        String(filled?.[field] ?? "").trim()
+      )
+    ),
+    to: String(filled?.to ?? "").trim(),
+  });
+
+  /**
+   * What a link or a payment kept put in Amount and Memo, for the recipient
+   * it came with: another chosen, they go, unless typed over since
+   * (Amélie's: the 0,1 of a payment back to a stranger stayed as she chose
+   * Chen from Contacts, and would have gone to him).
+   */
+  let carried = carriedOf(
+    typedBefore ??
+      (isFromLink
+        ? { amount: initialAmount, memo: initialMemo, to: initialRecipient }
+        : null)
+  );
+
+  /**
+   * What's typed over in a field is no more what a link or a payment kept
+   * put there.
+   *
+   * @param {"amount" | "memo"} field
+   */
+  function typedOver(field) {
+    if (carried.fields.includes(field)) {
+      carried = {
+        ...carried,
+        fields: carried.fields.filter((each) => each !== field),
+      };
+    }
+  }
+
+  /**
+   * Another recipient chosen: what a link or a payment kept put in Amount and
+   * Memo for the one it came with goes, and that it was that payment.
+   */
+  function dropCarried() {
+    if (carried.fields.includes("amount")) {
+      sendAmount = "";
+      isMaxAmount = false;
+      isOwnAmount = false;
+    }
+
+    if (carried.fields.includes("memo")) {
+      memo = "";
+    }
+
+    carried = carriedOf(null);
+    isKept = false;
+  }
+
+  /**
    * The send that never went out the form was filled in with: sent from
    * here, it takes its place. Null for none.
    *
@@ -329,6 +405,59 @@
 
   /** Whether the page shows still: its screen says how a send ended. */
   let isShown = true;
+
+  /**
+   * Where a press that leaves the form was going, while Leave this payment?
+   * asks: null while nothing asks.
+   *
+   * @type {{ go: () => void } | null}
+   */
+  let leaving = null;
+
+  /** Whether the form goes without asking, as Leave said. */
+  let isLeft = false;
+
+  // Leaving with a payment in it asks first, as the extension does (Amélie's:
+  // a payment a link filled in went with a click on Home). Not as a lock or
+  // a reload goes, which keep it, nor a step of its own, as its review, at
+  // the same address, nor once it's sent. Send at another address, as for
+  // another person from the search, is another payment: it asks too.
+  beforeNavigate(({ cancel, delta, to, type, willUnload }) => {
+    if (
+      isLeft ||
+      willUnload ||
+      !to ||
+      step === "done" ||
+      !holdsPayment ||
+      !get(walletStore).initialized ||
+      (to.url.pathname === $page?.url?.pathname &&
+        to.url.search === $page?.url?.search)
+    ) {
+      return;
+    }
+
+    // As it was asked, in its page's place too where it replaced it.
+    const options = type === "goto" ? askedWith(to.url.href) : undefined;
+
+    cancel();
+    leaving = {
+      go:
+        type === "popstate" && delta
+          ? () => history.go(delta)
+          : // eslint-disable-next-line svelte/no-navigation-without-resolve -- where it was going, its base path in it
+            () => void navigateTo(to.url.href, options),
+    };
+  });
+
+  /** Leave, as asked: the payment goes, and the press goes where it was going. */
+  function leave() {
+    const went = leaving;
+
+    leaving = null;
+    isLeft = true;
+    draft.clear();
+    went?.go();
+  }
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -580,6 +709,8 @@
     linkElsewhere = null;
     isFromLink = false;
     isRefilled = true;
+    isKept = false;
+    carried = carriedOf(typed);
     refill = send;
     reviewWhenReady = true;
     sendToAddress = typed.to;
@@ -615,6 +746,7 @@
       getDecimalSeparator(language)
     );
     isMaxAmount = true;
+    typedOver("amount");
   }
 
   /** @param {Event} event */
@@ -624,6 +756,7 @@
     );
     isMaxAmount = false;
     isOwnAmount = false;
+    typedOver("amount");
   }
 
   /** How long the recipient typed was, to tell a paste from a key. */
@@ -719,8 +852,10 @@
     if (asked) {
       isMaxAmount = false;
       isOwnAmount = false;
+      isKept = false;
       sendAmount = asked.amount;
       memo = asked.memo;
+      carried = carriedOf(asked);
     }
   }
 
@@ -1387,6 +1522,24 @@
     isRefilled = false;
   }
 
+  // Another recipient chosen, picked, pasted or typed whole: what a link or a
+  // payment kept put in Amount and Memo was for the one it came with.
+  $: if (
+    carried.fields.length &&
+    carried.to &&
+    addressInfo.isValid &&
+    recipientAddress !== carried.to &&
+    sendToAddress.trim() !== carried.to
+  ) {
+    dropCarried();
+  }
+
+  // Anything in the form, typed, filled in by a link or kept: leaving it
+  // asks first.
+  $: holdsPayment = Boolean(
+    sendToAddress.trim() || sendAmount.trim() || memo.trim()
+  );
+
   // A send that never went out, asked to be sent now: its review, once the
   // form can send it as it was, to the same address, with the same amount
   // and memo. Anything else stays for the form to say.
@@ -1830,6 +1983,18 @@
   }
 </script>
 
+{#if leaving}
+  <LeavePayment
+    on:leave={leave}
+    on:stay={() => {
+      leaving = null;
+    }}
+    text={isFromLink
+      ? "This clears the payment the link filled in."
+      : "This clears your unfinished payment."}
+  />
+{/if}
+
 {#if step === "done" && sent}
   <TransactionResult
     gate={sent.gate}
@@ -2055,6 +2220,8 @@
               ? "Filled in to send the payment back. Check it before you send."
               : "Filled in from the link. Check it before you send."}
           </p>
+        {:else if isKept}
+          <p class="send__hint" role="status">Your unfinished payment.</p>
         {/if}
 
         {#if profileNamed}
@@ -2410,6 +2577,7 @@
               sendAmount = event.detail;
               isMaxAmount = false;
               isOwnAmount = false;
+              typedOver("amount");
             }}
             text={sendAmount}
           />
@@ -2438,6 +2606,7 @@
           })}
           disabled={isReadingLink}
           id="{id}-memo"
+          on:input={() => typedOver("memo")}
           type="multiline"
         />
         {#if isMemoTooLong}
