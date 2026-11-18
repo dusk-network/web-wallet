@@ -12,7 +12,7 @@ import { wordlist } from "@scure/bip39/wordlists/english.js";
 
 import * as navigation from "$lib/navigation";
 import { walletStore } from "$lib/stores";
-import { stubWalletNetwork } from "$lib/test-helpers";
+import { onAPhone, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { addWallet, unlockWallets } from "$lib/wallets";
 
@@ -194,6 +194,37 @@ describe("Check your recovery words", () => {
   // Lena's: a whole word in the first box, with no suggestion to take, and
   // Enter checked at once, two boxes empty: "That doesn't match". Amélie's:
   // Enter taking a suggestion in the last box checked too.
+  // Codex's, round 40: on a phone, a page left with a box's suggestions open
+  // kept them, the word being typed in plain words, for the app switcher.
+  it("closes a box's suggestions as the page goes, on a phone too", async () => {
+    const phone = onAPhone();
+
+    try {
+      const { container, getByLabelText, getByRole, queryByRole } =
+        render(CheckWords);
+
+      await fireEvent.input(getByLabelText("Password you unlock with"), {
+        target: { value: PASSWORD },
+      });
+      await fireEvent.click(getByRole("button", { name: "Continue" }));
+      await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
+
+      const [first] = askedIn(container);
+
+      first.box.focus();
+      await fireEvent.input(first.box, { target: { value: "a" } });
+      await fireEvent.input(first.box, { target: { value: "ab" } });
+
+      expect(getByRole("listbox", { name: "Suggestions" })).toBeInTheDocument();
+
+      window.dispatchEvent(new Event("blur"));
+
+      await vi.waitFor(() => expect(queryByRole("listbox")).toBeNull());
+    } finally {
+      phone.mockRestore();
+    }
+  });
+
   it("goes on to the next box with Enter, suggestions or not, and checks only once every box holds a recovery word, never saying a half-filled check doesn't match", async () => {
     const { container, getByLabelText, getByRole, queryByRole } =
       render(CheckWords);

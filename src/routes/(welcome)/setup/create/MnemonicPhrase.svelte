@@ -1,13 +1,17 @@
 <script>
   /**
    * The recovery words, to write down: hidden the moment the page is
-   * (onPageHidden), until Show words.
+   * (onPageHidden), until Show words. On a phone (touchOnly), they show only
+   * while Hold to show words is held, under them, never at rest: its app
+   * switcher can keep a picture of the page as it's left.
    */
   import { onMount } from "svelte";
 
   import { Button, Words } from "$lib/dusk/components";
+  import { HoldToShow } from "$lib/components";
   import { WarningCard } from "$lib/containers/Cards";
   import onPageHidden from "$lib/security/onPageHidden";
+  import { touchOnly } from "$lib/security/touchOnly";
   import { generateMnemonic } from "$lib/wallet";
 
   /** @type {string[]} */
@@ -19,6 +23,9 @@
   /** Whether the words are hidden, as the page was: until Show words. */
   let isHidden = false;
 
+  /** Whether Hold to show words is held, on a phone. */
+  let isHeld = false;
+
   if (mnemonicPhrase.length === 0) {
     mnemonicPhrase = generateMnemonic().split(" ");
   }
@@ -29,7 +36,8 @@
     })
   );
 
-  $: shown = isHidden ? mnemonicPhrase.map(() => HIDDEN_WORD) : mnemonicPhrase;
+  $: isMasked = $touchOnly ? !isHeld : isHidden;
+  $: shown = isMasked ? mnemonicPhrase.map(() => HIDDEN_WORD) : mnemonicPhrase;
 </script>
 
 <WarningCard heading="Keep it safe">
@@ -37,7 +45,9 @@
     Please make sure to write your phrase down and save it in a secure location.
   </p>
   <Words words={shown} />
-  {#if isHidden}
+  {#if $touchOnly}
+    <HoldToShow bind:held={isHeld} className="mnemonic-card__show" />
+  {:else if isHidden}
     <Button
       className="mnemonic-card__show"
       on:click={() => {

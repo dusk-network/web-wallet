@@ -29,6 +29,10 @@
    * - The words are hidden the moment the page is (onPageHidden), where
    *   any are in, each box's as a password is, with no suggestions, until
    *   Show words.
+   * - On a phone (touchOnly), each box's word is typed masked, as a
+   *   password is, its suggestions kept, and the words show, read only, only
+   *   while Hold to show words is held, under them: a phone's app switcher
+   *   can keep a picture of the page as it's left.
    */
   import { createEventDispatcher, onMount, tick } from "svelte";
   import { mdiAlertOutline, mdiContentPaste } from "@mdi/js";
@@ -37,6 +41,7 @@
   import { toast } from "$lib/dusk/components/Toast/store";
   import { randomUUID } from "$lib/dusk/string";
   import onPageHidden from "$lib/security/onPageHidden";
+  import { touchOnly } from "$lib/security/touchOnly";
 
   import { phraseProblem, wordsOf } from "./phraseProblem";
   import {
@@ -49,6 +54,7 @@
     suggestionsFor,
   } from "./suggestions";
   import WordSuggestions from "./WordSuggestions.svelte";
+  import HoldToShow from "../HoldToShow/HoldToShow.svelte";
 
   /** The words of the boxes shown, one space between: "" for none. */
   export let mnemonic = "";
@@ -407,19 +413,32 @@
   /** Whether the words are hidden, as the page was: until Show words. */
   let isHidden = false;
 
+  /** Whether Hold to show words is held, on a phone. */
+  let isHeld = false;
+
   onMount(() =>
     onPageHidden(() => {
-      if (values.some(Boolean)) {
+      // The suggestions say what's typed, a phone's too: gone with the page,
+      // and offered again as typing goes on.
+      suggesting = -1;
+
+      // On a phone the words are masked anyway.
+      if (values.some(Boolean) && !$touchOnly) {
         isHidden = true;
-        suggesting = -1;
       }
     })
   );
 
   $: shown = values.slice(0, count);
-  // None while the words are hidden: they'd say what's typed.
+  // Masked as a password is: on a phone, but while they're held to show.
+  $: isMasked = $touchOnly ? !isHeld : isHidden;
+  // None while the words are hidden on a computer: they'd say what's typed.
+  // On a phone they're kept, masked or not: typed unseen, they're how a
+  // word is checked.
   $: suggestions =
-    !isHidden && suggesting >= 0 ? suggestionsFor(values[suggesting]) : [];
+    ($touchOnly || !isHidden) && suggesting >= 0
+      ? suggestionsFor(values[suggesting])
+      : [];
   // The phrase as the list spells it: a word typed with an accent too.
   $: mnemonic = shown.filter(Boolean).map(listWord).join(" ");
   $: isValid =
@@ -441,7 +460,7 @@
         >
       {/each}
     </div>
-    {#if isHidden}
+    {#if isHidden && !$touchOnly}
       <Button
         on:click={() => {
           isHidden = false;
@@ -468,7 +487,7 @@
     aria-label={label}
     bind:this={grid}
     class="mnemonic-input__grid"
-    class:mnemonic-input__grid--hidden={isHidden}
+    class:mnemonic-input__grid--hidden={isMasked}
     on:focusout={handleFocusOut}
     role="group"
   >
@@ -500,6 +519,7 @@
             on:input={() => handleInput(i)}
             on:keydown={(event) => handleKeyDown(i, event)}
             on:paste={(event) => handlePaste(i, event)}
+            readonly={$touchOnly && isHeld}
             role="combobox"
             spellcheck="false"
             type="text"
@@ -521,6 +541,10 @@
       </div>
     {/each}
   </div>
+  {#if $touchOnly}
+    <!-- Under the words: the thumb holding it hides none of them. -->
+    <HoldToShow bind:held={isHeld} className="mnemonic-input__hold" />
+  {/if}
   {#if said}
     <p class="mnemonic-input__problem" id="{id}-problem" role="alert">
       {said}
@@ -654,6 +678,10 @@
   /* Hidden, each box's word shows as a password does. */
   .mnemonic-input__grid--hidden .mnemonic-input__word input {
     -webkit-text-security: disc;
+  }
+
+  :global(.mnemonic-input__hold) {
+    align-self: flex-start;
   }
 
   .mnemonic-input__problem {

@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Mask recovery words on a phone as they're typed, in Restore, Add wallet, Unlock and Check your recovery words, their suggestions kept, and show them, and the words to write down, only while Hold to show words is held
 - Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
 - Name Receive's buttons by what they give, Copy address and Share address, Copy request and Share request, the request's first and leading while Request payment is open, the address's below it
 - Mark a word as "Not a recovery word" in its box as soon as no recovery word starts with what's typed, and take one typed with an accent as the word it is

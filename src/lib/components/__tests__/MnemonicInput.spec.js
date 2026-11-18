@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 import { tick } from "svelte";
 
+import { MediaQueryList } from "$lib/dusk/mocks";
+import styleRules from "$lib/dusk/test-helpers/styleRules";
+import { onAPhone } from "$lib/test-helpers";
+
 import { MnemonicInput } from "..";
 
 // Public BIP39 test phrases, never a real wallet's.
@@ -435,6 +439,204 @@ describe("MnemonicInput", () => {
       expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
     }
   );
+
+  // Decided after round 39: on a phone, the words typed show only while
+  // held, as the extension's do in Firefox for Android: its app switcher can
+  // keep a picture of the page as it's left, before the page hears of it.
+  it("masks each box's word on a phone as a password is, keeps its suggestions, and shows the words, read only, only while Hold to show words is held", async () => {
+    const phone = onAPhone();
+
+    try {
+      const {
+        container,
+        getAllByRole,
+        getByLabelText,
+        getByRole,
+        queryByRole,
+      } = render(MnemonicInput);
+      const grid = /** @type {HTMLElement} */ (
+        container.querySelector(".mnemonic-input__grid")
+      );
+      /** @param {string} type */
+      const finger = (type) =>
+        fireEvent(
+          getByRole("button", { name: "Hold to show words" }),
+          Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
+            button: 0,
+            pointerId: 1,
+            pointerType: "touch",
+          })
+        );
+
+      await pasteInto(getByLabelText("Word 1"), TWELVE);
+
+      // At rest: masked, though nothing left the page.
+      expect(grid).toHaveClass("mnemonic-input__grid--hidden");
+      expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+      // Typed masked, its suggestions kept.
+      await fireEvent.input(getByLabelText("Word 12"), {
+        target: { value: "" },
+      });
+      await typeInto(getByLabelText("Word 12"), "ab");
+
+      expect(wordsIn(getByRole("listbox"))).toContain("abandon");
+      expect(grid).toHaveClass("mnemonic-input__grid--hidden");
+
+      await finger("pointerdown");
+
+      expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
+      expect(
+        getAllByRole("combobox").every(
+          (box) => /** @type {HTMLInputElement} */ (box).readOnly
+        )
+      ).toBe(true);
+
+      // A second finger on the page ends the hold.
+      document.body.dispatchEvent(
+        Object.assign(new Event("pointerdown", { bubbles: true }), {
+          button: 0,
+          pointerId: 2,
+          pointerType: "touch",
+        })
+      );
+      await tick();
+
+      expect(grid).toHaveClass("mnemonic-input__grid--hidden");
+      expect(
+        getAllByRole("combobox").some(
+          (box) => /** @type {HTMLInputElement} */ (box).readOnly
+        )
+      ).toBe(false);
+      expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
+    } finally {
+      phone.mockRestore();
+    }
+  });
+
+  // Round 40, on the emulator: Firefox and Chrome name a phone's pen (and the
+  // emulator's screen, which says it takes one) a fine pointer, as a mouse,
+  // though nothing on the phone hovers. Chrome names a computer with a touch
+  // screen as Chrome does: a finger that can't hover, and a mouse that can.
+  it.each([
+    ["a phone with a pen", true, () => onAPhone({ pen: true })],
+    [
+      "a computer with a touch screen",
+      false,
+      () =>
+        vi
+          .spyOn(window, "matchMedia")
+          .mockImplementation(
+            (query) =>
+              /** @type {globalThis.MediaQueryList} */ (
+                /** @type {unknown} */ (
+                  new MediaQueryList(
+                    query,
+                    [
+                      "(any-pointer: coarse)",
+                      "(any-pointer: fine)",
+                      "(any-hover: none)",
+                      "(any-hover: hover)",
+                    ].includes(query)
+                  )
+                )
+              )
+          ),
+    ],
+  ])(
+    "on %s, masks the words behind Hold to show words: %s",
+    async (_, isPhone, device) => {
+      const spy = device();
+
+      try {
+        const { container, getByLabelText, queryByRole } =
+          render(MnemonicInput);
+        const grid = /** @type {HTMLElement} */ (
+          container.querySelector(".mnemonic-input__grid")
+        );
+
+        await pasteInto(getByLabelText("Word 1"), TWELVE);
+
+        expect(grid.classList.contains("mnemonic-input__grid--hidden")).toBe(
+          isPhone
+        );
+        expect(
+          queryByRole("button", { name: "Hold to show words" }) !== null
+        ).toBe(isPhone);
+        expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
+      } finally {
+        spy.mockRestore();
+      }
+    }
+  );
+
+  // Codex's, round 40: on a phone, a page left with a box's suggestions
+  // open kept them, the word being typed in plain words, for the app
+  // switcher's picture.
+  it("closes a box's suggestions as the page goes, on a phone too, and offers them again as typing goes on", async () => {
+    const phone = onAPhone();
+
+    try {
+      const { getByLabelText, getByRole, queryByRole } = render(MnemonicInput);
+
+      await typeInto(getByLabelText("Word 1"), "leg");
+
+      expect(wordsIn(getByRole("listbox"))).toContain("legal");
+
+      window.dispatchEvent(new Event("blur"));
+      await tick();
+
+      expect(queryByRole("listbox")).toBeNull();
+
+      await typeInto(getByLabelText("Word 1"), "lega");
+
+      expect(wordsIn(getByRole("listbox"))).toContain("legal");
+    } finally {
+      phone.mockRestore();
+    }
+  });
+
+  // Codex's, round 40: 24 boxes on a phone run past its screen, and Hold to
+  // show words, under them, was out of reach of the first ones: a held
+  // finger can't scroll, and a second touch ends the hold.
+  it("keeps Hold to show words in reach at the foot of the screen wherever the words are scrolled to, above a flow's own buttons stuck there", () => {
+    const rule = styleRules(
+      "../HoldToShow/HoldToShow.svelte",
+      import.meta.url
+    ).find(({ selector }) => selector.trim() === ".hold-to-show");
+
+    expect(rule?.declarations).toMatchObject({
+      bottom: "var(--small-gap)",
+      position: "sticky",
+    });
+
+    // In a flow, as Restore: its Back and Next stuck at the foot too.
+    const flow = document.createElement("div");
+    const place = document.createElement("div");
+    const steps = document.createElement("div");
+
+    flow.className = "dusk-wizard";
+    steps.className = "dusk-wizard__step-navigation";
+    steps.style.position = "sticky";
+    steps.style.bottom = "0px";
+    Object.defineProperty(steps, "offsetHeight", { value: 68 });
+    flow.append(place, steps);
+    document.body.append(flow);
+
+    const phone = onAPhone();
+
+    try {
+      const { getByRole } = render(MnemonicInput, { target: place });
+
+      expect(
+        getByRole("button", { name: "Hold to show words" }).style.bottom
+      ).toBe("calc(68px + var(--small-gap))");
+    } finally {
+      phone.mockRestore();
+      cleanup();
+      flow.remove();
+    }
+  });
 
   it("leaves empty boxes as they are as the page is hidden: a phrase pasted on coming back shows", async () => {
     const { container, getByLabelText, queryByRole } = render(MnemonicInput);

@@ -14,6 +14,7 @@ import * as SvelteKit from "@sveltejs/kit";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import { networkStore, settingsStore, walletStore } from "$lib/stores";
+import { onAPhone } from "$lib/test-helpers";
 import * as walletLib from "$lib/wallet";
 import * as navigation from "$lib/navigation";
 import vault from "$lib/vault";
@@ -366,6 +367,87 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Show words" }));
 
     expect(boxes).not.toHaveClass("recovery-check__words--hidden");
+  });
+
+  // Amélie's and Chen's, decided after round 39: on a phone, the words show
+  // only while held, as the extension's do in Firefox for Android, so the
+  // app switcher can't keep them, whenever it takes its picture.
+  it("shows the words to write down on a phone only while Hold to show words is held, and masks what's typed in their check, its suggestions kept", async () => {
+    const phone = onAPhone();
+
+    try {
+      const { container, getAllByRole, getByRole, queryByRole } = render(
+        Create,
+        baseOptions
+      );
+      const words = mnemonic.split(" ");
+      const shownWords = () =>
+        Array.from(
+          container.querySelectorAll(".dusk-words__word"),
+          (word) => word.textContent?.trim() ?? ""
+        );
+      /** @param {string} type */
+      const finger = (type) =>
+        fireEvent(
+          getByRole("button", { name: "Hold to show words" }),
+          Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
+            button: 0,
+            pointerId: 1,
+            pointerType: "touch",
+          })
+        );
+
+      await fireEvent.click(getByRole("button", { name: "Accept" }));
+      await fireEvent.click(getAllByRole("checkbox")[0]);
+      await fireEvent.click(getAllByRole("checkbox")[1]);
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      // At rest: none of them, though nothing left the page.
+      expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
+      expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+      await finger("pointerdown");
+
+      expect(shownWords()).toStrictEqual(words);
+
+      await finger("pointerup");
+
+      expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
+
+      // Held as the phone leaves the page: masked at once.
+      await finger("pointerdown");
+      window.dispatchEvent(new Event("pagehide"));
+      await tick();
+
+      expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
+
+      // Their check: masked as it's typed, its suggestions kept.
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+
+      const boxes = container.querySelector(".recovery-check__words");
+      const first = /** @type {HTMLInputElement} */ (
+        container.querySelector(".recovery-check__word input")
+      );
+
+      first.focus();
+      await fireInput(first, "mu");
+
+      expect(boxes).toHaveClass("recovery-check__words--hidden");
+      expect(getByRole("listbox")).toBeInTheDocument();
+      expect(queryByRole("button", { name: "Show words" })).toBeNull();
+
+      await finger("pointerdown");
+
+      expect(boxes).not.toHaveClass("recovery-check__words--hidden");
+      expect(first.readOnly).toBe(true);
+
+      await finger("pointercancel");
+
+      expect(boxes).toHaveClass("recovery-check__words--hidden");
+      expect(first.readOnly).toBe(false);
+    } finally {
+      phone.mockRestore();
+    }
   });
 
   // Then Nandini's and Amélie's: one word wrong, or three made up, put all
