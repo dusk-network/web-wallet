@@ -449,6 +449,33 @@ describe("Being told when a transfer arrives", () => {
       expect(get(arrivalTitle)).toBe("2 DUSK arrived on BSC");
     });
 
+    it("says nothing of a migration whose payout of days before comes to light as all of the history is read", () => {
+      const migration = (
+        /** @type {string} */ stage,
+        /** @type {number | null} */ paidAt = null
+      ) => ({
+        amountLux: 5_000_000_000n,
+        at: Date.now() - 6 * 86_400_000,
+        hash: "mm",
+        kind: "migration",
+        paidAt,
+        payout: paidAt ? "pp" : null,
+        route: { chain: { name: "BSC" }, destination: "duskDs", origin: "bsc" },
+        stage,
+      });
+
+      stores.transfers.set([migration("sent")]);
+      stores.transfers.set([migration("paid", Date.now() - 5 * 86_400_000)]);
+
+      expect(get(arrivalTitle)).toBe("");
+
+      // One paid now is news.
+      stores.transfers.set([{ ...migration("sent"), hash: "nn" }]);
+      stores.transfers.set([{ ...migration("paid", Date.now()), hash: "nn" }]);
+
+      expect(get(arrivalTitle)).not.toBe("");
+    });
+
     it("says a transfer that didn't go through, and a deposit and a withdrawal at each step that asks something", () => {
       stores.transfers.set([service("sent")]);
       stores.transfers.set([{ ...service("failed"), failure: "No" }]);

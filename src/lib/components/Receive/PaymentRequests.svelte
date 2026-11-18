@@ -15,10 +15,10 @@
   import { formatTime } from "@dusk-network/networks/format";
 
   import {
-    activityState,
     arrivalsNotIn,
     awaitedArrivals,
     currentActivity,
+    wholeActivity,
   } from "$lib/activity";
   import { LOOK_FOR_MS } from "$lib/activity/arrivals";
   import { paidInSentence } from "$lib/activity/present";
@@ -201,7 +201,8 @@
    * @param {import("$lib/payment-requests/requests").RequestMatch} match
    * @param {string} language
    * @param {boolean} isChecking Whether a payment to it from another profile
-   *   here went out, which the history doesn't have yet
+   *   here went out, which the history doesn't have yet, or it's older than
+   *   the history read so far while the rest of it is read
    * @returns {Part[]}
    */
   function matchedParts(request, match, language, isChecking) {
@@ -413,27 +414,30 @@
    * A request's link, to copy again.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   * @param {Parameters<typeof makeRequestLink>[1]} net
    */
-  const linkOf = ({ lux, memo, to }) => {
-    const made = makeRequestLink({ amountLux: lux, memo, to }, $nodeNetwork);
+  const linkOf = ({ lux, memo, to }, net) => {
+    const made = makeRequestLink({ amountLux: lux, memo, to }, net);
 
     return made.https ?? made.dusk;
   };
 
   /**
    * What a request asks, in a line, then its link, as its own Share and
-   * Copy request gave it, and as Share and Copy request give it here.
+   * Copy request gave it, and as Share and Copy request give it here, with
+   * whose it is as `said` says now (`saidBy`).
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   * @param {{ language: string, name: string, net: Parameters<typeof makeRequestLink>[1] }} said
    */
-  const messageOf = (request) =>
+  const messageOf = (request, said) =>
     requestText(
       {
-        link: linkOf(request),
+        link: linkOf(request, said.net),
         lux: request.lux === null ? null : BigInt(request.lux),
         memo: request.memo,
       },
-      { language, name: requestName, net: $nodeNetwork }
+      said
     );
 
   /**
@@ -443,7 +447,7 @@
    */
   const share = (request) =>
     shareText({
-      text: messageOf(request),
+      text: messageOf(request, saidBy),
       title: "Dusk payment request",
     });
 
@@ -510,12 +514,20 @@
     } ${paidInSentence(at, language)}`;
 
   $: ({ hideBalances, language } = $settingsStore);
+  // Whose the requests are and how they're worded, as Copy request and
+  // Share give them, anew as any of it changes: a Copy request drawn before
+  // the profile's name was looked up gives it all the same, as Share does
+  // (Sofía's: "You're asked to pay …" without her name, after an unlock).
+  $: saidBy = { language, name: requestName, net: $nodeNetwork };
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
   );
-  $: matches = matchRequests(shown, $activityState.rows);
-  $: refunds = refundsOf(shown, matches, $activityState.rows, $nodeNetwork);
+  // All of the history, not the page History has shown so far: a request
+  // paid days ago is paid all the same.
+  $: ({ rows: historyRows } = $wholeActivity);
+  $: matches = matchRequests(shown, historyRows);
+  $: refunds = refundsOf(shown, matches, historyRows, $nodeNetwork);
   $: keepRequestMatches(matches);
   // Looked for as one shows, and from then on, not again with each change.
   $: isShowing = shown.length > 0;
@@ -525,19 +537,24 @@
   $: awaited = arrivalsNotIn(
     $awaitedArrivals,
     addresses,
-    $activityState.rows,
+    historyRows,
     Math.max(Date.now(), checkedAt)
   );
   $: checkUntil(awaited);
-  // A payment may be further back than the history read so far.
-  $: oldestRead = Math.min(
-    ...$activityState.rows.map(({ time }) => time ?? Infinity)
+  // A payment may be further back than the history read so far: checked
+  // for while the rest is read, and said so where it couldn't be.
+  $: oldestRead = historyRows.reduce(
+    (oldest, { time }) => Math.min(oldest, time ?? Infinity),
+    Infinity
   );
-  $: isShort =
-    $activityState.hasMore &&
-    shown.some(
-      ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
-    );
+  $: olderThanRead = new Set(
+    shown
+      .filter(
+        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
+      )
+      .map(({ id }) => id)
+  );
+  $: isShort = $wholeActivity.failed && olderThanRead.size > 0;
 </script>
 
 {#if shown.length}
@@ -553,7 +570,8 @@
           request,
           match,
           language,
-          awaited.some(({ to }) => to === request.to)
+          awaited.some(({ to }) => to === request.to) ||
+            ($wholeActivity.reading && olderThanRead.has(request.id))
         )}
         <li class="requests__item">
           <p class="requests__head">
@@ -695,7 +713,7 @@
               name={`request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               size="small"
               text="Copy request"
-              value={messageOf(request)}
+              value={messageOf(request, saidBy)}
               variant="tertiary"
             />
             {#if hasShare}

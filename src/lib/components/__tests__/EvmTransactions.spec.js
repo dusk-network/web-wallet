@@ -94,6 +94,20 @@ const mocks = vi.hoisted(() => {
         return () => historySubscribers.delete(run);
       },
     },
+    // All of the history: here, the page shown.
+    wholeActivity: {
+      /** @param {(value: any) => void} run */
+      subscribe(run) {
+        /** @param {{ rows: any[] }} state */
+        const whole = ({ rows }) =>
+          run({ failed: false, reading: false, rows, whole: true });
+
+        historySubscribers.add(whole);
+        whole(historyValue);
+
+        return () => historySubscribers.delete(whole);
+      },
+    },
     bridgeTimes: {
       load: vi.fn(() => Promise.resolve()),
       /** @param {(value: any) => void} run */
@@ -226,6 +240,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
 vi.mock("$lib/activity", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   activityState: mocks.activityState,
+  wholeActivity: mocks.wholeActivity,
 }));
 
 vi.mock("$lib/bridge/bridgeTimes", () => ({ default: mocks.bridgeTimes }));

@@ -77,6 +77,25 @@ function routeTransferEnd(transfer) {
       : outcome.heading;
 }
 
+/** How long ago a transfer may have ended for its end to be news: a day. */
+const NEWS_FOR_MS = 86_400_000;
+
+/**
+ * What a transfer between Dusk and another chain says it ended as, where it
+ * ended in the last day, or when isn't known: a migration whose payout comes
+ * to light only as the history is read further back was paid long before,
+ * and is no news.
+ *
+ * @param {import("./migrationActivity").RouteTransfer} transfer
+ */
+function routeTransferNews(transfer) {
+  const endedAt = transfer.paidAt ?? transfer.arrivedAt ?? null;
+
+  return endedAt !== null && Date.now() - endedAt > NEWS_FOR_MS
+    ? ""
+    : routeTransferEnd(transfer);
+}
+
 /** @param {any} deposit */
 const depositEnd = (deposit) =>
   deposit.stage === "completed"
@@ -146,7 +165,7 @@ export function followArrivals() {
       watcher(
         ({ hash, kind }) => `${kind}:${hash}`,
         ({ hash }) => hash,
-        routeTransferEnd
+        routeTransferNews
       )
     ),
     depositActivityStore.subscribe(

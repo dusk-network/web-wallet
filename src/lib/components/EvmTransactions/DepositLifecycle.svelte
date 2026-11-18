@@ -12,7 +12,7 @@
     isDepositDelayed,
     isDepositStalled,
   } from "$lib/bridge/depositLifecycle";
-  import { activityState } from "$lib/activity";
+  import { wholeActivity } from "$lib/activity";
   import { duskExplorerTx } from "$lib/url";
   import { duskEvm } from "$lib/web3/walletConnection";
   import { Badge } from "$lib/dusk/components";
@@ -41,9 +41,10 @@
   $: stageMessage = depositStageMessage(deposit, {
     time: routeTime(DEPOSIT, $bridgeTimes),
   });
-  // What its Dusk transaction paid, as the history has it once it's read.
+  // What its Dusk transaction paid, as all of the history has it once
+  // it's read.
   $: fee =
-    $activityState.rows.find(
+    $wholeActivity.rows.find(
       ({ hash }) =>
         hash ===
         String(deposit?.transactionHash ?? "")

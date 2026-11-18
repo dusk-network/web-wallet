@@ -32,10 +32,12 @@
     closeDuskName,
     isDuskName,
   } from "@duskdomains/sdk/names";
+  import { beforeNavigate, goto as navigateTo } from "$app/navigation";
   import { page } from "$app/stores";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import {
     addBasePath,
+    askedWith,
     formDraft,
     gasToKeep,
     keptGas,
@@ -105,6 +107,8 @@
     TransactionResult,
     UnsentSends,
   } from "$lib/components";
+
+  import LeavePayment from "./LeavePayment.svelte";
 
   /** @type {(to: string, amount: bigint, memo: string, gasPrice: bigint, gasLimit: bigint, toName?: string, gate?: import("$lib/transactions/sendGate").SendGate) => Promise<string>} */
   export let execute;
@@ -215,7 +219,10 @@
    */
   export let historyRows = [];
 
-  const draft = formDraft("send");
+  // Left, it goes, as Leave this payment? says (Amélie's: a payment back
+  // to a stranger, left with Back twice, was there again with its 0,1 the
+  // next time Send opened). A lock, a reload or a send that failed keep it.
+  const draft = formDraft("send", { keepsLeft: false });
 
   /** What the page was opened for, to tell another link from this one. */
   const openedFor = initialRecipient
@@ -313,6 +320,75 @@
   let isRefilled = Boolean(refilled);
 
   /**
+   * Whether the form holds a payment kept on purpose, through a lock or a
+   * reload: Your unfinished payment, until another recipient is chosen.
+   */
+  let isKept = Boolean(typedBefore && !refilled);
+
+  /**
+   * What a link or a payment kept put in Amount and Memo, for the recipient
+   * it came with, from what was filled in.
+   *
+   * @param {{ amount?: string, memo?: string, to?: string } | null} filled
+   * @returns {{ fields: Array<"amount" | "memo">, to: string }}
+   */
+  const carriedOf = (filled) => ({
+    fields: /** @type {Array<"amount" | "memo">} */ (
+      /** @type {const} */ (["amount", "memo"]).filter((field) =>
+        String(filled?.[field] ?? "").trim()
+      )
+    ),
+    to: String(filled?.to ?? "").trim(),
+  });
+
+  /**
+   * What a link or a payment kept put in Amount and Memo, for the recipient
+   * it came with: another chosen, they go, unless typed over since
+   * (Amélie's: the 0,1 of a payment back to a stranger stayed as she chose
+   * Chen from Contacts, and would have gone to him).
+   */
+  let carried = carriedOf(
+    typedBefore ??
+      (isFromLink
+        ? { amount: initialAmount, memo: initialMemo, to: initialRecipient }
+        : null)
+  );
+
+  /**
+   * What's typed over in a field is no more what a link or a payment kept
+   * put there.
+   *
+   * @param {"amount" | "memo"} field
+   */
+  function typedOver(field) {
+    if (carried.fields.includes(field)) {
+      carried = {
+        ...carried,
+        fields: carried.fields.filter((each) => each !== field),
+      };
+    }
+  }
+
+  /**
+   * Another recipient chosen: what a link or a payment kept put in Amount and
+   * Memo for the one it came with goes, and that it was that payment.
+   */
+  function dropCarried() {
+    if (carried.fields.includes("amount")) {
+      sendAmount = "";
+      isMaxAmount = false;
+      isOwnAmount = false;
+    }
+
+    if (carried.fields.includes("memo")) {
+      memo = "";
+    }
+
+    carried = carriedOf(null);
+    isKept = false;
+  }
+
+  /**
    * The send that never went out the form was filled in with: sent from
    * here, it takes its place. Null for none.
    *
@@ -329,6 +405,59 @@
 
   /** Whether the page shows still: its screen says how a send ended. */
   let isShown = true;
+
+  /**
+   * Where a press that leaves the form was going, while Leave this payment?
+   * asks: null while nothing asks.
+   *
+   * @type {{ go: () => void } | null}
+   */
+  let leaving = null;
+
+  /** Whether the form goes without asking, as Leave said. */
+  let isLeft = false;
+
+  // Leaving with a payment in it asks first, as the extension does (Amélie's:
+  // a payment a link filled in went with a click on Home). Not as a lock or
+  // a reload goes, which keep it, nor a step of its own, as its review, at
+  // the same address, nor once it's sent. Send at another address, as for
+  // another person from the search, is another payment: it asks too.
+  beforeNavigate(({ cancel, delta, to, type, willUnload }) => {
+    if (
+      isLeft ||
+      willUnload ||
+      !to ||
+      step === "done" ||
+      !holdsPayment ||
+      !get(walletStore).initialized ||
+      (to.url.pathname === $page?.url?.pathname &&
+        to.url.search === $page?.url?.search)
+    ) {
+      return;
+    }
+
+    // As it was asked, in its page's place too where it replaced it.
+    const options = type === "goto" ? askedWith(to.url.href) : undefined;
+
+    cancel();
+    leaving = {
+      go:
+        type === "popstate" && delta
+          ? () => history.go(delta)
+          : // eslint-disable-next-line svelte/no-navigation-without-resolve -- where it was going, its base path in it
+            () => void navigateTo(to.url.href, options),
+    };
+  });
+
+  /** Leave, as asked: the payment goes, and the press goes where it was going. */
+  function leave() {
+    const went = leaving;
+
+    leaving = null;
+    isLeft = true;
+    draft.clear();
+    went?.go();
+  }
 
   /** @type {import("qr-scanner").default} */
   let scanner;
@@ -580,6 +709,8 @@
     linkElsewhere = null;
     isFromLink = false;
     isRefilled = true;
+    isKept = false;
+    carried = carriedOf(typed);
     refill = send;
     reviewWhenReady = true;
     sendToAddress = typed.to;
@@ -615,6 +746,7 @@
       getDecimalSeparator(language)
     );
     isMaxAmount = true;
+    typedOver("amount");
   }
 
   /** @param {Event} event */
@@ -624,6 +756,7 @@
     );
     isMaxAmount = false;
     isOwnAmount = false;
+    typedOver("amount");
   }
 
   /** How long the recipient typed was, to tell a paste from a key. */
@@ -662,18 +795,42 @@
   };
 
   /**
+   * What To holds of a paste refused whole, on its one line, while what's
+   * wrong with it is said under it: "" for none.
+   */
+  let refusedPaste = "";
+
+  /**
+   * Text on To's one line, as a keyboard's paste puts it there.
+   *
+   * @param {string} text
+   */
+  const oneLine = (text) =>
+    String(text)
+      .replace(/\s*[\r\n]+\s*/g, " ")
+      .trim();
+
+  /**
    * What's put in To whole, as pasted, scanned or finished: a link asking for
    * a payment fills in what it asks, and one refused, as for another network,
    * or as what Share and Copy give of a request that doesn't agree with its
-   * link, its .dusk names looked up first, says why and empties the form, so
-   * nothing in it reads as the refused link's. Anything else is a recipient
-   * as it is, leaving what's typed in the other fields. What's filled in is
-   * checked as if it were typed.
+   * link, its .dusk names looked up first, says why, what disagrees too, and
+   * empties Amount and Memo, so nothing in them reads as the refused link's.
+   * What was pasted or typed stays in To, to see what it said (Amélie's and
+   * Sofía's: To emptied, and nothing said what was wrong); a code scanned
+   * doesn't (`keep`). Anything else is a recipient as it is, leaving what's
+   * typed in the other fields. What's filled in is checked as if it were
+   * typed.
    *
    * @param {string} text
    * @param {string} [held] What To holds as it's put there
+   * @param {{ keep?: boolean }} [options]
    */
-  async function takeRecipient(text, held = sendToAddress) {
+  async function takeRecipient(
+    text,
+    held = sendToAddress,
+    { keep = true } = {}
+  ) {
     const taking = (takings += 1);
     const names = pastedNames(text, $nodeNetwork);
 
@@ -689,28 +846,37 @@
       }
 
       isReadingLink = false;
-      fillFrom(text, readPastedLink(text, $nodeNetwork, language, owners));
+      fillFrom(
+        text,
+        readPastedLink(text, $nodeNetwork, language, owners),
+        keep
+      );
     } else {
       isReadingLink = false;
-      fillFrom(text, readPastedLink(text, $nodeNetwork, language));
+      fillFrom(text, readPastedLink(text, $nodeNetwork, language), keep);
     }
   }
 
   /**
    * Fills the form in from what's put in To, as it's read: a link alone, or
-   * in what Share and Copy give of a request.
+   * in what Share and Copy give of a request. Refused, what was given stays
+   * in To, on its one line, where `keep` says.
    *
    * @param {string} text
    * @param {ReturnType<typeof readPastedLink>} asked
+   * @param {boolean} [keep]
    */
-  async function fillFrom(text, asked) {
+  async function fillFrom(text, asked, keep = true) {
     // The field holds what was given until now: what takes its place, or
     // nothing, then shows, whatever it held before.
     await tick();
 
+    const isKeptRefused = Boolean(keep && asked?.problem && !asked.to);
+
     linkProblem = asked?.problem ?? "";
     linkElsewhere = asked?.elsewhere ?? null;
-    sendToAddress = asked ? asked.to : text;
+    sendToAddress = asked ? (isKeptRefused ? oneLine(text) : asked.to) : text;
+    refusedPaste = isKeptRefused ? sendToAddress : "";
     linkRecipient = sendToAddress;
     isFromLink = Boolean(asked?.amount || asked?.memo);
     isRecipientChecked = Boolean(sendToAddress);
@@ -719,21 +885,54 @@
     if (asked) {
       isMaxAmount = false;
       isOwnAmount = false;
+      isKept = false;
       sendAmount = asked.amount;
       memo = asked.memo;
+      carried = carriedOf(asked);
     }
   }
 
   /**
+   * Whether `after` is `before` with one character put in or taken out, as a
+   * key does.
+   *
+   * @param {string} before
+   * @param {string} after
+   */
+  function isOneKeyFrom(before, after) {
+    if (Math.abs(before.length - after.length) !== 1) {
+      return false;
+    }
+
+    const [short, long] =
+      before.length < after.length ? [before, after] : [after, before];
+    let at = 0;
+
+    while (at < short.length && short[at] === long[at]) {
+      at += 1;
+    }
+
+    return short.slice(at) === long.slice(at + 1);
+  }
+
+  /**
    * Much more at once than a key gives is a paste, however a phone's keyboard
-   * does it: what's wrong with it is said at once, and a link is read.
+   * does it: what's wrong with it is said at once, and a link is read. Over a
+   * refused paste To still holds, anything but a key is one too, as another
+   * link put in its place, whatever its length.
    *
    * @param {Event} event
    */
   function handleRecipientInput({ target }) {
     const { value } = /** @type {HTMLInputElement} */ (target);
 
-    if (isPasting || value.length - typedLength > 1) {
+    if (
+      isPasting ||
+      value.length - typedLength > 1 ||
+      (refusedPaste !== "" &&
+        value !== "" &&
+        !isOneKeyFrom(refusedPaste, value))
+    ) {
       // As pasted, line breaks and all, where the paste is all the field
       // holds: "link" then "danke!" on the next line isn't "linkdanke!".
       const given =
@@ -745,10 +944,12 @@
       pasted = "";
       takeRecipient(given, value);
     } else {
-      // Typed: what was being read of a paste before fills in nothing.
+      // Typed: what was being read of a paste before fills in nothing, and
+      // what was refused is no more.
       takings += 1;
       isReadingLink = false;
       linkProblem = "";
+      refusedPaste = "";
       isFromLink = false;
       typedLength = value.length;
     }
@@ -1373,8 +1574,9 @@
     isRecipientChecked = false;
   }
 
-  // Another recipient, as a contact picked, is no more the link's doing.
-  $: if (sendToAddress) {
+  // Another recipient, as a contact picked, is no more the link's doing:
+  // what To holds of a refused paste is.
+  $: if (sendToAddress && sendToAddress !== refusedPaste) {
     linkProblem = "";
   }
 
@@ -1386,6 +1588,24 @@
     isFromLink = false;
     isRefilled = false;
   }
+
+  // Another recipient chosen, picked, pasted or typed whole: what a link or a
+  // payment kept put in Amount and Memo was for the one it came with.
+  $: if (
+    carried.fields.length &&
+    carried.to &&
+    addressInfo.isValid &&
+    recipientAddress !== carried.to &&
+    sendToAddress.trim() !== carried.to
+  ) {
+    dropCarried();
+  }
+
+  // Anything in the form, typed, filled in by a link or kept: leaving it
+  // asks first.
+  $: holdsPayment = Boolean(
+    sendToAddress.trim() || sendAmount.trim() || memo.trim()
+  );
 
   // A send that never went out, asked to be sent now: its review, once the
   // form can send it as it was, to the same address, with the same amount
@@ -1830,6 +2050,18 @@
   }
 </script>
 
+{#if leaving}
+  <LeavePayment
+    on:leave={leave}
+    on:stay={() => {
+      leaving = null;
+    }}
+    text={isFromLink
+      ? "This clears the payment the link filled in."
+      : "This clears your unfinished payment."}
+  />
+{/if}
+
 {#if step === "done" && sent}
   <TransactionResult
     gate={sent.gate}
@@ -2055,6 +2287,8 @@
               ? "Filled in to send the payment back. Check it before you send."
               : "Filled in from the link. Check it before you send."}
           </p>
+        {:else if isKept}
+          <p class="send__hint" role="status">Your unfinished payment.</p>
         {/if}
 
         {#if profileNamed}
@@ -2330,7 +2564,8 @@
           bind:this={scanQrComponent}
           bind:scanner
           check={scannedProblem}
-          on:scan={(event) => takeRecipient(event.detail)}
+          on:scan={(event) =>
+            takeRecipient(event.detail, sendToAddress, { keep: false })}
         />
         {#if addressInfo.isSelfReferential}
           <Banner variant="warning" title="This is your own address." />
@@ -2410,6 +2645,7 @@
               sendAmount = event.detail;
               isMaxAmount = false;
               isOwnAmount = false;
+              typedOver("amount");
             }}
             text={sendAmount}
           />
@@ -2438,6 +2674,7 @@
           })}
           disabled={isReadingLink}
           id="{id}-memo"
+          on:input={() => typedOver("memo")}
           type="multiline"
         />
         {#if isMemoTooLong}
@@ -2585,7 +2822,9 @@
         </div>
       </dl>
       {#if step === "review" && strangerSaid}
-        <!-- A stranger's words to this wallet, as History marks them. -->
+        <!-- A stranger's words to this wallet, as History marks them: all of
+          them, wrapped, in quotes, in a memo's own small, muted style, under
+          the warning's amber title. -->
         <Banner
           className="send__stranger"
           role="note"
@@ -3085,6 +3324,8 @@
 
   .send__stranger-said {
     margin: 0;
+    color: var(--calm-muted);
+    font-size: 0.78125rem;
     overflow-wrap: anywhere;
   }
 

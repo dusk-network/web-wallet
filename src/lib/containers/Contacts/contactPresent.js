@@ -51,14 +51,15 @@ export function lastPayments(rows, context) {
   /** @type {Map<string, LastPayment>} */
   const payments = new Map();
 
-  for (const row of rows) {
+  // Of all of the history: only transfers are described.
+  for (const row of rows.filter(
+    ({ category }) => category === "sent" || category === "received"
+  )) {
     const p = describeRow(row, context);
     const { time } = row;
-    const isTransfer = p.category === "sent" || p.category === "received";
 
     if (
       p.counterparty &&
-      isTransfer &&
       p.status !== "failed" &&
       time !== null &&
       !payments.has(p.counterparty)
@@ -100,7 +101,8 @@ export function peopleYouPaid(rows, { context, limit = 5, saved }) {
   /** @type {Map<string, PaidPerson>} */
   const people = new Map();
 
-  for (const row of rows) {
+  // Of all of the history: only what went out is described.
+  for (const row of rows.filter(({ direction }) => direction === "out")) {
     const p = describeRow(row, context);
     const { time } = row;
     const to = p.counterparty;

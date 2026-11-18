@@ -34,9 +34,12 @@
   import { contractLabel } from "$lib/activity/knownContracts";
   import {
     NOT_CONFIRMED_YET,
+    SENT_AFTER_DONT_SEND,
+    declinedLanding,
     fullDateTime,
     routeLabel,
     strangersMemo,
+    timeLabel,
   } from "$lib/activity/present";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { formatDuskExact } from "$lib/dusk/currency";
@@ -56,6 +59,10 @@
   import { nodeBaseUrl } from "$lib/url";
   import { duskEvmExplorerTx } from "$lib/web3/duskEvm";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
+  import {
+    seenSentAfterDontSend,
+    sentAfterDontSend,
+  } from "$lib/transactions/sentAfterDontSend";
 
   import { ACTIVITY_ICONS } from "../Home/activityIcons";
 
@@ -262,6 +269,41 @@
 
   $: p = presentation;
   $: time = row.time;
+  /**
+   * When it landed, where it went out after the person chose Don't send, as
+   * it was said while its details showed: said here for as long as they do,
+   * and once said, in Activity no more. Null for any other.
+   *
+   * @type {number | null}
+   */
+  let declinedAt = null;
+
+  /** The transaction `declinedAt` is for: the one whose details show. */
+  let declinedFor = "";
+
+  /**
+   * Whether the transaction whose details show went out after Don't send,
+   * as said while they show (`landed`), though only after they opened: its
+   * block may be said a moment before that is, or another tab says it.
+   * Kept here once said, as it's opened from then on. Its own send's row
+   * only (declinedLanding): the profile here it paid opens nothing of it.
+   *
+   * @param {string} hash
+   * @param {number | null} landed
+   */
+  function openDeclined(hash, landed) {
+    if (hash !== declinedFor) {
+      declinedFor = hash;
+      declinedAt = null;
+    }
+
+    if (declinedAt === null && landed !== null) {
+      declinedAt = landed;
+      seenSentAfterDontSend(hash);
+    }
+  }
+
+  $: openDeclined(row.hash, declinedLanding(row, $sentAfterDontSend));
   $: outcome =
     p.status === "failed"
       ? { icon: mdiAlertCircleOutline, text: "Failed · nothing sent" }
@@ -280,9 +322,14 @@
                       text: "Proof rejected · prove it again",
                     }
                   : { icon: mdiTimerSand, text: "Proved · not claimed yet" }
-            : row.status === "executed"
-              ? { icon: mdiCheck, text: "Completed" }
-              : { icon: mdiTimerSand, text: "Checking the outcome…" };
+            : row.status === "executed" && declinedAt !== null
+              ? {
+                  icon: mdiAlertCircleOutline,
+                  text: `${SENT_AFTER_DONT_SEND}, at ${timeLabel(declinedAt, locale, { seconds: true })}`,
+                }
+              : row.status === "executed"
+                ? { icon: mdiCheck, text: "Completed" }
+                : { icon: mdiTimerSand, text: "Checking the outcome…" };
   // Sent to whom once it's known it went out: one not confirmed yet only
   // names whom it's to.
   $: headline =
@@ -395,7 +442,11 @@
       >
       <div>
         <p class="tx-detail__headline">{headline}</p>
-        <p class="tx-detail__outcome tx-detail__outcome--{p.status ?? 'final'}">
+        <p
+          class="tx-detail__outcome tx-detail__outcome--{p.status ?? 'final'}"
+          class:tx-detail__outcome--declined={declinedAt !== null &&
+            row.status === "executed"}
+        >
           <Icon path={outcome.icon} />{outcome.text}
         </p>
       </div>
@@ -860,7 +911,8 @@
       color: var(--calm-danger);
     }
 
-    &--pending {
+    &--pending,
+    &--declined {
       color: var(--calm-pending);
     }
   }

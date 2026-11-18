@@ -35,6 +35,8 @@ const mocks = vi.hoisted(() => {
 
   return {
     activity: store({ rows: [] }),
+    // Rows of the history further back than the page History shows.
+    older: store([]),
     wallet: store({
       balance: { unshielded: { nonce: 0n, value: 0n } },
       currentProfile: null,
@@ -45,6 +47,36 @@ const mocks = vi.hoisted(() => {
 vi.mock("$lib/activity", () => ({
   activityState: { subscribe: mocks.activity.subscribe },
   currentActivity: () => null,
+  // All of the history: the page shown, then what's further back.
+  wholeActivity: {
+    /** @param {(value: any) => void} run */
+    subscribe(run) {
+      /** @type {any[]} */
+      let shown = [];
+      /** @type {any[]} */
+      let older = [];
+      const tell = () =>
+        run({
+          failed: false,
+          reading: false,
+          rows: [...shown, ...older],
+          whole: true,
+        });
+      const stopShown = mocks.activity.subscribe(({ rows }) => {
+        shown = rows;
+        tell();
+      });
+      const stopOlder = mocks.older.subscribe((rows) => {
+        older = rows;
+        tell();
+      });
+
+      return () => {
+        stopShown();
+        stopOlder();
+      };
+    },
+  },
 }));
 
 vi.mock("$lib/stores", () => ({
@@ -173,6 +205,28 @@ describe("waitsOnHistory", () => {
   });
 });
 
+describe("routeTransfers", () => {
+  it("says a migration is paid by its payout further back than the page History has shown", async () => {
+    /** @type {import("../migrationActivity").RouteTransfer[][]} */
+    const seen = [];
+
+    mocks.older.set([payout]);
+
+    const stop = follow.routeTransfers.subscribe((list) => seen.push(list));
+
+    try {
+      await vi.waitFor(() =>
+        expect(
+          seen.at(-1)?.find(({ hash }) => hash === MIGRATION)
+        ).toMatchObject({ payout: payout.hash, stage: "paid" })
+      );
+    } finally {
+      stop();
+      mocks.older.set([]);
+    }
+  });
+});
+
 describe("followRouteHistory", () => {
   it("reads the history while a migration waits for its payout, and stops once it's paid", async () => {
     const read = vi.fn();
@@ -231,25 +285,31 @@ describe("followRouteHistory", () => {
     stop();
   });
 
-  it("reads nothing while nothing waits, but for a change in the public balance", async () => {
+  // Amélie's: a stranger's payment the total counted was in neither Home
+  // nor History for a minute or two, nor said on the Review of paying back.
+  it("reads nothing while nothing waits, but for a change in the public balance, which it looks for what's new with", async () => {
     migrations.forgetRouteTransfers();
 
+    const look = vi.fn();
     const read = vi.fn();
-    const stop = follow.followRouteHistory({ read });
+    const stop = follow.followRouteHistory({ look, read });
 
     await vi.advanceTimersByTimeAsync(10 * follow.FOLLOW_MS);
     expect(read).not.toHaveBeenCalled();
+    expect(look).not.toHaveBeenCalled();
 
-    // A payout of a migration sent elsewhere, as the wallet's sync finds it.
+    // A payment, or a payout of a migration sent elsewhere, as the wallet's
+    // sync finds it.
     showBalance(15n * DUSK);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
 
     // Another profile's balance is that profile's own.
     showBalance(3n * DUSK, OTHER);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
 
     stop();
     showBalance(4n * DUSK, OTHER);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
+    expect(read).not.toHaveBeenCalled();
   });
 });

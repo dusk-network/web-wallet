@@ -20,6 +20,7 @@ export { default as GasControls } from "./GasControls/GasControls.svelte";
 export { default as FieldLimit } from "./FieldLimit/FieldLimit.svelte";
 export { default as GasFee } from "./GasFee/GasFee.svelte";
 export { default as GasSettings } from "./GasSettings/GasSettings.svelte";
+export { default as HoldToShow } from "./HoldToShow/HoldToShow.svelte";
 export { default as LiquidStake } from "./Stake/LiquidStake.svelte";
 export { default as MemoText } from "./MemoText/MemoText.svelte";
 export { default as MnemonicInput } from "./MnemonicInput/MnemonicInput.svelte";

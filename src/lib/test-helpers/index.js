@@ -2,6 +2,7 @@ export { default as distinctProfile } from "./distinctProfile";
 export { default as fillCacheDatabase } from "./fillCacheDatabase";
 export { default as getCacheDatabase } from "./getCacheDatabase";
 export { default as getCacheTableCount } from "./getCacheTableCount";
+export { default as onAPhone } from "./onAPhone";
 export { default as openTestContacts } from "./openTestContacts";
 export { default as routesStopped } from "./routesStopped";
 export { default as sortByNullifier } from "./sortByNullifier";

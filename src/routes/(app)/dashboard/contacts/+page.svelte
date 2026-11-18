@@ -1,7 +1,7 @@
 <script>
   import { page } from "$app/stores";
   import { ProfileGenerator } from "@dusk/w3sper";
-  import { activityState } from "$lib/activity";
+  import { wholeActivity } from "$lib/activity";
   import { verifiedNamesOf } from "$lib/activity/counterpartyNames";
   import { contactsStore } from "$lib/contacts";
   import { ContactsView } from "$lib/containers/Contacts";
@@ -99,7 +99,9 @@
 
   $: ({ url } = $page);
   $: ({ language } = $settingsStore);
-  $: ({ rows } = $activityState);
+  // All of the history, not the page History has shown so far: whom the
+  // profile paid, and its last payment with each, however far back.
+  $: ({ rows } = $wholeActivity);
   $: lookUpNames($contactsStore);
   $: own = $walletStore.profiles.flatMap((profile) => [
     String(profile.account),

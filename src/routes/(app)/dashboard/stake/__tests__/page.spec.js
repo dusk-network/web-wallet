@@ -60,6 +60,12 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 const history = vi.hoisted(() => ({
+  /**
+   * Rows of the history further back than the page History shows.
+   *
+   * @type {import("svelte/store").Writable<any[]> | null}
+   */
+  older: null,
   refresh: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
@@ -78,8 +84,9 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
 vi.mock("$lib/activity", async (importOriginal) => {
   /** @type {typeof import("$lib/activity")} */
   const original = await importOriginal();
-  const { writable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
 
+  history.older = writable([]);
   history.state = writable({
     complete: true,
     error: null,
@@ -93,6 +100,16 @@ vi.mock("$lib/activity", async (importOriginal) => {
     ...original,
     activityState: history.state,
     currentActivity: () => ({ refresh: history.refresh }),
+    // All of the history: the page shown, then what's further back.
+    wholeActivity: derived(
+      [history.state, history.older],
+      ([{ rows }, older]) => ({
+        failed: false,
+        reading: false,
+        rows: [...rows, ...older],
+        whole: true,
+      })
+    ),
   };
 });
 
@@ -334,6 +351,75 @@ describe("Staking", () => {
       expect(whole).toHaveBeenCalledOnce();
     } finally {
       startHistory.mockRestore();
+    }
+  });
+
+  // Nandini's: "No staking yet." and no rewards by year for a profile that
+  // staked with Sozu, as its stakes were further back than the page History
+  // had shown.
+  it("finds the staking in all of the history, not only the page History has shown, and its rewards by year", async () => {
+    withoutStake();
+
+    const stake = rowOf(
+      {
+        amount: "500000000",
+        blockHeight: 4_000_000,
+        contractId: POOL,
+        direction: "out",
+        fnName: "sozu_stake",
+        hash: "e7".repeat(32),
+        kind: "contract_call",
+        status: "executed",
+        timestamp: Date.UTC(2026, 10, 6, 9),
+        to: POOL,
+      },
+      // Testnet's pool.
+      { network: networks.testnet }
+    );
+    const whole = vi.fn(async () => ({
+      rows: [stake],
+      shieldedWaiting: false,
+    }));
+    const startHistory = vi
+      .spyOn(walletStore, "startHistory")
+      .mockReturnValue(
+        /** @type {any} */ ({ sozuFacts: async () => new Map(), whole })
+      );
+
+    try {
+      // The page History shows has none of it: fifty transfers since.
+      await act(() =>
+        history.state?.update((s) => ({
+          ...s,
+          rows: Array.from({ length: 50 }, (_, i) =>
+            rowOf({
+              amount: "1000000",
+              blockHeight: 4_100_000 + i,
+              direction: "in",
+              hash: (i + 1).toString(16).padStart(64, "0"),
+              status: "executed",
+            })
+          ),
+        }))
+      );
+      history.older?.set([stake]);
+
+      const { container, queryByText } = render(Staking);
+      const side = /** @type {HTMLElement} */ (
+        container.querySelector(".staking__side")
+      );
+
+      expect(queryByText("No staking yet.")).toBeNull();
+      expect(textOf(side.querySelector(".activity-row"))).toContain(
+        "Staked with Sozu"
+      );
+      await vi.waitFor(() =>
+        expect(container.querySelector(".rewards-by-year")).toBeTruthy()
+      );
+      expect(whole).toHaveBeenCalled();
+    } finally {
+      startHistory.mockRestore();
+      history.older?.set([]);
     }
   });
 

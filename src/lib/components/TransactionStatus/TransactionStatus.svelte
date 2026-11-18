@@ -10,7 +10,7 @@
   } from "@mdi/js";
 
   import { currentActivity, noteSentOutcome } from "$lib/activity";
-  import { timeLabel } from "$lib/activity/present";
+  import { SENT_AFTER_DONT_SEND, timeLabel } from "$lib/activity/present";
   import { handOverSend, tellSendEnd } from "$lib/bridge/sendArrival";
   import { formatDuskExact, formatFee } from "$lib/dusk/currency";
   import {
@@ -25,6 +25,7 @@
   import {
     dontSendHandedOver,
     followHandedOver,
+    foundSends,
     handedOverStates,
     sendHandedOverAgain,
     sentAgainRefusals,
@@ -120,6 +121,13 @@
 
   /** Whether the person chose not to send it here, as the node didn't have it. */
   let isDroppedHere = false;
+
+  /**
+   * Whether the person chose not to send it, here or in another tab, before
+   * the chain said it went out: once it does, it says so (Lena's: her Don't
+   * send screen turned into a plain green "Sent at …").
+   */
+  let wasDeclined = false;
 
   // The wallet it was sent from: nothing's said of it once another opens.
   const stillOpen = walletStore.whileOpen();
@@ -225,6 +233,25 @@
   });
 
   /**
+   * What the chain says of it, as the wallet's own following of it found it
+   * (followHandedOver), where this has no outcome yet: as after Don't send,
+   * once a block took it past the three minutes this followed it for
+   * (issue #1066: it said Not sent yet still, as History said it was sent).
+   *
+   * @param {import("$lib/transactions/followTransaction").FinalTransaction} wentOut
+   */
+  function takeFound(wentOut) {
+    if (outcome) {
+      return;
+    }
+
+    outcome = wentOut;
+    outcomeAt = Date.now();
+    status = wentOut.error ? "failed" : "completed";
+    tellEnd(status);
+  }
+
+  /**
    * Doesn't send it, as the node doesn't have it, its nonce still free:
    * still followed, as it may arrive all the same.
    *
@@ -262,6 +289,18 @@
   $: if (kept) {
     followHandedOver(kept);
   }
+  // Found by the wallet's own following of it, whose send is then no longer
+  // kept: said here too.
+  $: found =
+    hash && !outcome
+      ? $foundSends.find(
+          ({ send }) =>
+            send.handedOver?.hash.toLowerCase() === hash?.toLowerCase()
+        )
+      : undefined;
+  $: if (found) {
+    takeFound(found.wentOut);
+  }
   $: keptState =
     kept?.handedOver && status !== "completed" && status !== "failed"
       ? $handedOverStates.get(kept.handedOver.hash)
@@ -270,6 +309,11 @@
   // arrives all the same.
   $: isDropped =
     (isDroppedHere || Boolean(kept?.handedOver?.dismissed)) && !outcome;
+  $: if (isDropped) {
+    wasDeclined = true;
+  }
+  // Gone out all the same, after the person chose not to send it.
+  $: isSentDeclined = wasDeclined && status === "completed" && Boolean(outcome);
   // Not sent yet: the node doesn't have it, and it's sent again as it is,
   // or not at all.
   $: isNotSentYet = !isDropped && keptState === "not-sent";
@@ -286,23 +330,33 @@
     !notSent &&
     !isOnItsWay &&
     (status === "pending" || status === "late");
-  // Not sent, as the person chose: neither sent nor failed.
-  $: icon = isDropped ? mdiDecagramOutline : headings[status].icon;
+  // Not sent, as the person chose: neither sent nor failed. Sent after it
+  // was, it's said as a warning, never as a plain Sent.
+  $: icon = isDropped
+    ? mdiDecagramOutline
+    : isSentDeclined
+      ? mdiAlertDecagramOutline
+      : headings[status].icon;
   // Without a hash there's nothing to follow: it was sent.
   $: title = !hash
     ? "Sent"
-    : status === "completed" && outcome
-      ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language, { seconds: true })}`
-      : isDropped || isNotSentYet
-        ? "Not sent yet"
-        : isOnItsWay
-          ? headings.pending.title
-          : isUnconfirmed
-            ? "Not confirmed"
-            : headings[status].title;
+    : isSentDeclined && outcome
+      ? `${SENT_AFTER_DONT_SEND}, at ${timeLabel(outcome.timestamp ?? outcomeAt, language, { seconds: true })}`
+      : status === "completed" && outcome
+        ? `Sent at ${timeLabel(outcome.timestamp ?? outcomeAt, language, { seconds: true })}`
+        : isDropped || isNotSentYet
+          ? "Not sent yet"
+          : isOnItsWay
+            ? headings.pending.title
+            : isUnconfirmed
+              ? "Not confirmed"
+              : headings[status].title;
 </script>
 
-<div class="transaction-status transaction-status--{status}">
+<div
+  class="transaction-status transaction-status--{status}"
+  class:transaction-status--declined={isSentDeclined}
+>
   <div class="transaction-status__summary" role="status">
     <Icon className="transaction-status__icon" path={icon} size="large" />
     <b class="transaction-status__title">{title}</b>
@@ -470,6 +524,11 @@
 
     &--failed :global(.transaction-status__icon) {
       color: var(--badge-error-color);
+    }
+
+    /* Sent after the person chose not to send it: never a plain Sent. */
+    &--declined :global(.transaction-status__icon) {
+      color: var(--banner-warning-color);
     }
 
     &__details {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
@@ -74,6 +74,51 @@ describe("ActivityPanel", () => {
     expect(getByRole("heading", { level: 3, name: "Today" })).toHaveTextContent(
       /^Today$/
     );
+  });
+
+  // Codex's, round 40: with nothing in the page History has shown, a panel
+  // of one kind said No transactions yet as all of the history was read,
+  // and after it couldn't be, with no Try again.
+  it("should say a panel of one kind is looking, or couldn't reach the history, while all of it is read or where it couldn't be, not that there's none", async () => {
+    const onRetry = vi.fn();
+    const state = {
+      complete: false,
+      error: null,
+      hasMore: true,
+      loaded: true,
+      rows: [],
+      syncing: false,
+    };
+    const { getByRole, getByText, queryByText, rerender } = render(
+      ActivityPanel,
+      {
+        locale: "en",
+        onRetry,
+        only: "staking",
+        state,
+        whole: { failed: false, reading: true, rows: [], whole: false },
+      }
+    );
+
+    expect(getByText("Looking for your transactions…")).toBeInTheDocument();
+    expect(queryByText("No transactions yet.")).toBeNull();
+
+    await rerender({
+      whole: { failed: true, reading: false, rows: [], whole: false },
+    });
+
+    expect(
+      getByText("Couldn't reach the network's history.")
+    ).toBeInTheDocument();
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+
+    // All of it read: none of the kind, and none at all.
+    await rerender({
+      whole: { failed: false, reading: false, rows: [], whole: true },
+    });
+
+    expect(getByText("No transactions yet.")).toBeInTheDocument();
   });
 
   it("should name a call to Dusk Domains by what it did, on the node's network", () => {

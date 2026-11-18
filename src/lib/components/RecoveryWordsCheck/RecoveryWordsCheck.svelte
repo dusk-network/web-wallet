@@ -21,7 +21,9 @@
    *
    * What's typed is hidden the moment the page is (onPageHidden), where
    * anything is, each box's as a password is, with no suggestions, until
-   * Show words.
+   * Show words. On a phone (touchOnly), what's typed is masked as it's typed,
+   * its suggestions kept, and shows, read only, only while Hold to show words
+   * is held, under the boxes.
    */
   import { createEventDispatcher, onMount, tick } from "svelte";
   import {
@@ -33,6 +35,9 @@
   import { Button, Textbox } from "$lib/dusk/components";
   import { randomUUID } from "$lib/dusk/string";
   import onPageHidden from "$lib/security/onPageHidden";
+  import { touchOnly } from "$lib/security/touchOnly";
+
+  import HoldToShow from "../HoldToShow/HoldToShow.svelte";
 
   import {
     NOT_A_WORD,
@@ -242,18 +247,31 @@
   /** Whether what's typed is hidden, as the page was: until Show words. */
   let isHidden = false;
 
+  /** Whether Hold to show words is held, on a phone. */
+  let isHeld = false;
+
   onMount(() =>
     onPageHidden(() => {
-      if (typed.some(Boolean)) {
+      // The suggestions say what's typed, a phone's too: gone with the page,
+      // and offered again as typing goes on.
+      suggesting = -1;
+
+      // On a phone it's masked anyway.
+      if (typed.some(Boolean) && !$touchOnly) {
         isHidden = true;
-        suggesting = -1;
       }
     })
   );
 
-  // None while what's typed is hidden: they'd say what it is.
+  // Masked as a password is: on a phone, but while it's held to show.
+  $: isMasked = $touchOnly ? !isHeld : isHidden;
+  // None while what's typed is hidden on a computer: they'd say what it is.
+  // On a phone they're kept, masked or not: typed unseen, they're how a word
+  // is checked.
   $: suggestions =
-    !isHidden && suggesting >= 0 ? suggestionsFor(typed[suggesting]) : [];
+    ($touchOnly || !isHidden) && suggesting >= 0
+      ? suggestionsFor(typed[suggesting])
+      : [];
 
   /** The same three again, empty, the first to type in. */
   async function tryAgain() {
@@ -288,7 +306,7 @@
     <p class="recovery-check__lead">
       Type words {numbersOf(asked)} as you wrote them down.
     </p>
-    {#if isHidden}
+    {#if isHidden && !$touchOnly}
       <Button
         className="recovery-check__show-typed"
         on:click={() => {
@@ -300,7 +318,7 @@
     {/if}
     <div
       class="recovery-check__words"
-      class:recovery-check__words--hidden={isHidden}
+      class:recovery-check__words--hidden={isMasked}
     >
       {#each asked as place, i (place)}
         {@const isSuggesting = suggesting === i && suggestions.length > 0}
@@ -327,6 +345,7 @@
               on:blur={() => handleBlur(i)}
               on:input={(event) => handleInput(i, event)}
               on:keydown={(event) => handleKeyDown(i, event)}
+              readonly={$touchOnly && isHeld}
               role="combobox"
               spellcheck="false"
               type="text"
@@ -348,6 +367,10 @@
         </div>
       {/each}
     </div>
+    {#if $touchOnly}
+      <!-- Under the boxes: the thumb holding it hides none of them. -->
+      <HoldToShow bind:held={isHeld} className="recovery-check__show-typed" />
+    {/if}
     <!-- The check's own button leads: Skip for now, where a flow has it,
       is quieter. -->
     <Button

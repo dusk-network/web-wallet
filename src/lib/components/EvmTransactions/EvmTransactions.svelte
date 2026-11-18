@@ -11,7 +11,7 @@
   import { onMount, tick } from "svelte";
   import { mdiArrowRight, mdiWalletOutline } from "@mdi/js";
 
-  import { activityState } from "$lib/activity";
+  import { activityState, wholeActivity } from "$lib/activity";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
   import {
     depositActivityStore,
@@ -848,8 +848,9 @@
     linkedTransfer = null;
     linkedDeposit = null;
   }
-  // Each withdrawal's proof and claim on Dusk, as the history has them.
-  $: withdrawalSteps = withdrawalDuskTransactions($activityState.rows);
+  // Each withdrawal's proof and claim on Dusk, as all of the history has
+  // them, not the page History has shown so far.
+  $: withdrawalSteps = withdrawalDuskTransactions($wholeActivity.rows);
   // The deposits in the history, followed to DuskEVM: the DuskEVM address
   // each pays is the deposit's own, so no EVM wallet is needed.
   $: ownDeposits = hasDuskEvm
@@ -1044,7 +1045,7 @@
                 {@const ledger = ledgerOf(row, {
                   evm: migrationsEvm,
                   locale: $settingsStore.language,
-                  rows: $activityState.rows,
+                  rows: $wholeActivity.rows,
                   steps: withdrawalSteps,
                 })}
                 <div

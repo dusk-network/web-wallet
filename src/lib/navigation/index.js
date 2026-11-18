@@ -4,7 +4,7 @@ export {
   default as startInactivityTimer,
 } from "./startInactivityTimer";
 export { default as addBasePath } from "./addBasePath";
-export { default as goto } from "./goto";
+export { askedWith, default as goto } from "./goto";
 export { default as pageTitle, pageHasTitle } from "./pageTitle";
 export {
   forgetDrafts,

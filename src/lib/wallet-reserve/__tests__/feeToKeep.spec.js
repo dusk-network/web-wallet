@@ -12,6 +12,7 @@ const stores = vi.hoisted(() => {
   const state = {
     activity: null,
     gasPrice: null,
+    older: null,
     settings: null,
     sozu: null,
     wallet: null,
@@ -48,11 +49,24 @@ vi.mock("$lib/sozu", async () => {
 });
 
 vi.mock("$lib/activity", async () => {
-  const { writable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
 
-  stores.activity = writable({ rows: [] });
+  const activity = writable({ rows: /** @type {any[]} */ ([]) });
+  const older = writable(/** @type {any[]} */ ([]));
 
-  return { activityState: stores.activity };
+  stores.activity = activity;
+  stores.older = older;
+
+  return {
+    activityState: activity,
+    // All of the history: the page shown, then what's further back.
+    wholeActivity: derived([activity, older], ([{ rows }, before]) => ({
+      failed: false,
+      reading: false,
+      rows: [...rows, ...before],
+      whole: true,
+    })),
+  };
 });
 
 vi.mock("$lib/bridge/withdrawalActivityStorage", async () => {
@@ -91,6 +105,19 @@ describe("feeToKeep", () => {
     stores.activity.set({ rows: [{ fnName: SOZU_FN.STAKE }] });
     get(feeToKeep);
     expect(stores.sozu.load).toHaveBeenCalledOnce();
+  });
+
+  it("reads Sozu for an account that called a pool of its further back than the page History has shown", () => {
+    stores.sozu.load.mockClear();
+    stores.activity.set({ rows: [{ fnName: "transfer" }] });
+    stores.older.set([{ fnName: SOZU_FN.STAKE }]);
+
+    try {
+      get(feeToKeep);
+      expect(stores.sozu.load).toHaveBeenCalledOnce();
+    } finally {
+      stores.older.set([]);
+    }
   });
 
   it("keeps nothing for a wallet with nothing elsewhere: Max is all of it", () => {

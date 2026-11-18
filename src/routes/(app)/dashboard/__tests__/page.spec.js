@@ -13,6 +13,7 @@ import { networks } from "@dusk-network/networks";
 
 const mocks = vi.hoisted(() => ({
   activityRefresh: vi.fn(() => Promise.resolve()),
+  readMissing: vi.fn(),
   refresh: vi.fn(() => Promise.resolve()),
   refreshBalance: vi.fn(() => Promise.resolve()),
 }));
@@ -43,12 +44,21 @@ vi.mock("$lib/stores", async (importOriginal) => {
     walletStore: {
       ...mockedWalletStore,
       refreshBalance: mocks.refreshBalance,
-      startHistory: () => ({ refresh: mocks.refresh }),
+      startHistory: () => ({
+        readMissing: mocks.readMissing,
+        refresh: mocks.refresh,
+      }),
     },
   };
 });
 
 const history = vi.hoisted(() => ({
+  /**
+   * Rows of the history further back than the page History shows.
+   *
+   * @type {import("svelte/store").Writable<any[]> | null}
+   */
+  older: null,
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
 }));
@@ -56,8 +66,9 @@ const history = vi.hoisted(() => ({
 vi.mock("$lib/activity", async (importOriginal) => {
   /** @type {typeof import("$lib/activity")} */
   const original = await importOriginal();
-  const { writable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
 
+  history.older = writable([]);
   history.state = writable({
     complete: true,
     error: null,
@@ -71,6 +82,16 @@ vi.mock("$lib/activity", async (importOriginal) => {
     ...original,
     activityState: history.state,
     currentActivity: () => ({ refresh: mocks.activityRefresh }),
+    // All of the history: the page shown, then what's further back.
+    wholeActivity: derived(
+      [history.state, history.older],
+      ([{ rows }, older]) => ({
+        failed: false,
+        reading: false,
+        rows: [...rows, ...older],
+        whole: true,
+      })
+    ),
   };
 });
 
@@ -164,6 +185,7 @@ describe("Dashboard", () => {
       status: null,
     });
     await setHistory({ error: null, loaded: true, rows: [], syncing: false });
+    history.older?.set([]);
     vi.unstubAllEnvs();
   });
 
@@ -590,6 +612,90 @@ describe("Dashboard", () => {
     }
   });
 
+  // Chen's and Marek's: "Your account sent something else" for the first
+  // eight to ten seconds, Send it too live, of what was the same payment.
+  it("says it's checking what the account sent while that's read, its answers off, and after a moment what's known, its answers on", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { CHECKING_FOR_MS, forgetSentMeanwhile } =
+      await import("$lib/transactions/sentMeanwhile");
+    const { Network } = await import("@dusk/w3sper");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
+    /** @type {PromiseWithResolvers<void>} */
+    const answers = Promise.withResolvers();
+    // The node answers once let; the archive doesn't list it yet.
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        await answers.promise;
+
+        return String(gql).startsWith("block(height: -1)")
+          ? { block: { header: { height: 4_881_400 } } }
+          : { out: { json: [] } };
+      });
+
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    const buttons = () =>
+      Array.from(
+        document.querySelectorAll(".home__waiting button"),
+        (button) => [
+          button.textContent?.trim(),
+          /** @type {HTMLButtonElement} */ (button).disabled,
+        ]
+      );
+
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    keepWaiting({
+      address: ALICE,
+      gate,
+      kept: {
+        account,
+        isSaid: () => true,
+        network: "mainnet",
+        typed: { amount: "0.01", memo: "night shift 10", to: ALICE },
+      },
+      lux: 10_000_000n,
+      memo: "night shift 10",
+      operation: new Promise(() => {}),
+      to: "Alice",
+    });
+    gate.ask({ account, from: 1300n, to: 1301n }).catch(() => {});
+
+    try {
+      await act();
+
+      expect(banner()).toMatch(/^Checking what your account sent… Not sent/);
+      expect(buttons()).toStrictEqual([
+        ["Send it too", true],
+        ["Don't send", true],
+      ]);
+
+      // Not found within a moment: what's known, and the answers on.
+      answers.resolve();
+      await act(() => vi.advanceTimersByTimeAsync(CHECKING_FOR_MS));
+
+      expect(banner()).toMatch(
+        /^Your account sent something else while this waited\. Not sent/
+      );
+      expect(buttons()).toStrictEqual([
+        ["Send it too", false],
+        ["Don't send", false],
+      ]);
+    } finally {
+      gate.cancel();
+      query.mockRestore();
+      vi.useRealTimers();
+      forgetSentMeanwhile();
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -781,6 +887,46 @@ describe("Dashboard", () => {
       "href",
       "/some-base-path/dashboard/transactions?kind=staking"
     );
+  });
+
+  // Nandini's: "Nothing staked right now … Open staking" with no way to her
+  // past staking, as it was further back than the page History had shown.
+  it("finds past staking, and the staking its Activity filter shows, in all of the history, not only the page History has shown", async () => {
+    mockedWalletStore.setMockedStoreValue({
+      ...initialStore,
+      stakeInfo: { ...initialStore.stakeInfo, amount: null },
+    });
+    await setHistory({
+      rows: Array.from({ length: 50 }, (_, i) =>
+        rowOf({
+          ...FIELDS[1],
+          hash: (i + 1).toString(16).padStart(64, "0"),
+        })
+      ),
+    });
+    history.older?.set([
+      rowOf({
+        ...FIELDS[1],
+        blockHeight: 4_000_000,
+        direction: "out",
+        hash: "d6".repeat(32),
+        kind: "stake",
+      }),
+    ]);
+
+    const { container, getByRole, queryByText } = render(Dashboard, props);
+
+    expect(getByRole("link", { name: "Past staking" })).toHaveAttribute(
+      "href",
+      "/some-base-path/dashboard/transactions?kind=staking"
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Staking" }));
+
+    expect(queryByText("Nothing here yet.")).toBeNull();
+    expect(
+      container.querySelector(".activity-panel .activity-row")
+    ).toHaveTextContent("Staked");
   });
 
   it("counts staking with Sozu as staking, and shows what is staked there", async () => {

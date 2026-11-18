@@ -71,6 +71,14 @@
   /** @type {import("$lib/activity/activitySession").ActivityState | null} */
   export let activity = null;
 
+  /**
+   * All of the history, which the staking in it is read from, not only the
+   * page History has shown so far; null without one.
+   *
+   * @type {import("$lib/activity").WholeActivity | null}
+   */
+  export let wholeActivity = null;
+
   /** @type {() => void} */
   export let onRetryHistory = () => {};
 
@@ -498,6 +506,7 @@
         onRetry={onRetryHistory}
         state={activity}
         title="Staking activity"
+        whole={wholeActivity}
       />
     {:else}
       <SectionHead>Staking activity</SectionHead>

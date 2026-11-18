@@ -112,6 +112,8 @@ describe("A send that never went out", () => {
 
     return {
       Home: (await import("../+page.svelte")).default,
+      // The wallet's pages' own frame, whichever page shows in it.
+      Layout: (await import("../../+layout.svelte")).default,
       SendingNetwork: (await import("$lib/transactions/SendingNetwork"))
         .default,
       TransactionResult: (
@@ -433,8 +435,9 @@ describe("A send that never went out", () => {
     ]);
     expect(noticesOf(container)).toEqual(
       expect.arrayContaining([
+        // What its account sent meanwhile is read first, its answers off.
         expect.stringMatching(
-          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Your account sent something else while this waited\. Send it too Don't send$/
+          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Checking what your account sent… Send it too Don't send$/
         ),
         expect.stringMatching(
           /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 7 · .+ Nothing left your wallet\. Send it now Don't send$/
@@ -1053,14 +1056,17 @@ describe("A send that never went out", () => {
    * transaction sent which block has it (`inBlock()`, none by default), and
    * whether its mempool has it (`queued()`), the chain that its account's
    * nonce is `nonce()`, and the archive which transactions of its account
-   * took which nonce in final blocks (`taken()`, none by default).
+   * took which nonce in final blocks (`taken()`, none by default). It shows
+   * Home, or the wallet's pages' frame alone (`shows`), as a page with no
+   * notice of the send would.
    *
-   * @param {{ inBlock?: () => { blockHeight: number, err: string | null } | null, nonce: () => bigint, queued: () => boolean, taken?: () => Array<{ hash: string, nonce: number }> }} node
+   * @param {{ inBlock?: () => { blockHeight: number, err: string | null } | null, nonce: () => bigint, queued: () => boolean, shows?: "Home" | "Layout", taken?: () => Array<{ hash: string, nonce: number }> }} node
    */
   async function reopenWithNode({
     inBlock = () => null,
     nonce,
     queued,
+    shows = "Home",
     taken = () => [],
   }) {
     const page = await openPage();
@@ -1127,7 +1133,9 @@ describe("A send that never went out", () => {
         query.mockRestore();
         balances.mockRestore();
       },
-      ...page.render(page.Home),
+      ...(shows === "Home"
+        ? page.render(page.Home)
+        : page.render(page.Layout, {})),
     };
   }
 
@@ -1286,7 +1294,7 @@ describe("A send that never went out", () => {
   // Astra's: Don't send forgot it and its record in History, though the
   // broadcast whose answer got lost could still go through, and the wallet
   // would then have said nothing was sent.
-  it("is kept with Don't send where the node doesn't have it, its nonce still free: never sent again, said so, and said as sent after all once the chain has it", async () => {
+  it("is kept with Don't send where the node doesn't have it, its nonce still free: never sent again, said so, and said as sent after you chose not to send once the chain has it, until it's opened", async () => {
     const dies = Promise.withResolvers();
     const owner = `testnet::${from}`;
 
@@ -1332,17 +1340,28 @@ describe("A send that never went out", () => {
         expect.objectContaining({ hash: sentTx.hash, status: "removed" }),
       ]);
 
-      // The broadcast went through after all: said so, in History too.
+      // The broadcast went through after all: said so, in History too, and
+      // kept as sent after the person chose not to, until it's opened
+      // (Lena's and Chen's: "Sent after all" for a few seconds, then an
+      // ordinary Sent row).
       inBlock = { blockHeight: 4_850_170, err: null };
       lookAgainNow();
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Sent after all: 0\.01 DUSK to your Profile 2\. not wanted · .+ In block 4,850,170\.$/
+            /^Sent after you chose not to send: 0\.01 DUSK to your Profile 2\. not wanted · .+ In block 4,850,170\.$/
           ),
         ])
       );
+
+      const { get } = await import("svelte/store");
+      const { sentAfterDontSend } =
+        await import("$lib/transactions/sentAfterDontSend");
+
+      expect(Object.keys(get(sentAfterDontSend))).toStrictEqual([
+        sentTx.hash.toLowerCase(),
+      ]);
       expect(await listLocalTransactions(owner)).toStrictEqual([
         expect.objectContaining({
           blockHeight: 4_850_170,
@@ -1358,6 +1377,56 @@ describe("A send that never went out", () => {
 
     expect(app.transfer).not.toHaveBeenCalled();
   });
+
+  // Codex's, round 40: Don't send, the wallet locked, the payment landed
+  // meanwhile, and the wallet opened straight into History: nothing looked
+  // it up there, and its row stayed an ordinary Sent.
+  it("is said as sent after you chose not to send once the chain has it, though the wallet opens on a page with no notice of it, as History", async () => {
+    const dies = Promise.withResolvers();
+    const owner = `testnet::${from}`;
+
+    await sendThrough(await openPage(), "not wanted", dies.promise, "kept");
+    await putLocalTransaction(owner, {
+      hash: sentTx.hash,
+      status: "removed",
+      submittedAt: Date.now(),
+    });
+    dies.resolve(undefined);
+    // Don't send, before the wallet locked: kept, its bytes forgotten.
+    await keptSendsDatabase
+      .table("sends")
+      .toCollection()
+      .modify((/** @type {any} */ send) => {
+        send.handedOver = { dismissed: true, hash: sentTx.hash, nonce: "107" };
+      });
+
+    const { restore } = await reopenWithNode({
+      inBlock: () => ({ blockHeight: 4_850_170, err: null }),
+      nonce: () => 107n,
+      queued: () => false,
+      shows: "Layout",
+    });
+
+    try {
+      const { get } = await import("svelte/store");
+      const { sentAfterDontSend } =
+        await import("$lib/transactions/sentAfterDontSend");
+
+      await vi.waitFor(
+        () =>
+          expect(Object.keys(get(sentAfterDontSend))).toStrictEqual([
+            sentTx.hash.toLowerCase(),
+          ]),
+        { timeout: 15_000 }
+      );
+      await vi.waitFor(async () => expect(await keptNow()).toStrictEqual([]));
+      expect(await listLocalTransactions(owner)).toStrictEqual([
+        expect.objectContaining({ hash: sentTx.hash, status: "executed" }),
+      ]);
+    } finally {
+      restore();
+    }
+  }, 30_000);
 
   it("is done with, unsaid, after Don't send, once another transaction of its account took its nonce in a final block", async () => {
     const dies = Promise.withResolvers();
@@ -1600,9 +1669,13 @@ describe("A send that never went out", () => {
    * `nonce()`.
    *
    * @param {string} memo
-   * @param {{ nonce: () => bigint, queued: () => boolean }} node
+   * @param {{ inBlock?: () => any, nonce: () => bigint, queued: () => boolean }} node
+   *   `inBlock` the block that took it, as the node says it: none by default
    */
-  async function loseAnswerOnScreen(memo, { nonce, queued }) {
+  async function loseAnswerOnScreen(
+    memo,
+    { inBlock = () => null, nonce, queued }
+  ) {
     const page = await openPage();
     const { AccountSyncer, Network } = await import("@dusk/w3sper");
     const network = new page.SendingNetwork(new URL("https://nodes.example/"));
@@ -1627,7 +1700,12 @@ describe("A send that never went out", () => {
         }
 
         if (text.includes(`tx(hash: "${sentTx.hash}")`)) {
-          return { tx: null };
+          return { tx: inBlock() };
+        }
+
+        // The block that took it: final.
+        if (text.startsWith("block(hash:")) {
+          return { block: { status: { Final: null } } };
         }
 
         throw new Error("Not asked here");
@@ -1712,6 +1790,65 @@ describe("A send that never went out", () => {
 
     expect(app.transfer).not.toHaveBeenCalled();
   });
+
+  // Lena's: after Don't send, the screen turned into a plain green "Sent at
+  // 20:41:04" once the payment reached the network anyway, and she thought
+  // her no had been ignored.
+  it("says on its own screen, once it went out after Don't send, that it went out after you chose not to send, with the time it landed", async () => {
+    const landed = Date.UTC(2026, 10, 17, 19, 41, 4);
+    /** @type {any} */
+    let block = null;
+    const { container, findByText, getByRole, page, restore } =
+      await loseAnswerOnScreen("on its screen, landed", {
+        inBlock: () => block,
+        nonce: () => 106n,
+        queued: () => false,
+      });
+
+    try {
+      await findByText("Not sent yet");
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: expect.objectContaining({ dismissed: true }),
+          }),
+        ])
+      );
+
+      // The broadcast whose answer got lost reaches a block all the same.
+      block = {
+        blockHash: "bb".repeat(32),
+        blockHeight: 4_850_170,
+        blockTimestamp: landed / 1000,
+        err: null,
+        gasSpent: "1856521",
+        tx: { gasPrice: "1" },
+      };
+
+      const { lookAgainNow } =
+        await import("$lib/transactions/handedOverSends");
+
+      lookAgainNow();
+
+      const { timeLabel } = await import("$lib/activity/present");
+
+      await vi.waitFor(
+        () =>
+          expect(resultOf(container)).toMatch(
+            new RegExp(
+              `^Sent after you chose not to send, at ${timeLabel(landed, "en", { seconds: true })} 0\\.01 DUSK to your Profile 2 In block 4,850,170\\.$`
+            )
+          ),
+        { timeout: 15_000 }
+      );
+      expect(container.querySelector(".transaction-status")).toHaveClass(
+        "transaction-status--declined"
+      );
+    } finally {
+      restore();
+    }
+  }, 30_000);
 
   it("is sent again as it is from its own screen with Send it now, where the node doesn't have it: on its way once the node has it", async () => {
     let isQueued = false;

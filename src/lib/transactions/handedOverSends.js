@@ -39,6 +39,7 @@ import networkReach from "$lib/stores/networkReach";
 import { walletDataScope } from "$lib/wallets/dataNames";
 
 import describeFailure from "./describeFailure";
+import { markSentAfterDontSend } from "./sentAfterDontSend";
 import { FOLLOW_INTERVAL, FOLLOW_TIMEOUT } from "./followTransaction";
 import { isOutcomeUnknown } from "./outcomeUnknown";
 import transactionAtNonce from "./transactionAtNonce";
@@ -532,8 +533,17 @@ export function followHandedOver(send) {
         isAnswered = true;
         await noteSentOutcome(hash, wentOut).catch(() => {});
         setState(hash, null);
-        // As it's kept now: one the person chose not to send arrived after all.
-        sayFound(keptAs(send.id, hash) ?? send, wentOut);
+
+        const keptNow = keptAs(send.id, hash) ?? send;
+
+        // One the person chose not to send arrived after all: said so in
+        // Activity until it's opened.
+        if (keptNow.handedOver?.dismissed) {
+          markSentAfterDontSend(hash, wentOut.timestamp ?? Date.now(), scope);
+        }
+
+        // As it's kept now.
+        sayFound(keptNow, wentOut);
         await dropHandedOver(send.id, hash).catch(() => {});
 
         break;

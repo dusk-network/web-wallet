@@ -16,10 +16,29 @@ const { followTransaction } = vi.hoisted(() => ({
   followTransaction: vi.fn(),
 }));
 
-vi.mock("$lib/transactions", async (importOriginal) => ({
-  ...(await importOriginal()),
-  followTransaction,
-}));
+vi.mock("$lib/transactions", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  return {
+    ...(await importOriginal()),
+    followTransaction,
+    // The sends kept on this device, as a test says.
+    unsentSends: writable([]),
+  };
+});
+
+// The wallet's own following of a send handed over, as a test says.
+vi.mock("$lib/transactions/handedOverSends", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  return {
+    ...(await importOriginal()),
+    dontSendHandedOver: vi.fn(async () => true),
+    followHandedOver: vi.fn(),
+    foundSends: writable([]),
+    handedOverStates: writable(new Map()),
+  };
+});
 
 describe("TransactionStatus", () => {
   const hash =
@@ -371,6 +390,70 @@ describe("TransactionStatus", () => {
       )
     );
     vi.restoreAllMocks();
+  });
+
+  // Issue #1066's third: after Don't send, a block took it past the three
+  // minutes this followed it for. The wallet's own following found it, and
+  // this said Not sent yet still, as History said it was sent.
+  it("should say a send the person chose not to send went out after all, once the wallet finds it in a block after this stopped following it", async () => {
+    const following = followNext();
+    const transactions = await import("$lib/transactions");
+    const handedOver = await import("$lib/transactions/handedOverSends");
+    const kept = /** @type {import("svelte/store").Writable<any[]>} */ (
+      /** @type {unknown} */ (transactions.unsentSends)
+    );
+    const found = /** @type {import("svelte/store").Writable<any[]>} */ (
+      /** @type {unknown} */ (handedOver.foundSends)
+    );
+    const send = { handedOver: { hash, nonce: "107" }, id: "kept" };
+    const landed = Date.UTC(2026, 10, 17, 19, 41, 4);
+
+    kept.set([send]);
+    /** @type {import("svelte/store").Writable<Map<string, string>>} */ (
+      /** @type {unknown} */ (handedOver.handedOverStates)
+    ).set(new Map([[hash, "not-sent"]]));
+
+    try {
+      const { getByRole } = render(TransactionStatus, {
+        ...baseProps,
+        unconfirmed: true,
+        what: "0.01 DUSK to your Profile 2",
+      });
+
+      await fireEvent.click(getByRole("button", { name: "Don't send" }));
+      kept.set([
+        { ...send, handedOver: { ...send.handedOver, dismissed: true } },
+      ]);
+      // Three minutes on, still in no block: this stops following it.
+      await act(() => following.resolve(null));
+
+      expect(getByRole("status")).toHaveTextContent(
+        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here."
+      );
+
+      // A block took it: found, and kept no more.
+      kept.set([]);
+      await act(() =>
+        found.set([
+          {
+            send,
+            wentOut: {
+              blockHeight: 4_850_170n,
+              error: null,
+              fee: 1_856_521n,
+              timestamp: landed,
+            },
+          },
+        ])
+      );
+
+      expect(getByRole("status")).toHaveTextContent(
+        `Sent after you chose not to send, at ${timeLabel(landed, "en", { seconds: true })} 0.01 DUSK to your Profile 2 In block 4,850,170.`
+      );
+    } finally {
+      kept.set([]);
+      found.set([]);
+    }
   });
 
   it("should say a transaction is still pending if it can't be followed", async () => {

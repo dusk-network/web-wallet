@@ -8,7 +8,7 @@
 
 import { derived, readable } from "svelte/store";
 
-import { activityState } from "$lib/activity";
+import { wholeActivity } from "$lib/activity";
 import { withdrawalActivityStore } from "$lib/bridge/withdrawalActivityStorage";
 import { getGasSettings } from "$lib/contracts";
 import { isSozuFunction, sozuStore } from "$lib/sozu";
@@ -39,10 +39,11 @@ const TO_CLAIM = new Set([
 
 /**
  * What's with Sozu is read for an account that called a pool of its, as on
- * Home, here for whoever comes straight to a page with a Max.
+ * Home, here for whoever comes straight to a page with a Max: by all of its
+ * history, a stake long before as much as one of today.
  */
 const sozuIsRead = readable(null, () =>
-  activityState.subscribe(({ rows }) => {
+  wholeActivity.subscribe(({ rows }) => {
     if (rows.some(isSozuFunction)) {
       void sozuStore.load();
     }

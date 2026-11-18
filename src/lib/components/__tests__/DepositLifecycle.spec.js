@@ -21,13 +21,19 @@ const history = vi.hoisted(() => ({
 }));
 
 vi.mock("$lib/activity", async (importOriginal) => {
-  const { writable } = await import("svelte/store");
+  const { derived, writable } = await import("svelte/store");
 
   history.state = writable({ rows: [] });
 
   return {
     .../** @type {object} */ (await importOriginal()),
     activityState: history.state,
+    wholeActivity: derived(history.state, ({ rows }) => ({
+      failed: false,
+      reading: false,
+      rows,
+      whole: true,
+    })),
   };
 });
 

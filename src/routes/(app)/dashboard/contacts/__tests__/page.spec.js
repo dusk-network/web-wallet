@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
+import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -11,6 +12,31 @@ const names = vi.hoisted(() => ({
   /** @type {import("vitest").Mock<(accounts: string[], where: any) => Promise<Map<string, string | null>>>} */
   of: vi.fn(),
 }));
+
+const history = vi.hoisted(() => ({
+  /**
+   * All of the history, as the page reads it.
+   *
+   * @type {import("svelte/store").Writable<any> | null}
+   */
+  whole: null,
+}));
+
+vi.mock("$lib/activity", async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+
+  history.whole = writable({
+    failed: false,
+    reading: false,
+    rows: [],
+    whole: true,
+  });
+
+  return {
+    .../** @type {object} */ (await importOriginal()),
+    wholeActivity: history.whole,
+  };
+});
 
 vi.mock("$lib/activity/counterpartyNames", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
@@ -32,6 +58,12 @@ describe("Contacts", () => {
   afterEach(() => {
     cleanup();
     names.of.mockReset();
+    history.whole?.set({
+      failed: false,
+      reading: false,
+      rows: [],
+      whole: true,
+    });
 
     for (const contact of listContacts()) {
       removeContact(contact.id);
@@ -65,5 +97,35 @@ describe("Contacts", () => {
       [NAMED, UNNAMED],
       expect.objectContaining({ nodeUrl: expect.any(String) })
     );
+  });
+
+  // Of all of the history: a contact paid two weeks ago, further back than
+  // the page History has shown, has its last payment all the same.
+  it("gives each contact its last payment from all of the history, not only the page History has shown", async () => {
+    names.of.mockResolvedValue(new Map());
+    saveContact({ address: UNNAMED, name: "Lucas" });
+    history.whole?.set({
+      failed: false,
+      reading: false,
+      rows: [
+        rowOf({
+          amount: "20000000",
+          blockHeight: 4_000_000,
+          direction: "out",
+          hash: "f4".repeat(32),
+          status: "executed",
+          timestamp: Date.now() - 14 * 86_400_000,
+          to: UNNAMED,
+        }),
+      ],
+      whole: true,
+    });
+
+    const { container } = render(Contacts);
+    const last = Array.from(container.querySelectorAll(".contacts__row"))
+      .find((row) => row.textContent?.includes("Lucas"))
+      ?.querySelector(".contacts__col-last");
+
+    expect(last).toHaveTextContent(/^Sent 0\.02 DUSK/);
   });
 });

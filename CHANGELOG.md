@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Ask "Leave this payment?" before a Send with a payment in it is left, a link's or one typed, Stay the main answer
 - Cancel a send that waits on a network that doesn't answer, on its screen or from Home, which lists it until it goes out
 - Review a revoke of an open approval on the Bridge before the EVM wallet signs it: what's approved now, from where, that nothing moves, and its network fee
 - Open a payment request in the Dusk Wallet extension from the page its link opens, where the extension takes it
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show a stranger's whole memo on Review in a memo's own small, muted style, in quotes, under the amber "This address sent you:"
+- Mask recovery words on a phone as they're typed, in Restore, Add wallet, Unlock and Check your recovery words, their suggestions kept, and show them, and the words to write down, only while Hold to show words is held
 - Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
 - Name Receive's buttons by what they give, Copy address and Share address, Copy request and Share request, the request's first and leading while Request payment is open, the address's below it
 - Mark a word as "Not a recovery word" in its box as soon as no recovery word starts with what's typed, and take one typed with an accent as the word it is
@@ -49,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say what a pasted message gets wrong against its link, as "The message says 0.002 DUSK; its link asks 0.15 DUSK.", and keep what was pasted in To
+- Refuse a pasted request whose line names its .dusk name with a spaced or look-alike dot, says a bare "Total 0.15", or names another's address, unlike its link
+- Read Activity again as soon as the balance moves, and every few seconds until it lists what came, so Home, History and Review know a payment as soon as the balance counts it
+- Give your name in Your requests' Copy request as Share does, once it's looked up, also right after an unlock
+- Mark a payment that went out after Don't send "Sent after you chose not to send", with when it landed, in Activity, History and its details, and on its own screen, until it's opened, never as an ordinary Sent
+- Say "Checking what your account sent…" on a held payment while what your account sent meanwhile is read, Send it too and Don't send off until it's found, or for a few seconds at most
+- Let go of a Send that's left, rather than open the next Send on it, say "Your unfinished payment." of one a lock or a reload kept, and clear what a link or a kept payment put in Amount and Memo once another recipient is chosen
+- Read all of the history, from the network where this device doesn't keep it yet, for Staking's activity and rewards by year, Home's past staking and filters, Review's "This address sent you", Contacts, Your requests and Bridge › Activity, never only the page History shows
 - Refuse a pasted message that names another amount, network or .dusk name than its link anywhere before it, one hidden or look-alike letter in its wording included, each .dusk name looked up first
 - Say at once in To that a name like sofiadesign·dusk only looks like sofiadesign.dusk, in place of "Not a valid address."
 - Take a profile's or a contact's name with a dot above, a Braille dot or spaces around its point for the .dusk name it reads as, and name the .dusk name a contact's name looks like

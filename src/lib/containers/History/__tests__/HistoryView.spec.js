@@ -245,6 +245,110 @@ describe("HistoryView", () => {
     expect(first).toHaveFocus();
   });
 
+  // Lena's and Chen's: after Don't send, a payment that went out anyway
+  // was "Sent after all" for a few seconds, then an ordinary Sent row.
+  it("should say a send that went out after Don't send was one, with when it landed, in its row and its details, until they're opened once", async () => {
+    const { markSentAfterDontSend, sentAfterDontSend } =
+      await import("$lib/transactions/sentAfterDontSend");
+    const { get } = await import("svelte/store");
+    const [declined, other] = state.rows;
+    const rowText = () =>
+      /** @type {HTMLElement} */ (
+        container.querySelector(".history__open")
+      ).textContent?.replace(/\s+/g, " ");
+
+    markSentAfterDontSend(declined.hash, WINTER);
+
+    const { container, getByText, rerender } = render(HistoryView, {
+      locale: "en",
+      state,
+    });
+
+    expect(rowText()).toContain("Sent after you chose not to send");
+    expect(
+      container.querySelectorAll(".history__open")[1].textContent
+    ).not.toContain("chose not to send");
+
+    await rerender({ selected: declined.hash });
+
+    expect(
+      getByText(
+        `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`
+      )
+    ).toBeInTheDocument();
+    expect(get(sentAfterDontSend)).toStrictEqual({});
+
+    // Opened once: an ordinary send from now on.
+    await rerender({ selected: null });
+
+    expect(rowText()).not.toContain("chose not to send");
+    expect(other.hash).not.toBe(declined.hash);
+  });
+
+  // Codex's, round 40: a payment between two profiles here has one hash in
+  // both histories, and the profile it paid said it was sent after Don't
+  // send, and took the sender's warning as it was opened.
+  it("should say a send went out after Don't send in the sender's row alone, and leave the warning to it as the row of the profile it paid opens", async () => {
+    const { markSentAfterDontSend, seenSentAfterDontSend, sentAfterDontSend } =
+      await import("$lib/transactions/sentAfterDontSend");
+    const { get } = await import("svelte/store");
+    const hash = "c3".repeat(32);
+    const received = row(hash, WINTER, { direction: "in", from: ACCOUNT });
+
+    markSentAfterDontSend(hash, WINTER);
+
+    try {
+      const { container, queryByText, rerender } = render(HistoryView, {
+        locale: "en",
+        state: { ...state, rows: [received] },
+      });
+
+      expect(
+        container.querySelector(".history__open")?.textContent
+      ).not.toContain("chose not to send");
+
+      await rerender({ selected: hash });
+
+      expect(queryByText(/chose not to send/)).toBeNull();
+      expect(get(sentAfterDontSend)).toStrictEqual({ [hash]: WINTER });
+    } finally {
+      seenSentAfterDontSend(hash);
+    }
+  });
+
+  // Codex's, round 40: its details showed as its block was said, a moment
+  // before the warning was; they said Completed, and it stayed unread.
+  it("should say a send went out after Don't send in its details once that's said while they show, and from then on in its row no more", async () => {
+    const { markSentAfterDontSend, seenSentAfterDontSend, sentAfterDontSend } =
+      await import("$lib/transactions/sentAfterDontSend");
+    const { get } = await import("svelte/store");
+    const [declined] = state.rows;
+    const { container, findByText, rerender } = render(HistoryView, {
+      locale: "en",
+      selected: declined.hash,
+      state,
+    });
+
+    markSentAfterDontSend(declined.hash, WINTER);
+
+    try {
+      expect(
+        await findByText(
+          `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`
+        )
+      ).toBeInTheDocument();
+      expect(get(sentAfterDontSend)).toStrictEqual({});
+
+      await rerender({ selected: null });
+
+      expect(
+        container.querySelector(".history__open")?.textContent
+      ).not.toContain("chose not to send");
+    } finally {
+      seenSentAfterDontSend(declined.hash);
+    }
+  });
+
   it("should say when rows aren't looked up yet", () => {
     const { getByRole } = render(HistoryView, {
       locale: "en",

@@ -15,6 +15,7 @@
     activityState,
     currentActivity,
     isHistoryEnabled,
+    wholeActivity,
   } from "$lib/activity";
   import {
     exportCurrency,
@@ -359,9 +360,13 @@
   $: ({ networkName } = $networkStore);
   $: hasStake = stakeInfo.amount !== null;
   $: publicBalance = balance.unshielded.value;
-  $: hasPastStaking = $activityState.rows.some(
+  // From all of the history, not the page History has shown so far
+  // (Nandini's: "No staking yet." for a profile that staked with Sozu, as
+  // its stakes were further back than that page).
+  $: hasPastStaking = $wholeActivity.rows.some(
     (row) => row.category === "staking"
   );
+
   // In the wallet's currency, as Export values them.
   $: rewardsCurrency = exportCurrency(
     $settingsStore.currency,
@@ -483,6 +488,7 @@
   {:else}
     <StakingOverview
       activity={isHistoryEnabled() ? $activityState : null}
+      wholeActivity={isHistoryEnabled() ? $wholeActivity : null}
       {blockHeight}
       {hasPastStaking}
       nativeDays={native?.days ?? null}
@@ -496,10 +502,10 @@
       pending={isStakePending}
       stale={isStakeStale}
       onRetryHistory={() => {
-        walletStore
-          .startHistory()
-          ?.refresh()
-          .catch(() => {});
+        const session = walletStore.startHistory();
+
+        session?.refresh().catch(() => {});
+        session?.readMissing({ again: true });
       }}
       onRetrySozu={() => sozuStore.load({ force: true })}
       {publicBalance}

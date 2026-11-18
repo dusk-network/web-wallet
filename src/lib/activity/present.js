@@ -32,10 +32,15 @@ import { TX_KIND } from "./constants";
  * @typedef {{
  *   claims?: Map<string, import("$lib/bridge/withdrawals").WithdrawalClaim>,
  *   contactNames?: Map<string, string>,
+ *   declined?: Readonly<Record<string, number>>,
  *   locale: string,
  *   net?: import("@dusk-network/networks").Network | null,
  *   walletNames?: Map<string, string>,
  * }} PresentContext
+ *
+ * `declined` the sends that went out after the person chose Don't send,
+ * not opened since, by hash ($lib/transactions/sentAfterDontSend): each
+ * send's own row says so in place of Sent (`declinedLanding`).
  *
  * `claims` says when the proved withdrawals can be claimed, by their
  * hashes, as the chain says (withdrawalClaims in $lib/bridge), `net` is
@@ -372,13 +377,37 @@ const shownStatus = (row) =>
 /** What a send whose answer never came says, in place of Sent. */
 export const NOT_CONFIRMED_YET = "Not confirmed yet";
 
+/** What a send that went out after Don't send says, in place of Sent. */
+export const SENT_AFTER_DONT_SEND = "Sent after you chose not to send";
+
+/**
+ * When a send landed that went out after the person chose Don't send, as
+ * that's said until it's opened (`declined`): for the send's own row only,
+ * never the row of a profile here it paid, which has its hash too. Null for
+ * any other.
+ *
+ * @param {ActivityRow} row
+ * @param {Readonly<Record<string, number>> | undefined} declined
+ * @returns {number | null}
+ */
+export function declinedLanding(row, declined) {
+  const at =
+    row.direction !== "in" && declined && Object.hasOwn(declined, row.hash)
+      ? declined[row.hash]
+      : undefined;
+
+  return Number.isFinite(at) ? /** @type {number} */ (at) : null;
+}
+
 /**
  * How a row reads: its icon, title, line, privacy, amount and status.
  *
  * A failed transaction sent nothing: its amount shows without a sign and
  * muted, and its line says what it cost. A send whose answer never came, and
  * that the chain doesn't have yet, says it isn't confirmed yet in place of
- * Sent: it may have gone out, and nothing says it did.
+ * Sent: it may have gone out, and nothing says it did. One that went out
+ * after the person chose Don't send says so in place of Sent, until it's
+ * opened (`declined`).
  *
  * @param {ActivityRow} row
  * @param {PresentContext} context
@@ -390,7 +419,12 @@ export function describeRow(row, context) {
   const { title, titleIsAddress, verb: done } = titleOf(row, icon, context);
   const status = shownStatus(row);
   const failed = status === "failed";
-  const verb = status === "unknown" ? NOT_CONFIRMED_YET : done;
+  const verb =
+    status === "unknown"
+      ? NOT_CONFIRMED_YET
+      : !failed && declinedLanding(row, context.declined) !== null
+        ? SENT_AFTER_DONT_SEND
+        : done;
   const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
   const line = failed
     ? `Failed · nothing sent · ${feeText(row, locale)}`
@@ -540,6 +574,20 @@ function bridgeOf({ bridge, value }, { claims, locale }) {
 }
 
 /**
+ * Whether a row is of a kind, as its filter shows it: by its category, as
+ * it reads (`describeRow`), what's bridged as sent or received too.
+ *
+ * @param {Pick<ActivityRow, "category" | "direction">} row
+ * @param {ActivityKindFilter} kind
+ */
+export const isOfKind = ({ category, direction }, kind) =>
+  kind === "all" ||
+  category === kind ||
+  (category === "bridge" &&
+    ((kind === "sent" && direction === "out") ||
+      (kind === "received" && direction === "in")));
+
+/**
  * Whether a row answers the filters.
  *
  * @param {ActivityPresentation} presentation
@@ -551,12 +599,10 @@ export const matchesFilters = (
   row,
   { kind = "all", privacy = "all", since = null }
 ) =>
-  (kind === "all" ||
-    presentation.category === kind ||
-    // What's bridged was sent or received too.
-    (presentation.category === "bridge" &&
-      ((kind === "sent" && row.direction === "out") ||
-        (kind === "received" && row.direction === "in")))) &&
+  isOfKind(
+    { category: presentation.category, direction: row.direction },
+    kind
+  ) &&
   (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
   // A row with no time yet isn't in a range of days.
   (since === null || (row.time !== null && row.time >= since));

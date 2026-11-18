@@ -191,13 +191,16 @@ const keepers = new Map();
  * reload, leaving it or a send that failed with nothing sent to bring back,
  * for the same wallet, profile and network. For a component to take as it's
  * made: leaving the form in the wallet keeps it for its next opening, by Back
- * or by a link, as Home's. It goes (`clear`) once the transaction goes out, so
+ * or by a link, as Home's, unless `keepsLeft` is false, as for Send, which
+ * asks before it's left, and keeps it then only through a lock, a reload or
+ * a send that failed. It goes (`clear`) once the transaction goes out, so
  * that nothing a reload brings back was sent already: the form shows it to be
  * reviewed, never sent, in any case.
  *
  * @param {string} name
+ * @param {{ keepsLeft?: boolean }} [options]
  */
-export function formDraft(name) {
+export function formDraft(name, { keepsLeft = true } = {}) {
   const key = `${DRAFT}${name}`;
   const self = {};
   let isKept = false;
@@ -268,7 +271,7 @@ export function formDraft(name) {
     keepers.delete(key);
 
     if (!isKept && get(walletStore).initialized) {
-      if (held) {
+      if (held && keepsLeft) {
         // Left, by Back as a phone's is pressed by the way, or by a link as
         // Home's: kept for the form's next opening, as a lock keeps it.
         kept.write(
