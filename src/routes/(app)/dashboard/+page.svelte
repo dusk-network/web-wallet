@@ -33,6 +33,7 @@
   import {
     meanwhileKey,
     sayMeanwhile,
+    sentMeanwhileChecking,
     sentMeanwhileTold,
   } from "$lib/transactions/sentMeanwhile";
   import accountNamer from "$lib/wallets/accountNamer";
@@ -240,6 +241,10 @@
             : null,
           send,
           {
+            checking: Boolean(
+              send.meanwhile &&
+              $sentMeanwhileChecking.has(meanwhileKey(send.meanwhile))
+            ),
             hidden: $settingsStore.hideBalances,
             locale: language,
             nameOf: $accountNamer,
@@ -272,14 +277,18 @@
             {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
             {timeLabel(send.at, language)}
           </p>
+          <!-- Off while what it sent is read: the answer may be that it's
+            this same payment. -->
           <div class="home__waiting-actions">
             <Button
+              disabled={told.checking}
               on:click={() => sendTooFromReview(send)}
               size="small"
               text="Send it too"
               variant="secondary"
             />
             <Button
+              disabled={told.checking}
               on:click={() => cancelSend(send)}
               size="small"
               text="Don't send"

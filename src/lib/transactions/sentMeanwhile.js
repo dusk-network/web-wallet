@@ -56,6 +56,16 @@ const ANSWER_WITHIN = 10_000;
 const LOOK_EVERY = 5_000;
 const LOOKS = 24;
 
+/**
+ * How long a send held so says it's checking what its account sent, its
+ * answers off, while that isn't found: then it says what's known, and they
+ * come on, as the extension does.
+ */
+export const CHECKING_FOR_MS = 15_000;
+
+/** What a send held so says while what its account sent is being read. */
+export const CHECKING_TEXT = "Checking what your account sent…";
+
 /** A transaction's hash: 64 hex digits. */
 const HASH = /^[0-9a-f]{64}$/i;
 
@@ -215,6 +225,42 @@ const told = writable(new Map());
 /** What each account sent meanwhile, by `meanwhileKey`: null until all of it is found. */
 export const sentMeanwhileTold = { subscribe: told.subscribe };
 
+/**
+ * What's being read of what each account sent meanwhile, by `meanwhileKey`,
+ * for CHECKING_FOR_MS at most, until it's found.
+ *
+ * @type {import("svelte/store").Writable<Set<string>>}
+ */
+const checking = writable(new Set());
+
+/**
+ * What's being read of what accounts sent meanwhile, by `meanwhileKey`: a
+ * send held so says it's checking, its answers off, while its key is here.
+ */
+export const sentMeanwhileChecking = { subscribe: checking.subscribe };
+
+/**
+ * @param {string} key
+ * @param {boolean} isChecking
+ */
+function setChecking(key, isChecking) {
+  checking.update((keys) => {
+    if (keys.has(key) === isChecking) {
+      return keys;
+    }
+
+    const next = new Set(keys);
+
+    if (isChecking) {
+      next.add(key);
+    } else {
+      next.delete(key);
+    }
+
+    return next;
+  });
+}
+
 /** The lookups under way or done, by `meanwhileKey`. */
 const asked = new Set();
 
@@ -235,6 +281,8 @@ export function followSentMeanwhile(meanwhile) {
 
   asked.add(key);
   told.update((map) => new Map(map).set(key, null));
+  setChecking(key, true);
+  setTimeout(() => setChecking(key, false), CHECKING_FOR_MS);
   void currentActivity()
     ?.refresh()
     .catch(() => {});
@@ -254,6 +302,7 @@ export function followSentMeanwhile(meanwhile) {
 
       if (read?.whole) {
         told.update((map) => new Map(map).set(key, read.sends));
+        setChecking(key, false);
         void currentActivity()
           ?.refresh()
           .catch(() => {});
@@ -284,18 +333,27 @@ export const isSamePayment = (sent, payment) =>
 /**
  * What a send held so says of what its account sent meanwhile: what and to
  * whom, its memo, and when, for one; how many, and each, for more; and
- * whether one of them is the same payment. Only something else, where not
- * all of it is found, or one of them paid no account, as a call.
+ * whether one of them is the same payment. While that's being read
+ * (`checking`), that it's checking, its answers off till it's found, or for
+ * CHECKING_FOR_MS at most (Chen's and Marek's: "something else" for the
+ * first ten seconds, Send it too live, of what was the same payment); then
+ * only something else, where not all of it is found, or one of them paid no
+ * account, as a call.
  *
  * @param {SentMeanwhile[] | null | undefined} sends
  * @param {{ address: string, lux: bigint | string, memo: string }} payment
- * @param {{ hidden: boolean, locale: string, nameOf: (account: string) => string }} shown
- * @returns {{ items: Array<{ memo: string, text: string }>, memo: string, same: string, title: string }}
+ * @param {{ checking?: boolean, hidden: boolean, locale: string, nameOf: (account: string) => string }} shown
+ * @returns {{ checking: boolean, items: Array<{ memo: string, text: string }>, memo: string, same: string, title: string }}
  *   `memo` the memo of the one sent meanwhile, where it's one and not the
  *   same payment; `items` each, where they're more; `same` what's said
- *   where one is the same payment
+ *   where one is the same payment; `checking` while it's read, its answers
+ *   off
  */
-export function sayMeanwhile(sends, payment, { hidden, locale, nameOf }) {
+export function sayMeanwhile(
+  sends,
+  payment,
+  { checking: isChecking = false, hidden, locale, nameOf }
+) {
   const described =
     sends?.length && sends.every(({ to }) => to)
       ? sends.map((sent) => ({
@@ -309,15 +367,20 @@ export function sayMeanwhile(sends, payment, { hidden, locale, nameOf }) {
 
   if (!described.length) {
     return {
+      checking: isChecking && !sends,
       items: [],
       memo: "",
       same: "",
-      title: "Your account sent something else while this waited.",
+      title:
+        isChecking && !sends
+          ? CHECKING_TEXT
+          : "Your account sent something else while this waited.",
     };
   }
 
   if (described.length === 1) {
     return {
+      checking: false,
       items: [],
       memo: isSame ? "" : described[0].memo,
       same: isSame ? "That looks like this same payment." : "",
@@ -326,6 +389,7 @@ export function sayMeanwhile(sends, payment, { hidden, locale, nameOf }) {
   }
 
   return {
+    checking: false,
     items: described,
     memo: "",
     same: isSame ? "One of them looks like this same payment." : "",
@@ -337,4 +401,5 @@ export function sayMeanwhile(sends, payment, { hidden, locale, nameOf }) {
 export function forgetSentMeanwhile() {
   asked.clear();
   told.set(new Map());
+  checking.set(new Set());
 }

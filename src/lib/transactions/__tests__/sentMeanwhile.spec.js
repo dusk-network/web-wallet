@@ -216,6 +216,7 @@ describe("What an account sent while a send waited", () => {
         whole: true,
       });
       expect(sayMeanwhile(read.sends, payment, shown)).toStrictEqual({
+        checking: false,
         items: [],
         memo: "",
         same: "",
@@ -258,6 +259,7 @@ describe("What an account sent while a send waited", () => {
   // payment, and nothing said what or when.
   it("says what was sent, to whom and when, and that it looks like the same payment where it is", () => {
     expect(sayMeanwhile([sent], payment, shown)).toStrictEqual({
+      checking: false,
       items: [],
       memo: "",
       same: "That looks like this same payment.",
@@ -268,6 +270,7 @@ describe("What an account sent while a send waited", () => {
     expect(
       sayMeanwhile([{ ...sent, memo: "kopi" }], payment, shown)
     ).toStrictEqual({
+      checking: false,
       items: [],
       memo: "kopi",
       same: "",
@@ -286,6 +289,7 @@ describe("What an account sent while a send waited", () => {
     const other = { ...sent, at: AT_1005, lux: 7n, memo: "", nonce: 201n };
 
     expect(sayMeanwhile([sent, other], payment, shown)).toStrictEqual({
+      checking: false,
       items: [
         {
           memo: "night shift 9",
@@ -304,6 +308,7 @@ describe("What an account sent while a send waited", () => {
 
   it("says only that it sent something else until it's found, or where it called a contract", () => {
     const generic = {
+      checking: false,
       items: [],
       memo: "",
       same: "",
@@ -314,5 +319,23 @@ describe("What an account sent while a send waited", () => {
     expect(sayMeanwhile([{ ...sent, to: "" }], payment, shown)).toStrictEqual(
       generic
     );
+    // Found, it's never checking.
+    expect(
+      sayMeanwhile([{ ...sent, to: "" }], payment, { ...shown, checking: true })
+    ).toStrictEqual(generic);
+  });
+
+  // Chen's and Marek's: "Your account sent something else" for the first ten
+  // seconds, Send it too live, of what was the very same payment.
+  it("says it's checking what the account sent while that's read, its answers off", () => {
+    expect(
+      sayMeanwhile(null, payment, { ...shown, checking: true })
+    ).toStrictEqual({
+      checking: true,
+      items: [],
+      memo: "",
+      same: "",
+      title: "Checking what your account sent…",
+    });
   });
 });

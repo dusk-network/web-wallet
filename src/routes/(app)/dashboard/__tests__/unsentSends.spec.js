@@ -433,8 +433,9 @@ describe("A send that never went out", () => {
     ]);
     expect(noticesOf(container)).toEqual(
       expect.arrayContaining([
+        // What its account sent meanwhile is read first, its answers off.
         expect.stringMatching(
-          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Your account sent something else while this waited\. Send it too Don't send$/
+          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Checking what your account sent… Send it too Don't send$/
         ),
         expect.stringMatching(
           /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 7 · .+ Nothing left your wallet\. Send it now Don't send$/

@@ -28,6 +28,7 @@
     followSentMeanwhile,
     meanwhileKey,
     sayMeanwhile,
+    sentMeanwhileChecking,
     sentMeanwhileTold,
   } from "$lib/transactions/sentMeanwhile";
   import { walletAccountNames } from "$lib/wallets";
@@ -303,7 +304,14 @@
     {@const told = sayMeanwhile(
       meanwhile ? $sentMeanwhileTold.get(meanwhileKey(meanwhile)) : null,
       { address: send.to, lux: send.lux, memo: send.memo },
-      { hidden: hideBalances, locale: language, nameOf: $accountNamer }
+      {
+        checking: Boolean(
+          meanwhile && $sentMeanwhileChecking.has(meanwhileKey(meanwhile))
+        ),
+        hidden: hideBalances,
+        locale: language,
+        nameOf: $accountNamer,
+      }
     )}
     <Banner
       className="unsent-send"
@@ -334,14 +342,18 @@
       {:else}
         <p>Nothing left your wallet.</p>
       {/if}
+      <!-- Off while what its account sent is read: the answer may be that
+        it's this same payment. -->
       <div class="unsent-send__actions">
         <Button
+          disabled={isElsewhere && told.checking}
           on:click={() => sendNow(send)}
           size="small"
           text={isElsewhere ? "Send it too" : "Send it now"}
           variant="secondary"
         />
         <Button
+          disabled={isElsewhere && told.checking}
           on:click={() => dropUnsent(send.id)}
           size="small"
           text="Don't send"

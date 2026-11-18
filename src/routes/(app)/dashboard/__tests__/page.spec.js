@@ -612,6 +612,90 @@ describe("Dashboard", () => {
     }
   });
 
+  // Chen's and Marek's: "Your account sent something else" for the first
+  // eight to ten seconds, Send it too live, of what was the same payment.
+  it("says it's checking what the account sent while that's read, its answers off, and after a moment what's known, its answers on", async () => {
+    const { keepWaiting, sendGate } = await import("$lib/transactions");
+    const { CHECKING_FOR_MS, forgetSentMeanwhile } =
+      await import("$lib/transactions/sentMeanwhile");
+    const { Network } = await import("@dusk/w3sper");
+    const { currentProfile } = mockedWalletStore.getMockedStoreValue();
+    const account = String(currentProfile.account);
+    /** @type {PromiseWithResolvers<void>} */
+    const answers = Promise.withResolvers();
+    // The node answers once let; the archive doesn't list it yet.
+    const query = vi
+      .spyOn(Network.prototype, "query")
+      .mockImplementation(async (/** @type {string | undefined} */ gql) => {
+        await answers.promise;
+
+        return String(gql).startsWith("block(height: -1)")
+          ? { block: { header: { height: 4_881_400 } } }
+          : { out: { json: [] } };
+      });
+
+    render(Dashboard, props);
+
+    const gate = sendGate();
+    const banner = () =>
+      document
+        .querySelector(".home__waiting")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
+    const buttons = () =>
+      Array.from(
+        document.querySelectorAll(".home__waiting button"),
+        (button) => [
+          button.textContent?.trim(),
+          /** @type {HTMLButtonElement} */ (button).disabled,
+        ]
+      );
+
+    vi.useFakeTimers({ toFake: ["setTimeout"] });
+    keepWaiting({
+      address: ALICE,
+      gate,
+      kept: {
+        account,
+        isSaid: () => true,
+        network: "mainnet",
+        typed: { amount: "0.01", memo: "night shift 10", to: ALICE },
+      },
+      lux: 10_000_000n,
+      memo: "night shift 10",
+      operation: new Promise(() => {}),
+      to: "Alice",
+    });
+    gate.ask({ account, from: 1300n, to: 1301n }).catch(() => {});
+
+    try {
+      await act();
+
+      expect(banner()).toMatch(/^Checking what your account sent… Not sent/);
+      expect(buttons()).toStrictEqual([
+        ["Send it too", true],
+        ["Don't send", true],
+      ]);
+
+      // Not found within a moment: what's known, and the answers on.
+      answers.resolve();
+      await act(() => vi.advanceTimersByTimeAsync(CHECKING_FOR_MS));
+
+      expect(banner()).toMatch(
+        /^Your account sent something else while this waited\. Not sent/
+      );
+      expect(buttons()).toStrictEqual([
+        ["Send it too", false],
+        ["Don't send", false],
+      ]);
+    } finally {
+      gate.cancel();
+      query.mockRestore();
+      vi.useRealTimers();
+      forgetSentMeanwhile();
+    }
+  });
+
   it("hides a waiting send's amount once balances are hidden, though they weren't as it was sent, there and as it's called off", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");

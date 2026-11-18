@@ -17,6 +17,7 @@
   import {
     meanwhileKey,
     sayMeanwhile,
+    sentMeanwhileChecking,
     sentMeanwhileTold,
   } from "$lib/transactions/sentMeanwhile";
   import accountNamer from "$lib/wallets/accountNamer";
@@ -172,6 +173,10 @@
       : null,
     held ?? { address: "", lux: 0n, memo: "" },
     {
+      checking: Boolean(
+        held?.meanwhile &&
+        $sentMeanwhileChecking.has(meanwhileKey(held.meanwhile))
+      ),
       hidden: $settingsStore.hideBalances,
       locale: $settingsStore.language,
       nameOf: $accountNamer,
@@ -223,15 +228,19 @@
           <p>{told.same}</p>
         {/if}
       </div>
-      <!-- The two choices lead: to its review, or not at all. -->
+      <!-- The two choices lead: to its review, or not at all; off while
+        what its account sent is read, as the answer may be that it's this
+        same payment. -->
       <Button
         className="transaction-result__button"
+        disabled={told.checking}
         on:click={() => (onSendToo ? onSendToo() : gate?.sendToo())}
         text="Send it too"
         variant="primary"
       />
       <Button
         className="transaction-result__button"
+        disabled={told.checking}
         on:click={() => gate?.cancel()}
         text="Don't send"
         variant="secondary"
