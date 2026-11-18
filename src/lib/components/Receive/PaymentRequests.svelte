@@ -414,27 +414,30 @@
    * A request's link, to copy again.
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   * @param {Parameters<typeof makeRequestLink>[1]} net
    */
-  const linkOf = ({ lux, memo, to }) => {
-    const made = makeRequestLink({ amountLux: lux, memo, to }, $nodeNetwork);
+  const linkOf = ({ lux, memo, to }, net) => {
+    const made = makeRequestLink({ amountLux: lux, memo, to }, net);
 
     return made.https ?? made.dusk;
   };
 
   /**
    * What a request asks, in a line, then its link, as its own Share and
-   * Copy request gave it, and as Share and Copy request give it here.
+   * Copy request gave it, and as Share and Copy request give it here, with
+   * whose it is as `said` says now (`saidBy`).
    *
    * @param {import("$lib/payment-requests/requests").PaymentRequest} request
+   * @param {{ language: string, name: string, net: Parameters<typeof makeRequestLink>[1] }} said
    */
-  const messageOf = (request) =>
+  const messageOf = (request, said) =>
     requestText(
       {
-        link: linkOf(request),
+        link: linkOf(request, said.net),
         lux: request.lux === null ? null : BigInt(request.lux),
         memo: request.memo,
       },
-      { language, name: requestName, net: $nodeNetwork }
+      said
     );
 
   /**
@@ -444,7 +447,7 @@
    */
   const share = (request) =>
     shareText({
-      text: messageOf(request),
+      text: messageOf(request, saidBy),
       title: "Dusk payment request",
     });
 
@@ -511,6 +514,11 @@
     } ${paidInSentence(at, language)}`;
 
   $: ({ hideBalances, language } = $settingsStore);
+  // Whose the requests are and how they're worded, as Copy request and
+  // Share give them, anew as any of it changes: a Copy request drawn before
+  // the profile's name was looked up gives it all the same, as Share does
+  // (Sofía's: "You're asked to pay …" without her name, after an unlock).
+  $: saidBy = { language, name: requestName, net: $nodeNetwork };
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
     ({ network: asked, to }) => asked === network && addresses.includes(to)
@@ -705,7 +713,7 @@
               name={`request for ${amountOf(request)}${request.memo ? `, ${request.memo}` : ""}`}
               size="small"
               text="Copy request"
-              value={messageOf(request)}
+              value={messageOf(request, saidBy)}
               variant="tertiary"
             />
             {#if hasShare}

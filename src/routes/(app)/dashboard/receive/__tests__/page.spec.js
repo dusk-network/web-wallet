@@ -7,7 +7,13 @@ import {
   it,
   vi,
 } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { goto } from "$app/navigation";
 
@@ -2223,6 +2229,57 @@ describe("Receive", () => {
 
       settingsStore.reset();
       history.state?.set({ hasMore: false, rows: [] });
+    });
+
+    // Sofía's: right after an unlock, the list's Copy request gave "You're
+    // asked to pay 0,01 DUSK …" without her name, at 1, 5 and 22 seconds,
+    // while the same card's Share had it.
+    it("should give the profile's name in a listed request's Copy request as in its Share, once it's looked up after the list shows", async () => {
+      const share = vi.fn().mockResolvedValue(undefined);
+      /** @type {PromiseWithResolvers<string>} */
+      const named = Promise.withResolvers();
+
+      Object.assign(navigator, { share });
+      getPrimaryName.mockReturnValue(named.promise);
+      localStorage.setItem(
+        REQUESTS,
+        JSON.stringify([
+          {
+            at: Date.now() - 1000,
+            id: "open",
+            lux: "10000000",
+            memo: "Factura F-2026-125",
+            network: "testnet",
+            to: ACCOUNT,
+          },
+        ])
+      );
+      hydrateRequests();
+      render(Receive);
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The name comes as the list shows.
+      named.resolve("sofiadesign.dusk");
+      await vi.advanceTimersByTimeAsync(0);
+
+      const card = screen.getByRole("listitem");
+
+      await fireEvent.click(
+        within(card).getByRole("button", { name: /^Copy request for / })
+      );
+      await fireEvent.click(
+        within(card).getByRole("button", { name: /^Share the request for / })
+      );
+
+      const copied = vi.mocked(navigator.clipboard.writeText).mock
+        .lastCall?.[0];
+
+      expect(copied).toMatch(
+        /^sofiadesign\.dusk asks you to pay 0\.01 DUSK on Testnet · Factura F-2026-125\n/
+      );
+      expect(share).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ text: copied })
+      );
     });
 
     it("should list the requests made, by this profile's addresses on this network, say what matched, and take one off", async () => {

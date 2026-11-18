@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Give your name in Your requests' Copy request as Share does, once it's looked up, also right after an unlock
 - Mark a payment that went out after Don't send "Sent after you chose not to send", with when it landed, in Activity, History and its details, and on its own screen, until it's opened, never as an ordinary Sent
 - Say "Checking what your account sent…" on a held payment while what your account sent meanwhile is read, Send it too and Don't send off until it's found, or for a few seconds at most
 - Let go of a Send that's left, rather than open the next Send on it, say "Your unfinished payment." of one a lock or a reload kept, and clear what a link or a kept payment put in Amount and Memo once another recipient is chosen
