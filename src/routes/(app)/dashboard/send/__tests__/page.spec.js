@@ -177,6 +177,49 @@ describe("Send page", () => {
       ]);
     });
 
+    // Lena's, in de-DE: a link's amount=1.000 filled in "1,000", which reads
+    // as one to her, where typed "1.000" asks which is meant.
+    it("should ask of a link's amount that reads two ways in the language set what typing it asks, opened or pasted", async () => {
+      setNodeNetwork(networks.testnet);
+      settingsStore.update((settings) => ({ ...settings, language: "de-DE" }));
+      openLink(`to=${OTHER}&amount=1.000&memo=Miete&network=testnet`);
+
+      const opened = render(SendPage);
+
+      expect(fieldsAre(opened.getByRole)[1]).toBe("1,000");
+      expect(opened.getByRole("alert")).toHaveTextContent(
+        /^Is that 1 or 1000\?/
+      );
+
+      cleanup();
+      openAt(new URL("http://localhost/some-base-path/dashboard/send"));
+
+      const pasted = render(SendPage);
+      const to = pasted.getByRole("textbox", { name: "To" });
+      const link = `https://apps.testnet.dusk.network/wallet/dashboard/send?to=${OTHER}&amount=1.000&memo=Miete&network=testnet`;
+
+      await fireEvent.paste(to, {
+        clipboardData: { getData: () => link },
+      });
+      await fireEvent.input(to, { target: { value: link } });
+      await vi.waitFor(() =>
+        expect(fieldsAre(pasted.getByRole)[1]).toBe("1,000")
+      );
+
+      expect(pasted.getByRole("alert")).toHaveTextContent(
+        /^Is that 1 or 1000\?/
+      );
+
+      // Typed, it asks the same.
+      await fireEvent.input(pasted.getByRole("textbox", { name: "Amount" }), {
+        target: { value: "1.000" },
+      });
+
+      expect(pasted.getByRole("alert")).toHaveTextContent(
+        /^Is that 1 or 1000\?/
+      );
+    });
+
     it("should say a link for another network is one, and fill in nothing", () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=mainnet`);
