@@ -285,25 +285,31 @@ describe("followRouteHistory", () => {
     stop();
   });
 
-  it("reads nothing while nothing waits, but for a change in the public balance", async () => {
+  // Amélie's: a stranger's payment the total counted was in neither Home
+  // nor History for a minute or two, nor said on the Review of paying back.
+  it("reads nothing while nothing waits, but for a change in the public balance, which it looks for what's new with", async () => {
     migrations.forgetRouteTransfers();
 
+    const look = vi.fn();
     const read = vi.fn();
-    const stop = follow.followRouteHistory({ read });
+    const stop = follow.followRouteHistory({ look, read });
 
     await vi.advanceTimersByTimeAsync(10 * follow.FOLLOW_MS);
     expect(read).not.toHaveBeenCalled();
+    expect(look).not.toHaveBeenCalled();
 
-    // A payout of a migration sent elsewhere, as the wallet's sync finds it.
+    // A payment, or a payout of a migration sent elsewhere, as the wallet's
+    // sync finds it.
     showBalance(15n * DUSK);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
 
     // Another profile's balance is that profile's own.
     showBalance(3n * DUSK, OTHER);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
 
     stop();
     showBalance(4n * DUSK, OTHER);
-    expect(read).toHaveBeenCalledOnce();
+    expect(look).toHaveBeenCalledOnce();
+    expect(read).not.toHaveBeenCalled();
   });
 });

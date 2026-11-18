@@ -5,9 +5,12 @@
  * block. Each read carries on from where the last one got to. None is made
  * while nothing waits, or while the page is hidden, unless they asked to be
  * told when it arrives ($lib/bridge/arrivalNotice). A change in the public
- * balance, as the wallet's sync finds one, reads it too: a payout of a
- * migration sent elsewhere is seen then. And a read that finds new public
- * transactions reads the balance again at once, as a send does.
+ * balance, as the wallet's sync finds one, reads it too, at once and again
+ * every few seconds until it has something new
+ * (`ActivitySession#lookForNew`): a payout of a migration sent elsewhere,
+ * or a payment from anyone, is seen as soon as the balance counts it. And a
+ * read that finds new public transactions reads the balance again at once,
+ * as a send does.
  */
 
 import { derived } from "svelte/store";
@@ -152,14 +155,17 @@ function onNewTransactions(refresh) {
 
 /**
  * Reads the history every FOLLOW_MS while a transfer waits on it and the
- * page is shown, and when the public balance changes; reads the balance
- * again when the history finds new public transactions.
+ * page is shown, and as the public balance changes, until it has what's
+ * new; reads the balance again when the history finds new public
+ * transactions.
  *
- * @param {{ read?: () => void, refreshBalance?: () => void }} [options]
- *   `read` reads the history, `refreshBalance` the balance
+ * @param {{ look?: () => void, read?: () => void, refreshBalance?: () => void }} [options]
+ *   `read` reads the history, `look` reads it until it has what's new,
+ *   `refreshBalance` reads the balance
  * @returns {() => void} Stops
  */
 export function followRouteHistory({
+  look = () => currentActivity()?.lookForNew(),
   read = () => void currentActivity()?.refresh(),
   refreshBalance = () => void walletStore.refreshBalance(),
 } = {}) {
@@ -181,7 +187,7 @@ export function followRouteHistory({
       }, FOLLOW_MS);
     }
   });
-  const stopBalance = onBalanceChange(read);
+  const stopBalance = onBalanceChange(look);
   const stopRows = onNewTransactions(refreshBalance);
 
   return () => {

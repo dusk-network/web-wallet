@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read Activity again as soon as the balance moves, and every few seconds until it lists what came, so Home, History and Review know a payment as soon as the balance counts it
 - Give your name in Your requests' Copy request as Share does, once it's looked up, also right after an unlock
 - Mark a payment that went out after Don't send "Sent after you chose not to send", with when it landed, in Activity, History and its details, and on its own screen, until it's opened, never as an ordinary Sent
 - Say "Checking what your account sent…" on a held payment while what your account sent meanwhile is read, Send it too and Don't send off until it's found, or for a few seconds at most

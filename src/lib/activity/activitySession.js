@@ -66,6 +66,13 @@ export const SOON_AFTER_TX_MS = 5000;
 /** How long a send is looked for that often. */
 const LOOKED_FOR_SOONER_MS = 120_000;
 
+/**
+ * How long the history is read again that often, after the balance moved,
+ * while it has nothing newer than it had: the archive lists a block once
+ * it's final, a little after the balance counts it.
+ */
+export const LOOK_FOR_NEW_MS = 60_000;
+
 /** How long a session waits to ask again for a shielded history it couldn't have yet. */
 export const SHIELDED_RETRY_MS = 60_000;
 
@@ -107,6 +114,15 @@ export class ActivitySession {
 
   /** @type {Promise<number | undefined>} */
   #epoch;
+
+  /**
+   * Until when the history is read again every few seconds, as the balance
+   * moved, while it has nothing newer than `#newestAtLook`: 0 for not.
+   */
+  #lookingUntil = 0;
+
+  /** The newest block of the history read as the balance moved. */
+  #newestAtLook = 0;
 
   error = /** @type {string | null} */ (null);
 
@@ -392,6 +408,50 @@ export class ActivitySession {
     );
   }
 
+  /** The newest block the public history read has. */
+  #newestHeight() {
+    return this.#entries.reduce(
+      (newest, { blockHeight }) => Math.max(newest, Number(blockHeight) || 0),
+      0
+    );
+  }
+
+  /**
+   * Whether the history is still read again every few seconds, as the
+   * balance moved: until it has something newer than it had then, for
+   * LOOK_FOR_NEW_MS at most.
+   */
+  #isLookingForNew() {
+    if (
+      Date.now() < this.#lookingUntil &&
+      this.#newestHeight() <= this.#newestAtLook
+    ) {
+      return true;
+    }
+
+    this.#lookingUntil = 0;
+
+    return false;
+  }
+
+  /**
+   * The balance moved: the history is read again at once, and every few
+   * seconds while it has nothing newer than it had, for LOOK_FOR_NEW_MS at
+   * most, so that Home, History and Review know of what came in as soon as
+   * the balance does (Amélie's: a stranger's payment the total counted was
+   * in neither for a minute or two, nor said on the Review of paying him
+   * back).
+   */
+  lookForNew() {
+    if (this.#stopped || this.#stale) {
+      return;
+    }
+
+    this.#lookingUntil = Date.now() + LOOK_FOR_NEW_MS;
+    this.#newestAtLook = this.#newestHeight();
+    void this.refresh();
+  }
+
   /**
    * A payment to this account another profile here sent went out: the
    * archive is asked for it every few seconds until it has it.
@@ -481,6 +541,8 @@ export class ActivitySession {
     if (this.#runAgain) {
       this.#runAgain = false;
       await this.#run();
+    } else if (this.#isLookingForNew()) {
+      this.refreshSoon(SOON_AFTER_TX_MS);
     } else if (this.#waitsForArchive()) {
       this.refreshSoon(
         this.#local.some(

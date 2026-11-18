@@ -659,6 +659,82 @@ describe("ActivitySession", () => {
     }
   });
 
+  // Amélie's: a stranger's payment the total already counted was in neither
+  // Home nor History for a minute or two, nor said on the Review of paying
+  // him back: the archive lists a block once it's final.
+  it("reads the history again at once as the balance moves, and every few seconds until it has something new, a minute at most", async () => {
+    const node = fakeArchive({ finalized: 4_657_995 });
+    const session = sessionFor();
+    const arriving = entryOfA(4658000);
+
+    /** Its run under way ends: the store's work goes on with fake timers. */
+    const runEnds = async () => {
+      for (let i = 0; i < 200 && session.state.syncing; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+    };
+
+    await session.start();
+
+    vi.useFakeTimers({
+      now: Date.now(),
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+    });
+
+    try {
+      const refresh = vi.spyOn(session, "refresh");
+
+      // The balance moved: read at once, though the archive lists nothing
+      // new yet.
+      session.lookForNew();
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(session.state.rows.map((r) => r.hash)).not.toContain(
+        arriving.origin
+      );
+
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledTimes(2);
+
+      // Final now: the next read finds it, and it's read again no more.
+      node.finalized = FINALIZED;
+      await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledTimes(3);
+      expect(session.state.rows.map((r) => r.hash)).toContain(arriving.origin);
+
+      await vi.advanceTimersByTimeAsync(2 * sessions.AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).toHaveBeenCalledTimes(3);
+
+      // A move that brings nothing to the history: a minute, no more.
+      session.lookForNew();
+
+      for (let at = 0; at < sessions.LOOK_FOR_NEW_MS; at += 5000) {
+        await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
+        await runEnds();
+      }
+
+      refresh.mockClear();
+      await vi.advanceTimersByTimeAsync(2 * sessions.AFTER_TX_MS);
+      await runEnds();
+
+      expect(refresh).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      session.stop();
+    }
+  });
+
   it("tells nobody anything once stopped", async () => {
     fakeArchive();
 
