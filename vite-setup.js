@@ -150,13 +150,20 @@ vi.mock("$app/environment", () => ({
   version: "any",
 }));
 
-// Mock app paths
-vi.mock("$app/paths", async (importOriginal) => ({
-  ...(await importOriginal()),
-  get base() {
-    return "/some-base-path";
-  },
-}));
+// Mock app paths: `resolve` adds the same base path as `base` says
+vi.mock("$app/paths", async (importOriginal) => {
+  /** @type {typeof import("$app/paths")} */
+  const paths = await importOriginal();
+
+  return {
+    ...paths,
+    get base() {
+      return "/some-base-path";
+    },
+    /** @type {typeof paths.resolve} */
+    resolve: (...args) => `/some-base-path${paths.resolve(...args)}`,
+  };
+});
 
 // Mock SvelteKit runtime module $app/navigation
 vi.mock("$app/navigation", () => ({

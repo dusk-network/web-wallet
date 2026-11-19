@@ -1358,7 +1358,7 @@ describe("Send", () => {
 
       expect(getByRole("link", { name: "Home" })).toHaveAttribute(
         "href",
-        "/some-base-path/dashboard",
+        "/some-base-path/dashboard/",
       );
     });
 

@@ -431,7 +431,7 @@
       gasLimits={stakeGas.limits}
       gasSettings={stakeGas.settings}
       {hasStake}
-      liquidHref={isSozuAvailable ? "/dashboard/stake?flow=liquid" : undefined}
+      liquidHref={isSozuAvailable ? "/dashboard/stake/?flow=liquid" : undefined}
       {minimumStake}
       unstakeFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
     />

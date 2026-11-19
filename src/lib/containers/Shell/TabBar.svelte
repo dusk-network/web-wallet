@@ -1,8 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
-  import { addBasePath } from "$lib/navigation";
 
   /** @type {import("./navigation").ShellTab[]} */
   export let tabs;
@@ -18,7 +18,7 @@
       aria-current={tab.id === activeTab ? "page" : undefined}
       class="tab-bar__tab"
       class:tab-bar__tab--on={tab.id === activeTab}
-      href={addBasePath(tab.href)}
+      href={resolve(`${tab.href}/`)}
     >
       <Icon path={tab.icon} />
       <span>{tab.label}</span>

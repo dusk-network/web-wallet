@@ -1,6 +1,7 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
   import {
@@ -8,7 +9,6 @@
     strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
-  import { addBasePath } from "$lib/navigation";
 
   import { ACTIVITY_ICONS } from "./activityIcons";
 
@@ -65,7 +65,7 @@
 
 <a
   class="activity-row"
-  href={addBasePath(`/dashboard/transactions?tx=${row.hash}`)}
+  href={resolve(`/dashboard/transactions/?tx=${row.hash}`)}
 >
   <span aria-hidden="true" class="activity-row__icon"
     ><Icon path={ACTIVITY_ICONS[p.icon]} /></span

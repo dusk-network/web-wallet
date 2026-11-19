@@ -1,10 +1,10 @@
 <svelte:options immutable={true} />
 
 <script>
+  import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
-  import { addBasePath } from "$lib/navigation";
 
-  /** @type {{ href: string, icon: string, id: string, label: string, primary?: boolean }[]} */
+  /** @type {{ href: "/dashboard/allocate/" | "/dashboard/bridge/" | "/dashboard/receive/" | "/dashboard/send/" | "/dashboard/stake/", icon: string, id: string, label: string, primary?: boolean }[]} */
   export let actions;
 </script>
 
@@ -16,7 +16,7 @@
         <a
           class="home-actions__action"
           class:home-actions__action--primary={action.primary}
-          href={addBasePath(action.href)}
+          href={resolve(action.href)}
         >
           <span class="home-actions__icon"><Icon path={action.icon} /></span>
           <span class="home-actions__label">{action.label}</span>

@@ -20,12 +20,13 @@
     currentActivity,
     wholeActivity,
   } from "$lib/activity";
+  import { resolve } from "$app/paths";
   import { LOOK_FOR_MS } from "$lib/activity/arrivals";
   import { paidInSentence } from "$lib/activity/present";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
-  import { addBasePath, goto } from "$lib/navigation";
+  import { goto } from "$lib/navigation";
   import {
     forgetRequest,
     keepRequestMatches,
@@ -292,6 +293,18 @@
         : (refund.time ?? 0) > (payment?.time ?? 0);
 
   /**
+   * Send, filled in as a request's link asks: where a payment is sent back.
+   *
+   * @param {string} link
+   * @returns {"/dashboard/send/" | `/dashboard/send/?${string}`}
+   */
+  function sendBackPath(link) {
+    const { search } = new URL(link);
+
+    return search ? `/dashboard/send/?${search.slice(1)}` : "/dashboard/send/";
+  }
+
+  /**
    * The payments that paid a request again, of all the requests shown, by
    * their hash: each with Send filled in to pay it back, as app-core's
    * `refundOf` says, and the refund sent already, as Send would say it's
@@ -304,7 +317,7 @@
    * @param {Map<string, import("$lib/payment-requests/requests").RequestMatch>} matched
    * @param {ActivityRow[]} rows
    * @param {Parameters<typeof makeRequestLink>[1]} net
-   * @returns {Map<string, { back: string | null, sent: ActivityRow | null }>}
+   * @returns {Map<string, { back: ReturnType<typeof sendBackPath> | null, sent: ActivityRow | null }>}
    */
   function refundsOf(requests, matched, rows, net) {
     /** @type {string[]} */
@@ -343,9 +356,7 @@
         return [
           payment.hash,
           {
-            back: made?.https
-              ? `/dashboard/send${new URL(made.https).search}`
-              : null,
+            back: made?.https ? sendBackPath(made.https) : null,
             sent,
           },
         ];
@@ -650,8 +661,8 @@
                     <a
                       aria-label={`See in History: the payment of ${day}`}
                       class="text-link tap-link"
-                      href={addBasePath(
-                        `/dashboard/transactions?tx=${payment.hash}`,
+                      href={resolve(
+                        `/dashboard/transactions/?tx=${payment.hash}`,
                       )}>See in History</a
                     >
                     {#if refund?.back && !refund.sent}
@@ -659,7 +670,7 @@
                       <a
                         aria-label={`Send back the payment of ${day}`}
                         class="text-link tap-link"
-                        href={addBasePath(back)}
+                        href={resolve(back)}
                         on:click={(event) => sendBack(event, back)}>Send back</a
                       >
                     {/if}
@@ -683,8 +694,8 @@
                       <a
                         aria-label={`See in History: what was sent back for the payment of ${day}`}
                         class="text-link tap-link"
-                        href={addBasePath(
-                          `/dashboard/transactions?tx=${sent.hash}`,
+                        href={resolve(
+                          `/dashboard/transactions/?tx=${sent.hash}`,
                         )}>See in History</a
                       ></span
                     >
@@ -697,7 +708,7 @@
             {#if match.hash && !again.length}
               <a
                 class="text-link tap-link"
-                href={addBasePath(`/dashboard/transactions?tx=${match.hash}`)}
+                href={resolve(`/dashboard/transactions/?tx=${match.hash}`)}
                 >See in History</a
               >
             {/if}

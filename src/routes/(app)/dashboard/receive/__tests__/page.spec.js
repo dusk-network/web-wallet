@@ -1524,15 +1524,15 @@ describe("Receive", () => {
       ).toStrictEqual([
         [
           "See in History",
-          `/some-base-path/dashboard/transactions?tx=${"ab".repeat(32)}`,
+          `/some-base-path/dashboard/transactions/?tx=${"ab".repeat(32)}`,
         ],
         [
           "See in History",
-          `/some-base-path/dashboard/transactions?tx=${"cd".repeat(32)}`,
+          `/some-base-path/dashboard/transactions/?tx=${"cd".repeat(32)}`,
         ],
         [
           "Send back",
-          expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
+          expect.stringMatching(/^\/some-base-path\/dashboard\/send\/\?/),
         ],
       ]);
       expect(payments).toHaveTextContent(paidAt(at + 2500));
@@ -1765,7 +1765,7 @@ describe("Receive", () => {
       );
 
       expect(goto).toHaveBeenCalledWith(
-        expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
+        expect.stringMatching(/^\/some-base-path\/dashboard\/send\/\?/),
         { state: { amountHidden: true, sendBack: true } },
       );
 
@@ -1803,7 +1803,7 @@ describe("Receive", () => {
         }),
       ).toHaveAttribute(
         "href",
-        `/some-base-path/dashboard/transactions?tx=${"f0".repeat(32)}`,
+        `/some-base-path/dashboard/transactions/?tx=${"f0".repeat(32)}`,
       );
       expect(
         screen.queryByRole("link", { name: /^Send back the payment of/ }),
@@ -2330,7 +2330,7 @@ describe("Receive", () => {
       ).toHaveAttribute(
         "href",
         expect.stringContaining(
-          `/dashboard/transactions?tx=${"ab".repeat(32)}`,
+          `/dashboard/transactions/?tx=${"ab".repeat(32)}`,
         ),
       );
 

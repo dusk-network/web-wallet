@@ -764,11 +764,11 @@ describe("Dashboard", () => {
     );
 
     for (const [name, href] of [
-      ["Send", "/dashboard/send"],
-      ["Receive", "/dashboard/receive"],
-      ["Shield", "/dashboard/allocate"],
-      ["Stake", "/dashboard/stake"],
-      ["Bridge", "/dashboard/bridge"],
+      ["Send", "/dashboard/send/"],
+      ["Receive", "/dashboard/receive/"],
+      ["Shield", "/dashboard/allocate/"],
+      ["Stake", "/dashboard/stake/"],
+      ["Bridge", "/dashboard/bridge/"],
     ]) {
       expect(getByRole("link", { name })).toHaveAttribute(
         "href",
@@ -788,7 +788,7 @@ describe("Dashboard", () => {
 
     expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge?route=bsc-to-dusk",
+      "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
     unmount();
 
@@ -805,7 +805,7 @@ describe("Dashboard", () => {
       testnet.getByRole("link", { name: "Migrate it to Dusk" }),
     ).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge?route=bsc-to-dusk",
+      "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
     testnet.unmount();
 
@@ -885,7 +885,7 @@ describe("Dashboard", () => {
 
     expect(queryByRole("link", { name: "Past staking" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/transactions?kind=staking",
+      "/some-base-path/dashboard/transactions/?kind=staking",
     );
   });
 
@@ -918,7 +918,7 @@ describe("Dashboard", () => {
 
     expect(getByRole("link", { name: "Past staking" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/transactions?kind=staking",
+      "/some-base-path/dashboard/transactions/?kind=staking",
     );
 
     await fireEvent.click(getByRole("button", { name: "Staking" }));
@@ -1389,7 +1389,7 @@ describe("Dashboard", () => {
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",
-      `/some-base-path/dashboard/transactions?tx=${"a1".repeat(32)}`,
+      `/some-base-path/dashboard/transactions/?tx=${"a1".repeat(32)}`,
     );
 
     await fireEvent.click(getByRole("button", { name: "Received" }));

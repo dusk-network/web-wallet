@@ -34,9 +34,9 @@
   } from "@duskdomains/sdk/names";
   import { beforeNavigate, goto as navigateTo } from "$app/navigation";
   import { page } from "$app/stores";
+  import { resolve } from "$app/paths";
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import {
-    addBasePath,
     askedWith,
     formDraft,
     gasToKeep,
@@ -2087,7 +2087,7 @@
         reviewWhenReady = false;
       }}
     >
-      <a class="send__back" href={addBasePath("/dashboard")}
+      <a class="send__back" href={resolve("/dashboard/")}
         ><Icon path={mdiArrowLeft} />Home</a
       >
       <h1 class="send__title" id="{id}-title" use:pageTitle={step !== "review"}>

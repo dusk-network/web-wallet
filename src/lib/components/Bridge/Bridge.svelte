@@ -4,6 +4,7 @@
   import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import { browser } from "$app/environment";
+  import { resolve } from "$app/paths";
   import { onMount } from "svelte";
   import {
     mdiArrowDown,
@@ -95,7 +96,7 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { sendPasswordFor } from "$lib/security/sendPassword";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
@@ -491,11 +492,12 @@
 
   /**
    * @param {string | undefined} hash
+   * @returns {"/dashboard/bridge/transactions/" | `/dashboard/bridge/transactions/?tx=${string}`}
    */
   function withdrawalStatusHref(hash = lastWithdrawalTxHash) {
     return WITHDRAWAL_TX_HASH_PATTERN.test(hash)
-      ? `/dashboard/bridge/transactions?tx=${hash}`
-      : "/dashboard/bridge/transactions";
+      ? `/dashboard/bridge/transactions/?tx=${hash}`
+      : "/dashboard/bridge/transactions/";
   }
 
   /**
@@ -795,13 +797,12 @@
       <a
         aria-current="page"
         class="swap-tab"
-        href={addBasePath("/dashboard/bridge")}
+        href={resolve("/dashboard/bridge/")}
         on:click={() => {
           restarts += 1;
         }}>Bridge</a
       >
-      <a class="swap-tab" href={addBasePath(withdrawalStatusHref())}>Activity</a
-      >
+      <a class="swap-tab" href={resolve(withdrawalStatusHref())}>Activity</a>
     </nav>
   </div>
 

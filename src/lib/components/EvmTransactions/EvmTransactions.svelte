@@ -8,6 +8,7 @@
    * its steps, where a withdrawal is proved or claimed.
    */
   import { page } from "$app/stores";
+  import { resolve } from "$app/paths";
   import { onMount, tick } from "svelte";
   import { mdiArrowRight, mdiWalletOutline } from "@mdi/js";
 
@@ -23,7 +24,6 @@
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { errorMessage } from "$lib/dusk/error";
   import { section } from "$lib/dusk/motion";
-  import { addBasePath } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
     finalizeWithdrawal,
@@ -932,11 +932,11 @@
 <SwapCard label="Bridge activity" wide>
   <div class="swap-top" slot="top">
     <nav aria-label="Bridge and activity" class="swap-tabs">
-      <a class="swap-tab" href={addBasePath("/dashboard/bridge")}>Bridge</a>
+      <a class="swap-tab" href={resolve("/dashboard/bridge/")}>Bridge</a>
       <a
         aria-current="page"
         class="swap-tab"
-        href={addBasePath("/dashboard/bridge/transactions")}>Activity</a
+        href={resolve("/dashboard/bridge/transactions/")}>Activity</a
       >
     </nav>
   </div>

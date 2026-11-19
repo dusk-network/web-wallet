@@ -584,7 +584,7 @@ describe("Bridge", () => {
     expect(container.querySelector(".swap-recipient")).toBeNull();
     expect(getByRole("link", { name: "Home" })).toHaveAttribute(
       "href",
-      expect.stringMatching(/\/dashboard$/),
+      expect.stringMatching(/\/dashboard\/$/),
     );
     expect(getDirection(container)).toStrictEqual(["duskDs", "duskEvm"]);
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(

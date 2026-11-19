@@ -50,7 +50,7 @@ const baseProps = {
     gasPriceLower: 1n,
   },
   gasSettings: { gasLimit: 50_000_000n, gasPrice: 1n },
-  liquidHref: "/dashboard/stake?flow=liquid",
+  liquidHref: /** @type {const} */ ("/dashboard/stake/?flow=liquid"),
   minimumStake: 1_000n * DUSK,
   unstakeFee: 50_000_000n,
 };

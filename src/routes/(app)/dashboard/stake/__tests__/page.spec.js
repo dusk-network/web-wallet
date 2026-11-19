@@ -987,7 +987,7 @@ describe("Staking", () => {
         getByRole("link", {
           name: "Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
         }),
-      ).toHaveAttribute("href", "/some-base-path/dashboard/stake?flow=liquid");
+      ).toHaveAttribute("href", "/some-base-path/dashboard/stake/?flow=liquid");
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));

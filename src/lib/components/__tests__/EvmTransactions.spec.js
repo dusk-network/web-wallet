@@ -960,7 +960,7 @@ describe("EvmTransactions", () => {
     // The bridge's card, on its Activity tab, with the way Home.
     expect(getByRole("link", { name: "Bridge" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge",
+      "/some-base-path/dashboard/bridge/",
     );
     expect(getByRole("link", { name: "Activity" })).toHaveAttribute(
       "aria-current",
@@ -968,7 +968,7 @@ describe("EvmTransactions", () => {
     );
     expect(getByRole("link", { name: "Home" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard",
+      "/some-base-path/dashboard/",
     );
     expect(getByText("No transfers yet.")).toBeInTheDocument();
   });

@@ -44,7 +44,7 @@ describe("TopBar", () => {
 
     expect(getByRole("link", { name: "Dusk Wallet, home" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard",
+      "/some-base-path/dashboard/",
     );
     expect(getByRole("link", { name: "History" })).toHaveAttribute(
       "aria-current",
@@ -55,7 +55,7 @@ describe("TopBar", () => {
     );
     expect(getByRole("link", { name: "Settings" })).toHaveAttribute(
       "href",
-      "/some-base-path/settings",
+      "/some-base-path/settings/",
     );
   });
 
