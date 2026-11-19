@@ -12,17 +12,15 @@
 
   /** @type {boolean} */
   export let onSurface = true;
-</script>
 
-<a
-  {...$$restProps}
-  class={makeClassName([
+  $: classes = makeClassName([
     "dusk-anchor",
     `dusk-anchor--${onSurface ? "on-surface" : "off-surface"}`,
     className,
-  ])}
-  {href}
-  on:click
->
+  ]);
+</script>
+
+<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- renders the href it is given; internal callers add the base path -->
+<a {...$$restProps} class={classes} {href} on:click>
   <slot />
 </a>
