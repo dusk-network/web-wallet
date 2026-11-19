@@ -27,10 +27,6 @@ export default defineConfig([
         svelteConfig,
       },
     },
-    rules: {
-      // Links get the base path from `addBasePath` (AppAnchor), not `resolve`.
-      "svelte/no-navigation-without-resolve": ["error", { ignoreLinks: true }],
-    },
   },
   globalIgnores([
     ".svelte-kit/",
