@@ -12,7 +12,7 @@ export default async function transactionInBlock(network, hash, signal) {
   const { tx } =
     (await network.query(
       `tx(hash: "${hash}") { blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
-      { signal }
+      { signal },
     )) ?? {};
 
   if (!tx) {

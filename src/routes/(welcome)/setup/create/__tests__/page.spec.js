@@ -93,7 +93,7 @@ describe("Create", async () => {
 
       await fireInput(
         asInput(/** @type {HTMLElement} */ (label.querySelector("input"))),
-        words[n - 1]
+        words[n - 1],
       );
     }
 
@@ -165,7 +165,7 @@ describe("Create", async () => {
     const { getByRole } = render(Create, baseOptions);
 
     expect(
-      getByRole("button", { name: "Remove and create" })
+      getByRole("button", { name: "Remove and create" }),
     ).toBeInTheDocument();
   });
 
@@ -174,16 +174,16 @@ describe("Create", async () => {
 
     expect(
       getByText(
-        "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko."
-      )
+        "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko.",
+      ),
     ).toBeInTheDocument();
     expect(getByRole("link", { name: "Terms of use" })).toHaveAttribute(
       "href",
-      "https://dusk.network/terms-of-use/"
+      "https://dusk.network/terms-of-use/",
     );
     expect(getByRole("link", { name: "Privacy policy" })).toHaveAttribute(
       "href",
-      "https://dusk.network/privacy-policy/"
+      "https://dusk.network/privacy-policy/",
     );
   });
 
@@ -200,13 +200,13 @@ describe("Create", async () => {
     expect(agreementStep).not.toMatch(/mnemonic/i);
     expect(
       getByLabelText(
-        "I understand that without my recovery phrase I cannot access my wallet and its assets."
-      )
+        "I understand that without my recovery phrase I cannot access my wallet and its assets.",
+      ),
     ).toHaveAttribute("type", "checkbox");
     expect(
       getByLabelText(
-        "Anyone with these 12 words can take my DUSK. Dusk will never ask for them."
-      )
+        "Anyone with these 12 words can take my DUSK. Dusk will never ask for them.",
+      ),
     ).toHaveAttribute("type", "checkbox");
 
     await fireEvent.click(getAllByRole("checkbox")[0]);
@@ -215,7 +215,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(
-      getByText(/^Type words \d+, \d+ and \d+ as you wrote them down\.$/)
+      getByText(/^Type words \d+, \d+ and \d+ as you wrote them down\.$/),
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/mnemonic/i);
   });
@@ -236,13 +236,13 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     expect(getByRole("heading", { level: 2 }).innerHTML).toBe(
-      "Back up your recovery phrase"
+      "Back up your recovery phrase",
     );
     expect(getByRole("link", { name: "Back" })).toHaveClass(
-      "dusk-anchor-button--variant--tertiary"
+      "dusk-anchor-button--variant--tertiary",
     );
     expect(getByRole("button", { name: "Next" })).toHaveClass(
-      "dusk-button--variant--primary"
+      "dusk-button--variant--primary",
     );
   });
 
@@ -307,18 +307,18 @@ describe("Create", async () => {
   it("hides the words to write down the moment the page is hidden, and what's typed in their check, until Show words", async () => {
     const { container, getAllByRole, getByRole, queryByRole } = render(
       Create,
-      baseOptions
+      baseOptions,
     );
     const words = mnemonic.split(" ");
     /** Which of the phrase's words are on the page, by their whole word. */
     const wordsShown = () =>
       words.filter((word) =>
-        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? ""),
       );
     const shownWords = () =>
       Array.from(
         container.querySelectorAll(".dusk-words__word"),
-        (word) => word.textContent?.trim() ?? ""
+        (word) => word.textContent?.trim() ?? "",
       );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -347,7 +347,7 @@ describe("Create", async () => {
     const boxes = container.querySelector(".recovery-check__words");
 
     for (const box of container.querySelectorAll(
-      ".recovery-check__word input"
+      ".recovery-check__word input",
     )) {
       await fireInput(/** @type {HTMLInputElement} */ (box), "museum");
     }
@@ -378,13 +378,13 @@ describe("Create", async () => {
     try {
       const { container, getAllByRole, getByRole, queryByRole } = render(
         Create,
-        baseOptions
+        baseOptions,
       );
       const words = mnemonic.split(" ");
       const shownWords = () =>
         Array.from(
           container.querySelectorAll(".dusk-words__word"),
-          (word) => word.textContent?.trim() ?? ""
+          (word) => word.textContent?.trim() ?? "",
         );
       /** @param {string} type */
       const finger = (type) =>
@@ -394,7 +394,7 @@ describe("Create", async () => {
             button: 0,
             pointerId: 1,
             pointerType: "touch",
-          })
+          }),
         );
 
       await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -470,7 +470,7 @@ describe("Create", async () => {
     const boxes = boxesShown();
     const asked = Array.from(
       container.querySelectorAll(".recovery-check__word"),
-      (label) => Number(label.textContent?.replace(/\D/g, ""))
+      (label) => Number(label.textContent?.replace(/\D/g, "")),
     );
 
     // Three, in order, each its own box, as Import's take words.
@@ -488,10 +488,10 @@ describe("Create", async () => {
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
     // Amélie's: Skip for now was the big black button, Check a pale one.
     expect(getByRole("button", { name: "Check" })).toHaveClass(
-      "dusk-button--variant--primary"
+      "dusk-button--variant--primary",
     );
     expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
-      "dusk-button--variant--secondary"
+      "dusk-button--variant--secondary",
     );
 
     const words = mnemonic.split(" ");
@@ -499,7 +499,7 @@ describe("Create", async () => {
     /** Which of the phrase's words are on the page, by their whole word. */
     const wordsShown = () =>
       words.filter((word) =>
-        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? ""),
       );
 
     // One wrong, then three made up: said, and nothing else.
@@ -514,7 +514,7 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Check" }));
 
       expect(getByRole("alert")).toHaveTextContent(
-        /^That doesn't match your recovery words\. Check the words you wrote down\.$/
+        /^That doesn't match your recovery words\. Check the words you wrote down\.$/,
       );
       expect(wordsShown()).toStrictEqual([]);
       expect(container.querySelector(".dusk-words")).toBeNull();
@@ -522,10 +522,10 @@ describe("Create", async () => {
       expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
       // Try again leads, Skip for now quieter.
       expect(getByRole("button", { name: "Try again" })).toHaveClass(
-        "dusk-button--variant--primary"
+        "dusk-button--variant--primary",
       );
       expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
-        "dusk-button--variant--secondary"
+        "dusk-button--variant--secondary",
       );
 
       // Try again: the same three, empty, the first to type in.
@@ -533,12 +533,12 @@ describe("Create", async () => {
 
       expect(
         Array.from(container.querySelectorAll(".recovery-check__word"), (l) =>
-          Number(l.textContent?.replace(/\D/g, ""))
-        )
+          Number(l.textContent?.replace(/\D/g, "")),
+        ),
       ).toStrictEqual(asked);
       expect(boxesShown().map((box) => box.value)).toStrictEqual(["", "", ""]);
       await vi.waitFor(() =>
-        expect(document.activeElement).toBe(boxesShown()[0])
+        expect(document.activeElement).toBe(boxesShown()[0]),
       );
       expect(queryByRole("alert")).toBeNull();
     }
@@ -547,7 +547,7 @@ describe("Create", async () => {
     // them: case, the spaces around and a keyboard's fullwidth letters aside.
     const fullwidth = (/** @type {string} */ word) =>
       word.replace(/[a-z]/gi, (letter) =>
-        String.fromCharCode(letter.charCodeAt(0) + 0xfee0)
+        String.fromCharCode(letter.charCodeAt(0) + 0xfee0),
       );
 
     for (const [i, box] of boxesShown().entries()) {
@@ -557,7 +557,7 @@ describe("Create", async () => {
           ? ` ${words[asked[1] - 1].toUpperCase()} `
           : i === 2
             ? fullwidth(words[asked[2] - 1])
-            : words[asked[i] - 1]
+            : words[asked[i] - 1],
       );
     }
 
@@ -569,7 +569,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Set a password"
+      "Set a password",
     );
   });
 
@@ -583,34 +583,34 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     for (const box of container.querySelectorAll(
-      ".recovery-check__word input"
+      ".recovery-check__word input",
     )) {
       await fireInput(/** @type {HTMLElement} */ (box), "zoo");
     }
 
     await fireEvent.click(getByRole("button", { name: "Check" }));
     await fireEvent.click(
-      getByRole("button", { name: "Show my recovery words" })
+      getByRole("button", { name: "Show my recovery words" }),
     );
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Back up your recovery phrase"
+      "Back up your recovery phrase",
     );
     expect(
       Array.from(
         container.querySelectorAll(".dusk-words__word"),
-        (word) => word.textContent
-      )
+        (word) => word.textContent,
+      ),
     ).toStrictEqual(mnemonic.split(" "));
 
     // And on to a new check of them.
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Check your recovery words"
+      "Check your recovery words",
     );
     expect(
-      container.querySelectorAll(".recovery-check__word input")
+      container.querySelectorAll(".recovery-check__word input"),
     ).toHaveLength(3);
   });
 
@@ -625,7 +625,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Skip for now" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Set a password"
+      "Set a password",
     );
   });
 
@@ -685,7 +685,7 @@ describe("Create", async () => {
   it("should keep the block height out of the way, under Advanced, on the Network Syncing step", async () => {
     const { container, getByRole, getAllByRole, getByText } = render(
       Create,
-      baseOptions
+      baseOptions,
     );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -712,7 +712,7 @@ describe("Create", async () => {
   it("should hint at how strong the password is once it is long enough", async () => {
     const { container, getByRole, getAllByRole, getByPlaceholderText } = render(
       Create,
-      baseOptions
+      baseOptions,
     );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -735,7 +735,7 @@ describe("Create", async () => {
     await fireInput(password, "password");
 
     expect(hint()).toHaveTextContent(
-      "Weak password: easy to guess. Make it longer, or use a few unrelated words."
+      "Weak password: easy to guess. Make it longer, or use a few unrelated words.",
     );
     expect(password).toHaveAccessibleDescription(hint()?.textContent?.trim());
 
@@ -807,14 +807,14 @@ describe("Create", async () => {
 
     await vi.waitFor(() => {
       expect(get(settingsStore).walletCreationBlockHeight).toBe(
-        currentBlockHeight
+        currentBlockHeight,
       );
     });
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       currentBlockHeight,
-      { key: "", n: 1 }
+      { key: "", n: 1 },
     );
 
     // All Done step
@@ -852,7 +852,7 @@ describe("Create", async () => {
     };
     const opening = Promise.withResolvers();
     const { getByRole } = await toAllSet(
-      () => /** @type {Promise<void>} */ (opening.promise)
+      () => /** @type {Promise<void>} */ (opening.promise),
     );
 
     // All set, while the wallet opens.
@@ -873,14 +873,14 @@ describe("Create", async () => {
     gotoSpy.mockClear();
 
     const failed = await toAllSet(() =>
-      Promise.reject(new Error("some error"))
+      Promise.reject(new Error("some error")),
     );
 
     await vi.waitFor(() => {
       expect(failed.getByText("The wallet couldn't open")).toBeInTheDocument();
     });
     expect(
-      failed.getByText("Restore it with the recovery phrase you wrote down.")
+      failed.getByText("Restore it with the recovery phrase you wrote down."),
     ).toBeInTheDocument();
     expect(failed.queryByText("You are all set!")).toBeNull();
     expect(failed.getByRole("button", { name: "Next" })).toBeDisabled();
@@ -896,7 +896,7 @@ describe("Create", async () => {
 
     const { getByPlaceholderText, getByRole, getAllByRole } = render(
       Create,
-      baseOptions
+      baseOptions,
     );
 
     // ToS step
@@ -938,7 +938,7 @@ describe("Create", async () => {
 
     await vi.waitFor(() => {
       expect(get(settingsStore).walletCreationBlockHeight).toBe(
-        currentBlockHeight
+        currentBlockHeight,
       );
     });
     expect(clearAndInitSpy).toHaveBeenCalledTimes(1);
@@ -946,12 +946,12 @@ describe("Create", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       currentBlockHeight,
-      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 }
+      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 },
     );
     expect(
       JSON.parse(
-        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}"
-      ).legacy
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}",
+      ).legacy,
     ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // All Done step
@@ -962,7 +962,7 @@ describe("Create", async () => {
     expect(gotoSpy).toHaveBeenCalledTimes(1);
     expect(gotoSpy).toHaveBeenCalledWith(
       "/dashboard/send/?to=someone&amount=0.011&network=testnet",
-      { replaceState: true }
+      { replaceState: true },
     );
   });
 });

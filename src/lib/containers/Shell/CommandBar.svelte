@@ -151,7 +151,7 @@
 
     try {
       const data = await archiveAt(nodeBaseUrl()).query(
-        `query { block(height: ${height}) { header { hash } } }`
+        `query { block(height: ${height}) { header { hash } } }`,
       );
       const hash = data?.block?.header?.hash;
 

@@ -58,7 +58,7 @@ describe("CopyButton", () => {
     await vi.advanceTimersByTimeAsync(50);
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(
-      value
+      value,
     );
     expect(button).toHaveAccessibleName("Copied");
     expect(button).toHaveTextContent(/^Copied$/);
@@ -120,11 +120,11 @@ describe("CopyButton", () => {
       expect(toast).toHaveBeenCalledExactlyOnceWith(
         "error",
         message,
-        expect.any(String)
+        expect.any(String),
       );
       expect(button).toHaveAccessibleName("Copy address");
       expect(heard()).toBe("");
-    }
+    },
   );
 
   it("should not say Copied for a value it didn't copy", async () => {

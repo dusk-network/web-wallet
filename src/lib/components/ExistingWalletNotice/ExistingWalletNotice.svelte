@@ -22,7 +22,7 @@
     (count) => {
       many = count > 1;
     },
-    () => {}
+    () => {},
   );
 </script>
 

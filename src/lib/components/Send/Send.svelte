@@ -241,7 +241,7 @@
         ? typed.amount
         : amountForField(
             formatDuskPlain(BigInt(lux)),
-            getDecimalSeparator($settingsStore.language)
+            getDecimalSeparator($settingsStore.language),
           ),
     gas: /** @type {{ limit: string, price: string } | undefined} */ (
       typed.gas
@@ -307,7 +307,7 @@
 
   /** Whether a link filled the form in, until what's in To changes. */
   let isFromLink = Boolean(
-    !typedBefore && initialRecipient && (initialAmount || initialMemo)
+    !typedBefore && initialRecipient && (initialAmount || initialMemo),
   );
 
   /** The recipient that link gave, or the send that never went out. */
@@ -335,7 +335,7 @@
   const carriedOf = (filled) => ({
     fields: /** @type {Array<"amount" | "memo">} */ (
       /** @type {const} */ (["amount", "memo"]).filter((field) =>
-        String(filled?.[field] ?? "").trim()
+        String(filled?.[field] ?? "").trim(),
       )
     ),
     to: String(filled?.to ?? "").trim(),
@@ -351,7 +351,7 @@
     typedBefore ??
       (isFromLink
         ? { amount: initialAmount, memo: initialMemo, to: initialRecipient }
-        : null)
+        : null),
   );
 
   /**
@@ -621,7 +621,7 @@
   function amountErrorOf(
     text,
     amount,
-    { available, hidden, known, locale, maxSpendable }
+    { available, hidden, known, locale, maxSpendable },
   ) {
     if (!text.trim()) {
       return "";
@@ -736,14 +736,14 @@
       toast(
         "error",
         "You don't have enough DUSK to cover the transaction fee",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
       return;
     }
 
     sendAmount = amountForField(
       formatDuskPlain(maxKeeping),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
     isMaxAmount = true;
     typedOver("amount");
@@ -752,7 +752,7 @@
   /** @param {Event} event */
   function typeAmount(event) {
     sendAmount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
     isOwnAmount = false;
@@ -829,7 +829,7 @@
   async function takeRecipient(
     text,
     held = sendToAddress,
-    { keep = true } = {}
+    { keep = true } = {},
   ) {
     const taking = (takings += 1);
     const names = pastedNames(text, $nodeNetwork);
@@ -849,7 +849,7 @@
       fillFrom(
         text,
         readPastedLink(text, $nodeNetwork, language, owners),
-        keep
+        keep,
       );
     } else {
       isReadingLink = false;
@@ -1189,7 +1189,7 @@
    */
   function contactNamed(contacts, name, address, type) {
     const named = savedWithName(contacts, name).filter(
-      (contact) => contact.type === type
+      (contact) => contact.type === type,
     );
 
     return (
@@ -1256,7 +1256,7 @@
       gasPrice,
       gasLimit,
       toName,
-      gate
+      gate,
     );
 
     // Until it goes out, Home says it waits, wherever the wallet is, its
@@ -1400,7 +1400,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -1604,7 +1604,7 @@
   // Anything in the form, typed, filled in by a link or kept: leaving it
   // asks first.
   $: holdsPayment = Boolean(
-    sendToAddress.trim() || sendAmount.trim() || memo.trim()
+    sendToAddress.trim() || sendAmount.trim() || memo.trim(),
   );
 
   // A send that never went out, asked to be sent now: its review, once the
@@ -1631,7 +1631,7 @@
       takeUnsentRefill({
         account: publicAddress,
         network: $networkStore.networkName,
-      })
+      }),
     );
   }
 
@@ -1683,7 +1683,7 @@
   $: addressInfo = getAddressInfo(
     recipientAddress,
     shieldedAddress,
-    publicAddress
+    publicAddress,
   );
 
   /**
@@ -1724,7 +1724,7 @@
     ? $profilesHere
         .filter(
           ({ address, name }) =>
-            address !== publicAddress && canMean(name, sendToAddress)
+            address !== publicAddress && canMean(name, sendToAddress),
         )
         .slice(0, 3)
     : [];
@@ -1750,7 +1750,7 @@
     recipientAddress &&
     !$walletAccountNames.has(recipientAddress)
       ? $profilesHere.find(({ name }) =>
-          sameName(name, recipientName.replace(/\.dusk$/i, ""))
+          sameName(name, recipientName.replace(/\.dusk$/i, "")),
         )
       : undefined;
 
@@ -1807,7 +1807,7 @@
         ? shownName
         : walletAccount || shortenAddress(recipientAddress);
   $: own = ownAccounts.find(
-    (account) => recipientAddress && account.address === recipientAddress
+    (account) => recipientAddress && account.address === recipientAddress,
   );
   // "Your Profile 2", where it goes by its number; a name stands on its own.
   $: ownLabel = /^Profile \d/.test(own?.label ?? "")
@@ -1829,14 +1829,14 @@
     contacts,
     recipientName,
     recipientAddress,
-    nameAddressType
+    nameAddressType,
   );
 
   // The contact a transfer goes to: the one saved with the address it goes
   // to, or else with the `.dusk` name entered.
   $: contact =
     contacts.find(
-      (saved) => recipientAddress && saved.address === recipientAddress
+      (saved) => recipientAddress && saved.address === recipientAddress,
     ) ?? nameContact;
 
   // Whether its name looks like another's: said wherever it's named, to the
@@ -1889,7 +1889,7 @@
     contactName,
     $profilesHere,
     undefined,
-    recipientAddress
+    recipientAddress,
   );
   $: if (contactAskedOf && contactAskedOf !== contactName) {
     contactAskedOf = "";
@@ -1972,7 +1972,7 @@
     `${known.hidden ? BALANCE_MASK : formatDuskExact(row.value, known.locale)} DUSK to ${nameOf(
       row.counterparty ?? "",
       row.toName,
-      known
+      known,
     )}`;
 
   $: ({ hideBalances, language } = $settingsStore);
@@ -1992,8 +1992,8 @@
     ({ hash }) =>
       !$unsentSends.some(
         ({ handedOver }) =>
-          handedOver?.hash.toLowerCase() === hash.toLowerCase()
-      )
+          handedOver?.hash.toLowerCase() === hash.toLowerCase(),
+      ),
   );
   // Whom a memo that came in isn't a stranger's from, as History has it:
   // the profiles here, every wallet's, and the contacts.
@@ -2011,7 +2011,7 @@
     ? (historyRows
         .filter(
           (row) =>
-            row.direction === "in" && row.counterparty === recipientAddress
+            row.direction === "in" && row.counterparty === recipientAddress,
         )
         .map((row) => strangersMemo(row, memoAmong))
         .find(Boolean) ?? null)
@@ -2032,7 +2032,7 @@
             send.from === from &&
             send.address === recipientAddress &&
             send.lux === sendAmountInLux &&
-            send.memo === transactionMemo
+            send.memo === transactionMemo,
         ) ?? null)
       : null;
   // Said on the button too, which then sends it again.
@@ -2181,7 +2181,7 @@
             id="{id}-contacts"
             on:change={(event) => {
               const picked = contacts.find(
-                (c) => c.id === event.currentTarget.value
+                (c) => c.id === event.currentTarget.value,
               );
 
               if (picked) {
@@ -2249,7 +2249,7 @@
               }}
               type="button"
               >{yourProfile(
-                $walletAccountNames.get(named.address) ?? named.name
+                $walletAccountNames.get(named.address) ?? named.name,
               )} · {shortenAddress(named.address)}</button
             >
           {/each}
@@ -2262,7 +2262,7 @@
               }}
               type="button"
               >Your contact {contactNameText(named.name)} · {shortenAddress(
-                named.address
+                named.address,
               )}{alike.has(named) ? " · name looks like another" : ""}</button
             >
           {/each}
@@ -2799,7 +2799,7 @@
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,
-            gasLimits
+            gasLimits,
           );
 
           if (isGasValid) {

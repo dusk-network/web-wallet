@@ -597,11 +597,11 @@ export const isOfKind = ({ category, direction }, kind) =>
 export const matchesFilters = (
   presentation,
   row,
-  { kind = "all", privacy = "all", since = null }
+  { kind = "all", privacy = "all", since = null },
 ) =>
   isOfKind(
     { category: presentation.category, direction: row.direction },
-    kind
+    kind,
   ) &&
   (privacy === "all" || presentation.privacy.toLowerCase() === privacy) &&
   // A row with no time yet isn't in a range of days.

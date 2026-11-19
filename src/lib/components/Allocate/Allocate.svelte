@@ -198,7 +198,7 @@
     handleBalanceChange(
       /** @type {any} */ ({
         target: { name: typedBefore.field, value: typedBefore.value },
-      })
+      }),
     );
   }
 
@@ -232,7 +232,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -359,7 +359,7 @@
             isGasValid = areValidGasSettings(
               event.detail.price,
               event.detail.limit,
-              gasLimits
+              gasLimits,
             );
 
             if (isGasValid) {

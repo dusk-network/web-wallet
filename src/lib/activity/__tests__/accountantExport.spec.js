@@ -199,14 +199,14 @@ async function chain(url, { body }) {
             topics.every(
               (
                 /** @type {string | string[] | null} */ topic,
-                /** @type {number} */ i
+                /** @type {number} */ i,
               ) =>
                 topic === null ||
                 (Array.isArray(topic)
                   ? topic.includes(log.topics[i])
-                  : topic === log.topics[i])
-            )
-        )
+                  : topic === log.topics[i]),
+            ),
+        ),
       );
     }
 
@@ -258,7 +258,7 @@ const historyOf = (account, evm, migration, n) => [
       status: "executed",
       timestamp: Date.UTC(2026, 10, 5, 2, 40 + n),
     },
-    { account, network: net }
+    { account, network: net },
   ),
   rowOf(
     {
@@ -271,7 +271,7 @@ const historyOf = (account, evm, migration, n) => [
       status: "executed",
       timestamp: (timeAt(BigInt(receipts[migration].blockNumber)) + 60) * 1000,
     },
-    { account, network: net }
+    { account, network: net },
   ),
 ];
 
@@ -316,7 +316,7 @@ const recordsOf = (csv) => {
   const columns = head.split(",");
 
   return lines.map((line) =>
-    Object.fromEntries(line.split(",").map((cell, i) => [columns[i], cell]))
+    Object.fromEntries(line.split(",").map((cell, i) => [columns[i], cell])),
   );
 };
 
@@ -330,11 +330,11 @@ describe("History's Export", () => {
 
     const one = await fileOf(
       PROFILE_1,
-      historyOf(PROFILE_1, ITS_EVM, ITS_MIGRATION, 1)
+      historyOf(PROFILE_1, ITS_EVM, ITS_MIGRATION, 1),
     );
     const two = await fileOf(
       PROFILE_2,
-      historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2)
+      historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2),
     );
     /** @param {{ csv: string }} file */
     const gas = ({ csv }) =>
@@ -366,7 +366,7 @@ describe("History's Export", () => {
       unread: [],
     });
     expect(savedWords(two)).toContain(
-      "The file has the network fees paid from 0xB746…aa25."
+      "The file has the network fees paid from 0xB746…aa25.",
     );
     expect(savedWords(two).toLowerCase()).not.toContain("0x7cdb");
   });
@@ -400,9 +400,9 @@ describe("History's Export", () => {
         left: { notRead: 0, outOfPeriod: 0, pending: 0 },
         shieldedWaiting: false,
         unpriced: 0,
-      })
+      }),
     ).toBe(
-      "CSV saved: 3 lines. The file has the network fees paid from 0x7cdb…8e73. 1 migration's fee on BSC test chain couldn't be read: export again to add it. Some network fees on BSC test chain couldn't be read: export again to add them. Network fees on Sepolia from before block 4,200,000 aren't in the file."
+      "CSV saved: 3 lines. The file has the network fees paid from 0x7cdb…8e73. 1 migration's fee on BSC test chain couldn't be read: export again to add it. Some network fees on BSC test chain couldn't be read: export again to add them. Network fees on Sepolia from before block 4,200,000 aren't in the file.",
     );
   });
 
@@ -414,23 +414,23 @@ describe("History's Export", () => {
       PROFILE_1,
       historyOf(PROFILE_1, ITS_EVM, ITS_MIGRATION, 1),
       [ITS_EVM, NEVER_EVM],
-      [{ account: PROFILE_2, name: "Profile 2" }]
+      [{ account: PROFILE_2, name: "Profile 2" }],
     );
     const two = await fileOf(
       PROFILE_2,
       historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2),
       [NEVER_EVM],
-      [{ account: PROFILE_1, name: "Profile 1" }]
+      [{ account: PROFILE_1, name: "Profile 1" }],
     );
 
     expect(one.csv).toContain(NEVER_APPROVAL);
     expect(savedWords(one)).not.toContain("Some network fees");
     expect(two.csv).not.toContain(NEVER_APPROVAL);
     expect(savedWords(two)).toContain(
-      "Some network fees on BSC test chain may be in another profile's file, or couldn't be read: export again to add them."
+      "Some network fees on BSC test chain may be in another profile's file, or couldn't be read: export again to add them.",
     );
     expect(savedWords(two)).not.toContain(
-      "Some network fees on BSC test chain couldn't be read"
+      "Some network fees on BSC test chain couldn't be read",
     );
   });
 
@@ -441,9 +441,9 @@ describe("History's Export", () => {
       (
         await fileOf(
           PROFILE_2,
-          historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2)
+          historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2),
         )
-      ).csv
+      ).csv,
     ).filter((record) => record["Sent Currency"] === "DUSK");
 
     expect(out).toMatchObject({
@@ -459,14 +459,14 @@ describe("History's Export", () => {
     const [, payout] = historyOf(PROFILE_2, OTHER_EVM, OTHER_MIGRATION, 2);
     const costs = async (/** @type {string[]} */ connected) =>
       recordsOf((await fileOf(PROFILE_2, [payout], connected)).csv).filter(
-        (record) => record["Sent Currency"] === "ETH"
+        (record) => record["Sent Currency"] === "ETH",
       );
 
     expect(await costs([])).toStrictEqual([]);
     expect(
       (await costs([OTHER_EVM.toUpperCase().replace("0X", "0x")])).map(
-        (record) => record.TxHash
-      )
+        (record) => record.TxHash,
+      ),
     ).toStrictEqual([OTHER_APPROVAL, OTHER_MIGRATION, OTHER_REVOKE]);
   });
 });
@@ -517,7 +517,7 @@ describe("Staking rewards by year", () => {
               stDusk: 5_000_000_000n,
             },
           ],
-        ])
+        ]),
       );
     /** @type {any[]} */
     const read = [];
@@ -534,7 +534,7 @@ describe("Staking rewards by year", () => {
         },
         sozuStatus: async () => null,
       },
-      { onError: (error) => read.push(error), onRead: (got) => read.push(got) }
+      { onError: (error) => read.push(error), onRead: (got) => read.push(got) },
     );
 
     await vi.waitFor(() => expect(read).toHaveLength(1));

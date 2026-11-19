@@ -62,7 +62,7 @@ describe("ScanQR", () => {
     const view = render(ScanQR, { ...baseOptions, events });
 
     await vi.waitFor(() =>
-      expect(view.component.startScan).toBeInstanceOf(Function)
+      expect(view.component.startScan).toBeInstanceOf(Function),
     );
     await Promise.resolve();
     await tick();
@@ -87,7 +87,7 @@ describe("ScanQR", () => {
     await ready();
 
     expect(
-      qr.options.calculateScanRegion({ videoHeight: 480, videoWidth: 640 })
+      qr.options.calculateScanRegion({ videoHeight: 480, videoWidth: 640 }),
     ).toStrictEqual({
       downScaledHeight: 480,
       downScaledWidth: 640,
@@ -97,7 +97,7 @@ describe("ScanQR", () => {
       y: 0,
     });
     expect(
-      qr.options.calculateScanRegion({ videoHeight: 1080, videoWidth: 1920 })
+      qr.options.calculateScanRegion({ videoHeight: 1080, videoWidth: 1920 }),
     ).toStrictEqual({
       downScaledHeight: 450,
       downScaledWidth: 800,
@@ -115,7 +115,7 @@ describe("ScanQR", () => {
     await component.startScan();
 
     expect(await findByRole("alert")).toHaveTextContent(
-      "Couldn't start the camera."
+      "Couldn't start the camera.",
     );
 
     await component.startScan();
@@ -135,7 +135,7 @@ describe("ScanQR", () => {
     qr.start.mockRejectedValueOnce(new Error("Camera not found."));
     await view.component.startScan();
     expect(await view.findByRole("alert")).toHaveTextContent(
-      "Couldn't start the camera."
+      "Couldn't start the camera.",
     );
 
     qr.scanImage.mockRejectedValueOnce("No QR code found");
@@ -147,8 +147,8 @@ describe("ScanQR", () => {
 
     await vi.waitFor(() =>
       expect(view.getByRole("alert")).toHaveTextContent(
-        "No QR code found in that image."
-      )
+        "No QR code found in that image.",
+      ),
     );
 
     click.mockRestore();
@@ -193,13 +193,13 @@ describe("ScanQR", () => {
 
     expect(scan).not.toHaveBeenCalled();
     expect(view.getByRole("alert")).toHaveTextContent(
-      "That QR isn't a Dusk address."
+      "That QR isn't a Dusk address.",
     );
 
     qr.read({ data: "dusk:public-abc" });
 
     expect(scan).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ detail: "dusk:public-abc" })
+      expect.objectContaining({ detail: "dusk:public-abc" }),
     );
   });
 
@@ -227,7 +227,7 @@ describe("ScanQR", () => {
     await fireEvent.change(input, { target: { files: [image] } });
 
     expect(await view.findByRole("alert")).toHaveTextContent(
-      "No QR code found in that image."
+      "No QR code found in that image.",
     );
 
     qr.scanImage.mockResolvedValueOnce({ data: "dusk:public-abc" });
@@ -235,8 +235,8 @@ describe("ScanQR", () => {
 
     await vi.waitFor(() =>
       expect(scan).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ detail: "dusk:public-abc" })
-      )
+        expect.objectContaining({ detail: "dusk:public-abc" }),
+      ),
     );
     expect(qr.scanImage).toHaveBeenLastCalledWith(image, {
       returnDetailedScanResult: true,
@@ -262,7 +262,7 @@ describe("ScanQR", () => {
     qr.scanImage.mockReturnValueOnce(
       new Promise((resolve) => {
         read = resolve;
-      })
+      }),
     );
     await fireEvent.change(view.getByLabelText("Image of a QR code"), {
       target: {
@@ -316,7 +316,7 @@ describe("ScanQR", () => {
     await Promise.resolve();
 
     expect(scan).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ detail: "dusk:public-new" })
+      expect.objectContaining({ detail: "dusk:public-new" }),
     );
 
     click.mockRestore();

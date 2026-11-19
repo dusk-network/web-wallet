@@ -54,9 +54,9 @@
       rows.flatMap((row) =>
         [row.counterpartyName, row.toName].filter(
           /** @returns {name is string} */
-          (name) => typeof name === "string" && name.endsWith(".dusk")
-        )
-      )
+          (name) => typeof name === "string" && name.endsWith(".dusk"),
+        ),
+      ),
     ),
   ];
 
@@ -85,7 +85,7 @@
       ? readPaymentLink(
           `${ownWalletUrl()}/dashboard/send${at.search}`,
           net,
-          language
+          language,
         )
       : null;
 
@@ -114,7 +114,7 @@
   $: gasSettings = getGasSettings(
     transferOperation,
     { customGasLimit, customGasPrice },
-    $gasPriceStore
+    $gasPriceStore,
   );
   $: gasLimits = getGasLimits(transferOperation, $gasStore);
   $: ({ balance, balanceRead, currentProfile } = $walletStore);
@@ -130,7 +130,7 @@
     .filter(
       ({ from }) =>
         from ===
-        (spendableSource === "shielded" ? shieldedAddress : publicAddress)
+        (spendableSource === "shielded" ? shieldedAddress : publicAddress),
     )
     .reduce((sum, { lux, maxFee }) => sum + lux + maxFee, 0n);
   // All of the history, not the page History has shown so far: what an
@@ -144,7 +144,7 @@
       $walletStore.profiles,
       profile,
       networkName,
-      $openProfileNames
+      $openProfileNames,
     );
 
     return [

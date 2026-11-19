@@ -134,8 +134,8 @@
     const isMatch = recoveryWordsMatch(
       words,
       asked.map(
-        (place, i) => /** @type {[number, string]} */ ([place + 1, typed[i]])
-      )
+        (place, i) => /** @type {[number, string]} */ ([place + 1, typed[i]]),
+      ),
     );
 
     result = isMatch ? "match" : "mismatch";
@@ -260,7 +260,7 @@
       if (typed.some(Boolean) && !$touchOnly) {
         isHidden = true;
       }
-    })
+    }),
   );
 
   // Masked as a password is: on a phone, but while it's held to show.

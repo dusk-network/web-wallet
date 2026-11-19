@@ -80,13 +80,13 @@ describe("DuskEVM withdrawal tracking", () => {
     });
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         amountWei: "10000000000000000000",
         sentAt: "2026-09-25T11:51:09.000Z",
         timestamp: lookedUpAt,
-      })
+      }),
     );
     expect(mocks.loadL2BlockTime).toHaveBeenCalledExactlyOnceWith(2_580_123n);
 
@@ -94,7 +94,7 @@ describe("DuskEVM withdrawal tracking", () => {
 
     expect(mocks.loadL2BlockTime).toHaveBeenCalledOnce();
     expect(getRememberedWithdrawalTransaction(transactionHash)?.sentAt).toBe(
-      "2026-09-25T11:51:09.000Z"
+      "2026-09-25T11:51:09.000Z",
     );
   });
 
@@ -105,7 +105,7 @@ describe("DuskEVM withdrawal tracking", () => {
     });
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(expect.objectContaining({ recipient: PAID }));
 
     // A later read that can't say keeps what one said.
@@ -113,7 +113,7 @@ describe("DuskEVM withdrawal tracking", () => {
     await refreshWithdrawalTransaction(transactionHash);
 
     expect(getRememberedWithdrawalTransaction(transactionHash)?.recipient).toBe(
-      PAID
+      PAID,
     );
   });
 
@@ -122,15 +122,15 @@ describe("DuskEVM withdrawal tracking", () => {
     mocks.loadL2BlockTime.mockRejectedValueOnce(new Error("RPC unavailable"));
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
-      expect.objectContaining({ sentAt: null, stage: "ready_to_prove" })
+      expect.objectContaining({ sentAt: null, stage: "ready_to_prove" }),
     );
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
-      expect.objectContaining({ sentAt: "2026-09-25T11:51:09.000Z" })
+      expect.objectContaining({ sentAt: "2026-09-25T11:51:09.000Z" }),
     );
     expect(mocks.loadL2BlockTime).toHaveBeenCalledTimes(2);
   });
@@ -150,12 +150,12 @@ describe("DuskEVM withdrawal tracking", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
-        expect.objectContaining({ sentAt: null, stage: "finalized" })
+        expect.objectContaining({ sentAt: null, stage: "finalized" }),
       );
 
       // Tracked still, and again after a reload.
       expect(
-        resumeWithdrawalTracking(account).map((item) => item.transactionHash)
+        resumeWithdrawalTracking(account).map((item) => item.transactionHash),
       ).toStrictEqual([transactionHash]);
 
       await vi.advanceTimersByTimeAsync(15_000);
@@ -164,7 +164,7 @@ describe("DuskEVM withdrawal tracking", () => {
         expect.objectContaining({
           sentAt: "2026-09-25T11:51:09.000Z",
           stage: "finalized",
-        })
+        }),
       );
       expect(mocks.loadWithdrawalStatus).toHaveBeenCalledOnce();
       expect(mocks.loadL2BlockTime).toHaveBeenCalledTimes(2);
@@ -185,7 +185,7 @@ describe("DuskEVM withdrawal tracking", () => {
     });
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         blockNumber: "4421",
@@ -195,13 +195,13 @@ describe("DuskEVM withdrawal tracking", () => {
         stage: "proven_waiting",
         trackingError: null,
         withdrawalHash,
-      })
+      }),
     );
     expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
       expect.objectContaining({
         stage: "proven_waiting",
         statusMessage: "The proof is accepted.",
-      })
+      }),
     );
   });
 
@@ -225,11 +225,11 @@ describe("DuskEVM withdrawal tracking", () => {
         claimOverdue: true,
         proofGame: game,
         readyAt: "1793459389",
-      })
+      }),
     );
     expect(mocks.loadWithdrawalStatus).toHaveBeenLastCalledWith(
       transactionHash,
-      { proofGame: null }
+      { proofGame: null },
     );
 
     // A game that couldn't be read leaves the date known so far.
@@ -244,10 +244,10 @@ describe("DuskEVM withdrawal tracking", () => {
 
     expect(mocks.loadWithdrawalStatus).toHaveBeenLastCalledWith(
       transactionHash,
-      { proofGame: game }
+      { proofGame: game },
     );
     expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
-      expect.objectContaining({ claimOverdue: true, readyAt: "1793459389" })
+      expect.objectContaining({ claimOverdue: true, readyAt: "1793459389" }),
     );
   });
 
@@ -261,7 +261,7 @@ describe("DuskEVM withdrawal tracking", () => {
     await refreshWithdrawalTransaction(transactionHash);
 
     expect(getRememberedWithdrawalTransaction(transactionHash)?.proofGame).toBe(
-      null
+      null,
     );
   });
 
@@ -278,7 +278,7 @@ describe("DuskEVM withdrawal tracking", () => {
     await refreshWithdrawalTransaction(transactionHash);
 
     expect(getRememberedWithdrawalTransaction(transactionHash)).toEqual(
-      expect.objectContaining({ proofRejected: true, stage: "proven_waiting" })
+      expect.objectContaining({ proofRejected: true, stage: "proven_waiting" }),
     );
   });
 
@@ -292,13 +292,13 @@ describe("DuskEVM withdrawal tracking", () => {
     mocks.loadDuskTransactionExecution.mockResolvedValue(null);
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         pendingAction: "prove",
         pendingTransactionHash: duskTransactionHash,
         stage: "prove_submitted",
-      })
+      }),
     );
   });
 
@@ -319,18 +319,18 @@ describe("DuskEVM withdrawal tracking", () => {
     });
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         actionError: "Proof transaction failed: contract execution failed",
         pendingAction: null,
         pendingTransactionHash: null,
         stage: "ready_to_prove",
-      })
+      }),
     );
     // The card shows a short line, so the raw error goes to the console.
     expect(consoleError).toHaveBeenCalledWith(
-      "Proof transaction failed: contract execution failed"
+      "Proof transaction failed: contract execution failed",
     );
 
     consoleError.mockRestore();
@@ -349,45 +349,45 @@ describe("DuskEVM withdrawal tracking", () => {
     });
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         pendingAction: null,
         pendingTransactionHash: null,
         stage: "proven_waiting",
-      })
+      }),
     );
     expect(mocks.loadDuskTransactionExecution).not.toHaveBeenCalled();
   });
 
   it("treats an unmined L2 transaction as expected pending state", async () => {
     mocks.loadWithdrawalStatus.mockRejectedValue(
-      new Error("Withdrawal transaction was not found.")
+      new Error("Withdrawal transaction was not found."),
     );
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         stage: "submitted",
         trackingError: null,
-      })
+      }),
     );
   });
 
   it("records an L2 revert as a terminal withdrawal failure", async () => {
     mocks.loadWithdrawalStatus.mockRejectedValue(
-      new Error("Withdrawal transaction failed on DuskEVM.")
+      new Error("Withdrawal transaction failed on DuskEVM."),
     );
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         actionError: "Withdrawal transaction failed on DuskEVM.",
         stage: "failed",
         trackingError: null,
-      })
+      }),
     );
   });
 
@@ -398,12 +398,12 @@ describe("DuskEVM withdrawal tracking", () => {
     mocks.loadWithdrawalStatus.mockRejectedValue(new Error("RPC unavailable"));
 
     await expect(
-      refreshWithdrawalTransaction(transactionHash)
+      refreshWithdrawalTransaction(transactionHash),
     ).resolves.toEqual(
       expect.objectContaining({
         stage: "waiting_for_output",
         trackingError: "RPC unavailable",
-      })
+      }),
     );
   });
 });

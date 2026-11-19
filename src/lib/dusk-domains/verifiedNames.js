@@ -74,7 +74,7 @@ export function forgetVerifiedNamesOf(accounts) {
   const own = new Set(accounts.map(String));
   const names = readNames();
   const kept = Object.fromEntries(
-    Object.entries(names).filter(([key]) => !own.has(key.split(" ")[1]))
+    Object.entries(names).filter(([key]) => !own.has(key.split(" ")[1])),
   );
 
   try {

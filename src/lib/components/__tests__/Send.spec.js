@@ -135,7 +135,7 @@ const getSummary = (container) =>
     (row) => [
       row.querySelector("dt")?.textContent,
       row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
-    ]
+    ],
   );
 
 // The contacts open with a wallet, as when it unlocks.
@@ -260,7 +260,7 @@ describe("Send", () => {
      */
     const filled = ({ amount, memo, to }) =>
       [to(), amount(), memo()].map(
-        (field) => /** @type {HTMLInputElement} */ (field).value
+        (field) => /** @type {HTMLInputElement} */ (field).value,
       );
 
     /**
@@ -311,9 +311,9 @@ describe("Send", () => {
           gasPrice,
           gasLimit,
           undefined,
-          aGate
+          aGate,
         );
-      }
+      },
     );
 
     it.each([
@@ -329,8 +329,8 @@ describe("Send", () => {
           fields,
           requestText(
             { link, lux: 150_000_000n, memo: "Factura 33" },
-            { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
-          )
+            { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
+          ),
         );
 
         expect(filled(fields)).toStrictEqual([
@@ -349,9 +349,9 @@ describe("Send", () => {
           gasPrice,
           gasLimit,
           undefined,
-          aGate
+          aGate,
         );
-      }
+      },
     );
 
     /**
@@ -425,7 +425,7 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
       const copied = requestText(
         { link: httpsLink, lux: 2_000_000n, memo: "Factura 33" },
-        { language: "en", name: "", net: networks.testnet }
+        { language: "en", name: "", net: networks.testnet },
       ).replace("amount=0.15", "amount=0.002");
 
       // As Copy gave it: it agrees with its link.
@@ -468,7 +468,7 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
       const copied = requestText(
         { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
-        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
       );
       const lookup = Promise.withResolvers();
 
@@ -482,7 +482,7 @@ describe("Send", () => {
       await tick();
 
       expect(baseProps.resolveName).toHaveBeenLastCalledWith(
-        "sofiadesign.dusk"
+        "sofiadesign.dusk",
       );
       expect(filled(fields).slice(1)).toStrictEqual(["", ""]);
       expect(queryByRole("alert")).toBeNull();
@@ -500,7 +500,7 @@ describe("Send", () => {
 
       expect(filled(fields)).toStrictEqual(refusedAs(copied));
       expect(getByRole("alert")).toHaveTextContent(
-        `The message says sofiadesign.dusk; its link pays ${cut(otherAccount)}.`
+        `The message says sofiadesign.dusk; its link pays ${cut(otherAccount)}.`,
       );
 
       // The link's own: filled in.
@@ -559,7 +559,7 @@ describe("Send", () => {
 
         expect(filled(fields)).toStrictEqual(refusedAs(message(` to ${name}`)));
         expect(getByRole("alert")).toHaveTextContent(
-          `The message says alice.dusk; its link pays ${cut(otherAccount)}.`
+          `The message says alice.dusk; its link pays ${cut(otherAccount)}.`,
         );
         expect(fields.review()).toBeDisabled();
       }
@@ -593,7 +593,7 @@ describe("Send", () => {
             lux,
             memo: "r37 marek T2",
           },
-          { language: "en", name: "", net: networks.testnet }
+          { language: "en", name: "", net: networks.testnet },
         );
       const own = line("0.002", 2_000_000n);
       const [ownLine] = own.split("\n");
@@ -616,14 +616,14 @@ describe("Send", () => {
 
           await pasteAsBrowser(
             fields,
-            changed.replace("amount=0.002", "amount=0.15")
+            changed.replace("amount=0.002", "amount=0.15"),
           );
 
           expect(filled(fields)).toStrictEqual(
-            refusedAs(changed.replace("amount=0.002", "amount=0.15"))
+            refusedAs(changed.replace("amount=0.002", "amount=0.15")),
           );
           expect(getByRole("alert")).toHaveTextContent(
-            "its link asks 0.15 DUSK."
+            "its link asks 0.15 DUSK.",
           );
           expect(fields.review()).toBeDisabled();
 
@@ -634,7 +634,7 @@ describe("Send", () => {
             "0.002",
             "r37 marek T2",
           ]);
-        }
+        },
       );
 
       it.each([
@@ -658,10 +658,10 @@ describe("Send", () => {
 
           expect(filled(fields)).toStrictEqual(refusedAs(pasted));
           expect(getByRole("alert")).toHaveTextContent(
-            "The message says 0.002 DUSK; its link asks 0.15 DUSK."
+            "The message says 0.002 DUSK; its link asks 0.15 DUSK.",
           );
           expect(fields.review()).toBeDisabled();
-        }
+        },
       );
 
       // Marek's of round 39, which still filled in: a request line naming
@@ -707,7 +707,7 @@ describe("Send", () => {
           } finally {
             baseProps.resolveName.mockReset();
           }
-        }
+        },
       );
     });
 
@@ -720,7 +720,7 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
       const copied = requestText(
         { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
-        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
       );
       /** @type {Array<PromiseWithResolvers<any>>} */
       const lookups = [];
@@ -736,7 +736,7 @@ describe("Send", () => {
       /** The request's name answers as the link's own account's. */
       const answer = async () => {
         lookups.forEach(({ resolve }) =>
-          resolve({ account: otherAccount, address: "", name: "x" })
+          resolve({ account: otherAccount, address: "", name: "x" }),
         );
         await new Promise((resolve) => setTimeout(resolve, 0));
         await tick();
@@ -748,7 +748,7 @@ describe("Send", () => {
         await fireEvent.input(fields.to(), { target: { value: copied } });
         await fireEvent.change(
           getByRole("combobox", { name: "Send to a contact" }),
-          { target: { value: contact.id } }
+          { target: { value: contact.id } },
         );
         await tick();
         await answer();
@@ -779,7 +779,7 @@ describe("Send", () => {
       const fields = fieldsOf(getByRole);
       const copied = requestText(
         { link: httpsLink, lux: 150_000_000n, memo: "Factura 33" },
-        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
       );
       /** @type {Array<PromiseWithResolvers<any>>} */
       const lookups = [];
@@ -795,7 +795,7 @@ describe("Send", () => {
       /** The request's name answers as the link's own account's. */
       const answer = async () => {
         lookups.forEach(({ resolve }) =>
-          resolve({ account: otherAccount, address: "", name: "x" })
+          resolve({ account: otherAccount, address: "", name: "x" }),
         );
         await new Promise((resolve) => setTimeout(resolve, 0));
         await tick();
@@ -851,7 +851,7 @@ describe("Send", () => {
       await paste(fields, httpsLink.replace("amount=0.15", "amount=1 000"));
 
       expect(filled(fields)).toStrictEqual(
-        refusedAs(httpsLink.replace("amount=0.15", "amount=1 000"))
+        refusedAs(httpsLink.replace("amount=0.15", "amount=1 000")),
       );
       expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
       expect(fields.review()).toBeDisabled();
@@ -881,12 +881,14 @@ describe("Send", () => {
         // In what Copy gives: the words after the space may be the link's.
         await paste(
           fields,
-          `You're asked to pay 1000 DUSK on Testnet\nPay here: ${link}`
+          `You're asked to pay 1000 DUSK on Testnet\nPay here: ${link}`,
         );
 
         // Put in as a keyboard puts it, its line break gone.
         expect(filled(fields)).toStrictEqual(
-          refusedAs(`You're asked to pay 1000 DUSK on TestnetPay here: ${link}`)
+          refusedAs(
+            `You're asked to pay 1000 DUSK on TestnetPay here: ${link}`,
+          ),
         );
         expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
 
@@ -908,7 +910,7 @@ describe("Send", () => {
         expect(filled(fields)).toStrictEqual(refusedAs(link));
         expect(getByRole("alert")).toHaveTextContent(LINK_UNCLEAR);
         expect(fields.review()).toBeDisabled();
-      }
+      },
     );
 
     it("should refuse pasted text with two payment links in it, filling in nothing, as which is meant can't be told", async () => {
@@ -919,7 +921,7 @@ describe("Send", () => {
 
       expect(filled(fields)).toStrictEqual(
         // Put in as a keyboard puts it, its line break gone.
-        refusedAs(`Pay here: ${httpsLink}Or here: ${duskLink}`)
+        refusedAs(`Pay here: ${httpsLink}Or here: ${duskLink}`),
       );
       expect(getByRole("alert")).toHaveTextContent(LINK_SEVERAL);
       expect(fields.review()).toBeDisabled();
@@ -931,18 +933,18 @@ describe("Send", () => {
 
       await paste(
         fields,
-        `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`
+        `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`,
       );
 
       expect(
         getByText(
-          "This link asks for two different amounts. Ask for a new one."
-        )
+          "This link asks for two different amounts. Ask for a new one.",
+        ),
       ).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(
         refusedAs(
-          `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`
-        )
+          `${httpsLink.replace("amount=0.15", "amount=0.01")}&amountLux=150000000`,
+        ),
       );
 
       // The same amount both ways is the one asked.
@@ -970,7 +972,7 @@ describe("Send", () => {
         "a user part before the host",
         httpsLink.replace(
           "https://apps.testnet.dusk.network",
-          "https://apps.testnet.dusk.network@apps.dusk.network"
+          "https://apps.testnet.dusk.network@apps.dusk.network",
         ),
         "This link has something before the site's address. Ask for a new one.",
       ],
@@ -994,7 +996,7 @@ describe("Send", () => {
 
         expect(getByText(words)).toBeInTheDocument();
         expect(filled(fields)).toStrictEqual(refusedAs(link));
-      }
+      },
     );
 
     it("should say a mainnet wallet's link is for Mainnet, on testnet, and offer the same request on Mainnet's wallet", async () => {
@@ -1006,20 +1008,20 @@ describe("Send", () => {
 
       await paste(
         fields,
-        `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
+        `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`,
       );
 
       expect(
-        getByText("This request is for Mainnet. You are on Testnet.")
+        getByText("This request is for Mainnet. You are on Testnet."),
       ).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(
         refusedAs(
-          `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
-        )
+          `${networks.mainnet.apps.wallet}/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`,
+        ),
       );
       expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
         "href",
-        `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`
+        `https://apps.dusk.network/wallet/dashboard/send?to=${account}&amount=0.15&memo=Factura+33&network=mainnet`,
       );
 
       // Nothing to switch for once something else is given.
@@ -1045,19 +1047,19 @@ describe("Send", () => {
 
       const message = requestText(
         { link, lux: 150_000_000n, memo: "Factura 33" },
-        { language: "en", name: "alice.dusk", net: networks.mainnet }
+        { language: "en", name: "alice.dusk", net: networks.mainnet },
       );
 
       await pasteAsBrowser(fields, message);
 
       expect(
-        getByText("This request is for Mainnet. You are on Testnet.")
+        getByText("This request is for Mainnet. You are on Testnet."),
       ).toBeInTheDocument();
       expect(queryByText(LINK_DISAGREES)).toBeNull();
       expect(filled(fields)).toStrictEqual(refusedAs(message));
       expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
         "href",
-        link
+        link,
       );
       expect(baseProps.resolveName).not.toHaveBeenCalled();
     });
@@ -1081,7 +1083,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         undefined,
-        aGate
+        aGate,
       );
     });
 
@@ -1098,14 +1100,14 @@ describe("Send", () => {
         await paste(fields, `dusk:public-${otherAccount}${rest}`);
 
         expect(
-          getByText("This request is for Mainnet. You are on Testnet.")
+          getByText("This request is for Mainnet. You are on Testnet."),
         ).toBeInTheDocument();
         expect(filled(fields)).toStrictEqual(
-          refusedAs(`dusk:public-${otherAccount}${rest}`)
+          refusedAs(`dusk:public-${otherAccount}${rest}`),
         );
         expect(queryByText("Not a valid address.")).toBeNull();
         expect(fields.review()).toBeDisabled();
-      }
+      },
     );
 
     it("should empty what's typed for a link refused, and take what's given next on its own", async () => {
@@ -1116,23 +1118,23 @@ describe("Send", () => {
       await fireEvent.input(fields.memo(), { target: { value: "Lunch" } });
       await paste(
         fields,
-        `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
+        `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`,
       );
 
       expect(
-        getByText("This request is for Mainnet. You are on Testnet.")
+        getByText("This request is for Mainnet. You are on Testnet."),
       ).toBeInTheDocument();
       expect(filled(fields)).toStrictEqual(
         refusedAs(
-          `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`
-        )
+          `dusk:public-${otherAccount}@dusk:1?amount=0.15&memo=Factura+33`,
+        ),
       );
 
       // What's given next is on its own.
       await paste(fields, otherAccount);
 
       expect(
-        queryByText("This request is for Mainnet. You are on Testnet.")
+        queryByText("This request is for Mainnet. You are on Testnet."),
       ).toBeNull();
     });
 
@@ -1182,11 +1184,11 @@ describe("Send", () => {
         await paste(fields, link());
 
         expect(
-          getByText("This link's address isn't valid. Ask for a new one.")
+          getByText("This link's address isn't valid. Ask for a new one."),
         ).toBeInTheDocument();
         expect(filled(fields)).toStrictEqual(refusedAs(link()));
         expect(fields.review()).toBeDisabled();
-      }
+      },
     );
 
     it("should read a link typed out as it's finished, not at each key on the way", async () => {
@@ -1268,15 +1270,15 @@ describe("Send", () => {
           otherAccount,
           "0.15",
           "Factura 33",
-        ])
+        ]),
       );
 
       await fireEvent.click(scan);
       scanned(`dusk:public-${otherAccount}@dusk:1?amount=9`);
       await vi.waitFor(() =>
         expect(
-          getByText("This request is for Mainnet. You are on Testnet.")
-        ).toBeInTheDocument()
+          getByText("This request is for Mainnet. You are on Testnet."),
+        ).toBeInTheDocument(),
       );
       expect(filled(fields)[0]).toBe("");
 
@@ -1290,8 +1292,8 @@ describe("Send", () => {
         scanned(code);
         await vi.waitFor(() =>
           expect(
-            getByText("That QR isn't a Dusk address or payment link.")
-          ).toBeInTheDocument()
+            getByText("That QR isn't a Dusk address or payment link."),
+          ).toBeInTheDocument(),
         );
         expect(filled(fields)[0]).toBe("");
       }
@@ -1326,7 +1328,7 @@ describe("Send", () => {
       });
 
       expect(back.getByRole("status")).toHaveTextContent(
-        "Filled in to send the payment back. Check it before you send."
+        "Filled in to send the payment back. Check it before you send.",
       );
       expect(back.queryByText(/from the link/)).toBeNull();
       back.unmount();
@@ -1337,7 +1339,7 @@ describe("Send", () => {
       });
 
       expect(
-        refused.getByText("This request is for Mainnet. You are on Testnet.")
+        refused.getByText("This request is for Mainnet. You are on Testnet."),
       ).toBeInTheDocument();
       refused.unmount();
 
@@ -1356,7 +1358,7 @@ describe("Send", () => {
 
       expect(getByRole("link", { name: "Home" })).toHaveAttribute(
         "href",
-        "/some-base-path/dashboard"
+        "/some-base-path/dashboard",
       );
     });
 
@@ -1408,7 +1410,7 @@ describe("Send", () => {
       expect(fields.review()).toBeDisabled();
       expect(getByText("Not a valid address.")).toBeInTheDocument();
       expect(fields.to()).toHaveAccessibleDescription(
-        "Not a valid address. Check it, or paste it again."
+        "Not a valid address. Check it, or paste it again.",
       );
       expect(fields.to()).toHaveAttribute("aria-invalid", "true");
     });
@@ -1483,7 +1485,7 @@ describe("Send", () => {
 
       expect(queryByRole("button", { name: "Scan a QR code" })).toBeNull();
       expect(
-        await findByRole("button", { name: "Scan a QR code from an image" })
+        await findByRole("button", { name: "Scan a QR code from an image" }),
       ).toBeEnabled();
     });
 
@@ -1493,7 +1495,7 @@ describe("Send", () => {
       const { findByRole } = render(Send, baseProps);
 
       expect(
-        await findByRole("button", { name: "Scan a QR code" })
+        await findByRole("button", { name: "Scan a QR code" }),
       ).toBeEnabled();
     });
 
@@ -1523,14 +1525,14 @@ describe("Send", () => {
 
         expect(card).toHaveTextContent(title);
         expect(getAsHTMLElement(card, ".full-address")).toHaveTextContent(
-          address
+          address,
         );
         expect(getAsHTMLElement(card, ".full-address__tail")).toHaveTextContent(
-          address.slice(-6)
+          address.slice(-6),
         );
         expect(card).toHaveTextContent(privacy);
         expect(container.querySelector(".banner")).toBeNull();
-      }
+      },
     );
 
     it("should display only a one-line warning if the address input is the user's own public account", async () => {
@@ -1557,8 +1559,8 @@ describe("Send", () => {
       expect(await findByText("BEP20 bridge address")).toBeInTheDocument();
       expect(
         getByText(
-          "In the memo, enter the EVM address that receives the tokens."
-        )
+          "In the memo, enter the EVM address that receives the tokens.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -1570,7 +1572,7 @@ describe("Send", () => {
 
       expect(fieldsOf(getByRole).to()).toHaveValue(otherAccount);
       expect(getAsHTMLElement(container, ".send__card")).toHaveTextContent(
-        "A public account"
+        "A public account",
       );
     });
   });
@@ -1625,7 +1627,7 @@ describe("Send", () => {
         }
 
         expect(getByRole("alert")).toHaveTextContent(
-          "That looks like sofiadesign.dusk, but it isn't. Check it, or paste it again."
+          "That looks like sofiadesign.dusk, but it isn't. Check it, or paste it again.",
         );
         expect(to).toHaveAttribute("aria-invalid", "true");
         expect(to).toHaveClass("send__to-input--invalid");
@@ -1647,16 +1649,16 @@ describe("Send", () => {
         const to = fieldsOf(getByRole).to();
 
         expect(
-          queryByRole("combobox", { name: "Send to a contact" })
+          queryByRole("combobox", { name: "Send to a contact" }),
         ).toBeInTheDocument();
 
         await fireEvent.input(to, { target: { value: "estu" } });
 
         expect(
-          getByRole("button", { name: /^Your contact Estudio Marta/ })
+          getByRole("button", { name: /^Your contact Estudio Marta/ }),
         ).toBeInTheDocument();
         expect(
-          queryByRole("combobox", { name: "Send to a contact" })
+          queryByRole("combobox", { name: "Send to a contact" }),
         ).toBeNull();
         expect(to).not.toHaveClass("send__to-input--invalid");
       } finally {
@@ -1679,7 +1681,7 @@ describe("Send", () => {
 
           expect(to).toHaveValue(typed);
           expect(
-            getByRole("button", { name: /^Your contact Estudio Marta/ })
+            getByRole("button", { name: /^Your contact Estudio Marta/ }),
           ).toBeInTheDocument();
         }
 
@@ -1721,7 +1723,7 @@ describe("Send", () => {
     it("should take new gas settings while the form shows, unless the gas was edited here", async () => {
       const { container, getByLabelText, getByRole, rerender } = render(
         Send,
-        baseProps
+        baseProps,
       );
       const maxFee = () =>
         container.querySelector(".gas-fee__amount-value")?.textContent;
@@ -1789,7 +1791,7 @@ describe("Send", () => {
       await rerender({ availableBalance: 40_000_000n });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "That leaves too little for the network fee: send up to 0.02 DUSK."
+        "That leaves too little for the network fee: send up to 0.02 DUSK.",
       );
     });
 
@@ -1816,14 +1818,14 @@ describe("Send", () => {
       await tick();
 
       expect(getByRole("alert")).toHaveTextContent(
-        "Not enough for the network fee. Add DUSK."
+        "Not enough for the network fee. Add DUSK.",
       );
       expect(short()).toBeNull();
 
       await rerender({ availableBalance: 10_000_000n });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "Not enough for the network fee. Add DUSK, or lower the fee under Edit."
+        "Not enough for the network fee. Add DUSK, or lower the fee under Edit.",
       );
       expect(short()).toBeInTheDocument();
 
@@ -1856,7 +1858,7 @@ describe("Send", () => {
       await fireEvent.input(fields.amount(), { target: { value: "1,000" } });
 
       expect(getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?\s*1 DUSK\s*1000 DUSK$/
+        /^Is that 1 or 1000\?\s*1 DUSK\s*1000 DUSK$/,
       );
       expect(fields.review()).toBeDisabled();
 
@@ -1871,7 +1873,7 @@ describe("Send", () => {
       });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "DUSK has 9 decimals at most."
+        "DUSK has 9 decimals at most.",
       );
     });
 
@@ -1893,7 +1895,7 @@ describe("Send", () => {
         expect(fields.amount()).toHaveValue("••••");
         expect(shown()).not.toContain(exact);
         expect(shown()).not.toContain(
-          formatDuskExact(baseProps.availableBalance, "en")
+          formatDuskExact(baseProps.availableBalance, "en"),
         );
         await fireEvent.click(fields.review());
 
@@ -1909,7 +1911,7 @@ describe("Send", () => {
           expect.anything(),
           expect.anything(),
           undefined,
-          aGate
+          aGate,
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -1947,7 +1949,7 @@ describe("Send", () => {
           expect.anything(),
           expect.anything(),
           undefined,
-          aGate
+          aGate,
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -1963,7 +1965,7 @@ describe("Send", () => {
         await fireEvent.click(getByRole("button", { name: "Max" }));
 
         expect(
-          /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
+          /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value,
         ).not.toContain(".");
 
         // Nor does what it asks for instead write them another way, and it
@@ -1977,7 +1979,7 @@ describe("Send", () => {
           [
             getByRole("button", { name: "1,0010 DUSK" }),
             getByRole("button", { name: "1001 DUSK" }),
-          ].every(Boolean)
+          ].every(Boolean),
         ).toBe(true);
 
         await fireEvent.input(fieldsOf(getByRole).amount(), {
@@ -2006,7 +2008,7 @@ describe("Send", () => {
           await fireEvent.input(fields.amount(), { target: { value: typed } });
 
           expect(
-            getSummary(container).find(([label]) => label === "Amount")?.[1]
+            getSummary(container).find(([label]) => label === "Amount")?.[1],
           ).toMatch(/^1\s000 DUSK$/);
           expect(fields.review()).toBeEnabled();
         }
@@ -2068,7 +2070,7 @@ describe("Send", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(fields.amount()).toHaveValue(
-        formatDuskPlain(baseProps.availableBalance - fee)
+        formatDuskPlain(baseProps.availableBalance - fee),
       );
       expect(fields.review()).toBeEnabled();
     });
@@ -2113,7 +2115,7 @@ describe("Send", () => {
       // Not "Up to 173.901884001 DUSK" beside "Available 173.9018 DUSK":
       // the balance as it shows there, rounded down.
       expect(container.querySelector(".send__hint")).toHaveTextContent(
-        /^Available 173\.9018 DUSK/
+        /^Available 173\.9018 DUSK/,
       );
       expect(getSummary(container).at(-1)).toStrictEqual([
         "Total",
@@ -2169,7 +2171,7 @@ describe("Send", () => {
       await fireEvent.input(fields.amount(), { target: { value: "1e2" } });
 
       expect(
-        getByText("Enter an amount such as 10 or 10.5.")
+        getByText("Enter an amount such as 10 or 10.5."),
       ).toBeInTheDocument();
 
       await fireEvent.input(fields.amount(), { target: { value: "100000" } });
@@ -2177,8 +2179,8 @@ describe("Send", () => {
       expect(fields.review()).toBeDisabled();
       expect(
         getByText(
-          `More than your ${formatDuskExact(baseProps.availableBalance, "en")} DUSK.`
-        )
+          `More than your ${formatDuskExact(baseProps.availableBalance, "en")} DUSK.`,
+        ),
       ).toBeInTheDocument();
     });
 
@@ -2202,10 +2204,10 @@ describe("Send", () => {
         await fireEvent.click(getByRole("button", { name: "Max" }));
 
         expect(
-          decimal(/** @type {HTMLInputElement} */ (fields.amount()).value)
+          decimal(/** @type {HTMLInputElement} */ (fields.amount()).value),
         ).toBe(formatDuskPlain(allOfIt - keepForLater.lux));
         expect(
-          getByText("Max keeps 0.05 DUSK to unstake later.")
+          getByText("Max keeps 0.05 DUSK to unstake later."),
         ).toBeInTheDocument();
       });
 
@@ -2228,7 +2230,7 @@ describe("Send", () => {
         });
 
         expect(
-          getByText("That leaves too little to unstake later.")
+          getByText("That leaves too little to unstake later."),
         ).toBeInTheDocument();
         expect(fields.review()).toBeEnabled();
       });
@@ -2243,11 +2245,12 @@ describe("Send", () => {
 
         expect(
           decimal(
-            /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount()).value
-          )
+            /** @type {HTMLInputElement} */ (fieldsOf(getByRole).amount())
+              .value,
+          ),
         ).toBe(formatDuskPlain(allOfIt));
         expect(
-          getByText("That leaves too little to unstake later.")
+          getByText("That leaves too little to unstake later."),
         ).toBeInTheDocument();
       });
 
@@ -2276,7 +2279,7 @@ describe("Send", () => {
           await fireEvent.click(getByRole("button", { name: "Max" }));
 
           expect(
-            getByText("Max keeps the fee to unstake later.")
+            getByText("Max keeps the fee to unstake later."),
           ).toBeInTheDocument();
         } finally {
           settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -2330,10 +2333,10 @@ describe("Send", () => {
       });
 
       expect(container.querySelector(".send__summary-memo")).toHaveTextContent(
-        "pay \\u202e0001\\u202c"
+        "pay \\u202e0001\\u202c",
       );
       expect(
-        getByText("It has hidden characters, shown here as codes.")
+        getByText("It has hidden characters, shown here as codes."),
       ).toBeTruthy();
 
       // Nor can a number's digits read as another number unsaid.
@@ -2343,8 +2346,8 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "A number here mixes digits of different scripts. Check it digit by digit."
-        )
+          "A number here mixes digits of different scripts. Check it digit by digit.",
+        ),
       ).toBeTruthy();
 
       // Nor one of digits that look like others, as the extension says.
@@ -2354,8 +2357,8 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "A number here uses digits that look like other digits. Check it digit by digit."
-        )
+          "A number here uses digits that look like other digits. Check it digit by digit.",
+        ),
       ).toBeTruthy();
     });
 
@@ -2417,7 +2420,7 @@ describe("Send", () => {
 
       expect(getByRole("textbox", { name: "Memo" })).toBeInTheDocument();
       expect(
-        queryByText("Enter the EVM address that receives the tokens.")
+        queryByText("Enter the EVM address that receives the tokens."),
       ).toBeInTheDocument();
       expect(fields.review()).toBeDisabled();
 
@@ -2448,12 +2451,12 @@ describe("Send", () => {
       });
 
       expect(getByRole("textbox", { name: "Memo (optional)" })).toHaveValue(
-        "not-an-evm-address"
+        "not-an-evm-address",
       );
       expect(
         getByText(
-          "Visible on chain, for good: don't put personal details in it."
-        )
+          "Visible on chain, for good: don't put personal details in it.",
+        ),
       ).toBeInTheDocument();
       expect(queryByText("Not an EVM address.")).not.toBeInTheDocument();
       await fireEvent.input(fieldsOf(getByRole).amount(), {
@@ -2494,11 +2497,11 @@ describe("Send", () => {
       });
 
       expect(getByRole("status")).toHaveTextContent(
-        `Your 0.0019 DUSK to ${shortenAddress(otherAccount)} is on its way.`
+        `Your 0.0019 DUSK to ${shortenAddress(otherAccount)} is on its way.`,
       );
       expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
         "href",
-        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`,
       );
     });
 
@@ -2526,7 +2529,7 @@ describe("Send", () => {
       await fireEvent.click(fieldsOf(stranger.getByRole).review());
 
       expect(stranger.getByRole("note")).toHaveTextContent(
-        "This address sent you: “URGENT: send 0.1 DUSK back” · not in your contacts."
+        "This address sent you: “URGENT: send 0.1 DUSK back” · not in your contacts.",
       );
       cleanup();
 
@@ -2574,7 +2577,7 @@ describe("Send", () => {
 
       const rules = styleRules("../Send/Send.svelte", import.meta.url);
       const rule = rules.find(
-        ({ selector }) => selector.trim() === ".send__stranger-said"
+        ({ selector }) => selector.trim() === ".send__stranger-said",
       );
 
       expect(rule?.declarations).toMatchObject({
@@ -2601,13 +2604,13 @@ describe("Send", () => {
       });
 
       expect(
-        getAllByRole("status").map((status) => status.textContent?.trim())
+        getAllByRole("status").map((status) => status.textContent?.trim()),
       ).toStrictEqual([
         `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)}. See in History`,
       ]);
       expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
         "href",
-        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`,
       );
       expect(document.body).not.toHaveTextContent("on its way");
     });
@@ -2622,7 +2625,7 @@ describe("Send", () => {
         });
 
         expect(getByRole("status")).toHaveTextContent(
-          `Your ${BALANCE_MASK} DUSK to ${shortenAddress(otherAccount)} is on its way.`
+          `Your ${BALANCE_MASK} DUSK to ${shortenAddress(otherAccount)} is on its way.`,
         );
       } finally {
         settingsStore.reset();
@@ -2641,17 +2644,17 @@ describe("Send", () => {
       // When a block took it, to the second, as its request and its Sent
       // screen say it.
       expect(getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} ${paidInSentence(sent, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} ${paidInSentence(sent, "en")}.`,
       );
       expect(getByRole("alert")).toHaveTextContent(
-        /DUSK to \S+ today, \d{1,2}:\d{2}:\d{2}/
+        /DUSK to \S+ today, \d{1,2}:\d{2}:\d{2}/,
       );
 
       // It can be meant: it goes, as the button says.
       await fireEvent.click(fieldsOf(getByRole).review());
 
       expect(fieldsOf(getByRole).send()).toHaveTextContent(
-        /^Send 0\.0019 DUSK again$/
+        /^Send 0\.0019 DUSK again$/,
       );
 
       await afterConfirmDelay();
@@ -2673,7 +2676,7 @@ describe("Send", () => {
       await afterConfirmDelay();
 
       expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
-        /^Send 0\.0019 DUSK$/
+        /^Send 0\.0019 DUSK$/,
       );
 
       await review.rerender({
@@ -2681,7 +2684,7 @@ describe("Send", () => {
       });
 
       expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
-        /^Send 0\.0019 DUSK again$/
+        /^Send 0\.0019 DUSK again$/,
       );
 
       await fireEvent.click(fieldsOf(review.getByRole).send());
@@ -2727,10 +2730,10 @@ describe("Send", () => {
       });
 
       expect(request.getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo ${paidInSentence(paid, "en")}.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo ${paidInSentence(paid, "en")}.`,
       );
       expect(request.getByRole("alert")).toHaveTextContent(
-        /with this memo on 29 Oct, \d{1,2}:30:00/
+        /with this memo on 29 Oct, \d{1,2}:30:00/,
       );
       cleanup();
 
@@ -2744,7 +2747,7 @@ describe("Send", () => {
       });
 
       expect(onItsWay.getByRole("alert")).toHaveTextContent(
-        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`
+        `You sent 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It's on its way.`,
       );
       cleanup();
 
@@ -2758,10 +2761,10 @@ describe("Send", () => {
       });
 
       expect(unconfirmed.getByRole("alert")).toHaveTextContent(
-        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It may have reached the network.`
+        `Not confirmed yet: 0.0019 DUSK to ${shortenAddress(otherAccount)} with this memo. It may have reached the network.`,
       );
       expect(unconfirmed.getByRole("alert")).not.toHaveTextContent(
-        /You sent|on its way/
+        /You sent|on its way/,
       );
     });
 
@@ -2803,13 +2806,13 @@ describe("Send", () => {
         });
 
         expect(getByRole("alert")).toHaveTextContent(
-          "The same send is waiting to go out already: 0.0019 DUSK to Lena, with this memo."
+          "The same send is waiting to go out already: 0.0019 DUSK to Lena, with this memo.",
         );
 
         await fireEvent.click(fieldsOf(getByRole).review());
 
         expect(fieldsOf(getByRole).send()).toHaveTextContent(
-          /^Send 0\.0019 DUSK again$/
+          /^Send 0\.0019 DUSK again$/,
         );
 
         await afterConfirmDelay();
@@ -2876,7 +2879,7 @@ describe("Send", () => {
       });
 
       await vi.waitFor(() =>
-        expect(container.querySelector(".send")).toHaveClass("send--review")
+        expect(container.querySelector(".send")).toHaveClass("send--review"),
       );
 
       expect(queryByRole("button", { name: "Review" })).toBeNull();
@@ -2899,7 +2902,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         undefined,
-        aGate
+        aGate,
       );
 
       // In its place: the wallet locks as it waits, and it's the one kept.
@@ -2908,7 +2911,7 @@ describe("Send", () => {
       await vi.waitFor(() =>
         expect(get(unsentSends)).toStrictEqual([
           expect.objectContaining({ id: "unsent-1", memo: "tab dropped 1" }),
-        ])
+        ]),
       );
       dropUnsent("unsent-1");
       cleanup();
@@ -2927,8 +2930,8 @@ describe("Send", () => {
 
       await vi.waitFor(() =>
         expect(open.container.querySelector(".send")).toHaveClass(
-          "send--review"
-        )
+          "send--review",
+        ),
       );
       expect(getSummary(open.container)).toStrictEqual([
         ["From", `Your public account ${shortenAddress(publicAddress)}`],
@@ -2944,7 +2947,8 @@ describe("Send", () => {
       const another = render(Send, baseProps);
 
       expect(
-        /** @type {HTMLInputElement} */ (fieldsOf(another.getByRole).to()).value
+        /** @type {HTMLInputElement} */ (fieldsOf(another.getByRole).to())
+          .value,
       ).toBe("");
     });
 
@@ -2977,13 +2981,13 @@ describe("Send", () => {
       expect(container.querySelector(".send")).not.toHaveClass("send--review");
       expect(
         [fieldsOf(getByRole).to(), fieldsOf(getByRole).amount()].map(
-          (field) => /** @type {HTMLInputElement} */ (field).value
-        )
+          (field) => /** @type {HTMLInputElement} */ (field).value,
+        ),
       ).toStrictEqual([otherAccount, "0.0019"]);
       expect(
         getByText(
-          "Filled in from the send that didn't go out. Check it before you send."
-        )
+          "Filled in from the send that didn't go out. Check it before you send.",
+        ),
       ).toBeInTheDocument();
     });
 
@@ -3015,7 +3019,7 @@ describe("Send", () => {
             network: networkName,
             to: otherAccount,
           }),
-        ])
+        ]),
       );
       cleanup();
 
@@ -3088,7 +3092,7 @@ describe("Send", () => {
       await fireEvent.click(fields.review());
 
       expect(
-        container.querySelector(".send__summary-currency")?.textContent?.trim()
+        container.querySelector(".send__summary-currency")?.textContent?.trim(),
       ).toMatch(/^≈ \$2\.00 · price at /);
     });
 
@@ -3133,7 +3137,7 @@ describe("Send", () => {
         ["Total", "Up to 2,345.52 DUSK"],
       ]);
       expect(
-        container.querySelector(".send__summary .gas-fee")
+        container.querySelector(".send__summary .gas-fee"),
       ).toHaveTextContent("Network fee (at most) 0.02 DUSK");
       expect(container.querySelector(".send__visible")).toBeNull();
 
@@ -3157,7 +3161,7 @@ describe("Send", () => {
       await fireEvent.input(fields.amount(), { target: { value: "0.1" } });
 
       expect(visible()).toHaveTextContent(
-        "Visible to everyone: the amount and both accounts."
+        "Visible to everyone: the amount and both accounts.",
       );
 
       await fireEvent.input(fields.memo(), {
@@ -3165,7 +3169,7 @@ describe("Send", () => {
       });
 
       expect(visible()).toHaveTextContent(
-        "Visible to everyone: the amount, both accounts and the memo."
+        "Visible to everyone: the amount, both accounts and the memo.",
       );
 
       // The review it's sent from is the summary, the line in it.
@@ -3194,7 +3198,7 @@ describe("Send", () => {
      */
     const sendWith = async (
       getByRole,
-      { memo, to = shieldedAddress, value = amount } = {}
+      { memo, to = shieldedAddress, value = amount } = {},
     ) => {
       const fields = fieldsOf(getByRole);
 
@@ -3214,7 +3218,7 @@ describe("Send", () => {
     it("should send nothing on the first press, only from the review, and say it was sent with a link to the explorer", async () => {
       const { container, getByRole, getByText, queryByRole } = render(
         Send,
-        baseProps
+        baseProps,
       );
       const fields = fieldsOf(getByRole);
 
@@ -3250,7 +3254,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         undefined,
-        aGate
+        aGate,
       );
       // The result from its top, where its state and the offer to be told
       // when it arrives are, wherever the review was scrolled to: also once
@@ -3268,16 +3272,16 @@ describe("Send", () => {
 
       // What went to whom, and where the history has it.
       expect(getByRole("status")).toHaveTextContent(
-        `Sending… 567 DUSK to ${shortenAddress(shieldedAddress)} This usually takes under a minute.`
+        `Sending… 567 DUSK to ${shortenAddress(shieldedAddress)} This usually takes under a minute.`,
       );
       expect(getByRole("link", { name: "See in History" })).toHaveAttribute(
         "href",
-        `/some-base-path/dashboard/transactions?tx=${lastTxId}`
+        `/some-base-path/dashboard/transactions?tx=${lastTxId}`,
       );
       expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
         lastTxId,
-        expect.anything()
+        expect.anything(),
       );
       expect(explorerLink).toHaveAttribute("target", "_blank");
       expect(explorerLink).toHaveAttribute("href", expectedExplorerLink);
@@ -3299,7 +3303,7 @@ describe("Send", () => {
       expect(queryByRole("button", { name: "Review" })).toBeNull();
       // The address in full, on the last it shows before it goes.
       expect(container.querySelector(".send__summary")).toHaveTextContent(
-        shieldedAddress
+        shieldedAddress,
       );
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -3391,7 +3395,7 @@ describe("Send", () => {
       await sendWith(getByRole);
 
       expect(getByRole("status")).toHaveTextContent(
-        /^Sending… 567 DUSK to .+ This usually takes under a minute\.$/
+        /^Sending… 567 DUSK to .+ This usually takes under a minute\.$/,
       );
       expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(getByText("0.02 DUSK")).toBeInTheDocument();
@@ -3408,7 +3412,7 @@ describe("Send", () => {
 
       // Sent, at its block's time.
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} 567 DUSK to ${shortenAddress(shieldedAddress)} In block 4,687,200.`,
       );
       // The fee charged, to the last digit.
       expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
@@ -3431,7 +3435,7 @@ describe("Send", () => {
         gasPrice,
         30_000_000n,
         undefined,
-        aGate
+        aGate,
       );
     });
 
@@ -3458,7 +3462,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         undefined,
-        aGate
+        aGate,
       );
       expect(getByText("Sending…")).toBeInTheDocument();
     });
@@ -3490,7 +3494,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         undefined,
-        aGate
+        aGate,
       );
     });
 
@@ -3521,7 +3525,7 @@ describe("Send", () => {
       const expectReview = (container) => {
         expect(container.querySelector(".send")).toHaveClass("send--review");
         expect(container.querySelector(".send__summary")).toHaveTextContent(
-          otherAccount
+          otherAccount,
         );
         expect(getSummary(container)).toContainEqual(["Amount", "2 DUSK"]);
         expect(getSummary(container)).toContainEqual(["Memo", "Invoice 118"]);
@@ -3544,7 +3548,7 @@ describe("Send", () => {
             await gate.ask();
 
             return new Promise(() => {});
-          }
+          },
         );
 
         const { container, getAllByRole, getByRole } = render(Send, baseProps);
@@ -3553,8 +3557,8 @@ describe("Send", () => {
         await sendWith(getByRole, filled);
         await vi.waitFor(() =>
           expect(
-            getByRole("button", { name: "Send it too" })
-          ).toBeInTheDocument()
+            getByRole("button", { name: "Send it too" }),
+          ).toBeInTheDocument(),
         );
 
         // The two choices lead, the way Home under them.
@@ -3562,7 +3566,7 @@ describe("Send", () => {
           getAllByRole("button").map((button) => [
             button.textContent?.trim(),
             button.className.match(/dusk-button--variant--(\w+)/)?.[1],
-          ])
+          ]),
         ).toStrictEqual([
           ["Send it too", "primary"],
           ["Don't send", "secondary"],
@@ -3592,7 +3596,7 @@ describe("Send", () => {
           gasPrice,
           gasLimit,
           undefined,
-          aGate
+          aGate,
         );
       });
 
@@ -3603,7 +3607,7 @@ describe("Send", () => {
             await gate.ask();
 
             return new Promise(() => {});
-          }
+          },
         );
 
         const { getByRole, getByText, queryByText } = render(Send, baseProps);
@@ -3611,13 +3615,13 @@ describe("Send", () => {
         await sendWith(getByRole, filled);
         await vi.waitFor(() =>
           expect(
-            getByRole("button", { name: "Don't send" })
-          ).toBeInTheDocument()
+            getByRole("button", { name: "Don't send" }),
+          ).toBeInTheDocument(),
         );
         await fireEvent.click(getByRole("button", { name: "Don't send" }));
 
         await vi.waitFor(() =>
-          expect(getByText("Not sent")).toBeInTheDocument()
+          expect(getByText("Not sent")).toBeInTheDocument(),
         );
         expect(getByText("Nothing left your wallet.")).toBeInTheDocument();
         expect(queryByText("Transaction failed")).toBeNull();
@@ -3626,7 +3630,7 @@ describe("Send", () => {
 
       it("should go back to the review with Try again, the address, the amount and the memo kept, when nothing went out", async () => {
         baseProps.execute.mockRejectedValueOnce(
-          new TypeError("Failed to fetch")
+          new TypeError("Failed to fetch"),
         );
 
         const { container, getByRole, queryByText } = render(Send, baseProps);
@@ -3661,14 +3665,14 @@ describe("Send", () => {
           gasPrice,
           gasLimit,
           undefined,
-          aGate
+          aGate,
         );
         expect(getByRole("status")).toHaveTextContent(/^Sending… 2 DUSK/);
       });
 
       it("should go back to the form with Back in the browser, as typed, when nothing went out", async () => {
         baseProps.execute.mockRejectedValueOnce(
-          new TypeError("Failed to fetch")
+          new TypeError("Failed to fetch"),
         );
         historyAt({ sendReview: true });
 
@@ -3682,7 +3686,7 @@ describe("Send", () => {
         await pressBack();
 
         expect(container.querySelector(".send")).not.toHaveClass(
-          "send--review"
+          "send--review",
         );
         expect(fields.to()).toHaveValue(otherAccount);
         expect(fields.amount()).toHaveValue("2");
@@ -3692,12 +3696,12 @@ describe("Send", () => {
 
       it("should offer no Try again, and no way back to the form, when it may have gone out", async () => {
         baseProps.execute.mockRejectedValueOnce(
-          outcomeUnknown(new TypeError("Failed to fetch"))
+          outcomeUnknown(new TypeError("Failed to fetch")),
         );
 
         const { container, getByRole, getByText, queryByRole } = render(
           Send,
-          baseProps
+          baseProps,
         );
 
         await sendWith(getByRole, filled);
@@ -3705,8 +3709,8 @@ describe("Send", () => {
         expect(getByText("Not confirmed")).toBeInTheDocument();
         expect(
           getByText(
-            "It may have reached the network. Check History before you send it again."
-          )
+            "It may have reached the network. Check History before you send it again.",
+          ),
         ).toBeInTheDocument();
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
         expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
@@ -3791,12 +3795,12 @@ describe("Send", () => {
           ? Promise.resolve({ account: nameAccount, name: input })
           : new Promise((resolve) => {
               answerNewName = resolve;
-            })
+            }),
       );
 
       const { container, findByText, getByRole, queryByText } = render(
         Send,
-        baseProps
+        baseProps,
       );
       const fields = fieldsOf(getByRole);
 
@@ -3810,7 +3814,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "second.dusk" } });
       expect(fields.review()).toBeDisabled();
       expect(
-        queryByText("second.dusk points to a public account")
+        queryByText("second.dusk points to a public account"),
       ).not.toBeInTheDocument();
       expect(container.textContent).not.toContain(nameAccount);
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
@@ -3822,7 +3826,7 @@ describe("Send", () => {
       await findByText("second.dusk points to a public account");
       expect(fields.review()).toBeEnabled();
       expect(getSummary(container)[1][1]).toContain(
-        shortenAddress(otherAccount)
+        shortenAddress(otherAccount),
       );
     });
 
@@ -3831,7 +3835,7 @@ describe("Send", () => {
       const answers = [];
 
       baseProps.resolveName.mockImplementation(
-        () => new Promise((resolve) => answers.push(resolve))
+        () => new Promise((resolve) => answers.push(resolve)),
       );
 
       const { container, findByText, getByRole } = render(Send, baseProps);
@@ -3854,7 +3858,7 @@ describe("Send", () => {
       await findByText("first.dusk points to a public account");
       expect(fields.review()).toBeEnabled();
       expect(getSummary(container)[1][1]).toContain(
-        shortenAddress(otherAccount)
+        shortenAddress(otherAccount),
       );
     });
 
@@ -3863,7 +3867,7 @@ describe("Send", () => {
       const answers = [];
 
       baseProps.resolveName.mockImplementation(
-        () => new Promise((resolve) => answers.push(resolve))
+        () => new Promise((resolve) => answers.push(resolve)),
       );
 
       const { container, findByText, getByRole } = render(Send, baseProps);
@@ -3881,7 +3885,7 @@ describe("Send", () => {
 
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
       expect(getSummary(container)[1][1]).toContain(
-        shortenAddress(otherAccount)
+        shortenAddress(otherAccount),
       );
     });
 
@@ -3894,7 +3898,7 @@ describe("Send", () => {
           ? new Promise((resolve) => {
               answerFirst = resolve;
             })
-          : Promise.resolve({ account: otherAccount, name: input })
+          : Promise.resolve({ account: otherAccount, name: input }),
       );
 
       const { container, findByText, getByRole } = render(Send, baseProps);
@@ -3909,7 +3913,7 @@ describe("Send", () => {
 
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
       expect(getSummary(container)[1][1]).toContain(
-        shortenAddress(otherAccount)
+        shortenAddress(otherAccount),
       );
     });
 
@@ -3920,12 +3924,12 @@ describe("Send", () => {
       baseProps.resolveName.mockReturnValueOnce(
         new Promise((resolve) => {
           finishLookup = resolve;
-        })
+        }),
       );
 
       const { container, findByText, getByRole, getByText } = render(
         Send,
-        baseProps
+        baseProps,
       );
 
       await fireEvent.input(fieldsOf(getByRole).to(), {
@@ -3933,7 +3937,7 @@ describe("Send", () => {
       });
 
       expect(baseProps.resolveName).toHaveBeenCalledExactlyOnceWith(
-        "Alice.dusk"
+        "Alice.dusk",
       );
       expect(getByText("Looking up Alice.dusk…")).toBeInTheDocument();
       expect(fieldsOf(getByRole).review()).toBeDisabled();
@@ -3941,12 +3945,12 @@ describe("Send", () => {
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
       expect(
-        await findByText("alice.dusk points to a public account")
+        await findByText("alice.dusk points to a public account"),
       ).toBeInTheDocument();
       expect(getByText("Name found")).toBeInTheDocument();
       expect(container.querySelector("[role='radiogroup']")).toBeNull();
       expect(
-        getAsHTMLElement(container, ".send__card .full-address")
+        getAsHTMLElement(container, ".send__card .full-address"),
       ).toHaveTextContent(nameAccount);
       expect(getSummary(container)[1]).toStrictEqual([
         "To",
@@ -3962,7 +3966,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         "alice.dusk",
-        aGate
+        aGate,
       );
     });
 
@@ -3984,11 +3988,11 @@ describe("Send", () => {
       });
 
       expect(
-        await findByText("alice.dusk points to a shielded address")
+        await findByText("alice.dusk points to a shielded address"),
       ).toBeInTheDocument();
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
-        expect.objectContaining({ detail: { type: "address" } })
+        expect.objectContaining({ detail: { type: "address" } }),
       );
 
       await sendIt(getByRole);
@@ -4000,7 +4004,7 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         "alice.dusk",
-        aGate
+        aGate,
       );
     });
 
@@ -4020,14 +4024,14 @@ describe("Send", () => {
       });
 
       expect(
-        await findByText("alice.dusk points to a shielded address")
+        await findByText("alice.dusk points to a shielded address"),
       ).toBeInTheDocument();
       expect(getByText(/Not enough shielded DUSK ·/)).toHaveTextContent(
-        /^Not enough shielded DUSK · Shield first$/
+        /^Not enough shielded DUSK · Shield first$/,
       );
       expect(getByRole("link", { name: "Shield first" })).toHaveAttribute(
         "href",
-        addBasePath("/dashboard/allocate")
+        addBasePath("/dashboard/allocate"),
       );
       expect(fieldsOf(getByRole).review()).toBeDisabled();
     });
@@ -4036,7 +4040,7 @@ describe("Send", () => {
       const keyChange = vi.fn();
 
       baseProps.resolveName.mockResolvedValueOnce(
-        withBothAddresses("alice.dusk")
+        withBothAddresses("alice.dusk"),
       );
 
       const { container, findByRole, getByRole } = render(Send, {
@@ -4060,18 +4064,18 @@ describe("Send", () => {
       expect(publicOption).toHaveTextContent(shortenAddress(nameAccount));
       expect(getAsHTMLElement(publicOption, "samp")).toHaveAttribute(
         "title",
-        nameAccount
+        nameAccount,
       );
       expect(publicOption).toHaveAccessibleDescription(
-        `Visible on chain ${nameAccount}`
+        `Visible on chain ${nameAccount}`,
       );
       expect(shieldedOption).toHaveAttribute("aria-checked", "false");
       expect(shieldedOption).toHaveAttribute("aria-disabled", "false");
       expect(shieldedOption).toHaveAccessibleDescription(
-        `Not shown on the public chain ${nameAddress}`
+        `Not shown on the public chain ${nameAddress}`,
       );
       expect(keyChange).toHaveBeenLastCalledWith(
-        expect.objectContaining({ detail: { type: "account" } })
+        expect.objectContaining({ detail: { type: "account" } }),
       );
 
       await fireEvent.click(shieldedOption);
@@ -4079,10 +4083,10 @@ describe("Send", () => {
       expect(shieldedOption).toBeChecked();
       expect(publicOption).not.toBeChecked();
       expect(keyChange).toHaveBeenLastCalledWith(
-        expect.objectContaining({ detail: { type: "address" } })
+        expect.objectContaining({ detail: { type: "address" } }),
       );
       expect(
-        getAsHTMLElement(container, ".send__card .full-address")
+        getAsHTMLElement(container, ".send__card .full-address"),
       ).toHaveTextContent(nameAddress);
 
       await sendIt(getByRole);
@@ -4094,13 +4098,13 @@ describe("Send", () => {
         gasPrice,
         gasLimit,
         "alice.dusk",
-        aGate
+        aGate,
       );
     });
 
     it("should keep a name's shielded address from being picked while the shielded balance can't pay for a transfer", async () => {
       baseProps.resolveName.mockResolvedValueOnce(
-        withBothAddresses("alice.dusk")
+        withBothAddresses("alice.dusk"),
       );
 
       const { findByRole, getByRole } = render(Send, {
@@ -4119,7 +4123,7 @@ describe("Send", () => {
 
       expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
       expect(shieldedOption).toHaveAccessibleDescription(
-        `Not enough shielded DUSK · Shield first ${nameAddress}`
+        `Not enough shielded DUSK · Shield first ${nameAddress}`,
       );
 
       await fireEvent.click(shieldedOption);
@@ -4136,7 +4140,7 @@ describe("Send", () => {
 
     it("should keep the address picked when the balances change, even once the shielded one can't pay, until the user picks another", async () => {
       baseProps.resolveName.mockResolvedValueOnce(
-        withBothAddresses("alice.dusk")
+        withBothAddresses("alice.dusk"),
       );
 
       const { findByRole, getByRole, getAllByText, queryByText, rerender } =
@@ -4165,7 +4169,7 @@ describe("Send", () => {
       expect(shieldedOption).toBeChecked();
       expect(shieldedOption).toHaveAttribute("aria-disabled", "true");
       expect(getAllByText(/Not enough shielded DUSK/).length).toBeGreaterThan(
-        0
+        0,
       );
       expect(fieldsOf(getByRole).review()).toBeDisabled();
 
@@ -4177,7 +4181,7 @@ describe("Send", () => {
 
     it("should move the pick between a name's addresses with the arrow keys, and make it with Space", async () => {
       baseProps.resolveName.mockResolvedValueOnce(
-        withBothAddresses("alice.dusk")
+        withBothAddresses("alice.dusk"),
       );
 
       const { findByRole, getByRole } = render(Send, baseProps);
@@ -4225,7 +4229,7 @@ describe("Send", () => {
 
     it("should keep the address picked for a name when it is entered again, and start any other name at its public account", async () => {
       baseProps.resolveName.mockImplementation((input) =>
-        Promise.resolve(withBothAddresses(input.toLowerCase()))
+        Promise.resolve(withBothAddresses(input.toLowerCase())),
       );
 
       const { findByRole, getByRole, queryByRole } = render(Send, baseProps);
@@ -4243,7 +4247,7 @@ describe("Send", () => {
 
       await enter("alice.dusk");
       await fireEvent.click(
-        await findByRole("radio", { name: "Shielded address" })
+        await findByRole("radio", { name: "Shielded address" }),
       );
       await findPicked("Shielded address");
 
@@ -4283,7 +4287,7 @@ describe("Send", () => {
       /** @param {"account" | "address" | undefined} type */
       const lastReported = (type) =>
         expect(keyChange).toHaveBeenLastCalledWith(
-          expect.objectContaining({ detail: { type } })
+          expect.objectContaining({ detail: { type } }),
         );
 
       lastReported(undefined);
@@ -4291,14 +4295,14 @@ describe("Send", () => {
       await enter("alice.dusk");
 
       expect(
-        await findByText("alice.dusk points to a shielded address")
+        await findByText("alice.dusk points to a shielded address"),
       ).toBeInTheDocument();
       lastReported("address");
 
       await enter("bob.dusk");
 
       expect(
-        await findByText("bob.dusk isn't registered.")
+        await findByText("bob.dusk isn't registered."),
       ).toBeInTheDocument();
       lastReported(undefined);
 
@@ -4360,7 +4364,7 @@ describe("Send", () => {
 
         expect(shown.parentElement).toHaveTextContent(`${title} ${text}`);
         expect(fieldsOf(getByRole).review()).toBeDisabled();
-      }
+      },
     );
 
     it("should look the name up again after a failed lookup", async () => {
@@ -4376,7 +4380,7 @@ describe("Send", () => {
       await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(
-        await findByText("alice.dusk points to a public account")
+        await findByText("alice.dusk points to a public account"),
       ).toBeInTheDocument();
       await fireEvent.input(fieldsOf(getByRole).amount(), {
         target: { value: "1" },
@@ -4392,7 +4396,7 @@ describe("Send", () => {
         .mockReturnValueOnce(
           new Promise((resolve) => {
             finishFirstLookup = resolve;
-          })
+          }),
         )
         .mockResolvedValueOnce({ error: "not-registered", name: "bob.dusk" });
 
@@ -4405,7 +4409,7 @@ describe("Send", () => {
       await tick();
 
       expect(
-        await findByText("bob.dusk isn't registered.")
+        await findByText("bob.dusk isn't registered."),
       ).toBeInTheDocument();
       expect(container.querySelector(".send__card")).toBeNull();
       expect(fields.review()).toBeDisabled();
@@ -4436,7 +4440,7 @@ describe("Send", () => {
       baseProps.resolveName.mockImplementation(async (input) =>
         input === "bram.dusk"
           ? { account: otherAccount, name: input }
-          : { error: "not-registered", name: input }
+          : { error: "not-registered", name: input },
       );
 
       const { findByRole, findByText, getByRole, queryByRole } = render(Send, {
@@ -4450,17 +4454,17 @@ describe("Send", () => {
       });
 
       expect(
-        await findByRole("button", { name: "Did you mean alice-shop.dusk?" })
+        await findByRole("button", { name: "Did you mean alice-shop.dusk?" }),
       ).toBeInTheDocument();
 
       await fireEvent.input(fields.to(), { target: { value: "brma.dusk" } });
       await fireEvent.click(
-        await findByRole("button", { name: "Did you mean bram.dusk?" })
+        await findByRole("button", { name: "Did you mean bram.dusk?" }),
       );
 
       expect(fields.to()).toHaveValue("bram.dusk");
       expect(
-        await findByText("bram.dusk points to a public account")
+        await findByText("bram.dusk points to a public account"),
       ).toBeInTheDocument();
 
       await fireEvent.input(fields.to(), { target: { value: "zed.dusk" } });
@@ -4485,12 +4489,12 @@ describe("Send", () => {
       expect(baseProps.resolveName).not.toHaveBeenCalled();
 
       await fireEvent.click(
-        getByRole("button", { name: "Did you mean alice.dusk?" })
+        getByRole("button", { name: "Did you mean alice.dusk?" }),
       );
 
       expect(fields.to()).toHaveValue("alice.dusk");
       expect(
-        await findByText("alice.dusk points to a public account")
+        await findByText("alice.dusk points to a public account"),
       ).toBeInTheDocument();
       expect(baseProps.resolveName).toHaveBeenCalledWith("alice.dusk");
 
@@ -4498,7 +4502,7 @@ describe("Send", () => {
       await fireEvent.blur(fields.to());
 
       expect(
-        getByRole("button", { name: "Did you mean alice.dusk?" })
+        getByRole("button", { name: "Did you mean alice.dusk?" }),
       ).toBeInTheDocument();
 
       // Part of an address gets no offer.
@@ -4518,7 +4522,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "alice" } });
 
       expect(
-        getByRole("button", { name: "Did you mean alice.dusk?" })
+        getByRole("button", { name: "Did you mean alice.dusk?" }),
       ).toBeInTheDocument();
       expect(fields.to()).not.toHaveClass("send__to-input--invalid");
       expect(fields.to()).not.toHaveAttribute("aria-invalid", "true");
@@ -4528,7 +4532,7 @@ describe("Send", () => {
 
       expect(queryByText("Not a valid address.")).toBeNull();
       expect(
-        getByRole("button", { name: "Did you mean alice.dusk?" })
+        getByRole("button", { name: "Did you mean alice.dusk?" }),
       ).toBeInTheDocument();
 
       // Anything else that isn't an address still is a wrong one.
@@ -4556,11 +4560,11 @@ describe("Send", () => {
         target: { value: "alice.dusk" },
       });
       await fireEvent.click(
-        await findByRole("button", { name: "Save to contacts" })
+        await findByRole("button", { name: "Save to contacts" }),
       );
 
       expect(
-        getByText("Saved only in this wallet, on this device.")
+        getByText("Saved only in this wallet, on this device."),
       ).toBeInTheDocument();
 
       await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
@@ -4577,7 +4581,7 @@ describe("Send", () => {
         }),
       ]);
       expect(
-        getAsHTMLElement(container, ".send__card-title")
+        getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent("Alice · alice.dusk");
       expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
     });
@@ -4607,7 +4611,7 @@ describe("Send", () => {
         target: { value: "alice.dusk" },
       });
       await fireEvent.click(
-        await findByRole("radio", { name: "Shielded address" })
+        await findByRole("radio", { name: "Shielded address" }),
       );
 
       expect(title()).toBe("Alice (shielded) · alice.dusk");
@@ -4630,7 +4634,7 @@ describe("Send", () => {
       });
 
       expect(
-        getAsHTMLElement(container, ".send__card-title")
+        getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent("Your Profile 2 · wallet-both.dusk");
       expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
     });
@@ -4665,10 +4669,10 @@ describe("Send", () => {
 
       await fireEvent.change(
         getByRole("combobox", { name: "Send to a contact" }),
-        { target: { value: tdi.id } }
+        { target: { value: tdi.id } },
       );
       await waitFor(() =>
-        expect(baseProps.resolveName).toHaveBeenCalledWith("tdi.dusk")
+        expect(baseProps.resolveName).toHaveBeenCalledWith("tdi.dusk"),
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -4708,7 +4712,7 @@ describe("Send", () => {
       expect(queryByRole("textbox", { name: "Contact name" })).toBeNull();
 
       await fireEvent.click(
-        await findByRole("button", { name: "Save to contacts" })
+        await findByRole("button", { name: "Save to contacts" }),
       );
 
       expect(getByRole("textbox", { name: "Contact name" })).toHaveValue("");
@@ -4729,7 +4733,7 @@ describe("Send", () => {
         });
 
         expect(
-          getByText("That looks like alice.dusk. Choose another name.")
+          getByText("That looks like alice.dusk. Choose another name."),
         ).toBeInTheDocument();
         expect(getByRole("button", { name: "Save" })).toBeDisabled();
       }
@@ -4752,24 +4756,24 @@ describe("Send", () => {
 
       expect(getByRole("button", { name: offer("Alice") })).toBeInTheDocument();
       expect(
-        queryByRole("button", { name: "Did you mean alice.dusk?" })
+        queryByRole("button", { name: "Did you mean alice.dusk?" }),
       ).not.toBeInTheDocument();
       expect(queryByText("Not a valid address.")).not.toBeInTheDocument();
 
       // A name keeps its spaces, and a word further in counts too.
       await fireEvent.input(fields.to(), { target: { value: "Jan (flour)" } });
       expect(
-        getByRole("button", { name: offer("Jan (flour)") })
+        getByRole("button", { name: offer("Jan (flour)") }),
       ).toBeInTheDocument();
       await fireEvent.input(fields.to(), { target: { value: "flour" } });
       expect(
-        getByRole("button", { name: offer("Jan (flour)") })
+        getByRole("button", { name: offer("Jan (flour)") }),
       ).toBeInTheDocument();
 
       // With no contact by that name, the guess is still offered.
       await fireEvent.input(fields.to(), { target: { value: "bob" } });
       expect(
-        getByRole("button", { name: "Did you mean bob.dusk?" })
+        getByRole("button", { name: "Did you mean bob.dusk?" }),
       ).toBeInTheDocument();
 
       await fireEvent.input(fields.to(), { target: { value: "alice" } });
@@ -4795,16 +4799,16 @@ describe("Send", () => {
       const listed = () =>
         Array.from(
           getByRole("combobox", { name: "Send to a contact" }).querySelectorAll(
-            "option"
+            "option",
           ),
-          (option) => option.textContent
+          (option) => option.textContent,
         );
 
       expect(listed()).toEqual(
         expect.arrayContaining([
           ...alike,
           `Jan (flour) · ${shortenAddress(otherAccount)}`,
-        ])
+        ]),
       );
 
       await fireEvent.input(fieldsOf(getByRole).to(), {
@@ -4813,7 +4817,7 @@ describe("Send", () => {
 
       for (const offered of alike) {
         expect(
-          getByRole("button", { name: `Your contact ${offered}` })
+          getByRole("button", { name: `Your contact ${offered}` }),
         ).toBeInTheDocument();
       }
     });
@@ -4833,11 +4837,11 @@ describe("Send", () => {
 
       await fireEvent.change(
         getByRole("combobox", { name: "Send to a contact" }),
-        { target: { value: lookAlike.id } }
+        { target: { value: lookAlike.id } },
       );
 
       expect(
-        getAsHTMLElement(container, ".send__card-title")
+        getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent("\u0410lice · name looks like another");
       expect(getSummary(container)[1]).toStrictEqual([
         "To",
@@ -4848,7 +4852,7 @@ describe("Send", () => {
       await fireEvent.click(fields.review());
 
       expect(
-        getAsHTMLElement(container, ".send__summary-alike")
+        getAsHTMLElement(container, ".send__summary-alike"),
       ).toHaveTextContent("Name looks like another");
 
       await afterConfirmDelay();
@@ -4857,10 +4861,10 @@ describe("Send", () => {
       // What went to whom: by its address too.
       await vi.waitFor(() =>
         expect(
-          container.querySelector(".transaction-status__what")
+          container.querySelector(".transaction-status__what"),
         ).toHaveTextContent(
-          `0.001 DUSK to \u0410lice (${shortenAddress(nameAccount)})`
-        )
+          `0.001 DUSK to \u0410lice (${shortenAddress(nameAccount)})`,
+        ),
       );
       vi.useRealTimers();
     });
@@ -4874,11 +4878,11 @@ describe("Send", () => {
 
       await fireEvent.change(
         getByRole("combobox", { name: "Send to a contact" }),
-        { target: { value: listContacts()[0].id } }
+        { target: { value: listContacts()[0].id } },
       );
 
       expect(
-        getAsHTMLElement(container, ".send__card-title")
+        getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent(shown);
       expect(getSummary(container)[1]).toStrictEqual([
         "To",
@@ -4896,8 +4900,8 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "This name has hidden characters. Type it again without them."
-        )
+          "This name has hidden characters. Type it again without them.",
+        ),
       ).toBeInTheDocument();
       expect(getByRole("button", { name: "Save" })).toBeDisabled();
     });
@@ -4909,12 +4913,12 @@ describe("Send", () => {
 
       await fireEvent.change(
         getByRole("combobox", { name: "Send to a contact" }),
-        { target: { value: listContacts()[0].id } }
+        { target: { value: listContacts()[0].id } },
       );
 
       expect(fieldsOf(getByRole).to()).toHaveValue(otherAccount);
       expect(
-        getAsHTMLElement(container, ".send__card-title")
+        getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent("Cold storage");
       expect(getSummary(container)[1]).toStrictEqual([
         "To",
@@ -4942,7 +4946,7 @@ describe("Send", () => {
       await fireEvent.change(picker, { target: { value: tdi.id } });
 
       expect(await findByRole("status")).toHaveTextContent(
-        "tdi.dusk now points to a different address. You're sending to the address saved for TDI."
+        "tdi.dusk now points to a different address. You're sending to the address saved for TDI.",
       );
       expect(baseProps.resolveName).toHaveBeenCalledWith("tdi.dusk");
       expect(getContact(tdi.id)?.movedTo).toBe(otherAccount);
@@ -4971,8 +4975,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(container.querySelector(".send__card-title")).toHaveTextContent(
-          "Alice · alice.dusk"
-        )
+          "Alice · alice.dusk",
+        ),
       );
       expect(getContact(alice.id)?.checkedAt).toBeGreaterThan(1);
       await fireEvent.input(fieldsOf(getByRole).amount(), {
@@ -5004,11 +5008,11 @@ describe("Send", () => {
 
       await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
       await fireEvent.click(
-        await findByRole("radio", { name: "Shielded address" })
+        await findByRole("radio", { name: "Shielded address" }),
       );
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "alice.dusk now points to a different address from the one saved for Alice (shielded)."
+        "alice.dusk now points to a different address from the one saved for Alice (shielded).",
       );
 
       await fireEvent.click(getByRole("button", { name: "The saved address" }));
@@ -5030,12 +5034,12 @@ describe("Send", () => {
       baseProps.resolveName.mockReturnValueOnce(
         new Promise((resolve) => {
           finishLookup = resolve;
-        })
+        }),
       );
 
       const { container, getByRole, getByText, queryByRole } = render(
         Send,
-        baseProps
+        baseProps,
       );
 
       await fireEvent.input(fieldsOf(getByRole).to(), {
@@ -5051,8 +5055,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(container.querySelector(".send__card-title")).toHaveTextContent(
-          "Alice · alice.dusk"
-        )
+          "Alice · alice.dusk",
+        ),
       );
       expect(queryByRole("alert")).toBeNull();
       expect(getContact(alice.id)).not.toHaveProperty("movedTo");
@@ -5084,7 +5088,7 @@ describe("Send", () => {
       });
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "alice.dusk now points to a different address from the one saved for Alice."
+        "alice.dusk now points to a different address from the one saved for Alice.",
       );
       // Each with the new address of its kind, for Contacts and the list here.
       expect(getContact(alice.id)?.movedTo).toBe(nameAccount);
@@ -5109,7 +5113,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?"
+        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?",
       );
       expect(fields.review()).toBeDisabled();
       expect(container.querySelector(".send__card")).toBeNull();
@@ -5123,7 +5127,7 @@ describe("Send", () => {
       });
       expect(fields.review()).toBeEnabled();
       expect(
-        getAsHTMLElement(container, ".send__card .full-address")
+        getAsHTMLElement(container, ".send__card .full-address"),
       ).toHaveTextContent(nameAccount);
       expect(getContact(alice.id)?.address).toBe(otherAccount);
 
@@ -5136,12 +5140,12 @@ describe("Send", () => {
         target: { value: "alice.dusk" },
       });
       await fireEvent.click(
-        await again.findByRole("button", { name: "The saved address" })
+        await again.findByRole("button", { name: "The saved address" }),
       );
 
       expect(fieldsOf(again.getByRole).to()).toHaveValue(otherAccount);
       expect(
-        getAsHTMLElement(again.container, ".send__card-title")
+        getAsHTMLElement(again.container, ".send__card-title"),
       ).toHaveTextContent("Alice");
 
       await fireEvent.input(fieldsOf(again.getByRole).amount(), {
@@ -5170,7 +5174,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "alice.dusk" } });
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?"
+        "alice.dusk now points to a different address from the one saved for Alice. Which do you want to send to?",
       );
       expect(fields.review()).toBeDisabled();
       expect(container.querySelector(".send__card")).toBeNull();
@@ -5202,7 +5206,7 @@ describe("Send", () => {
       // Public BIP39 test phrases, never a real wallet's.
       await vault.setUp(
         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-        "password123"
+        "password123",
       );
       await unlockWallets("password123");
 
@@ -5211,7 +5215,7 @@ describe("Send", () => {
       // The wallet added is the one open: Wallet 1 is the other.
       await addWallet(
         "scheme spot photo card baby mountain device kick cradle pact join borrow",
-        "password123"
+        "password123",
       );
 
       return { account: String(account), address: String(address) };
@@ -5235,7 +5239,7 @@ describe("Send", () => {
           target: { value: otherAccount },
         });
         await fireEvent.click(
-          getByRole("button", { name: "Save to contacts" })
+          getByRole("button", { name: "Save to contacts" }),
         );
         await fireEvent.input(getByRole("textbox", { name: "Contact name" }), {
           target: { value: "Lucas" },
@@ -5243,8 +5247,8 @@ describe("Send", () => {
 
         expect(
           getByText(
-            `You have a contact called Lucas (petit-fils), at ${shortenAddress(bep20BridgeAddress)}. Is this someone else?`
-          )
+            `You have a contact called Lucas (petit-fils), at ${shortenAddress(bep20BridgeAddress)}. Is this someone else?`,
+          ),
         ).toBeInTheDocument();
 
         // Typed, Enter, Enter: the question never takes the focus, so the
@@ -5288,8 +5292,8 @@ describe("Send", () => {
 
       expect(
         getByText(
-          "One of your profiles is called Profile 1. Choose another name."
-        )
+          "One of your profiles is called Profile 1. Choose another name.",
+        ),
       ).toBeInTheDocument();
       expect(getByRole("button", { name: "Save" })).toBeDisabled();
     });
@@ -5339,7 +5343,7 @@ describe("Send", () => {
         expect(toLine()).toStrictEqual([
           "To",
           `alice.dusk ${shortenAddress(account)}`,
-        ])
+        ]),
       );
 
       saveContact({ address: account, name: "Rent" });
@@ -5360,12 +5364,12 @@ describe("Send", () => {
       await fireEvent.click(
         getByRole("button", {
           name: `Your profile Wallet 1 · Profile 1 · ${shortenAddress(account)}`,
-        })
+        }),
       );
 
       expect(to).toHaveValue(account);
       expect(
-        queryByRole("button", { name: /^Did you mean profile1\.dusk/ })
+        queryByRole("button", { name: /^Did you mean profile1\.dusk/ }),
       ).toBeNull();
 
       // Its .dusk name, typed out, is someone else's.
@@ -5378,9 +5382,9 @@ describe("Send", () => {
       await waitFor(() =>
         expect(
           getByText(
-            "profile1.dusk is someone else's name, not your profile Profile 1."
-          )
-        ).toBeInTheDocument()
+            "profile1.dusk is someone else's name, not your profile Profile 1.",
+          ),
+        ).toBeInTheDocument(),
       );
     });
 
@@ -5405,8 +5409,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(cardTitle(container)).toBe(
-          "profile1.dusk points to a public account"
-        )
+          "profile1.dusk points to a public account",
+        ),
       );
       expect(queryByText(someoneElses)).toBeNull();
 
@@ -5420,8 +5424,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(cardTitle(container)).toBe(
-          "profile1.dusk points to a shielded address"
-        )
+          "profile1.dusk points to a shielded address",
+        ),
       );
       expect(queryByText(someoneElses)).toBeNull();
     });
@@ -5447,8 +5451,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(cardTitle(container)).toBe(
-          "alice.dusk points to a public account"
-        )
+          "alice.dusk points to a public account",
+        ),
       );
     });
 
@@ -5464,8 +5468,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(getByRole("status")).toHaveTextContent(
-          "Sending… 1 DUSK to Wallet 1 · Profile 1 This usually takes under a minute."
-        )
+          "Sending… 1 DUSK to Wallet 1 · Profile 1 This usually takes under a minute.",
+        ),
       );
     });
 
@@ -5488,8 +5492,8 @@ describe("Send", () => {
 
       await waitFor(() =>
         expect(getByRole("status")).toHaveTextContent(
-          "Sending… 1 DUSK to Rent This usually takes under a minute."
-        )
+          "Sending… 1 DUSK to Rent This usually takes under a minute.",
+        ),
       );
     });
   });

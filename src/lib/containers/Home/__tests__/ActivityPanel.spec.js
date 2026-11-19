@@ -72,7 +72,7 @@ describe("ActivityPanel", () => {
     expect(getByText("Shown in your local time")).toBeInTheDocument();
     expect(queryByText(/Times in your local time/)).toBeNull();
     expect(getByRole("heading", { level: 3, name: "Today" })).toHaveTextContent(
-      /^Today$/
+      /^Today$/,
     );
   });
 
@@ -97,7 +97,7 @@ describe("ActivityPanel", () => {
         only: "staking",
         state,
         whole: { failed: false, reading: true, rows: [], whole: false },
-      }
+      },
     );
 
     expect(getByText("Looking for your transactions…")).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe("ActivityPanel", () => {
     });
 
     expect(
-      getByText("Couldn't reach the network's history.")
+      getByText("Couldn't reach the network's history."),
     ).toBeInTheDocument();
     await fireEvent.click(getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
@@ -140,7 +140,7 @@ describe("ActivityPanel", () => {
               fnName: "register",
               registeredName: "alice.dusk",
             },
-            { nameCall: nameFacts }
+            { nameCall: nameFacts },
           ),
         ],
         syncing: false,
@@ -178,13 +178,13 @@ describe("ActivityPanel", () => {
     });
 
     expect(container.querySelector(".activity-row__amount")).toHaveClass(
-      "activity-row__amount--muted"
+      "activity-row__amount--muted",
     );
 
     // Its claim date on a line of its own, under the type, time and privacy.
     const lines = Array.from(
       container.querySelectorAll(".activity-row__line"),
-      (line) => line.textContent?.trim()
+      (line) => line.textContent?.trim(),
     );
 
     expect(lines).toHaveLength(2);

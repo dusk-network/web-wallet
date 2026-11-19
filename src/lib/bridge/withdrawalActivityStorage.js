@@ -131,7 +131,7 @@ function readStoredItems(scope) {
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]"
+      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]",
     );
 
     if (!Array.isArray(parsed)) {
@@ -258,7 +258,7 @@ function withdrawalItem(hash, options, existing) {
 export function rememberWithdrawalTransaction(
   transactionHash,
   options = {},
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedTxHash(transactionHash);
 
@@ -272,7 +272,7 @@ export function rememberWithdrawalTransaction(
 
   writeRememberedItems(
     [item, ...storedItems.filter((each) => each.transactionHash !== hash)],
-    scope
+    scope,
   );
   try {
     storage()?.setItem(scope.name(LEGACY_LAST_WITHDRAWAL_KEY), hash);
@@ -292,7 +292,7 @@ export function rememberWithdrawalTransaction(
 export function updateWithdrawalTransaction(
   transactionHash,
   patch,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedTxHash(transactionHash);
 
@@ -333,7 +333,7 @@ export function updateWithdrawalTransaction(
       item,
       ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
     ],
-    scope
+    scope,
   );
 
   return item;
@@ -345,13 +345,13 @@ export function updateWithdrawalTransaction(
  */
 export function getRememberedWithdrawalTransaction(
   transactionHash,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedTxHash(transactionHash);
 
   return hash
     ? (readRememberedItems(scope).find(
-        (item) => item.transactionHash === hash
+        (item) => item.transactionHash === hash,
       ) ?? null)
     : null;
 }
@@ -365,6 +365,6 @@ export function getRememberedWithdrawalActivity(account) {
   return readRememberedItems().filter(
     (item) =>
       item.account === null ||
-      (normalizedAccount !== null && item.account === normalizedAccount)
+      (normalizedAccount !== null && item.account === normalizedAccount),
   );
 }

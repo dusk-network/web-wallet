@@ -10,7 +10,7 @@ const getKeyMaterial = (pwd) =>
     new TextEncoder().encode(pwd),
     "PBKDF2",
     false,
-    ["deriveBits", "deriveKey"]
+    ["deriveBits", "deriveKey"],
   );
 
 /**
@@ -24,7 +24,7 @@ const getDerivedKey = async (
   pwd,
   salt,
   iterations = LEGACY_PBKDF2_ITERATIONS,
-  extractable = true
+  extractable = true,
 ) =>
   crypto.subtle.deriveKey(
     {
@@ -36,7 +36,7 @@ const getDerivedKey = async (
     await getKeyMaterial(pwd),
     { length: 256, name: "AES-GCM" },
     extractable,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 
 export default getDerivedKey;

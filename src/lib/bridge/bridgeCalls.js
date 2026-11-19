@@ -38,14 +38,14 @@ export const configuredBridge = () => ({
   bridge: norm(
     duskEvmContractId(
       "l1_standard_bridge",
-      import.meta.env.VITE_BRIDGE_CONTRACT_ID
-    )
+      import.meta.env.VITE_BRIDGE_CONTRACT_ID,
+    ),
   ),
   portal: norm(
     duskEvmContractId(
       "optimism_portal",
-      import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID
-    )
+      import.meta.env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
+    ),
   ),
 });
 

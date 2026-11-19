@@ -97,7 +97,7 @@ function startConnecting() {
   const { promise: stopped, reject: stop } = Promise.withResolvers();
   const timer = setTimeout(
     () => stop(new Error("Timed out while connecting to the network")),
-    CONNECT_TIMEOUT
+    CONNECT_TIMEOUT,
   );
   let isOver = false;
 
@@ -195,7 +195,7 @@ const getCurrentBlockHeight = (signal) =>
 const getLatestBlock = () =>
   connect()
     .then(() =>
-      network.query("block(height: -1) { header { height timestamp } }")
+      network.query("block(height: -1) { header { height timestamp } }"),
     )
     .then((body) => {
       const { height, timestamp } = body?.block?.header ?? {};
@@ -233,7 +233,7 @@ function readNodeInfo() {
   const asking = setInterval(ask, ASK_AGAIN_AFTER);
   const timer = setTimeout(
     () => reject(new Error("Timed out while connecting to the network")),
-    CONNECT_TIMEOUT
+    CONNECT_TIMEOUT,
   );
 
   ask();

@@ -39,8 +39,8 @@ const records = walletRecords({
       return kept && typeof kept === "object" && !Array.isArray(kept)
         ? Object.fromEntries(
             Object.entries(kept).filter(
-              ([hash, at]) => HASH.test(hash) && Number.isFinite(at)
-            )
+              ([hash, at]) => HASH.test(hash) && Number.isFinite(at),
+            ),
           )
         : {};
     } catch {
@@ -71,7 +71,7 @@ export const hydrateSentAfterDontSend = () => openRecords(records);
 export function markSentAfterDontSend(
   hash,
   landedAt,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   changeRecords(records, scope, (kept) => ({
     ...kept,
@@ -92,7 +92,7 @@ export function seenSentAfterDontSend(hash) {
   }
 
   changeRecords(records, walletDataScope(), (kept) =>
-    Object.fromEntries(Object.entries(kept).filter(([each]) => each !== lower))
+    Object.fromEntries(Object.entries(kept).filter(([each]) => each !== lower)),
   );
 }
 

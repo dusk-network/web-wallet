@@ -166,7 +166,7 @@ function withWorker() {
     /** @param {string} url */
     press: (url) =>
       events.dispatchEvent(
-        new MessageEvent("message", { data: { type: "arrival-open", url } })
+        new MessageEvent("message", { data: { type: "arrival-open", url } }),
       ),
     registered,
     shown,
@@ -187,7 +187,7 @@ const onPhone = () =>
 const lookingAtPage = (looking) => {
   vi.spyOn(document, "hasFocus").mockReturnValue(looking);
   vi.spyOn(document, "visibilityState", "get").mockReturnValue(
-    looking ? "visible" : "hidden"
+    looking ? "visible" : "hidden",
   );
 };
 
@@ -235,7 +235,7 @@ describe("Being told when a transfer arrives", () => {
     await vi.waitFor(() =>
       expect(shown).toMatchObject([
         { options: { tag: "a" }, title: "1 DUSK arrived on Dusk" },
-      ])
+      ]),
     );
 
     Stand.last.onclick();
@@ -311,11 +311,11 @@ describe("Being told when a transfer arrives", () => {
 
     expect(get(arrivalNoticeState)).toBe("on");
     expect(noticeWords("on")).toBe(
-      "You'll get a notification when it arrives, while this tab stays open."
+      "You'll get a notification when it arrives, while this tab stays open.",
     );
     expect(worker.registered).toHaveBeenCalledExactlyOnceWith(
       "/some-base-path/service-worker.js",
-      expect.objectContaining({ scope: "/some-base-path/" })
+      expect.objectContaining({ scope: "/some-base-path/" }),
     );
 
     const stop = followArrivals();
@@ -339,17 +339,17 @@ describe("Being told when a transfer arrives", () => {
           },
           title: "1 DUSK arrived on Dusk",
         },
-      ])
+      ]),
     );
 
     // Pressed: the wallet goes to what arrived, and only to its own pages.
     worker.press(
-      `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ff`
+      `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ff`,
     );
     worker.press("https://elsewhere.example/some-base-path/dashboard");
 
     expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
-      "/dashboard/bridge/transactions?tx=ff"
+      "/dashboard/bridge/transactions?tx=ff",
     );
     stop();
     stopClicks();
@@ -371,7 +371,7 @@ describe("Being told when a transfer arrives", () => {
 
     expect(get(arrivalNoticeState)).toBe("refused");
     expect(noticeWords("refused")).toBe(
-      "Notifications aren't allowed for this site, so this screen says when it arrives."
+      "Notifications aren't allowed for this site, so this screen says when it arrives.",
     );
 
     vi.restoreAllMocks();
@@ -392,17 +392,17 @@ describe("Being told when a transfer arrives", () => {
         function () {
           throw new TypeError("Illegal constructor");
         },
-        { permission: Stand.permission }
-      )
+        { permission: Stand.permission },
+      ),
     );
     stopArrivalNotice();
     localStorage.setItem(
       `${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`,
-      "on"
+      "on",
     );
 
     expect(() =>
-      transferEnded({ id: "a", title: "1 DUSK arrived on Dusk" })
+      transferEnded({ id: "a", title: "1 DUSK arrived on Dusk" }),
     ).not.toThrow();
     expect(get(arrivalTitle)).toBe("1 DUSK arrived on Dusk");
   });
@@ -452,7 +452,7 @@ describe("Being told when a transfer arrives", () => {
     it("says nothing of a migration whose payout of days before comes to light as all of the history is read", () => {
       const migration = (
         /** @type {string} */ stage,
-        /** @type {number | null} */ paidAt = null
+        /** @type {number | null} */ paidAt = null,
       ) => ({
         amountLux: 5_000_000_000n,
         at: Date.now() - 6 * 86_400_000,
@@ -523,7 +523,7 @@ describe("Being told when a transfer arrives", () => {
       Stand.last.onclick();
 
       expect(mocks.goto).toHaveBeenCalledWith(
-        "/dashboard/bridge/transactions?tx=aa"
+        "/dashboard/bridge/transactions?tx=aa",
       );
     });
 
@@ -602,13 +602,13 @@ describe("Being told when a transfer arrives", () => {
             options: { tag: `send:${hash}` },
             title: "Arrived: 0.02 DUSK to Lucas",
           },
-        ])
+        ]),
       );
       // History says so too.
       await vi.waitFor(() =>
         expect(
-          get(activityState).rows.find((row) => row.hash === hash)
-        ).toMatchObject({ blockHeight: 4_820_416, status: "executed" })
+          get(activityState).rows.find((row) => row.hash === hash),
+        ).toMatchObject({ blockHeight: 4_820_416, status: "executed" }),
       );
       stopActivity();
 

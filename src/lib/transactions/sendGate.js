@@ -192,10 +192,10 @@ export function sendGate() {
         AbortSignal.any([
           AbortSignal.timeout(ANSWER_WITHIN),
           stopWaiting.signal,
-        ])
+        ]),
       ).then(
         () => true,
-        () => false
+        () => false,
       );
 
       check();

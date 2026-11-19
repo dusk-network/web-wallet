@@ -182,7 +182,7 @@ export async function createPasskey() {
  */
 export async function askPasskey(
   { credentialId, prfSalt, transports },
-  { signal } = {}
+  { signal } = {},
 ) {
   const credential = /** @type {PublicKeyCredential | null} */ (
     await navigator.credentials.get({
@@ -220,7 +220,7 @@ export async function askPasskey(
     ?.results?.first;
   const data = new Uint8Array(
     /** @type {AuthenticatorAssertionResponse} */ (credential.response)
-      .authenticatorData
+      .authenticatorData,
   );
 
   if (!first) {

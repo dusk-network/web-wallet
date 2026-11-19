@@ -141,7 +141,7 @@ describe("A wallet's records, open in two tabs", () => {
   it("keeps out of what it shows a record its refused write dropped, as another tab's write shows", async () => {
     localStorage.setItem(
       MIGRATIONS,
-      JSON.stringify(Array.from({ length: 50 }, (_, i) => migration(50 - i)))
+      JSON.stringify(Array.from({ length: 50 }, (_, i) => migration(50 - i))),
     );
 
     const a = await openTab();
@@ -185,7 +185,7 @@ describe("A wallet's records, open in two tabs", () => {
 
     // This tab's unlock goes as far as it can: done, or waiting its turn.
     await vi.waitUntil(
-      async () => done || (await navigator.locks.query()).pending?.length
+      async () => done || (await navigator.locks.query()).pending?.length,
     );
     go.resolve(undefined);
     await theirs;

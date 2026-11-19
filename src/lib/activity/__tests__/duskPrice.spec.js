@@ -10,7 +10,7 @@ const NOW = Date.UTC(2026, 10, 5, 12);
 const pricesAre = (prices) => {
   /** @type {import("vitest").Mock<(url: string) => Promise<Response>>} */
   const asked = vi.fn(() =>
-    Promise.resolve(new Response(JSON.stringify({ prices })))
+    Promise.resolve(new Response(JSON.stringify({ prices }))),
   );
 
   vi.stubGlobal("fetch", asked);
@@ -34,7 +34,7 @@ describe("What a DUSK was worth in euros", () => {
 
     expect(asked).toHaveBeenCalledOnce();
     expect(asked.mock.lastCall?.[0]).toMatch(
-      /^https:\/\/api\.coingecko\.com\/api\/v3\/coins\/dusk-network\/market_chart\/range\?vs_currency=eur&from=\d+&to=\d+$/
+      /^https:\/\/api\.coingecko\.com\/api\/v3\/coins\/dusk-network\/market_chart\/range\?vs_currency=eur&from=\d+&to=\d+$/,
     );
   });
 
@@ -42,7 +42,7 @@ describe("What a DUSK was worth in euros", () => {
     const asked = pricesAre([[NOW - DAY, 21.5]]);
 
     await expect(
-      duskPrices({ currency: "INR", now: NOW })({ at: NOW - DAY })
+      duskPrices({ currency: "INR", now: NOW })({ at: NOW - DAY }),
     ).resolves.toBe(21.5);
     expect(asked.mock.lastCall?.[0]).toContain("?vs_currency=inr&");
   });
@@ -84,7 +84,7 @@ describe("What a DUSK was worth in euros", () => {
         }
 
         return new Response(JSON.stringify({ prices }));
-      })
+      }),
     );
 
     const price = duskPrices({ now: NOW });
@@ -114,20 +114,20 @@ describe("What a DUSK was worth in euros", () => {
   it("knows none when the request fails, or is refused", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.reject(new Error("offline")))
+      vi.fn(() => Promise.reject(new Error("offline"))),
     );
 
     await expect(
-      duskPrices({ now: NOW })({ at: NOW - DAY })
+      duskPrices({ now: NOW })({ at: NOW - DAY }),
     ).resolves.toBeNull();
 
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => Promise.resolve(new Response("", { status: 429 })))
+      vi.fn(() => Promise.resolve(new Response("", { status: 429 }))),
     );
 
     await expect(
-      duskPrices({ now: NOW })({ at: NOW - DAY })
+      duskPrices({ now: NOW })({ at: NOW - DAY }),
     ).resolves.toBeNull();
   });
 });

@@ -5,10 +5,10 @@ import { QrCode } from "..";
 
 const mockBase64Value = vi.hoisted(
   () =>
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=="
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==",
 );
 const toDataUrlMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue(mockBase64Value)
+  vi.fn().mockResolvedValue(mockBase64Value),
 );
 
 vi.mock("qrcode", async (importOriginal) => ({

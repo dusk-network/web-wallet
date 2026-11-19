@@ -74,11 +74,11 @@ describe("CommandBar", () => {
 
     expect(getByRole("option", { name: "Send" })).toHaveAttribute(
       "aria-selected",
-      "true"
+      "true",
     );
     // The keys, in one short line.
     expect(getByText("Enter: open · Shift+Enter: copy")).toHaveClass(
-      "command-bar__note"
+      "command-bar__note",
     );
 
     await fireEvent.keyDown(input, { key: "Enter" });
@@ -109,7 +109,7 @@ describe("CommandBar", () => {
     expect(mocks.resolveDuskName).toHaveBeenCalledWith(
       "alice.dusk",
       "testnet",
-      expect.any(String)
+      expect.any(String),
     );
 
     // Shift+Enter copies the address it points to; Enter sends to it.
@@ -142,20 +142,20 @@ describe("CommandBar", () => {
 
     expect(
       getByText(
-        "Nothing on this device. Press Enter to look up bakery.dusk on the network."
-      )
+        "Nothing on this device. Press Enter to look up bakery.dusk on the network.",
+      ),
     ).toBeInTheDocument();
     expect(mocks.resolveDuskName).not.toHaveBeenCalled();
 
     await fireEvent.keyDown(input, { key: "Enter" });
 
     expect(
-      await findByRole("option", { name: /Send to bakery\.dusk/ })
+      await findByRole("option", { name: /Send to bakery\.dusk/ }),
     ).toBeInTheDocument();
     expect(mocks.resolveDuskName).toHaveBeenCalledWith(
       "bakery.dusk",
       "testnet",
-      expect.any(String)
+      expect.any(String),
     );
   });
 
@@ -164,7 +164,7 @@ describe("CommandBar", () => {
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
 
     mocks.fetchTxDetails.mockResolvedValue(
-      new Map([[hash, { success: true }]])
+      new Map([[hash, { success: true }]]),
     );
 
     const { findByRole, getByRole } = render(CommandBar, { pages });
@@ -200,8 +200,8 @@ describe("CommandBar", () => {
     expect(mocks.goto).not.toHaveBeenCalled();
     await vi.waitFor(() =>
       expect(document.querySelector("[aria-live='polite']")).toHaveTextContent(
-        "Copied"
-      )
+        "Copied",
+      ),
     );
     expect(result).toHaveTextContent(/Copied$/);
     expect(toast).not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ describe("CommandBar", () => {
     await fireEvent.keyDown(input, { key: "Enter" });
 
     expect(
-      await findByText("alise.dusk isn't registered.")
+      await findByText("alise.dusk isn't registered."),
     ).toBeInTheDocument();
   });
 
@@ -235,7 +235,7 @@ describe("CommandBar", () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(
-        new Response(JSON.stringify({ block: { header: { hash } } }))
+        new Response(JSON.stringify({ block: { header: { hash } } })),
       );
 
     setNodeNetwork(networks.testnet);
@@ -248,18 +248,18 @@ describe("CommandBar", () => {
       await fireEvent.keyDown(input, { key: "Enter" });
 
       expect(
-        getByRole("option", { name: /Open block 4,704,959 in the explorer/ })
+        getByRole("option", { name: /Open block 4,704,959 in the explorer/ }),
       ).toBeInTheDocument();
       // The tab opens on the key press, so no popup blocker stops it.
       expect(open).toHaveBeenCalledWith("", "_blank");
       await vi.waitFor(() =>
         expect(tab.location.href).toBe(
-          `https://explorer.testnet.dusk.network/blocks/block?id=${hash}`
-        )
+          `https://explorer.testnet.dusk.network/blocks/block?id=${hash}`,
+        ),
       );
       expect(tab.opener).toBeNull();
       expect(String(fetch.mock.calls[0][1]?.body)).toBe(
-        "query { block(height: 4704959) { header { hash } } }"
+        "query { block(height: 4704959) { header { hash } } }",
       );
     } finally {
       open.mockRestore();

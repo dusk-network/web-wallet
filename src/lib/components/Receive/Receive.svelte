@@ -207,7 +207,7 @@
         .normalize("NFKD")
         .replace(/\p{M}+/gu, "")
         .replace(/[^A-Za-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
+        .replace(/^-+|-+$/g, ""),
     )
       .slice(0, 40)
       .join("")
@@ -296,7 +296,7 @@
         used.request?.dusk ?? used.address,
         name,
         used.address,
-        network
+        network,
       );
       link.download = used.request
         ? fileNameOf(used.request, network)

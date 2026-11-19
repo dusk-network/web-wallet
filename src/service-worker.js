@@ -16,7 +16,7 @@ const worker = globalThis;
 worker.addEventListener("install", () => worker.skipWaiting());
 
 worker.addEventListener("activate", (/** @type {any} */ event) =>
-  event.waitUntil(worker.clients.claim())
+  event.waitUntil(worker.clients.claim()),
 );
 
 worker.addEventListener("notificationclick", (/** @type {any} */ event) => {
@@ -34,7 +34,7 @@ worker.addEventListener("notificationclick", (/** @type {any} */ event) => {
       .matchAll({ includeUncontrolled: true, type: "window" })
       .then((/** @type {any[]} */ windows) => {
         const wallet = windows.find((client) =>
-          String(client.url).startsWith(scope)
+          String(client.url).startsWith(scope),
         );
 
         if (!wallet) {
@@ -44,6 +44,6 @@ worker.addEventListener("notificationclick", (/** @type {any} */ event) => {
         wallet.postMessage({ type: "arrival-open", url: open });
 
         return wallet.focus();
-      })
+      }),
   );
 });

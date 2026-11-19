@@ -45,11 +45,11 @@ vi.mock(
         await new Promise((done) => setTimeout(done, pkg.latency.get(tx) ?? 0));
 
         return /** @type {(at: number) => any} */ (pkg.answers.get(tx))(
-          Date.now()
+          Date.now(),
         );
       },
     })),
-  })
+  }),
 );
 
 vi.mock("$lib/stores", async (importOriginal) => ({
@@ -147,7 +147,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
       "fetch",
       vi.fn(async () => {
         throw new Error("No other reads");
-      })
+      }),
     );
   });
 
@@ -187,7 +187,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
 
   it("takes up every withdrawal not settled from anywhere in the wallet, whichever EVM wallet sent it, none being connected", async () => {
     pkg.answers.set(WAITING, () =>
-      status(WAITING, { reason: "no-output", stage: "waiting_for_output" })
+      status(WAITING, { reason: "no-output", stage: "waiting_for_output" }),
     );
     pkg.answers.set(SOON, provedUntil(SOON, START + 90_000));
     kept(WAITING, {
@@ -208,7 +208,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
 
   it("checks the ones due together, with one read of the latest block, and a proof waiting for its claim date less often", async () => {
     pkg.answers.set(WAITING, () =>
-      status(WAITING, { reason: "no-output", stage: "waiting_for_output" })
+      status(WAITING, { reason: "no-output", stage: "waiting_for_output" }),
     );
     pkg.answers.set(SOON, provedUntil(SOON, START + 90_000));
     pkg.answers.set(LATER, provedUntil(LATER, START + 3 * 86_400_000));
@@ -231,7 +231,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
       expect.objectContaining({
         readyAt: String((START + 3 * 86_400_000) / 1_000),
         stage: "proven_waiting",
-      })
+      }),
     );
 
     // A proof waiting for its claim date isn't checked every poll, and is
@@ -243,7 +243,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
     // The one waiting for an output is checked every poll, and the others
     // due then are checked with it, in the same round.
     expect(checksOf(WAITING)).toStrictEqual(
-      Array.from({ length: 21 }, (_, i) => i * 15_000)
+      Array.from({ length: 21 }, (_, i) => i * 15_000),
     );
     for (const at of checksOf(SOON)) {
       expect(checksOf(WAITING)).toContain(at);
@@ -270,7 +270,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
     let proved = false;
 
     pkg.answers.set(WAITING, () =>
-      status(WAITING, { reason: "no-output", stage: "waiting_for_output" })
+      status(WAITING, { reason: "no-output", stage: "waiting_for_output" }),
     );
     pkg.answers.set(SOON, () =>
       proved
@@ -281,7 +281,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
             readyAtExact: false,
             stage: "proven_waiting",
           })
-        : status(SOON, { stage: "ready_to_prove" })
+        : status(SOON, { stage: "ready_to_prove" }),
     );
     kept(WAITING, { stage: "waiting_for_output" });
     kept(SOON, { stage: "ready_to_prove" });
@@ -308,14 +308,14 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
     expect(
       checksOf(SOON)
         .filter((at) => at >= 20_000)
-        .map((at) => Math.round(at / 100) * 100)
+        .map((at) => Math.round(at / 100) * 100),
     ).toStrictEqual([20_000, 25_000, 30_000, 35_000]);
     expect(shown(SOON)).toEqual(
       expect.objectContaining({
         pendingAction: null,
         pendingTransactionHash: null,
         stage: "proven_waiting",
-      })
+      }),
     );
 
     // Then it waits for its claim date, while the other goes on.
@@ -358,12 +358,12 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
           pendingTransactionHash: "66".repeat(32),
           stage: "prove_submitted",
           trackingError: null,
-        })
+        }),
       );
       expect(
-        checksOf(SOON).map((at) => Math.round(at / 100) * 100)
+        checksOf(SOON).map((at) => Math.round(at / 100) * 100),
       ).toStrictEqual([0, 3_000]);
-    }
+    },
   );
 
   it("goes on checking the others, and a new one, while one check hangs", async () => {
@@ -371,7 +371,7 @@ describe("Bridge › Activity's checks of the withdrawals it follows", () => {
 
     for (const tx of [WAITING, SOON, NEW]) {
       pkg.answers.set(tx, () =>
-        status(tx, { reason: "no-output", stage: "waiting_for_output" })
+        status(tx, { reason: "no-output", stage: "waiting_for_output" }),
       );
     }
     // Its reads never answer.

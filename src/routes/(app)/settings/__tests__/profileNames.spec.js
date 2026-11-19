@@ -90,13 +90,13 @@ async function nameProfile(settings, n, name, how = "blur") {
 
 /** The names the fields in Settings show, by profile. */
 const fieldsOf = (
-  /** @type {import("@testing-library/svelte").RenderResult<any>} */ settings
+  /** @type {import("@testing-library/svelte").RenderResult<any>} */ settings,
 ) =>
   [1, 2].map(
     (n) =>
       /** @type {HTMLInputElement} */ (
         settings.getByRole("textbox", { name: `Profile ${n} name` })
-      ).value
+      ).value,
   );
 
 /** The top bar, with the profile switcher open. */
@@ -126,7 +126,7 @@ async function openSwitcher() {
           ?.textContent,
         Array.from(
           group.querySelectorAll(".address-picker__profile-header"),
-          (header) => header.textContent?.replace(/\s+/g, " ").trim()
+          (header) => header.textContent?.replace(/\s+/g, " ").trim(),
         ),
       ]);
 
@@ -163,12 +163,12 @@ describe("Settings › Profiles", () => {
     const settings = render(Settings);
 
     expect(
-      settings.getByRole("heading", { name: "Names on this device" })
+      settings.getByRole("heading", { name: "Names on this device" }),
     ).toBeInTheDocument();
     expect(
       settings
         .getByRole("textbox", { name: "Profile 1 name" })
-        .getAttribute("placeholder")
+        .getAttribute("placeholder"),
     ).toBe("Name, only on this device");
 
     await nameProfile(settings, 1, "  Savings    jar ");
@@ -206,7 +206,7 @@ describe("Settings › Profiles", () => {
       ["Wallet 1", ["Savings (Current)", "Profile 2"]],
     ]);
     expect(
-      bar.container.querySelector(".address-picker__address-name")
+      bar.container.querySelector(".address-picker__address-name"),
     ).toHaveTextContent("alice.dusk");
   });
 
@@ -289,7 +289,7 @@ describe("Settings › Profiles", () => {
 
     expect(toasts).toEqual([]);
     expect(field).toHaveAccessibleDescription(
-      "This name has hidden characters. Type it again without them."
+      "This name has hidden characters. Type it again without them.",
     );
 
     const { pillName } = await openSwitcher();
@@ -364,7 +364,7 @@ describe("Settings › Profiles", () => {
     keepVerifiedName(
       get(networkStore).networkName,
       String(get(walletStore).profiles[0].account),
-      "sofiadesign.dusk"
+      "sofiadesign.dusk",
     );
 
     const settings = render(Settings);
@@ -412,13 +412,13 @@ describe("Settings › Profiles", () => {
       // Asked: nothing saved yet.
       expect(toasts).toEqual([]);
       expect(field).toHaveAccessibleDescription(
-        "You have a contact called Lucas (petit-fils). Is this someone else?"
+        "You have a contact called Lucas (petit-fils). Is this someone else?",
       );
       expect(get(openProfileNames)[0] ?? "").toBe("");
 
       // Answered: saved as it was typed, and asked no more as it's left.
       await fireEvent.click(
-        settings.getByRole("button", { name: "Yes, save it" })
+        settings.getByRole("button", { name: "Yes, save it" }),
       );
       await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
 
@@ -453,7 +453,7 @@ describe("Settings › Profiles", () => {
     keepVerifiedName(
       get(networkStore).networkName,
       String(get(walletStore).profiles[0].account),
-      "sofiadesign.dusk"
+      "sofiadesign.dusk",
     );
 
     // Wendy, saved from alice.dusk; and someone called Alice.
@@ -504,7 +504,7 @@ describe("Settings › Profiles", () => {
 
       // Yes saves the name asked about.
       await fireEvent.click(
-        settings.getByRole("button", { name: "Yes, save it" })
+        settings.getByRole("button", { name: "Yes, save it" }),
       );
       await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
 
@@ -571,7 +571,7 @@ describe("Settings › Profiles", () => {
 
       await vi.waitFor(() => expect(field).toHaveAccessibleDescription(words));
       expect(
-        settings.queryByRole("button", { name: "Yes, save it" })
+        settings.queryByRole("button", { name: "Yes, save it" }),
       ).toBeNull();
     }
 
@@ -682,7 +682,7 @@ describe("Settings › Profiles", () => {
   it("forgets every name on Reset", async () => {
     vi.stubGlobal(
       "confirm",
-      vi.fn(() => true)
+      vi.fn(() => true),
     );
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
@@ -691,7 +691,7 @@ describe("Settings › Profiles", () => {
 
     await nameProfile(settings, 1, "Savings");
     await fireEvent.click(
-      settings.getByRole("button", { name: "Reset Wallet" })
+      settings.getByRole("button", { name: "Reset Wallet" }),
     );
     await vi.waitFor(() => expect(logoutSpy).toHaveBeenCalled());
     cleanup();

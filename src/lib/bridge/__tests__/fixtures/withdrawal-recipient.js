@@ -18,7 +18,7 @@ const key = () => {
 
   return Uint8Array.from(
     value.toString(16).padStart(192, "0").match(/../g) ?? [],
-    (b) => parseInt(b, 16)
+    (b) => parseInt(b, 16),
   );
 };
 

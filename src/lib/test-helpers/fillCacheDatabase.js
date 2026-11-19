@@ -88,7 +88,7 @@ async function fillCacheDatabase() {
         await db.table("stakeInfo").bulkPut(fixStakeInfo(cacheStakeInfo));
         await db.table("syncInfo").bulkPut(cacheSyncInfo);
         await db.table("unspentNotes").bulkPut(fixNotes(cacheUnspentNotes));
-      }
+      },
     )
     .finally(() => {
       db.close();

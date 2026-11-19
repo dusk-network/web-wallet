@@ -292,7 +292,7 @@
         <p class="staking__note">
           Your stake couldn't be read again. These amounts may be out of date. {lastReadText(
             stakeReadAt,
-            locale
+            locale,
           )}
         </p>
       {/if}
@@ -449,7 +449,7 @@
             <td data-way="Liquid staking (Sozu, third party)">
               Sozu keeps {feePercent(fees.reward, locale)} of rewards · {feePercent(
                 fees.deposit,
-                locale
+                locale,
               )} on deposits · no unstake fee
             </td>
           </tr>

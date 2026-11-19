@@ -57,7 +57,7 @@ export function stakeActions({
 
   if ((hasStake || hasReward) && !canPay) {
     reasons.push(
-      feeError({ available: publicBalance, fee: maxFee, hidden, locale })
+      feeError({ available: publicBalance, fee: maxFee, hidden, locale }),
     );
   }
 

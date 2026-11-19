@@ -202,7 +202,7 @@
       (item) =>
         item.account === null ||
         ownDeposits.has(item.transactionHash) ||
-        (currentAccount !== null && item.account === currentAccount)
+        (currentAccount !== null && item.account === currentAccount),
     );
     openLinkedDeposit();
   }
@@ -274,7 +274,7 @@
         if (fact) {
           migrationsEvm = { ...migrationsEvm, [fact.hash]: fact };
         }
-      }
+      },
     );
   }
 
@@ -367,7 +367,7 @@
 
     /** @type {HTMLButtonElement | null} */
     const send = document.querySelector(
-      `[id="bridge-details-${row.hash}"] .status-actions button`
+      `[id="bridge-details-${row.hash}"] .status-actions button`,
     );
 
     send?.focus();
@@ -389,7 +389,8 @@
       (item) =>
         item.account === null ||
         (currentAccount !== null && item.account === currentAccount) ||
-        (item.withdrawalHash !== null && historyHashes.has(item.withdrawalHash))
+        (item.withdrawalHash !== null &&
+          historyHashes.has(item.withdrawalHash)),
     );
     activity = mergeWithdrawalActivity(remembered, indexedActivity);
   }
@@ -518,7 +519,7 @@
     const remembered = rememberWithdrawalTransaction(
       hash,
       { account: currentAccount },
-      records
+      records,
     );
 
     if (remembered) {
@@ -670,7 +671,7 @@
       recordWithdrawalSubmission(
         checkedHash,
         { action: actionName, hash: submittedHash },
-        records
+        records,
       );
     } catch (error) {
       // The card shows a short line; the raw error stays in the console.
@@ -691,7 +692,7 @@
   function submitFinalization() {
     return submitWithdrawalAction(
       forThisWallet(finalizeWithdrawal),
-      "finalize"
+      "finalize",
     );
   }
 
@@ -827,7 +828,7 @@
   $: {
     const latestCheck = Math.max(
       activityLoadedAt,
-      ...activity.map((item) => item.lastCheckedAt ?? 0)
+      ...activity.map((item) => item.lastCheckedAt ?? 0),
     );
     lastCheckedAt = latestCheck > 0 ? new Date(latestCheck) : null;
   }
@@ -868,12 +869,12 @@
       $nodeNetwork?.name ?? "",
       ...($account.addresses ?? []),
       ...$keptMigrations.map(({ sender }) => sender),
-    ].join()
+    ].join(),
   );
   // Each that no migration on the list spent, as a row of its own.
   $: approvalRows = approvalsRead.approvals.flatMap((approval) => {
     const route = cardRoutes($nodeNetwork).find(
-      ({ id }) => id === approval.route
+      ({ id }) => id === approval.route,
     );
     const row =
       route && !transfers.some(({ approval: spent }) => spent === approval.hash)
@@ -893,7 +894,7 @@
       routeTransferRow(transfer, {
         locale: language,
         time: routeTime(transfer.route, { net: $nodeNetwork }),
-      })
+      }),
     ),
     ...activity.map((item) =>
       withdrawalRow(item, {
@@ -901,13 +902,13 @@
         locale: language,
         steps: withdrawalSteps,
         time: routeTime(WITHDRAWAL, $bridgeTimes),
-      })
+      }),
     ),
     ...deposits.map((item) =>
       depositRow(item, {
         locale: language,
         time: routeTime(DEPOSIT, $bridgeTimes),
-      })
+      }),
     ),
   ]);
 
@@ -1063,7 +1064,7 @@
                       {selectedWithdrawal}
                       {statusError}
                       duskTransactions={withdrawalSteps.get(
-                        selectedWithdrawal?.withdrawalHash ?? ""
+                        selectedWithdrawal?.withdrawalHash ?? "",
                       ) ?? {}}
                       submittedHash={selectedWithdrawal?.pendingTransactionHash ??
                         ""}

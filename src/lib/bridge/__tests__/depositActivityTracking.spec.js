@@ -72,14 +72,14 @@ vi.mock("$lib/activity/activityHistory", () => ({
           ? mocks.sent.filter(
               (entry) =>
                 entry.block_height >= Number(range[1]) &&
-                entry.block_height <= Number(range[2] ?? Infinity)
+                entry.block_height <= Number(range[2] ?? Infinity),
             )
           : [];
       /** @type {Record<string, any>} */
       const data = { out: json.length ? { json } : null };
 
       for (const [, alias, hash] of query.matchAll(
-        /(\w+): tx\(hash: "(\w+)"\)/g
+        /(\w+): tx\(hash: "(\w+)"\)/g,
       )) {
         mocks.asked.push(hash);
         data[alias] = mocks.txs[hash] ?? null;
@@ -230,18 +230,18 @@ describe("DuskEVM deposit tracking", () => {
 
     expect(mocks.query).toHaveBeenNthCalledWith(
       1,
-      `tx(hash: "${duskTransactionHash}") { blockHeight blockTimestamp err }`
+      `tx(hash: "${duskTransactionHash}") { blockHeight blockTimestamp err }`,
     );
     expect(mocks.query).toHaveBeenNthCalledWith(
       2,
-      "block(height: 8512) { status }"
+      "block(height: 8512) { status }",
     );
     expect(mocks.request).toHaveBeenCalledWith({
       method: "duskevm_getTransactionHashByDuskHash",
       params: [duskTransactionHash],
     });
     expect(mocks.observeDepositStatus).toHaveBeenCalledWith(
-      expect.objectContaining({ l1TransactionHash })
+      expect.objectContaining({ l1TransactionHash }),
     );
     expect(result).toEqual(
       expect.objectContaining({
@@ -251,7 +251,7 @@ describe("DuskEVM deposit tracking", () => {
         l2TransactionHash,
         stage: "completed",
         transactionHash: duskTransactionHash,
-      })
+      }),
     );
     expect(mocks.getBlock).toHaveBeenCalledExactlyOnceWith({
       blockNumber: 5n,
@@ -263,7 +263,7 @@ describe("DuskEVM deposit tracking", () => {
         l2Client: expect.objectContaining({
           transport: { url: "https://l2.example.test" },
         }),
-      })
+      }),
     );
   });
 
@@ -287,7 +287,7 @@ describe("DuskEVM deposit tracking", () => {
     mocks.getBlock.mockRejectedValueOnce(new Error("Too many requests"));
 
     expect(await refreshDepositTransaction(duskTransactionHash)).toEqual(
-      expect.objectContaining({ arrivedAt: null, stage: "completed" })
+      expect.objectContaining({ arrivedAt: null, stage: "completed" }),
     );
 
     // Done, it's read no more, but for its block's time.
@@ -295,7 +295,7 @@ describe("DuskEVM deposit tracking", () => {
       expect.objectContaining({
         arrivedAt: 1_784_193_690_000,
         stage: "completed",
-      })
+      }),
     );
     expect(mocks.observeDepositStatus).toHaveBeenCalledOnce();
     expect(mocks.getBlock).toHaveBeenCalledTimes(2);
@@ -311,8 +311,8 @@ describe("DuskEVM deposit tracking", () => {
 
     await vi.waitFor(() =>
       expect(
-        getRememberedDepositTransaction(duskTransactionHash)?.arrivedAt
-      ).toBe(1_784_193_690_000)
+        getRememberedDepositTransaction(duskTransactionHash)?.arrivedAt,
+      ).toBe(1_784_193_690_000),
     );
     expect(mocks.getBlock).toHaveBeenCalledTimes(3);
   });
@@ -367,7 +367,7 @@ describe("DuskEVM deposit tracking", () => {
         // Failed on Dusk: none of them is followed.
         status: "failed",
         timestamp: at - i * 60_000,
-      }))
+      })),
     );
 
     rememberDepositTransaction(sending, { createdAt: at + 60_000 });
@@ -378,7 +378,7 @@ describe("DuskEVM deposit tracking", () => {
     expect(kept).toHaveLength(100);
     expect(kept[0]).toBe(sending);
     expect(kept.slice(1)).toStrictEqual(
-      rows.slice(0, 99).map((row) => row.hash)
+      rows.slice(0, 99).map((row) => row.hash),
     );
   });
 
@@ -448,7 +448,7 @@ describe("DuskEVM deposit tracking", () => {
       mocks.query.mockImplementation(async (/** @type {string} */ query) =>
         query.startsWith("tx(")
           ? { tx: { blockHeight: 8512, blockTimestamp: at / 1000, err: null } }
-          : { block: { status: { Final: 1 } } }
+          : { block: { status: { Final: 1 } } },
       );
       mocks.request.mockRejectedValue(new Error("Method not found"));
 
@@ -457,7 +457,7 @@ describe("DuskEVM deposit tracking", () => {
       await refreshDepositTransaction(duskTransactionHash);
 
       expect(
-        getRememberedDepositTransaction(duskTransactionHash)
+        getRememberedDepositTransaction(duskTransactionHash),
       ).toStrictEqual(
         expect.objectContaining({
           // Timed by its Dusk block, as the node gave it.
@@ -466,7 +466,7 @@ describe("DuskEVM deposit tracking", () => {
           // On its way, with nothing wrong: what the adapter can't say,
           // DuskEVM can.
           trackingError: null,
-        })
+        }),
       );
       expect(chain.methods()).toStrictEqual([]);
 
@@ -494,7 +494,7 @@ describe("DuskEVM deposit tracking", () => {
           l2TransactionHash: payment,
           stage: "completed",
           trackingError: null,
-        })
+        }),
       );
     } finally {
       vi.useRealTimers();
@@ -537,7 +537,7 @@ describe("DuskEVM deposit tracking", () => {
     mocks.query.mockImplementation(async (/** @type {string} */ query) =>
       query.startsWith("tx(")
         ? { tx: { blockHeight: 8512, blockTimestamp: at / 1000, err: null } }
-        : { block: { status: { Final: 1 } } }
+        : { block: { status: { Final: 1 } } },
     );
     mocks.request.mockRejectedValue(new Error("Method not found"));
 
@@ -577,7 +577,7 @@ describe("DuskEVM deposit tracking", () => {
         expect.objectContaining({
           stage: "l1_pending",
           trackingError: expect.stringMatching(/./),
-        })
+        }),
       );
     } finally {
       fetch.mockRestore();
@@ -601,7 +601,7 @@ describe("DuskEVM deposit tracking", () => {
         expect.objectContaining({
           stage: "l1_pending",
           trackingError: "The node can't be reached.",
-        })
+        }),
       );
       // DuskEVM wasn't asked: it waits on the time Dusk's node gives.
       expect(fetch).not.toHaveBeenCalled();
@@ -623,14 +623,14 @@ describe("DuskEVM deposit tracking", () => {
       l1TransactionHash: `0x${"aa".repeat(32)}`,
     });
     mocks.observeDepositStatus.mockRejectedValue(
-      new TypeError("Failed to fetch")
+      new TypeError("Failed to fetch"),
     );
 
     expect(await refreshDepositTransaction(hash)).toStrictEqual(
       expect.objectContaining({
         stage: "l1_pending",
         trackingError: expect.stringMatching(/Failed to fetch/),
-      })
+      }),
     );
   });
 
@@ -648,7 +648,7 @@ describe("DuskEVM deposit tracking", () => {
 
     try {
       expect(await refreshDepositTransaction(hash)).toStrictEqual(
-        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+        expect.objectContaining({ l2TransactionHash, stage: "completed" }),
       );
     } finally {
       fetch.mockRestore();
@@ -670,12 +670,12 @@ describe("DuskEVM deposit tracking", () => {
 
     try {
       expect(await refreshDepositTransaction(hash)).toStrictEqual(
-        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+        expect.objectContaining({ l2TransactionHash, stage: "completed" }),
       );
       expect(
         chain.asked
           .filter(({ method }) => method === "eth_getLogs")
-          .map(({ params }) => params[0].address)
+          .map(({ params }) => params[0].address),
       ).toStrictEqual([mocks.l2Bridge]);
     } finally {
       fetch.mockRestore();
@@ -697,7 +697,7 @@ describe("DuskEVM deposit tracking", () => {
 
     try {
       expect(await refreshDepositTransaction(hash)).toStrictEqual(
-        expect.objectContaining({ l2TransactionHash, stage: "completed" })
+        expect.objectContaining({ l2TransactionHash, stage: "completed" }),
       );
     } finally {
       fetch.mockRestore();
@@ -730,7 +730,7 @@ describe("DuskEVM deposit tracking", () => {
               encodeDepositArgs({
                 amountLux: 100_000_000n,
                 to: "0xb0e834d62ca3f5cf0f82619c8515c673818f8c6b",
-              })
+              }),
             ).toString("hex"),
             fnName: "depositETHToWithValue",
           },
@@ -740,7 +740,7 @@ describe("DuskEVM deposit tracking", () => {
     /** How many times the archive was asked for each. */
     const asked = () =>
       [final, recent].map(
-        (each) => mocks.asked.filter((one) => one === each).length
+        (each) => mocks.asked.filter((one) => one === each).length,
       );
 
     archived(final, 8502);
@@ -801,7 +801,7 @@ describe("DuskEVM deposit tracking", () => {
               err: "Panic",
             },
           }
-        : { block: { status: { Final: 1 } } }
+        : { block: { status: { Final: 1 } } },
     );
 
     const followed = followHistoryDeposits([
@@ -819,27 +819,27 @@ describe("DuskEVM deposit tracking", () => {
         createdAt: at,
         l1BlockHeight: "4700000",
         l1BlockTimestamp: at,
-      })
+      }),
     );
     // One that failed on Dusk never left: nothing to follow.
     expect(getRememberedDepositTransaction(failed)).toEqual(
-      expect.objectContaining({ failureLayer: "l1", stage: "failed" })
+      expect.objectContaining({ failureLayer: "l1", stage: "failed" }),
     );
     expect(getRememberedDepositTransaction(kept)?.account).toBe(
-      `0x${"99".repeat(20)}`
+      `0x${"99".repeat(20)}`,
     );
 
     // Followed on DuskEVM: as a deposit sent from here is.
     await vi.waitFor(() =>
       expect(mocks.query).toHaveBeenCalledWith(
-        `tx(hash: "${final}") { blockHeight blockTimestamp err }`
-      )
+        `tx(hash: "${final}") { blockHeight blockTimestamp err }`,
+      ),
     );
     await vi.waitFor(() =>
-      expect(getRememberedDepositTransaction(final)?.stage).toBe("failed")
+      expect(getRememberedDepositTransaction(final)?.stage).toBe("failed"),
     );
     expect(mocks.query).not.toHaveBeenCalledWith(
-      `tx(hash: "${failed}") { blockHeight blockTimestamp err }`
+      `tx(hash: "${failed}") { blockHeight blockTimestamp err }`,
     );
   });
 
@@ -847,7 +847,7 @@ describe("DuskEVM deposit tracking", () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(
-        async () => new Response(JSON.stringify({ items: [] }))
+        async () => new Response(JSON.stringify({ items: [] })),
       );
 
     try {
@@ -864,7 +864,10 @@ describe("DuskEVM deposit tracking", () => {
       const result = await refreshDepositTransaction(duskTransactionHash);
 
       expect(result).toEqual(
-        expect.objectContaining({ l1BlockTimestamp: null, stage: "l1_pending" })
+        expect.objectContaining({
+          l1BlockTimestamp: null,
+          stage: "l1_pending",
+        }),
       );
       expect(fetch).not.toHaveBeenCalled();
     } finally {
@@ -912,10 +915,10 @@ describe("DuskEVM deposit tracking", () => {
         l1TransactionHash: null,
         stage: "l1_pending",
         trackingError: null,
-      })
+      }),
     );
     expect(
-      getRememberedDepositTransaction(duskTransactionHash)?.trackingError
+      getRememberedDepositTransaction(duskTransactionHash)?.trackingError,
     ).toBeNull();
   });
 
@@ -938,7 +941,7 @@ describe("DuskEVM deposit tracking", () => {
         l1TransactionHash: null,
         stage: "l1_pending",
         trackingError: null,
-      })
+      }),
     );
   });
 
@@ -959,7 +962,7 @@ describe("DuskEVM deposit tracking", () => {
         stage: "failed",
         statusMessage: "The Dusk deposit failed: deposit rejected",
         trackingError: null,
-      })
+      }),
     );
   });
 
@@ -979,7 +982,7 @@ describe("DuskEVM deposit tracking", () => {
         failureLayer: null,
         stage: "l1_pending",
         trackingError: null,
-      })
+      }),
     );
   });
 

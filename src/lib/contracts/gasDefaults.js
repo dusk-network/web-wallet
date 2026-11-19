@@ -50,13 +50,13 @@ const entries = Object.values(GAS_DEFAULTS);
 /** The lowest minimum of all operations. */
 export const LOWEST_GAS_LIMIT_MINIMUM = entries.reduce(
   (lowest, { minimum }) => (minimum < lowest ? minimum : lowest),
-  entries[0].minimum
+  entries[0].minimum,
 );
 
 /** The highest default of all operations, valid for every one of them. */
 export const HIGHEST_DEFAULT_GAS_LIMIT = entries.reduce(
   (highest, { limit }) => (limit > highest ? limit : highest),
-  entries[0].limit
+  entries[0].limit,
 );
 
 /**
@@ -72,7 +72,7 @@ export const HIGHEST_DEFAULT_GAS_LIMIT = entries.reduce(
 export const getGasSettings = (
   operation,
   { customGasLimit, customGasPrice },
-  nodeGasPrice
+  nodeGasPrice,
 ) => ({
   gasLimit: customGasLimit ?? GAS_DEFAULTS[operation].limit,
   gasPrice: customGasPrice ?? nodeGasPrice,

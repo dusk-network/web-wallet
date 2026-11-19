@@ -53,19 +53,19 @@ describe("describeRow", () => {
       describeRow(row({ counterpartyName: "alice-shop.dusk" }), {
         ...context,
         contactNames,
-      })
+      }),
     ).toMatchObject({
       title: "Alice · alice-shop.dusk",
       titleIsAddress: false,
     });
     expect(describeRow(row({}), { ...context, contactNames }).title).toBe(
-      "Alice"
+      "Alice",
     );
     expect(
       describeRow(row({ direction: "in", from: ACCOUNT, to: undefined }), {
         ...context,
         contactNames,
-      })
+      }),
     ).toMatchObject({ line: "Received", title: "Alice" });
   });
 
@@ -80,32 +80,32 @@ describe("describeRow", () => {
       describeRow(row({ direction: "in", from: ACCOUNT, to: undefined }), {
         ...context,
         walletNames,
-      })
+      }),
     ).toMatchObject({ line: "Received", title: "Wallet 2 · Profile 1" });
     expect(
       describeRow(row({ counterpartyName: "alice-shop.dusk" }), {
         ...context,
         walletNames,
-      }).title
+      }).title,
     ).toBe("alice-shop.dusk");
     expect(
       describeRow(row({}), {
         ...context,
         contactNames: new Map([[ACCOUNT, "Alice"]]),
         walletNames,
-      }).title
+      }).title,
     ).toBe("Alice");
   });
 
   it("shows an amount in the one format, and in full for a hover", () => {
     expect(
-      describeRow(row({ amount: "1234567891234" }), context).amount
+      describeRow(row({ amount: "1234567891234" }), context).amount,
     ).toMatchObject({ exact: "1,234.567891234", text: "1,234.5678" });
   });
 
   it("names a transfer by its counterparty's verified name, or its short address", () => {
     expect(
-      describeRow(row({ counterpartyName: "alice-shop.dusk" }), context)
+      describeRow(row({ counterpartyName: "alice-shop.dusk" }), context),
     ).toMatchObject({
       amount: { exact: "25", muted: false, sign: "−", text: "25" },
       category: "sent",
@@ -123,8 +123,8 @@ describe("describeRow", () => {
     expect(
       describeRow(
         row({ direction: "in", from: ACCOUNT, to: undefined }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({
       amount: { sign: "+" },
       category: "received",
@@ -135,7 +135,7 @@ describe("describeRow", () => {
 
   it("shows a failed transaction moved nothing: no sign, muted, and the fee it cost", () => {
     expect(
-      describeRow(row({ feePaid: "3700000", status: "failed" }), context)
+      describeRow(row({ feePaid: "3700000", status: "failed" }), context),
     ).toMatchObject({
       amount: { muted: true, sign: "" },
       line: "Failed · nothing sent · fee 0.0037 DUSK paid",
@@ -144,10 +144,10 @@ describe("describeRow", () => {
 
     // A fee paid rounds to the nearest of four decimals.
     expect(
-      describeRow(row({ feePaid: "1853542", status: "failed" }), context).line
+      describeRow(row({ feePaid: "1853542", status: "failed" }), context).line,
     ).toBe("Failed · nothing sent · fee 0.0019 DUSK paid");
     expect(
-      describeRow(row({ source: "local", status: "failed" }), context)
+      describeRow(row({ source: "local", status: "failed" }), context),
     ).toMatchObject({
       amount: { muted: true, sign: "", text: "25" },
       line: "Failed · nothing sent · no fee",
@@ -156,15 +156,16 @@ describe("describeRow", () => {
 
   it("shows a status only while a transaction isn't final", () => {
     expect(
-      describeRow(row({ source: "local", status: "submitted" }), context).status
+      describeRow(row({ source: "local", status: "submitted" }), context)
+        .status,
     ).toBe("pending");
     expect(
-      describeRow(row({ source: "local", status: "unknown" }), context).status
+      describeRow(row({ source: "local", status: "unknown" }), context).status,
     ).toBe("unknown");
 
     // An archive entry is final: only its outcome isn't looked up yet.
     expect(
-      describeRow(row({ status: "unknown", success: null }), context).status
+      describeRow(row({ status: "unknown", success: null }), context).status,
     ).toBeNull();
   });
 
@@ -173,7 +174,7 @@ describe("describeRow", () => {
   it("says a send whose answer never came isn't confirmed yet, never Sent", () => {
     const unconfirmed = describeRow(
       row({ direction: "out", source: "local", status: "unknown" }),
-      context
+      context,
     );
 
     expect(unconfirmed).toMatchObject({
@@ -184,8 +185,8 @@ describe("describeRow", () => {
     expect(
       describeRow(
         row({ direction: "out", source: "local", status: "submitted" }),
-        context
-      ).line
+        context,
+      ).line,
     ).toBe("Sent");
   });
 
@@ -196,7 +197,7 @@ describe("describeRow", () => {
       title: "Staked",
     });
     expect(
-      describeRow(row({ direction: "in", kind: "withdraw_reward" }), context)
+      describeRow(row({ direction: "in", kind: "withdraw_reward" }), context),
     ).toMatchObject({ category: "staking", title: "Rewards claimed" });
     expect(describeRow(row({ kind: "shield" }), context)).toMatchObject({
       amount: { sign: "" },
@@ -206,8 +207,8 @@ describe("describeRow", () => {
     expect(
       describeRow(
         row({ contractId: BRIDGE, kind: "contract_call", to: undefined }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({
       category: "bridge",
       line: "Bridge",
@@ -221,8 +222,8 @@ describe("describeRow", () => {
           fnName: "proveWithdrawalTransaction",
           kind: "contract_call",
         }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({ title: "Withdrawal proved" });
     // Paid by the bridge; a gas refund another account's call to it paid
     // here is a transfer from that account.
@@ -235,8 +236,8 @@ describe("describeRow", () => {
           kind: "contract_call",
           to: undefined,
         }),
-        context
-      ).title
+        context,
+      ).title,
     ).toBe("From DuskEVM");
     expect(
       describeRow(
@@ -247,8 +248,8 @@ describe("describeRow", () => {
           kind: "contract_call",
           to: undefined,
         }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({ category: "received", title: "26JfWK…B5NsNi" });
   });
 
@@ -278,8 +279,8 @@ describe("describeRow", () => {
       expect(
         describeRow(
           row({ ...call, registeredName: "alice.dusk" }, named),
-          context
-        )
+          context,
+        ),
       ).toMatchObject({ line: "Dusk Domains", title: "Registered alice.dusk" });
 
       // A reservation: the first of two steps, until a registration after
@@ -295,7 +296,7 @@ describe("describeRow", () => {
       };
 
       expect(describeRow(row(reservation, named), context).title).toBe(
-        "Name reservation (step 1 of 2)"
+        "Name reservation (step 1 of 2)",
       );
 
       const [registered, reserved] = rowsOf(
@@ -310,11 +311,11 @@ describe("describeRow", () => {
             registeredName: "alice.dusk",
           },
         ],
-        named
+        named,
       );
 
       expect(
-        [registered, reserved].map((one) => describeRow(one, context).title)
+        [registered, reserved].map((one) => describeRow(one, context).title),
       ).toStrictEqual(["Registered alice.dusk", "Reserved alice.dusk"]);
 
       // Both ways of changing a name's records read the same, and another
@@ -322,8 +323,8 @@ describe("describeRow", () => {
       expect(
         ["mutate_records", "replace_records", "other"].map(
           (fnName) =>
-            describeRow(row({ ...call, fnName }, named), context).title
-        )
+            describeRow(row({ ...call, fnName }, named), context).title,
+        ),
       ).toStrictEqual([
         "Changed a .dusk name's records",
         "Changed a .dusk name's records",
@@ -333,7 +334,7 @@ describe("describeRow", () => {
       // On Mainnet, the same contract is no one's: any call.
       setNodeNetwork(networks.mainnet);
       expect(describeRow(row(call, named), context).title).toBe(
-        "Called register"
+        "Called register",
       );
     } finally {
       setNodeNetwork(null);
@@ -387,8 +388,8 @@ describe("describeRow", () => {
           kind: "contract_call",
           to: undefined,
         }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({
       amount: { sign: "−", text: "25" },
       counterparty: evm,
@@ -420,16 +421,16 @@ describe("describeRow", () => {
     expect(waiting.note).toBe(`Claim from about ${day}`);
     expect(waiting.shortLine).toBe("Bridge");
     expect(
-      describeRow(proved, { ...context, claims: claims({ exact: true }) }).line
+      describeRow(proved, { ...context, claims: claims({ exact: true }) }).line,
     ).toBe(`Bridge · claim from ${day}`);
     expect(
       describeRow(proved, { ...context, claims: claims({ overdue: true }) })
-        .note
+        .note,
     ).toBe(
-      `Waiting for DuskEVM to settle this proof. Claim from ${day} at the soonest.`
+      `Waiting for DuskEVM to settle this proof. Claim from ${day} at the soonest.`,
     );
     expect(
-      describeRow(proved, { ...context, claims: claims({ ready: true }) })
+      describeRow(proved, { ...context, claims: claims({ ready: true }) }),
     ).toMatchObject({
       line: "Bridge · ready to claim",
       note: "Ready to claim",
@@ -441,7 +442,7 @@ describe("describeRow", () => {
       describeRow(proved, {
         ...context,
         claims: claims({ at: null, reprove: true }),
-      })
+      }),
     ).toMatchObject({
       line: "Bridge · proof rejected · prove it again",
       note: "Proof rejected · prove it again",
@@ -454,10 +455,10 @@ describe("describeRow", () => {
         { ...DEFAULTS, ...prove },
         { ...DEFAULTS, ...finalize },
       ],
-      { network: bridged }
+      { network: bridged },
     );
     const [provedThenClaimed, claim] = [proved.hash, finalize.hash].map(
-      (one) => /** @type {ActivityRow} */ (both.find((r) => r.hash === one))
+      (one) => /** @type {ActivityRow} */ (both.find((r) => r.hash === one)),
     );
 
     for (const [known, claimsRead] of [
@@ -468,7 +469,7 @@ describe("describeRow", () => {
         describeRow(/** @type {ActivityRow} */ (known), {
           ...context,
           claims: /** @type {any} */ (claimsRead),
-        })
+        }),
       ).toMatchObject({
         amount: { muted: false, text: "1,008" },
         line: "Bridge · claimed",
@@ -486,7 +487,7 @@ describe("describeRow", () => {
 
     // A call to the bridge that didn't read as one of its calls reads as before.
     expect(describeRow(row({ ...prove, bridge: null }), context)).toMatchObject(
-      { amount: { text: "0" }, line: "Bridge", withdrawal: null }
+      { amount: { text: "0" }, line: "Bridge", withdrawal: null },
     );
   });
 
@@ -496,7 +497,7 @@ describe("describeRow", () => {
     const call = { contractId: pool, kind: "contract_call", to: undefined };
 
     expect(
-      describeRow(row({ ...call, fnName: "sozu_stake" }), context)
+      describeRow(row({ ...call, fnName: "sozu_stake" }), context),
     ).toMatchObject({
       amount: { sign: "−", text: "25" },
       category: "staking",
@@ -507,8 +508,8 @@ describe("describeRow", () => {
     expect(
       describeRow(
         row({ ...call, direction: "in", fnName: "sozu_unstake" }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({
       amount: { sign: "+" },
       category: "staking",
@@ -517,8 +518,8 @@ describe("describeRow", () => {
     expect(
       describeRow(
         row({ ...call, contractId: "cd".repeat(32), fnName: "sozu_stake" }),
-        context
-      )
+        context,
+      ),
     ).toMatchObject({
       category: "sent",
       icon: "call",
@@ -528,7 +529,7 @@ describe("describeRow", () => {
 
   it("says a shielded row is shielded", () => {
     expect(describeRow(row({ source: "shielded" }), context).privacy).toBe(
-      "Shielded"
+      "Shielded",
     );
   });
 });
@@ -538,7 +539,7 @@ describe("transfers on the routes to and from other chains", () => {
     (route) =>
       route.kind === "migration" && route.payoutAccount
         ? [route.payoutAccount]
-        : []
+        : [],
   );
   const onMainnet = { network: networks.mainnet };
   const withRoutes = { ...context, net: networks.mainnet };
@@ -546,8 +547,8 @@ describe("transfers on the routes to and from other chains", () => {
   it("are known by the routes' accounts, as the network's file calls them", () => {
     expect(
       [BSC_BRIDGE, ETHEREUM_PAYOUTS, ACCOUNT].map((account) =>
-        routeLabel(networks.mainnet, account)
-      )
+        routeLabel(networks.mainnet, account),
+      ),
     ).toStrictEqual(["BSC bridge", "Ethereum migration payouts", null]);
     expect(routeLabel(null, BSC_BRIDGE)).toBeNull();
 
@@ -559,8 +560,8 @@ describe("transfers on the routes to and from other chains", () => {
 
     expect(
       [BSC_BRIDGE, ETHEREUM_PAYOUTS].map((account) =>
-        routeLabel(unnamed, account)
-      )
+        routeLabel(unnamed, account),
+      ),
     ).toStrictEqual(["BNB Smart Chain bridge", "Ethereum bridge"]);
   });
 
@@ -573,7 +574,7 @@ describe("transfers on the routes to and from other chains", () => {
     };
     const out = row(
       { memo: `0x${"11".repeat(20)}`, to: BSC_BRIDGE },
-      onMainnet
+      onMainnet,
     );
 
     expect(describeRow(row(payout, onMainnet), withRoutes)).toMatchObject({
@@ -595,23 +596,23 @@ describe("transfers on the routes to and from other chains", () => {
     });
     expect(
       describeRow(row({ ...payout, from: BSC_BRIDGE }, onMainnet), withRoutes)
-        .title
+        .title,
     ).toBe("From BNB Smart Chain");
     expect(
-      matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" })
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "bridge" }),
     ).toBe(true);
     // What's bridged out was sent too, so Sent never looks as if it's gone.
     expect(
-      matchesFilters(describeRow(out, withRoutes), out, { kind: "sent" })
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "sent" }),
     ).toBe(true);
     expect(
-      matchesFilters(describeRow(out, withRoutes), out, { kind: "received" })
+      matchesFilters(describeRow(out, withRoutes), out, { kind: "received" }),
     ).toBe(false);
 
     // A send to an account that only pays migrations out isn't a transfer
     // out, though it goes by the account's name.
     expect(
-      describeRow(row({ to: ETHEREUM_PAYOUTS }, onMainnet), withRoutes)
+      describeRow(row({ to: ETHEREUM_PAYOUTS }, onMainnet), withRoutes),
     ).toMatchObject({
       category: "sent",
       title: "Ethereum migration payouts",
@@ -629,11 +630,11 @@ describe("matchesFilters", () => {
     expect(matchesFilters(p, sent, { kind: "sent" })).toBe(true);
     expect(matchesFilters(p, sent, { kind: "received" })).toBe(false);
     expect(
-      matchesFilters(describeRow(staked, context), staked, { kind: "staking" })
+      matchesFilters(describeRow(staked, context), staked, { kind: "staking" }),
     ).toBe(true);
     expect(matchesFilters(p, sent, { privacy: "shielded" })).toBe(false);
     expect(matchesFilters(p, sent, { since: Date.UTC(2026, 9, 27) })).toBe(
-      false
+      false,
     );
     expect(matchesFilters(p, sent, { since: Date.UTC(2026, 9, 1) })).toBe(true);
   });
@@ -648,16 +649,16 @@ describe("lastReadText", () => {
 
     try {
       expect(
-        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "nl-NL")
+        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "nl-NL"),
       ).toBe("Last read 10:02.");
       expect(
-        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "en-US")
+        lastReadText(new Date(2026, 10, 17, 10, 2).getTime(), "en-US"),
       ).toBe("Last read 10:02 AM.");
       expect(
-        lastReadText(new Date(2026, 10, 16, 22, 2).getTime(), "nl-NL")
+        lastReadText(new Date(2026, 10, 16, 22, 2).getTime(), "nl-NL"),
       ).toMatch(/^Last read yesterday, 22:02 \S+\.$/);
       expect(
-        lastReadText(new Date(2026, 10, 12, 22, 2).getTime(), "nl-NL")
+        lastReadText(new Date(2026, 10, 12, 22, 2).getTime(), "nl-NL"),
       ).toMatch(/^Last read on 12 Nov, 22:02 \S+\.$/);
       expect(lastReadText(null, "en")).toBe("");
       expect(lastReadText(undefined, "en")).toBe("");
@@ -672,20 +673,20 @@ describe("dayLabel and groupByDay", () => {
 
   it("calls today and yesterday by name, and other days by their date", () => {
     expect(
-      dayLabel(new Date(2026, 9, 26, 9).getTime(), { locale: "en", now })
+      dayLabel(new Date(2026, 9, 26, 9).getTime(), { locale: "en", now }),
     ).toBe("Today");
     expect(
-      dayLabel(new Date(2026, 9, 25, 9).getTime(), { locale: "en", now })
+      dayLabel(new Date(2026, 9, 25, 9).getTime(), { locale: "en", now }),
     ).toBe("Yesterday");
     expect(
-      dayLabel(new Date(2026, 9, 24, 9).getTime(), { locale: "en", now })
+      dayLabel(new Date(2026, 9, 24, 9).getTime(), { locale: "en", now }),
     ).toBe("Sat 24 Oct");
     expect(
       dayLabel(new Date(2026, 9, 26, 9).getTime(), {
         full: true,
         locale: "en",
         now,
-      })
+      }),
     ).toBe("Today · Mon 26 Oct");
   });
 
@@ -694,14 +695,14 @@ describe("dayLabel and groupByDay", () => {
 
     // Not "Today · wo 28 okt".
     expect(dayLabel(at, { full: true, locale: "nl-NL", now: at })).toBe(
-      "Today · Wed 28 Oct"
+      "Today · Wed 28 Oct",
     );
     expect(timeLabel(at, "nl-NL")).toBe("14:05");
     expect(timeLabel(at, "en-US")).toBe("2:05 PM");
     // A 12-hour clock in another language says PM in English.
     expect(timeLabel(at, "ko-KR")).toBe("2:05 PM");
     expect(dayLabel(at, { locale: "ar-EG", now: at + 4 * 86_400_000 })).toBe(
-      "Wed ٢٨ Oct"
+      "Wed ٢٨ Oct",
     );
     expect(fullDateTime(at, "nl-NL")).toMatch(/^Wed 28 Oct 2026, 14:05 \S+$/);
   });
@@ -720,13 +721,13 @@ describe("dayLabel and groupByDay", () => {
         dayLabel(new Date(2026, 2, 29, 12).getTime(), {
           locale: "en",
           now: monday,
-        })
+        }),
       ).toBe("Yesterday");
       expect(
         dayLabel(new Date(2026, 2, 28, 23, 45).getTime(), {
           locale: "en",
           now: monday,
-        })
+        }),
       ).toBe("Sat 28 Mar");
     } finally {
       if (zone === undefined) {

@@ -175,7 +175,7 @@ function submissionIsReflected(action, status) {
   return (
     Boolean(status.proofSubmitter) ||
     !["ready_to_prove", "submitted", "waiting_for_output"].includes(
-      status.stage
+      status.stage,
     )
   );
 }
@@ -241,11 +241,11 @@ async function refreshStatus(remembered, scope) {
   try {
     const loadedStatus = await loadWithdrawalStatus(
       remembered.transactionHash,
-      { proofGame: remembered.proofGame ?? null }
+      { proofGame: remembered.proofGame ?? null },
     );
     const reconciliation = await reconcilePendingSubmission(
       remembered,
-      loadedStatus
+      loadedStatus,
     );
     const patch = {
       ...statusPatch(reconciliation.status),
@@ -263,7 +263,7 @@ async function refreshStatus(remembered, scope) {
     return keepChecked(
       remembered,
       failedCheckPatch(remembered, errorMessage(error)),
-      scope
+      scope,
     );
   }
 }
@@ -293,14 +293,14 @@ const SUBMISSION_FIELDS = [
 function keepChecked(seen, patch, scope) {
   const sent = getRememberedWithdrawalTransaction(
     seen.transactionHash,
-    scope
+    scope,
   )?.pendingTransactionHash;
   const read =
     sent && sent !== seen.pendingTransactionHash
       ? Object.fromEntries(
           Object.entries(patch).filter(
-            ([key]) => !SUBMISSION_FIELDS.includes(key)
-          )
+            ([key]) => !SUBMISSION_FIELDS.includes(key),
+          ),
         )
       : patch;
 
@@ -371,7 +371,7 @@ async function readWithdrawal(transactionHash, scope) {
  */
 export function refreshWithdrawalTransaction(
   transactionHash,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = transactionHash.toLowerCase();
   const key = checkKey(scope, hash);
@@ -392,7 +392,7 @@ export function refreshWithdrawalTransaction(
         scheduleRound();
 
         throw error;
-      }
+      },
     );
     checking.set(key, check);
   }
@@ -412,7 +412,7 @@ export function refreshWithdrawalTransaction(
 export function recordWithdrawalSubmission(
   transactionHash,
   submission,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const updated = updateWithdrawalTransaction(
     transactionHash,
@@ -423,14 +423,14 @@ export function recordWithdrawalSubmission(
       stage: submittedStage(submission.action),
       trackingError: null,
     },
-    scope
+    scope,
   );
 
   if (updated) {
     void trackWithdrawalTransaction(
       updated.transactionHash,
       { wake: true },
-      scope
+      scope,
     );
   }
 
@@ -485,7 +485,7 @@ function nextCheck(hash, item, at) {
   const near = Array.from(trackers)
     .filter(
       ([other, { due }]) =>
-        other !== hash && Math.abs(due - (at + poll)) <= poll / 2
+        other !== hash && Math.abs(due - (at + poll)) <= poll / 2,
     )
     .map(([, { due }]) => due);
 
@@ -536,7 +536,7 @@ function scheduleRound() {
 
   roundTimer = window.setTimeout(
     runRound,
-    Math.min(Math.max(0, first - Date.now()), MAX_ROUND_WAIT_MS)
+    Math.min(Math.max(0, first - Date.now()), MAX_ROUND_WAIT_MS),
   );
 }
 
@@ -564,7 +564,7 @@ function runRound() {
   const now = Date.now();
   const dueNow = Array.from(trackers).filter(
     ([hash, { due, scope }]) =>
-      due <= now && !checking.has(checkKey(scope, hash))
+      due <= now && !checking.has(checkKey(scope, hash)),
   );
 
   void withOneLatestBlock(() =>
@@ -575,9 +575,9 @@ function runRound() {
             trackers.delete(hash);
             tracker.reject(error);
           }
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
   scheduleRound();
 }
@@ -614,7 +614,7 @@ function newTracker(remembered, scope) {
 export function trackWithdrawalTransaction(
   transactionHash,
   options = {},
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = transactionHash.toLowerCase();
 
@@ -667,7 +667,7 @@ export function resumeWithdrawalTracking(account) {
     .filter(
       (item) =>
         !isSettled(item) &&
-        (item.account === null || item.account === normalizedAccount)
+        (item.account === null || item.account === normalizedAccount),
     )
     .slice(0, MAX_ACTIVITY_ITEMS);
 

@@ -54,7 +54,7 @@
     tick().then(() =>
       /** @type {HTMLElement | null} */ (
         dialog?.querySelector(".leave-payment__stay")
-      )?.focus()
+      )?.focus(),
     );
 
     return () => {

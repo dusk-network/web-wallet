@@ -191,7 +191,7 @@ export class ActivitySession {
     this.key = `${options.nodeUrl}\n${options.account}`;
     this.ownerKey = activityOwnerKey(
       activityNetworkKey(options.nodeUrl),
-      options.account
+      options.account,
     );
 
     // The store's epoch now; undefined when it can't be read.
@@ -208,8 +208,8 @@ export class ActivitySession {
             (c) =>
               typeof c === "string" &&
               c !== this.options.account &&
-              ProfileGenerator.typeOf(c) === "account"
-          )
+              ProfileGenerator.typeOf(c) === "account",
+          ),
       ),
     ].map(String);
   }
@@ -225,7 +225,7 @@ export class ActivitySession {
     const now = Date.now();
     const kept = await getCounterpartyNames(
       this.options.namesNetwork,
-      accounts
+      accounts,
     );
 
     for (const [account, { at, name }] of kept) {
@@ -267,7 +267,7 @@ export class ActivitySession {
 
     if (epoch !== undefined) {
       await putCounterpartyNames(namesNetwork, names, { epoch }).catch(
-        () => {}
+        () => {},
       );
     }
 
@@ -375,7 +375,7 @@ export class ActivitySession {
     const kept = new Map(settled.map((record) => [record.hash, record]));
 
     this.#local = this.#local.flatMap((r) =>
-      drop.includes(r.hash) ? [] : [kept.get(r.hash) ?? r]
+      drop.includes(r.hash) ? [] : [kept.get(r.hash) ?? r],
     );
   }
 
@@ -390,7 +390,7 @@ export class ActivitySession {
       get(awaitedArrivals),
       [this.options.account],
       this.#entries,
-      now
+      now,
     );
   }
 
@@ -412,7 +412,7 @@ export class ActivitySession {
   #newestHeight() {
     return this.#entries.reduce(
       (newest, { blockHeight }) => Math.max(newest, Number(blockHeight) || 0),
-      0
+      0,
     );
   }
 
@@ -546,10 +546,11 @@ export class ActivitySession {
     } else if (this.#waitsForArchive()) {
       this.refreshSoon(
         this.#local.some(
-          (r) => !r.settled && Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS
+          (r) =>
+            !r.settled && Date.now() - r.submittedAt < LOOKED_FOR_SOONER_MS,
         ) || this.#arrivalsAwaited().length
           ? SOON_AFTER_TX_MS
-          : AFTER_TX_MS
+          : AFTER_TX_MS,
       );
     }
   }
@@ -727,7 +728,7 @@ export class ActivitySession {
       () => {
         this.#missing = { at: Date.now(), state: "failed" };
         this.#emit();
-      }
+      },
     );
   }
 
@@ -837,7 +838,7 @@ export class ActivitySession {
         status: handing ? NOT_SHOWN : "submitted",
         submittedAt: Date.now(),
       },
-      epoch
+      epoch,
     );
     await this.#reload();
     this.#emit();

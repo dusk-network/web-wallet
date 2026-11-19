@@ -83,11 +83,11 @@ describe("WalletConnectionGate", () => {
     await act(() => setFailed(true));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "Couldn't load the EVM wallet connection. Check your connection."
+      "Couldn't load the EVM wallet connection. Check your connection.",
     );
 
     await fireEvent.click(
-      /** @type {HTMLElement} */ (getByRole("button", { name: "Try again" }))
+      /** @type {HTMLElement} */ (getByRole("button", { name: "Try again" })),
     );
 
     expect(startWalletConnection).toHaveBeenCalledOnce();
@@ -105,7 +105,7 @@ describe("WalletConnectionGate", () => {
     await act(() => setBlocked(true));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "Reset is still clearing the last EVM wallet connection. Reload the page to connect a wallet again."
+      "Reset is still clearing the last EVM wallet connection. Reload the page to connect a wallet again.",
     );
     expect(getByRole("button", { name: "Reload page" })).toBeInTheDocument();
     expect(queryByText("The Bridge page")).toBeNull();

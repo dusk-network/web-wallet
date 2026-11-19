@@ -55,7 +55,7 @@ export default function getPrimaryName(
   account,
   network,
   nodeUrl,
-  shieldedAddress
+  shieldedAddress,
 ) {
   if (network !== "mainnet" && network !== "testnet") {
     return Promise.resolve("");
@@ -85,7 +85,7 @@ export default function getPrimaryName(
 
     // The lens takes the key as plain bytes.
     const primary = await reader.verifyPrimary(
-      Array.from(decodeBase58(account) ?? [])
+      Array.from(decodeBase58(account) ?? []),
     );
     const name = primary?.primary.spelling ?? "";
 

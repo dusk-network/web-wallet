@@ -4,31 +4,31 @@ import isValidEvmAddress from "../isValidEvmAddress";
 describe("isValidEvmAddress", () => {
   it("should return true for valid EVM addresses with 0x prefix", () => {
     expect(
-      isValidEvmAddress("0x1234567890abcdef1234567890abcdef12345678")
+      isValidEvmAddress("0x1234567890abcdef1234567890abcdef12345678"),
     ).toBe(true);
     expect(
-      isValidEvmAddress("0xAbCdEf1234567890AbCdEf1234567890AbCdEf12")
+      isValidEvmAddress("0xAbCdEf1234567890AbCdEf1234567890AbCdEf12"),
     ).toBe(true);
     expect(
-      isValidEvmAddress("0x0000000000000000000000000000000000000000")
+      isValidEvmAddress("0x0000000000000000000000000000000000000000"),
     ).toBe(true);
     expect(
-      isValidEvmAddress("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+      isValidEvmAddress("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"),
     ).toBe(true);
   });
 
   it("should return true for valid EVM addresses without 0x prefix", () => {
     expect(isValidEvmAddress("1234567890abcdef1234567890abcdef12345678")).toBe(
-      true
+      true,
     );
     expect(isValidEvmAddress("AbCdEf1234567890AbCdEf1234567890AbCdEf12")).toBe(
-      true
+      true,
     );
     expect(isValidEvmAddress("0000000000000000000000000000000000000000")).toBe(
-      true
+      true,
     );
     expect(isValidEvmAddress("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")).toBe(
-      true
+      true,
     );
   });
 
@@ -39,21 +39,21 @@ describe("isValidEvmAddress", () => {
 
     // Too long
     expect(
-      isValidEvmAddress("0x1234567890abcdef1234567890abcdef123456789")
+      isValidEvmAddress("0x1234567890abcdef1234567890abcdef123456789"),
     ).toBe(false);
     expect(isValidEvmAddress("1234567890abcdef1234567890abcdef123456789")).toBe(
-      false
+      false,
     );
 
     // Invalid characters
     expect(
-      isValidEvmAddress("0x1234567890abcdef1234567890abcdef1234567g")
+      isValidEvmAddress("0x1234567890abcdef1234567890abcdef1234567g"),
     ).toBe(false);
     expect(
-      isValidEvmAddress("0x1234567890abcdef1234567890abcdef1234567!")
+      isValidEvmAddress("0x1234567890abcdef1234567890abcdef1234567!"),
     ).toBe(false);
     expect(isValidEvmAddress("1234567890abcdef1234567890abcdef1234567z")).toBe(
-      false
+      false,
     );
 
     // Empty or null
@@ -78,15 +78,15 @@ describe("isValidEvmAddress", () => {
 
     // Spaces
     expect(
-      isValidEvmAddress("0x1234567890abcdef1234567890abcdef12345678 ")
+      isValidEvmAddress("0x1234567890abcdef1234567890abcdef12345678 "),
     ).toBe(false);
     expect(
-      isValidEvmAddress(" 0x1234567890abcdef1234567890abcdef12345678")
+      isValidEvmAddress(" 0x1234567890abcdef1234567890abcdef12345678"),
     ).toBe(false);
 
     // Multiple 0x prefixes
     expect(
-      isValidEvmAddress("0x0x1234567890abcdef1234567890abcdef12345678")
+      isValidEvmAddress("0x0x1234567890abcdef1234567890abcdef12345678"),
     ).toBe(false);
   });
 });

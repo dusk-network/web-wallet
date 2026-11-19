@@ -52,8 +52,8 @@ globalThis.fetch = vi.fn((url) => {
           ]),
           {
             headers: { "Content-Type": "application/wasm" },
-          }
-        )
+          },
+        ),
       )
     : Promise.reject(new Error("Fetch calls should be mocked"));
 });

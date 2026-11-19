@@ -186,7 +186,7 @@ function keptWithdrawals(known, scope) {
  */
 export async function rememberHistoryWithdrawals(
   known,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const remembered = keptWithdrawals(known, scope);
   const now = Date.now();
@@ -194,7 +194,7 @@ export async function rememberHistoryWithdrawals(
     ({ hash, nonce }) =>
       !remembered.has(hash) &&
       now - (lookedUp.get(lookupOf(scope, nonce)) ?? -Infinity) >=
-        LOOKUP_AGAIN_MS
+        LOOKUP_AGAIN_MS,
   );
 
   if (!missing.length) {
@@ -246,7 +246,7 @@ function keepFound(missing, found, scope) {
             createdAt: item.createdAt,
             recipient,
           },
-          scope
+          scope,
         )
       : null;
 
@@ -255,7 +255,7 @@ function keepFound(missing, found, scope) {
           updateWithdrawalTransaction(
             kept.transactionHash,
             { withdrawalHash: hash },
-            scope
+            scope,
           ) ?? kept,
         ]
       : [];

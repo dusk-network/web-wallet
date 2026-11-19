@@ -109,7 +109,7 @@
       <p class="explainer-card__text">
         It couldn't be read just now. This may be out of date. {lastReadText(
           balanceReadAt,
-          locale
+          locale,
         )}
       </p>
     {/if}
@@ -132,7 +132,7 @@
       <p class="explainer-card__text">
         It couldn't be read just now. This may be out of date. {lastReadText(
           balanceReadAt,
-          locale
+          locale,
         )}
       </p>
     {/if}
@@ -206,7 +206,7 @@
           <p class="explainer-card__text">
             Your stake couldn't be read just now. This may be out of date. {lastReadText(
               stakeReadAt,
-              locale
+              locale,
             )}
           </p>
         {/if}

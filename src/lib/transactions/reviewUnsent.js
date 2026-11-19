@@ -16,7 +16,7 @@ import { sendUnsentAgain } from "./unsentSends";
 export default async function reviewUnsent(send) {
   const { currentProfile, profiles } = get(walletStore);
   const profile = profiles.find(
-    (each) => String(each.account) === send.account
+    (each) => String(each.account) === send.account,
   );
 
   if (!profile) {

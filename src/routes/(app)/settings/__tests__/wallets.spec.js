@@ -55,18 +55,18 @@ describe("Settings, with more than one wallet", () => {
     const { getByRole, getByText } = render(Settings);
 
     expect(
-      getByText("Locks every wallet after this long without use.")
+      getByText("Locks every wallet after this long without use."),
     ).toBeInTheDocument();
     expect(
-      getByRole("heading", { name: "Reset all wallets" })
+      getByRole("heading", { name: "Reset all wallets" }),
     ).toBeInTheDocument();
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
-      )
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+      ),
     ).toBeInTheDocument();
     expect(
-      getByRole("button", { name: "Reset all wallets" })
+      getByRole("button", { name: "Reset all wallets" }),
     ).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Lock" }));
@@ -90,17 +90,17 @@ describe("Settings, with more than one wallet", () => {
 
     await vi.waitFor(() =>
       expect(
-        getByRole("heading", { name: "Reset all wallets" })
-      ).toBeInTheDocument()
+        getByRole("heading", { name: "Reset all wallets" }),
+      ).toBeInTheDocument(),
     );
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
-      )
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+      ),
     ).toBeInTheDocument();
     expect(getByRole("button", { name: "Lock" })).toBeInTheDocument();
     expect(
-      getByText("Locks every wallet after this long without use.")
+      getByText("Locks every wallet after this long without use."),
     ).toBeInTheDocument();
   });
 

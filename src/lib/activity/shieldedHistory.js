@@ -111,7 +111,7 @@ const noteTree = (network) => ({
  */
 async function noteValue(profile, { leaf, nullifier }) {
   const keeper = new Bookkeeper(
-    /** @type {any} */ ({ address: async () => new Map([[nullifier, leaf]]) })
+    /** @type {any} */ ({ address: async () => new Map([[nullifier, leaf]]) }),
   );
   const balance = /** @type {AddressBalance} */ (
     await keeper.balance(profile.address)
@@ -186,7 +186,7 @@ async function readShieldedHistory(options, key) {
         putShieldedHistoryRecord(
           key,
           { ...record, entries: record.entries.map(rowOf) },
-          epoch
+          epoch,
         ).catch(unlessReset),
       // In one transaction: two tabs reading this history at once ask
       // among the same decoys.
@@ -198,7 +198,7 @@ async function readShieldedHistory(options, key) {
 
             return { ...next, entries: next.entries.map(rowOf) };
           },
-          epoch
+          epoch,
         ).then(recordOf, unlessReset),
     },
     synced,

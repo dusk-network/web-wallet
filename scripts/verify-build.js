@@ -75,7 +75,7 @@ export const settingProblem = (key, value) =>
 export const readManifest = (bytes) => {
   if (!bytes) {
     throw new Error(
-      `serves no ${MANIFEST}: it was built before builds were reproducible, and can't be rebuilt to the same files`
+      `serves no ${MANIFEST}: it was built before builds were reproducible, and can't be rebuilt to the same files`,
     );
   }
 
@@ -109,12 +109,12 @@ export const readManifest = (bytes) => {
     !isObject(settings) && "no settings",
     !isObject(files) && "no files",
     ...Object.entries(isObject(settings) ? settings : {}).map(([key, value]) =>
-      settingProblem(key, value)
+      settingProblem(key, value),
     ),
     ...Object.entries(isObject(files) ? files : {}).map(
       ([path, hash]) =>
         !(isBuildPath(path) && matches(hash, /^[0-9a-f]{64}$/)) &&
-        "a file it names oddly"
+        "a file it names oddly",
     ),
   ].find(Boolean);
 
@@ -155,7 +155,7 @@ export const compareSite = async (site, rebuilt, listed, get) => {
   for (const path of new Set([...rebuilt.keys(), ...listed.keys()])) {
     const file = new URL(
       path.split("/").map(encodeURIComponent).join("/"),
-      site
+      site,
     ).href;
 
     if (/(^|\/)index\.html$/.test(path)) {
@@ -164,7 +164,7 @@ export const compareSite = async (site, rebuilt, listed, get) => {
       addresses.push(
         [file, path, page],
         [page, path],
-        [page.slice(0, -1), path, page]
+        [page.slice(0, -1), path, page],
       );
     } else {
       addresses.push([file, path]);
@@ -185,7 +185,7 @@ export const compareSite = async (site, rebuilt, listed, get) => {
             served,
           });
         }
-      })
+      }),
     );
   }
 
@@ -319,13 +319,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const keep = args.includes("--keep");
   const attested = args.includes("--attested");
   const [address, ...rest] = args.filter(
-    (arg) => arg !== "--keep" && arg !== "--attested"
+    (arg) => arg !== "--keep" && arg !== "--attested",
   );
   const site = URL.parse(address?.endsWith("/") ? address : `${address}/`);
 
   if (!["http:", "https:"].includes(site?.protocol) || rest.length) {
     console.error(
-      "Usage: node scripts/verify-build.js <site> [--attested] [--keep]"
+      "Usage: node scripts/verify-build.js <site> [--attested] [--keep]",
     );
     process.exit(2);
   }
@@ -350,14 +350,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     if (!ref) {
       console.error(
-        `${REPOSITORY}'s Deploy workflow doesn't deploy ${site.href}: no attestation of it can be checked.`
+        `${REPOSITORY}'s Deploy workflow doesn't deploy ${site.href}: no attestation of it can be checked.`,
       );
       process.exit(2);
     }
 
     const file = join(
       mkdtempSync(join(tmpdir(), "web-wallet-attested-")),
-      MANIFEST
+      MANIFEST,
     );
 
     writeFileSync(file, served);
@@ -369,19 +369,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } catch (error) {
       process.stderr.write(error.stderr ?? `${error.message}\n`);
       console.error(
-        `${site.href}${MANIFEST} has no attestation of ${REPOSITORY}'s Deploy workflow for ${manifest.commit} from ${ref}.`
+        `${site.href}${MANIFEST} has no attestation of ${REPOSITORY}'s Deploy workflow for ${manifest.commit} from ${ref}.`,
       );
       process.exit(1);
     }
 
     console.log(
-      `GitHub attests ${REPOSITORY}'s Deploy workflow built ${site.href}${MANIFEST} from ${manifest.commit}, on ${ref}.`
+      `GitHub attests ${REPOSITORY}'s Deploy workflow built ${site.href}${MANIFEST} from ${manifest.commit}, on ${ref}.`,
     );
   }
 
   // The settings the site should be built with, where they're kept here.
   const listed = JSON.parse(
-    readFileSync(new URL("../deployments.json", import.meta.url), "utf8")
+    readFileSync(new URL("../deployments.json", import.meta.url), "utf8"),
   )[site.href];
   const differ = listed ? settingsDiffer(listed, manifest.settings) : [];
 
@@ -389,20 +389,20 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const [here, there] = [listed[key], manifest.settings.get(key)];
 
     console.log(
-      `  ${key}: ${there ?? "none"} on the site, ${here ?? "none"} listed`
+      `  ${key}: ${there ?? "none"} on the site, ${here ?? "none"} listed`,
     );
   }
 
   if (differ.length) {
     console.log(
-      `${site.href} isn't built with its settings in deployments.json.`
+      `${site.href} isn't built with its settings in deployments.json.`,
     );
     process.exit(1);
   }
 
   if (!listed) {
     console.warn(
-      `deployments.json doesn't list ${site.href}: its settings are its own.`
+      `deployments.json doesn't list ${site.href}: its settings are its own.`,
     );
     for (const [key, value] of manifest.settings)
       console.warn(`  ${key}=${value}`);
@@ -410,7 +410,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   if (manifest.node && manifest.node !== process.version) {
     console.warn(
-      `The site was built with Node ${manifest.node}, not ${process.version}.`
+      `The site was built with Node ${manifest.node}, not ${process.version}.`,
     );
   }
 
@@ -433,7 +433,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     !has("tag", "--contains", manifest.commit)
   ) {
     console.error(
-      `${manifest.commit} is on no branch or tag here: not building it.`
+      `${manifest.commit} is on no branch or tag here: not building it.`,
     );
     process.exit(2);
   }
@@ -454,14 +454,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     // At least the npm the commit asks for, which Node's own may not be.
     const { engines } = JSON.parse(
-      readFileSync(join(dir, "package.json"), "utf8")
+      readFileSync(join(dir, "package.json"), "utf8"),
     );
     const floor = engines?.npm?.match(/^>=\s*(\d+\.\d+\.\d+)$/)?.[1];
     // The site's settings, and none of this shell's own.
     const env = Object.fromEntries(
       Object.entries(process.env).filter(
-        ([key]) => !/^(VITE_|NODE_ENV$|NODE_OPTIONS$)/.test(key)
-      )
+        ([key]) => !/^(VITE_|NODE_ENV$|NODE_OPTIONS$)/.test(key),
+      ),
     );
     const npm = (...npmArgs) => {
       try {
@@ -485,7 +485,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       site,
       hashFiles(join(dir, "build")),
       manifest.files,
-      (at, to) => fetchFrom(at, { to }).catch(() => null)
+      (at, to) => fetchFrom(at, { to }).catch(() => null),
     );
 
     const short = (hash) =>
@@ -493,14 +493,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     for (const { address, inManifest, rebuild, served } of result.differences) {
       console.log(
-        `  ${new URL(address).pathname}: rebuild ${short(rebuild)}, manifest ${short(inManifest)}, site ${short(served)}`
+        `  ${new URL(address).pathname}: rebuild ${short(rebuild)}, manifest ${short(inManifest)}, site ${short(served)}`,
       );
     }
 
     console.log(
       result.differences.length
         ? `${result.differences.length} of ${result.checked} addresses differ.`
-        : `All ${result.checked} addresses match: ${site.href} serves what ${manifest.commit} builds${listed ? " with its settings in deployments.json" : ""}, as its manifest says.`
+        : `All ${result.checked} addresses match: ${site.href} serves what ${manifest.commit} builds${listed ? " with its settings in deployments.json" : ""}, as its manifest says.`,
     );
   } finally {
     if (keep) {

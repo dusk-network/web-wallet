@@ -25,6 +25,6 @@ export default function onAPhone({ pen = false } = {}) {
           /** @type {unknown} */ (
             new MediaQueryList(query, matching.includes(query))
           )
-        )
+        ),
     );
 }

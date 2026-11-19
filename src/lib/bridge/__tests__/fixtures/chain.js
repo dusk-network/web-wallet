@@ -68,8 +68,8 @@ export function fakeChain(chain) {
           log.block <= BigInt(toBlock) &&
           topics.every(
             (/** @type {string | null} */ topic, /** @type {number} */ i) =>
-              topic === null || topic === log.topics[i]
-          )
+              topic === null || topic === log.topics[i],
+          ),
       )
       .map((log) => ({
         address: log.address,
@@ -95,7 +95,7 @@ export function fakeChain(chain) {
       asked.push({ method, params });
 
       return new Response(
-        JSON.stringify({ id, jsonrpc: "2.0", result: answer(method, params) })
+        JSON.stringify({ id, jsonrpc: "2.0", result: answer(method, params) }),
       );
     },
 

@@ -21,7 +21,7 @@ describe("contactsVault", () => {
     expect(key.usages.sort()).toStrictEqual(["decrypt", "encrypt"]);
     await expect(deriveContactsKey(new Uint8Array())).rejects.toThrow();
     await expect(
-      deriveContactsKey(/** @type {any} */ ("seed"))
+      deriveContactsKey(/** @type {any} */ ("seed")),
     ).rejects.toThrow();
   });
 
@@ -29,11 +29,11 @@ describe("contactsVault", () => {
     const record = await sealContacts(
       await deriveContactsKey(SEED),
       "place",
-      "{}"
+      "{}",
     );
 
     await expect(
-      unsealContacts(await deriveContactsKey(SEED), "place", record)
+      unsealContacts(await deriveContactsKey(SEED), "place", record),
     ).resolves.toBe("{}");
   });
 
@@ -58,12 +58,12 @@ describe("contactsVault", () => {
     expect(atob(record.iv)).toHaveLength(12);
     expect(atob(record.data)).not.toContain("Alice");
     await expect(unsealContacts(key, "place-a", record)).resolves.toBe(
-      '{"a":"Alice"}'
+      '{"a":"Alice"}',
     );
 
     // Another key, another place, or changed data: it doesn't open.
     await expect(
-      unsealContacts(await deriveContactsKey(OTHER_SEED), "place-a", record)
+      unsealContacts(await deriveContactsKey(OTHER_SEED), "place-a", record),
     ).rejects.toThrow();
     await expect(unsealContacts(key, "place-b", record)).rejects.toThrow();
 
@@ -74,7 +74,7 @@ describe("contactsVault", () => {
       unsealContacts(key, "place-a", {
         ...record,
         data: btoa(String.fromCharCode(...bytes)),
-      })
+      }),
     ).rejects.toThrow();
   });
 

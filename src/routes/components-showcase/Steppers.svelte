@@ -55,7 +55,7 @@
     const steppersContainer = btn.parentElement?.parentElement;
     const stepperStoreIdx = Array.prototype.indexOf.call(
       steppersContainer?.parentElement?.children,
-      steppersContainer
+      steppersContainer,
     );
     const stepperStore = [stepperA, stepperB, stepperC, stepperD][
       stepperStoreIdx

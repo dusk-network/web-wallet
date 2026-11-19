@@ -53,7 +53,7 @@ const RATE = Uint8Array.of(
   87,
   104,
   9,
-  0
+  0,
 );
 
 /** Sozu's fees on testnet, as its substrate gave them on 27 Oct 2026. */
@@ -102,7 +102,7 @@ function multicallReply(results) {
 /** @param {string} name */
 async function loadDriver(name) {
   const bytes = await readFile(
-    resolve(process.cwd(), "static/drivers", `${name}_data_driver.wasm`)
+    resolve(process.cwd(), "static/drivers", `${name}_data_driver.wasm`),
   );
   const driver = await dataDrivers.load(new Uint8Array(bytes));
 
@@ -126,8 +126,8 @@ describe("the Sozu test vectors both wallets run", () => {
       ? parseFeeRate(
           bytes(
             vectors.fees[/** @type {keyof typeof vectors.fees} */ (name)]
-              .deposit
-          )
+              .deposit,
+          ),
         )
       : null;
 
@@ -146,7 +146,7 @@ describe("the Sozu test vectors both wallets run", () => {
   it("values a stDUSK at each pool's rate, and nothing without one", () => {
     for (const value of vectors.duskPerStDusk) {
       expect(duskPerStDusk(pool(value.pool))).toBe(
-        value.lux === null ? null : BigInt(value.lux)
+        value.lux === null ? null : BigInt(value.lux),
       );
     }
   });
@@ -155,23 +155,23 @@ describe("the Sozu test vectors both wallets run", () => {
     "takes a stake of $amount lux on the $pool pool with $fees fees: fee $fee, worth $worth, $stDusk stDUSK, goes ahead: $ok",
     (stake) => {
       expect(
-        sozuStake(BigInt(stake.amount), pool(stake.pool), deposit(stake.fees))
+        sozuStake(BigInt(stake.amount), pool(stake.pool), deposit(stake.fees)),
       ).toStrictEqual({
         fee: BigInt(stake.fee),
         ok: stake.ok,
         stDusk: BigInt(stake.stDusk),
         worth: BigInt(stake.worth),
       });
-    }
+    },
   );
 
   it.each(vectors.minimums)(
     "gives the least stake that goes ahead on the $pool pool with $fees fees: $least lux",
     (minimum) => {
       expect(leastSozuStake(pool(minimum.pool), deposit(minimum.fees))).toBe(
-        minimum.least === null ? null : BigInt(minimum.least)
+        minimum.least === null ? null : BigInt(minimum.least),
       );
-    }
+    },
   );
 
   it.each(vectors.minimums.filter(({ least }) => least !== null))(
@@ -182,16 +182,16 @@ describe("the Sozu test vectors both wallets run", () => {
 
       expect(sozuStake(least, pool(minimum.pool), rate).ok).toBe(true);
       expect(sozuStake(least - 1n, pool(minimum.pool), rate).ok).toBe(false);
-    }
+    },
   );
 
   it.each(vectors.unstakes)(
     "lets an unstake of $amount lux with $balance lux at Sozu go ahead: $ok",
     (unstake) => {
       expect(
-        sozuUnstakeAllowed(BigInt(unstake.amount), BigInt(unstake.balance))
+        sozuUnstakeAllowed(BigInt(unstake.amount), BigInt(unstake.balance)),
       ).toBe(unstake.ok);
-    }
+    },
   );
 });
 
@@ -238,10 +238,10 @@ describe("Sozu's pool data driver", () => {
     const pool = await loadDriver("sozu_pool");
 
     expect(pool.encodeInputFn("sozu_stake", '"1000000000000"')).toStrictEqual(
-      encodeU64(1_000_000_000_000n)
+      encodeU64(1_000_000_000_000n),
     );
     expect(pool.encodeInputFn("balance_of", JSON.stringify(ACCOUNT))).toEqual(
-      expect.any(Uint8Array)
+      expect.any(Uint8Array),
     );
   });
 });
@@ -286,7 +286,7 @@ describe("readSozuStatus", () => {
         : slot + 32 + view.getInt32(slot + 36, true);
       const length = inline ? u8[slot + 39] : view.getUint32(slot + 32, true);
       const contract = Array.from(u8.subarray(slot, slot + 4), (b) =>
-        b.toString(16).padStart(2, "0")
+        b.toString(16).padStart(2, "0"),
       ).join("");
 
       return `${contract}.${new TextDecoder().decode(u8.subarray(name, name + length))}`;
@@ -344,7 +344,7 @@ describe("readSozuStatus", () => {
         asked.push(String(url));
 
         return new Response(new Uint8Array(), { status: 500 });
-      })
+      }),
     );
 
     try {
@@ -353,7 +353,7 @@ describe("readSozuStatus", () => {
 
       expect(asked.length).toBeGreaterThan(1);
       expect(asked.filter((url) => url.endsWith("/aggregate"))).toStrictEqual(
-        []
+        [],
       );
 
       asked.length = 0;
@@ -361,7 +361,7 @@ describe("readSozuStatus", () => {
       await read("https://testnet.example");
 
       expect(asked[0]).toBe(
-        `https://testnet.example/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`
+        `https://testnet.example/on/contracts:${MULTICALL_CONTRACT_ID}/aggregate`,
       );
     } finally {
       setNodeNetwork(null);
@@ -427,7 +427,7 @@ describe("readSozuStatus", () => {
     ]);
     // Both balances are read for the account as the pool's driver wrote it.
     expect(
-      args.filter((arg) => arg.length === ACCOUNT_ARG.length)
+      args.filter((arg) => arg.length === ACCOUNT_ARG.length),
     ).toHaveLength(2);
   });
 
@@ -447,7 +447,7 @@ describe("readSozuStatus", () => {
                     ? u64(5n)
                     : call.endsWith("is_feature_enabled")
                       ? Uint8Array.of(0)
-                      : TESTNET_FEES.deposit
+                      : TESTNET_FEES.deposit,
               ),
           ]
         : calls.map((call) =>
@@ -457,8 +457,8 @@ describe("readSozuStatus", () => {
                 ? u64(9n)
                 : call.endsWith("is_feature_enabled")
                   ? Uint8Array.of(0)
-                  : TESTNET_FEES.deposit
-          )
+                  : TESTNET_FEES.deposit,
+          ),
     );
 
     const status = await readSozuStatus({
@@ -484,8 +484,8 @@ describe("readSozuStatus", () => {
           ? named(call.startsWith("abababab") ? POOL : POOL)
           : call.endsWith("exchange_rate")
             ? Uint8Array.of(1, 2, 3)
-            : u64(0n)
-      )
+            : u64(0n),
+      ),
     );
 
     await expect(
@@ -498,7 +498,7 @@ describe("readSozuStatus", () => {
         fetch: node.fetch,
         loadDriver: loadPool,
         nodeUrl: "https://three.example",
-      })
+      }),
     ).rejects.toThrow();
   });
 });

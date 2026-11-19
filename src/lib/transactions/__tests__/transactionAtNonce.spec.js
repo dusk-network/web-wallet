@@ -20,13 +20,13 @@ function chainOf(sent) {
   return {
     query: vi.fn(async (/** @type {string} */ gql) => {
       const history = gql.match(
-        /^out: moonlightHistory\(sender: "(\w+)", fromBlock: (\d+), maxCount: 50(?:, pageCount: (\d+))?\) \{ json \}$/
+        /^out: moonlightHistory\(sender: "(\w+)", fromBlock: (\d+), maxCount: 50(?:, pageCount: (\d+))?\) \{ json \}$/,
       );
 
       if (history) {
         const [, sender, from, page = "1"] = history;
         const listed = sent.filter(
-          (tx) => (tx.sender ?? ACCOUNT) === sender && tx.height >= +from
+          (tx) => (tx.sender ?? ACCOUNT) === sender && tx.height >= +from,
         );
 
         return {
@@ -62,8 +62,8 @@ function chainOf(sent) {
                   }
                 : null,
             ];
-          }
-        )
+          },
+        ),
       );
     }),
   };
@@ -79,7 +79,7 @@ describe("transactionAtNonce", () => {
     ]);
 
     await expect(
-      transactionAtNonce(chain, { account: ACCOUNT, from: 90, nonce: "107" })
+      transactionAtNonce(chain, { account: ACCOUNT, from: 90, nonce: "107" }),
     ).resolves.toStrictEqual({ blockHeight: 110, hash: hashOf(3) });
   });
 
@@ -91,10 +91,10 @@ describe("transactionAtNonce", () => {
     ]);
 
     await expect(
-      transactionAtNonce(none, { account: ACCOUNT, from: 90, nonce: "107" })
+      transactionAtNonce(none, { account: ACCOUNT, from: 90, nonce: "107" }),
     ).resolves.toBeNull();
     await expect(
-      transactionAtNonce(later, { account: ACCOUNT, from: 110, nonce: "107" })
+      transactionAtNonce(later, { account: ACCOUNT, from: 110, nonce: "107" }),
     ).resolves.toBeNull();
   });
 
@@ -107,12 +107,12 @@ describe("transactionAtNonce", () => {
 
     chain.query.mockImplementation(async (gql) =>
       /** @type {NonNullable<typeof query>} */ (query)(
-        gql.replace(ACCOUNT, OTHER)
-      )
+        gql.replace(ACCOUNT, OTHER),
+      ),
     );
 
     await expect(
-      transactionAtNonce(chain, { account: ACCOUNT, from: 0, nonce: "107" })
+      transactionAtNonce(chain, { account: ACCOUNT, from: 0, nonce: "107" }),
     ).resolves.toBeNull();
   });
 
@@ -129,8 +129,8 @@ describe("transactionAtNonce", () => {
       transactionAtNonce(
         chain,
         { account: ACCOUNT, from: 1000, nonce: "75" },
-        { known }
-      )
+        { known },
+      ),
     ).resolves.toStrictEqual({ blockHeight: 1074, hash: hashOf(75) });
 
     // Two pages, each listed, then read: 100 nonces kept.
@@ -144,8 +144,8 @@ describe("transactionAtNonce", () => {
       transactionAtNonce(
         chain,
         { account: ACCOUNT, from: 1000, nonce: "75" },
-        { known }
-      )
+        { known },
+      ),
     ).resolves.toStrictEqual({ blockHeight: 1074, hash: hashOf(75) });
     expect(chain.query).toHaveBeenCalledTimes(2);
 
@@ -156,8 +156,8 @@ describe("transactionAtNonce", () => {
       transactionAtNonce(
         chain,
         { account: ACCOUNT, from: 1010, nonce: "3" },
-        { known }
-      )
+        { known },
+      ),
     ).resolves.toBeNull();
     expect(chain.query).toHaveBeenCalledTimes(1);
   });
@@ -166,7 +166,7 @@ describe("transactionAtNonce", () => {
     const chain = chainOf([]);
 
     await expect(
-      transactionAtNonce(chain, { account: ACCOUNT, from: 0, nonce: "" })
+      transactionAtNonce(chain, { account: ACCOUNT, from: 0, nonce: "" }),
     ).resolves.toBeNull();
     expect(chain.query).not.toHaveBeenCalled();
   });

@@ -43,7 +43,7 @@ function nonceOf(json, account) {
 export default async function transactionAtNonce(
   network,
   { account, from, nonce },
-  { known = new Map(), signal } = {}
+  { known = new Map(), signal } = {},
 ) {
   if (!/^\d+$/.test(nonce)) {
     return null;
@@ -55,7 +55,7 @@ export default async function transactionAtNonce(
     const { out } =
       (await network.query(
         `out: moonlightHistory(sender: ${JSON.stringify(account)}, fromBlock: ${from}, maxCount: ${PAGE}${page > 1 ? `, pageCount: ${page}` : ""}) { json }`,
-        { signal }
+        { signal },
       )) ?? {};
     /** @type {Array<{ block_height?: unknown, origin?: unknown }>} */
     const listed = Array.isArray(out?.json) ? out.json : [];
@@ -74,7 +74,7 @@ export default async function transactionAtNonce(
           unread
             .map(({ hash }, i) => `t${i}: tx(hash: "${hash}") { tx { json } }`)
             .join(" "),
-          { signal }
+          { signal },
         )) ?? {};
 
       unread.forEach(({ hash }, i) => {

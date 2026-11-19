@@ -24,8 +24,8 @@ describe("Forced logout page", () => {
     expect(getByText(why)).toBeInTheDocument();
     expect(
       getByText(
-        "If your wallet is no longer here, restore it with its recovery phrase. It then syncs again in full."
-      )
+        "If your wallet is no longer here, restore it with its recovery phrase. It then syncs again in full.",
+      ),
     ).toBeInTheDocument();
   });
 });

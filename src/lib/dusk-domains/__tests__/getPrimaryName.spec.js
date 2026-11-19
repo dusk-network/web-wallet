@@ -50,7 +50,7 @@ describe("getPrimaryName", () => {
     verifyPrimary: vi
       .fn()
       .mockResolvedValue(
-        name ? { height: 1n, primary: { spelling: name } } : null
+        name ? { height: 1n, primary: { spelling: name } } : null,
       ),
   });
 
@@ -75,7 +75,7 @@ describe("getPrimaryName", () => {
     createLensReader.mockResolvedValue(reader);
 
     await expect(getPrimaryName(account, "testnet", nodeUrl)).resolves.toBe(
-      "alice.dusk"
+      "alice.dusk",
     );
     expect(reader.verifyPrimary).toHaveBeenCalledExactlyOnceWith(accountBytes);
     expect(Array.isArray(reader.verifyPrimary.mock.calls[0][0])).toBe(true);
@@ -91,7 +91,7 @@ describe("getPrimaryName", () => {
     for (const network of ["devnet", "localnet", "unknown"]) {
       await expect(getPrimaryName(account, network, nodeUrl)).resolves.toBe("");
       await expect(
-        getPrimaryName(account, network, nodeUrl, shieldedAddress)
+        getPrimaryName(account, network, nodeUrl, shieldedAddress),
       ).resolves.toBe("");
     }
 
@@ -152,20 +152,20 @@ describe("getPrimaryName", () => {
     const reader = readerWith("alice.dusk");
 
     reader.verifyPrimary.mockRejectedValueOnce(
-      new Error("The lens reader took over 15000 ms")
+      new Error("The lens reader took over 15000 ms"),
     );
     createLensReader
       .mockRejectedValueOnce(new Error("The lens driver did not load"))
       .mockResolvedValue(reader);
 
     await expect(getPrimaryName(account, "testnet", nodeUrl)).rejects.toThrow(
-      "The lens driver did not load"
+      "The lens driver did not load",
     );
     await expect(getPrimaryName(account, "testnet", nodeUrl)).rejects.toThrow(
-      "The lens reader took over 15000 ms"
+      "The lens reader took over 15000 ms",
     );
     await expect(getPrimaryName(account, "testnet", nodeUrl)).resolves.toBe(
-      "alice.dusk"
+      "alice.dusk",
     );
     expect(reader.verifyPrimary).toHaveBeenCalledTimes(2);
   });
@@ -183,10 +183,10 @@ describe("getPrimaryName", () => {
       createLensReader.mockResolvedValue(reader);
 
       await expect(
-        getPrimaryName(account, "testnet", nodeUrl, shieldedAddress)
+        getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
       ).resolves.toBe(expected);
       await expect(getPrimaryName(account, "testnet", nodeUrl)).resolves.toBe(
-        "alice.dusk"
+        "alice.dusk",
       );
       expect(reader.resolve).toHaveBeenCalledExactlyOnceWith("alice.dusk", [
         "moonlight_address",
@@ -196,7 +196,7 @@ describe("getPrimaryName", () => {
       // The account's own lookup is reused, through the one reader.
       expect(reader.verifyPrimary).toHaveBeenCalledTimes(1);
       expect(createLensReader).toHaveBeenCalledTimes(1);
-    }
+    },
   );
 
   it("should resolve nothing for the shielded address of an account without a name", async () => {
@@ -205,7 +205,7 @@ describe("getPrimaryName", () => {
     createLensReader.mockResolvedValue(reader);
 
     await expect(
-      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress)
+      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
     ).resolves.toBe("");
     expect(reader.resolve).not.toHaveBeenCalled();
   });
@@ -220,10 +220,10 @@ describe("getPrimaryName", () => {
     createLensReader.mockResolvedValue(reader);
 
     await expect(
-      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress)
+      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
     ).rejects.toThrow("Couldn't look up alice.dusk");
     await expect(
-      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress)
+      getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
     ).resolves.toBe("alice.dusk");
     expect(reader.resolve).toHaveBeenCalledTimes(3);
     expect(reader.verifyPrimary).toHaveBeenCalledTimes(1);

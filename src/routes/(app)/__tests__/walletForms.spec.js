@@ -79,10 +79,13 @@ describe("A wallet form in the app", () => {
           ...readDirectory().wallets,
           [first.id]: { ...readDirectory().wallets[first.id], name: "Old" },
         },
-      })
+      }),
     );
     window.dispatchEvent(
-      new StorageEvent("storage", { key: DIRECTORY, storageArea: localStorage })
+      new StorageEvent("storage", {
+        key: DIRECTORY,
+        storageArea: localStorage,
+      }),
     );
 
     expect(valueOf(getByLabelText("Word 1"))).toBe(C.split(" ")[0]);
@@ -120,7 +123,7 @@ describe("A wallet form in the app", () => {
     /** The form's fields, as they are now. */
     const typed = () =>
       ["To", "Amount", /^Memo/].map((name) =>
-        valueOf(getByRole("textbox", { name }))
+        valueOf(getByRole("textbox", { name })),
       );
 
     await fireEvent.input(getByRole("textbox", { name: "To" }), {
@@ -134,7 +137,7 @@ describe("A wallet form in the app", () => {
     });
 
     await vi.waitFor(() =>
-      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"])
+      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"]),
     );
 
     return { ...view, typed };
@@ -156,7 +159,7 @@ describe("A wallet form in the app", () => {
     await unlockWallets(PASSWORD);
 
     await vi.waitFor(() =>
-      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"])
+      expect(typed()).toStrictEqual([RECIPIENT, "2.5", "Invoice 118"]),
     );
   });
 

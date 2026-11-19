@@ -64,7 +64,7 @@ describe("A send that fails", () => {
   const executeSpy = vi.spyOn(Network.prototype, "execute");
 
   vi.spyOn(ShieldTransfer.prototype, "build").mockImplementation(
-    async () => /** @type {any} */ (built)
+    async () => /** @type {any} */ (built),
   );
 
   beforeAll(async () => {
@@ -110,7 +110,7 @@ describe("A send that fails", () => {
         }
 
         return transaction;
-      }
+      },
     );
 
   /** The result screen of a shield, as the send goes. */
@@ -127,9 +127,9 @@ describe("A send that fails", () => {
     await vi.waitFor(() =>
       expect(
         rendered.container.querySelector(
-          ".dusk-error-alert, .transaction-status"
-        )
-      ).toBeTruthy()
+          ".dusk-error-alert, .transaction-status",
+        ),
+      ).toBeTruthy(),
     );
 
     return { rendered, ...shown(rendered.container) };
@@ -157,7 +157,7 @@ describe("A send that fails", () => {
         .filter((a) => !a.closest(".transaction-status"))
         .map((a) => [a.textContent?.trim(), a.getAttribute("href")]),
       offersRetry: [...container.querySelectorAll("button")].some(
-        (button) => button.textContent?.trim() === "Try again"
+        (button) => button.textContent?.trim() === "Try again",
       ),
       text: container.textContent ?? "",
     };
@@ -230,17 +230,17 @@ describe("A send that fails", () => {
           }
 
           return answered;
-        }
+        },
       );
     const waiting = () => {
       const operation = walletStore.shield(
         1n,
-        new Gas({ limit: 1n, price: 1n })
+        new Gas({ limit: 1n, price: 1n }),
       );
 
       settled = operation.then(
         () => {},
-        () => {}
+        () => {},
       );
 
       return render(TransactionResult, {
@@ -260,13 +260,13 @@ describe("A send that fails", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(before.getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet."
+        "The network isn't answering. Nothing has left your wallet yet.",
       );
 
       await act(() => setNetworkReach("offline"));
 
       expect(before.getByRole("status")).toHaveTextContent(
-        "You're offline. Nothing has left your wallet yet."
+        "You're offline. Nothing has left your wallet yet.",
       );
       cleanup();
       // It's over before the next goes out, in its turn.
@@ -281,8 +281,8 @@ describe("A send that fails", () => {
 
       await vi.waitFor(() =>
         expect(after.getByRole("status")).toHaveTextContent(
-          "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again."
-        )
+          "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again.",
+        ),
       );
     } finally {
       answer();
@@ -304,7 +304,7 @@ describe("A send that fails", () => {
       1n,
       "",
       new Gas({ limit: 1n, price: 1n }),
-      { gate }
+      { gate },
     );
     const rendered = render(TransactionResult, {
       gate,
@@ -320,7 +320,7 @@ describe("A send that fails", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(rendered.getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers."
+        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers.",
       );
       expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
 
@@ -332,10 +332,10 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
           sentence: "Nothing left your wallet.",
-        })
+        }),
       );
       expect(
-        rendered.getByRole("button", { name: "Try again" })
+        rendered.getByRole("button", { name: "Try again" }),
       ).toBeInTheDocument();
 
       // The network answers after all: nothing goes to it.
@@ -358,7 +358,7 @@ describe("A send that fails", () => {
       1n,
       "",
       new Gas({ limit: 1n, price: 1n }),
-      { gate }
+      { gate },
     );
     const rendered = render(TransactionResult, {
       gate,
@@ -404,7 +404,7 @@ describe("A send that fails", () => {
           memo() {
             return this;
           },
-        })
+        }),
     );
 
     // Still offline as the node is asked to check it, then back.
@@ -419,17 +419,17 @@ describe("A send that fails", () => {
 
       const waiting = () => {
         expect(rendered.getByRole("status")).toHaveTextContent(
-          "You're offline. Nothing has left your wallet yet. It goes out once the network answers."
+          "You're offline. Nothing has left your wallet yet. It goes out once the network answers.",
         );
         expect(
-          rendered.getByRole("button", { name: "Cancel" })
+          rendered.getByRole("button", { name: "Cancel" }),
         ).toBeInTheDocument();
         expect(rendered.getByRole("link", { name: "Home" })).toHaveAttribute(
           "href",
-          "/some-base-path/dashboard"
+          "/some-base-path/dashboard",
         );
         expect(rendered.container).not.toHaveTextContent(
-          /not sent|failed|try again/i
+          /not sent|failed|try again/i,
         );
       };
 
@@ -438,7 +438,7 @@ describe("A send that fails", () => {
       // Asked as the browser says it's back, the network doesn't answer yet.
       await backOnline();
       await vi.waitFor(() =>
-        expect(answers.mock.calls.length - askedNetwork).toBe(1)
+        expect(answers.mock.calls.length - askedNetwork).toBe(1),
       );
       waiting();
       expect(executeSpy).not.toHaveBeenCalled();
@@ -459,8 +459,8 @@ describe("A send that fails", () => {
 
       await vi.waitFor(() =>
         expect(
-          rendered.container.querySelector(".transaction-status")
-        ).toBeTruthy()
+          rendered.container.querySelector(".transaction-status"),
+        ).toBeTruthy(),
       );
       expect(executeSpy).toHaveBeenCalledTimes(2);
       expect(update.mock.calls.length - synced).toBe(3);
@@ -492,14 +492,14 @@ describe("A send that fails", () => {
           return isOffline
             ? Promise.reject(new TypeError("Failed to fetch"))
             : treasuryUpdate.apply(this, /** @type {any} */ (args));
-        }
+        },
       );
     const answers = vi
       .spyOn(networkStore, "getCurrentBlockHeight")
       .mockImplementation(() =>
         isOffline
           ? Promise.reject(new TypeError("Failed to fetch"))
-          : Promise.resolve(123n)
+          : Promise.resolve(123n),
       );
     // The public balance's nonce, as the wallet reads it: the treasury's,
     // with the one its last send took.
@@ -508,7 +508,7 @@ describe("A send that fails", () => {
       .mockImplementation(async (identifier) =>
         ProfileGenerator.typeOf(String(identifier)) === "address"
           ? /** @type {any} */ ({ spendable: 0n, value: 0n })
-          : treasury.account(identifier)
+          : treasury.account(identifier),
       );
     /** @type {bigint[]} */
     const nonces = [];
@@ -535,7 +535,7 @@ describe("A send that fails", () => {
         };
 
         return builder;
-      }
+      },
     );
 
     executeUntil("propagate", null);
@@ -548,7 +548,7 @@ describe("A send that fails", () => {
       const sends = gates.map((gate) =>
         walletStore.transfer(to, 1n, "", new Gas({ limit: 1n, price: 1n }), {
           gate,
-        })
+        }),
       );
 
       sends.forEach((send) => send.catch(() => {}));
@@ -556,7 +556,7 @@ describe("A send that fails", () => {
         expect(gates.map((gate) => get(gate.waitsForNetwork))).toEqual([
           true,
           true,
-        ])
+        ]),
       );
 
       // Back: the one moment the network answers ends both waits.
@@ -574,7 +574,7 @@ describe("A send that fails", () => {
       update.mockRestore();
       answers.mockResolvedValue(123n);
       balance.mockResolvedValue(
-        /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n })
+        /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n }),
       );
       build.mockRestore();
     }
@@ -608,22 +608,22 @@ describe("A send that fails", () => {
           }
 
           return treasuryUpdate.apply(this, /** @type {any} */ (args));
-        }
+        },
       );
     const answers = vi
       .spyOn(networkStore, "getCurrentBlockHeight")
       .mockImplementation(() =>
         node.isAnswering
           ? Promise.resolve(123n)
-          : Promise.reject(new TypeError("Failed to fetch"))
+          : Promise.reject(new TypeError("Failed to fetch")),
       );
     const { AccountSyncer } = await import("@dusk/w3sper");
     const balances = vi
       .spyOn(AccountSyncer.prototype, "balances")
       .mockImplementation(async (profiles) =>
         profiles.map(
-          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n })
-        )
+          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n }),
+        ),
       );
     const toBuild = vi.spyOn(Transfer.prototype, "to").mockImplementation(
       () =>
@@ -639,7 +639,7 @@ describe("A send that fails", () => {
           memo() {
             return this;
           },
-        })
+        }),
     );
 
     // Read as the wallet last synced, before the Wi-Fi went.
@@ -651,7 +651,7 @@ describe("A send that fails", () => {
 
     if (how === "offline") {
       await vi.waitFor(() =>
-        expect(get(transfer.gate.waitsForNetwork)).toBe(true)
+        expect(get(transfer.gate.waitsForNetwork)).toBe(true),
       );
     } else {
       await vi.waitFor(() => expect(update).toHaveBeenCalled());
@@ -702,7 +702,7 @@ describe("A send that fails", () => {
         to: 20_001n,
       });
       expect(rendered.getByRole("status")).toHaveTextContent(
-        "Your account sent something else while this waited."
+        "Your account sent something else while this waited.",
       );
       expect(rendered.getByText("Not sent yet")).toBeInTheDocument();
       expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
@@ -714,13 +714,13 @@ describe("A send that fails", () => {
 
       follow.spy?.mockReturnValueOnce(new Promise(() => {}));
       await act(() =>
-        rendered.getByRole("button", { name: "Send it too" }).click()
+        rendered.getByRole("button", { name: "Send it too" }).click(),
       );
 
       await vi.waitFor(() =>
         expect(
-          rendered.container.querySelector(".transaction-status")
-        ).toBeTruthy()
+          rendered.container.querySelector(".transaction-status"),
+        ).toBeTruthy(),
       );
       expect(executeSpy).toHaveBeenCalledOnce();
       expect(get(broadcastsAsked)).toBe(asked + 1);
@@ -740,7 +740,7 @@ describe("A send that fails", () => {
     try {
       await vi.waitFor(() => expect(get(gate.asking)).toBe(true));
       await act(() =>
-        rendered.getByRole("button", { name: "Don't send" }).click()
+        rendered.getByRole("button", { name: "Don't send" }).click(),
       );
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
@@ -748,7 +748,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           heading: "Not sent",
           sentence: "Nothing left your wallet.",
-        })
+        }),
       );
       expect(executeSpy).not.toHaveBeenCalled();
       expect(get(broadcastsAsked)).toBe(asked);
@@ -773,8 +773,8 @@ describe("A send that fails", () => {
       expect(executeSpy).toHaveBeenCalledOnce();
       await vi.waitFor(() =>
         expect(
-          rendered.container.querySelector(".transaction-status")
-        ).toBeTruthy()
+          rendered.container.querySelector(".transaction-status"),
+        ).toBeTruthy(),
       );
     } finally {
       restore();
@@ -809,28 +809,28 @@ describe("A send that fails", () => {
           return node.isAnswering
             ? treasuryUpdate.apply(this, /** @type {any} */ (args))
             : Promise.reject(new TypeError("Failed to fetch"));
-        }
+        },
       );
     const answers = vi
       .spyOn(networkStore, "getCurrentBlockHeight")
       .mockImplementation(() =>
         node.isAnswering
           ? Promise.resolve(123n)
-          : Promise.reject(new TypeError("Failed to fetch"))
+          : Promise.reject(new TypeError("Failed to fetch")),
       );
     const balances = vi
       .spyOn(AccountSyncer.prototype, "balances")
       .mockImplementation(async (profiles) =>
         profiles.map(
-          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n })
-        )
+          () => /** @type {any} */ ({ nonce: node.nonce, value: 10n ** 12n }),
+        ),
       );
     const balance = vi
       .spyOn(Bookkeeper.prototype, "balance")
       .mockImplementation(async (identifier) =>
         ProfileGenerator.typeOf(String(identifier)) === "address"
           ? /** @type {any} */ ({ spendable: 0n, value: 0n })
-          : treasury.account(identifier)
+          : treasury.account(identifier),
       );
     // Which transactions a block has, by their hash.
     const query = vi
@@ -866,7 +866,7 @@ describe("A send that fails", () => {
         };
 
         return builder;
-      }
+      },
     );
 
     // Read as the wallet last synced.
@@ -881,7 +881,7 @@ describe("A send that fails", () => {
         answers.mockResolvedValue(123n);
         balances.mockRestore();
         balance.mockResolvedValue(
-          /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n })
+          /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n }),
         );
         query.mockRestore();
         build.mockRestore();
@@ -1002,7 +1002,7 @@ describe("A send that fails", () => {
           memo() {
             return this;
           },
-        })
+        }),
     );
 
     // The node never answers the first as it's checked.
@@ -1019,7 +1019,7 @@ describe("A send that fails", () => {
 
       // It never reaches the node: the next goes out in its place.
       await expect(
-        walletStore.transfer(to, 1n, "", gas, { gate: sendGate() })
+        walletStore.transfer(to, 1n, "", gas, { gate: sendGate() }),
       ).resolves.toMatchObject({ hash: "ef".repeat(32) });
       expect(get(broadcastsAsked)).toBe(asked + 1);
     } finally {
@@ -1032,7 +1032,7 @@ describe("A send that fails", () => {
     const { setNetworkReach } = await import("$lib/stores/networkReach");
 
     vi.spyOn(WalletTreasury.prototype, "update").mockRejectedValueOnce(
-      new TypeError("Failed to fetch")
+      new TypeError("Failed to fetch"),
     );
     await act(() => setNetworkReach("offline"));
 
@@ -1048,7 +1048,7 @@ describe("A send that fails", () => {
           heading: "Not sent",
           offersRetry: true,
           sentence: "Nothing left your wallet.",
-        })
+        }),
       );
 
       // Back, and the network answers: nothing goes to it.
@@ -1077,7 +1077,7 @@ describe("A send that fails", () => {
       expect(shown(rendered.container)).toMatchObject({
         heading: `Sent at ${timeLabel(at, "en", { seconds: true })}`,
         sentence: "In block 4,321.",
-      })
+      }),
     );
     cleanup();
 
@@ -1099,7 +1099,7 @@ describe("A send that fails", () => {
       expect(shown(second.rendered.container)).toMatchObject({
         heading: "Failed",
         sentence: "It didn't go through. The network fee was charged.",
-      })
+      }),
     );
   });
 
@@ -1107,8 +1107,8 @@ describe("A send that fails", () => {
     executeUntil(
       "propagate",
       new Error(
-        "Tx 4f4f not accepted: this transaction is invalid Value spent larger than account holds"
-      )
+        "Tx 4f4f not accepted: this transaction is invalid Value spent larger than account holds",
+      ),
     );
 
     expect(await shieldResult()).toMatchObject({
@@ -1135,7 +1135,7 @@ describe("A send that fails", () => {
     executeUntil("propagate", null);
     vi.spyOn(
       WalletTreasury.prototype,
-      "updateCachedNonce"
+      "updateCachedNonce",
     ).mockRejectedValueOnce(new Error("The quota has been exceeded."));
 
     expect(await shieldResult()).toMatchObject({
@@ -1174,7 +1174,7 @@ describe("A send that fails", () => {
         offersRetry: false,
         sentence:
           "It isn't in a block yet. See its status in the explorer before you send it again.",
-      })
+      }),
     );
 
     connecting.mockRestore();
@@ -1193,7 +1193,7 @@ describe("A send that fails", () => {
     // Locked, and a wallet opened: none of the one before's sends waits
     // ahead of its own.
     await walletStore.init(
-      new ProfileGenerator(async () => getSeedFromMnemonic(generateMnemonic()))
+      new ProfileGenerator(async () => getSeedFromMnemonic(generateMnemonic())),
     );
     await vi.waitUntil(() => !get(walletStore).syncStatus.isInProgress);
     executeUntil("propagate", null);

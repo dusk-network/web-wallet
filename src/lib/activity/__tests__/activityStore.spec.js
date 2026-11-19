@@ -21,11 +21,11 @@ describe("activityStore", () => {
           hash: "aa".repeat(32),
         }),
       ],
-      () => /** @type {ActivityMeta} */ ({ covered: [[0, 9]] })
+      () => /** @type {ActivityMeta} */ ({ covered: [[0, 9]] }),
     );
     await store.putCounterpartyNames(
       "testnet",
-      new Map([["acct2", "alice.dusk"]])
+      new Map([["acct2", "alice.dusk"]]),
     );
     await store.putNoteHeightPool("testnet", [1, 2], 3);
     await store.putShieldedHistoryRecord("testnet::w::0", {
@@ -44,7 +44,7 @@ describe("activityStore", () => {
     expect(await store.getActivityMeta(owner)).toBeNull();
     expect(await store.listActivityEntries(owner)).toEqual([]);
     expect(await store.getCounterpartyNames("testnet", ["acct2"])).toEqual(
-      new Map()
+      new Map(),
     );
     expect(await store.getNoteHeightPool("testnet")).toBeNull();
     expect(await store.getShieldedHistoryRecord("testnet::w::0")).toBeNull();
@@ -63,13 +63,13 @@ describe("activityStore", () => {
       store.putLocalTransaction(
         owner,
         { hash: "cc".repeat(32), kind: "transfer" },
-        epoch
-      )
+        epoch,
+      ),
     ).rejects.toBeInstanceOf(store.StaleActivityError);
     await expect(
       store.putCounterpartyNames("testnet", new Map([["acct", null]]), {
         epoch,
-      })
+      }),
     ).rejects.toBeInstanceOf(store.StaleActivityError);
     expect(await store.listLocalTransactions(owner)).toEqual([]);
   });
@@ -88,8 +88,8 @@ describe("activityStore", () => {
         ],
         () => {
           throw new Error("Another run overtook this one");
-        }
-      )
+        },
+      ),
     ).rejects.toThrow("Another run overtook this one");
     expect(await store.listActivityEntries(owner)).toEqual([]);
     expect(await store.getActivityMeta(owner)).toBeNull();

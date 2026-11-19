@@ -86,7 +86,7 @@ export function readNativeRewardRate({
           }
 
           return res.json();
-        }
+        },
       ),
       tipHeight(),
     ]).then(([provisioners, height]) => {
@@ -107,7 +107,7 @@ export function readNativeRewardRate({
     // A failed read is tried again the next time; one that worked is kept.
     entry.then(
       () => reads.delete(network),
-      () => reads.delete(network)
+      () => reads.delete(network),
     );
   }
 

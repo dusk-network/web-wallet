@@ -94,7 +94,7 @@
     drafts = Array.from({ length: count }, (_, i) =>
       key !== shownFor || (saving[i] === undefined && drafts[i] === shown[i])
         ? (names[i] ?? "")
-        : (drafts[i] ?? "")
+        : (drafts[i] ?? ""),
     );
     shown = Array.from({ length: count }, (_, i) => names[i] ?? "");
     shownFor = key;
@@ -182,7 +182,7 @@
         error instanceof WalletChangedError
           ? error.message
           : "Couldn't save the name.",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
     } finally {
       // A later name being saved still is.
@@ -212,11 +212,11 @@
       account,
       address: String(
         profiles.find((profile) => String(profile.account) === account)
-          ?.address ?? account
+          ?.address ?? account,
       ),
       duskName,
       name,
-    })
+    }),
   );
   $: follow(walletKey, profiles.length, $openProfileNames);
 
@@ -228,7 +228,7 @@
       profileLabel(profiles, profile, $networkStore.networkName),
     ]
       .filter(Boolean)
-      .join(" · ")
+      .join(" · "),
   );
 </script>
 

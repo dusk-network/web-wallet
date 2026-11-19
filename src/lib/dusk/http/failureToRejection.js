@@ -12,7 +12,7 @@ const failureToRejection = (response) =>
     : Promise.reject(
         new Error(`HTTP Request failed - ${response.statusText}`, {
           cause: response,
-        })
+        }),
       );
 
 export default failureToRejection;

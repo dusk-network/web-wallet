@@ -76,10 +76,10 @@ describe("The wallets' directory", () => {
     // Another tab's change, as the browser tells this one.
     localStorage.setItem(
       KEY,
-      JSON.stringify({ ...readDirectory(), active: "k1" })
+      JSON.stringify({ ...readDirectory(), active: "k1" }),
     );
     window.dispatchEvent(
-      new StorageEvent("storage", { key: KEY, storageArea: localStorage })
+      new StorageEvent("storage", { key: KEY, storageArea: localStorage }),
     );
     expect(get(walletDirectory).active).toBe("k1");
     stop();

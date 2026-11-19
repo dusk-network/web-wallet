@@ -48,7 +48,7 @@ export async function deriveContactsKey(seed) {
     /** @type {Uint8Array<ArrayBuffer>} */ (seed),
     "HKDF",
     false,
-    ["deriveKey"]
+    ["deriveKey"],
   );
 
   return crypto.subtle.deriveKey(
@@ -61,7 +61,7 @@ export async function deriveContactsKey(seed) {
     material,
     { length: 256, name: "AES-GCM" },
     false,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -79,7 +79,7 @@ export async function contactsNamespace(account) {
 
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    utf8(`${CONTACTS_INFO}\n${account}`)
+    utf8(`${CONTACTS_INFO}\n${account}`),
   );
 
   return hex(new Uint8Array(digest));
@@ -98,7 +98,7 @@ export async function sealContacts(key, namespace, text) {
   const data = await crypto.subtle.encrypt(
     { additionalData: additionalData(namespace), iv, name: "AES-GCM" },
     key,
-    utf8(text)
+    utf8(text),
   );
 
   return {
@@ -141,7 +141,7 @@ export async function unsealContacts(key, namespace, record) {
       name: "AES-GCM",
     },
     key,
-    /** @type {Uint8Array<ArrayBuffer>} */ (base64ToBytes(data))
+    /** @type {Uint8Array<ArrayBuffer>} */ (base64ToBytes(data)),
   );
 
   return new TextDecoder().decode(plain);

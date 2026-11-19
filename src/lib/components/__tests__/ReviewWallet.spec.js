@@ -53,7 +53,7 @@ describe("ReviewWallet", () => {
     await renameWallet(id, "Savings");
 
     await vi.waitFor(() =>
-      expect(two.container).toHaveTextContent("From Savings · Profile 1")
+      expect(two.container).toHaveTextContent("From Savings · Profile 1"),
     );
   });
 });

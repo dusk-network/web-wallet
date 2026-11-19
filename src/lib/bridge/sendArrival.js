@@ -104,7 +104,7 @@ export function followSends() {
 
     followTransaction(send.hash, { onBlock: tell, signal }).then(
       (final) => final && tell(final),
-      () => {}
+      () => {},
     );
   };
 

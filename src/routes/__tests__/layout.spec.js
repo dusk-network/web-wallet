@@ -68,7 +68,7 @@ describe("Main layout", async () => {
         logout.mockRestore();
         vi.unstubAllGlobals();
       }
-    }
+    },
   );
 
   it.each(["success", "failure"])(
@@ -99,7 +99,7 @@ describe("Main layout", async () => {
         logout.mockRestore();
         vi.unstubAllGlobals();
       }
-    }
+    },
   );
 
   it.each([
@@ -123,13 +123,13 @@ describe("Main layout", async () => {
             newValue,
             oldValue: '{"userId":"original"}',
             storageArea,
-          })
+          }),
         );
         expect(logout).not.toHaveBeenCalled();
       } finally {
         logout.mockRestore();
       }
-    }
+    },
   );
 
   it("should title the page of a payment request a link opened before a wallet is for the request, also while it connects, and the wallet's own as the wallet's", async () => {
@@ -178,7 +178,7 @@ describe("Main layout", async () => {
     vi.spyOn(document, "hasFocus").mockReturnValue(false);
     transferEnded({ id: "a", title: "2 DUSK arrived on BSC" });
     await vi.waitFor(() =>
-      expect(document.title).toBe(`2 DUSK arrived on BSC · ${own}`)
+      expect(document.title).toBe(`2 DUSK arrived on BSC · ${own}`),
     );
 
     forgetArrivalTitle();
@@ -210,7 +210,7 @@ describe("Main layout", async () => {
       "ServiceWorkerRegistration",
       class {
         async showNotification() {}
-      }
+      },
     );
     Object.defineProperty(navigator, "serviceWorker", {
       configurable: true,
@@ -228,11 +228,11 @@ describe("Main layout", async () => {
             type: "arrival-open",
             url: `${location.origin}/some-base-path/dashboard/bridge/transactions?tx=ab`,
           },
-        })
+        }),
       );
 
       expect(goto).toHaveBeenCalledExactlyOnceWith(
-        "/dashboard/bridge/transactions?tx=ab"
+        "/dashboard/bridge/transactions?tx=ab",
       );
     } finally {
       cleanup();

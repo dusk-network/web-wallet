@@ -151,7 +151,7 @@ function readStoredItems(scope) {
 
   try {
     const parsed = JSON.parse(
-      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]"
+      localStorage.getItem(scope.name(ACTIVITY_STORAGE_KEY)) ?? "[]",
     );
 
     if (!Array.isArray(parsed)) return [];
@@ -190,7 +190,7 @@ const writeRememberedItems = (items, scope) =>
   changeRecords(deposits, scope, () =>
     items
       .toSorted((a, b) => b.createdAt - a.createdAt)
-      .slice(0, MAX_STORED_ITEMS)
+      .slice(0, MAX_STORED_ITEMS),
   );
 
 /** Forgets every deposit kept here, as Reset does. */
@@ -211,7 +211,7 @@ export const hydrateDepositActivity = () => openRecords(deposits);
 export function rememberDepositTransaction(
   transactionHash,
   options = {},
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedDuskTxHash(transactionHash);
 
@@ -259,7 +259,7 @@ export function rememberDepositTransaction(
       item,
       ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
     ],
-    scope
+    scope,
   );
 
   return item;
@@ -277,7 +277,7 @@ function nextProgressedAt(
   patch,
   nextStage,
   nextL1TransactionHash,
-  nextL2TransactionHash
+  nextL2TransactionHash,
 ) {
   const progressed =
     nextStage !== existing.stage ||
@@ -286,7 +286,7 @@ function nextProgressedAt(
 
   return finiteNumber(
     patch.progressedAt,
-    progressed ? Date.now() : existing.progressedAt
+    progressed ? Date.now() : existing.progressedAt,
   );
 }
 
@@ -299,7 +299,7 @@ function nextProgressedAt(
 export function updateDepositTransaction(
   transactionHash,
   patch,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedDuskTxHash(transactionHash);
 
@@ -316,7 +316,7 @@ export function updateDepositTransaction(
       : existing.stage;
   const nextL1TransactionHash = nullableTransactionHashPatch(
     patch.l1TransactionHash,
-    existing.l1TransactionHash
+    existing.l1TransactionHash,
   );
   const nextL2TransactionHash =
     normalizedTxHash(patch.l2TransactionHash) ?? existing.l2TransactionHash;
@@ -335,12 +335,12 @@ export function updateDepositTransaction(
           : existing.failureLayer,
     l1BlockHeight: nullableStringPatch(
       patch.l1BlockHeight,
-      existing.l1BlockHeight
+      existing.l1BlockHeight,
     ),
     l1TransactionHash: nextL1TransactionHash,
     l2BlockNumber: nullableStringPatch(
       patch.l2BlockNumber,
-      existing.l2BlockNumber
+      existing.l2BlockNumber,
     ),
     l2TransactionHash: nextL2TransactionHash,
     progressedAt: nextProgressedAt(
@@ -348,7 +348,7 @@ export function updateDepositTransaction(
       patch,
       nextStage,
       nextL1TransactionHash,
-      nextL2TransactionHash
+      nextL2TransactionHash,
     ),
     stage: nextStage,
     transactionHash: hash,
@@ -359,7 +359,7 @@ export function updateDepositTransaction(
       item,
       ...storedItems.filter((candidate) => candidate.transactionHash !== hash),
     ],
-    scope
+    scope,
   );
 
   return item;
@@ -372,7 +372,7 @@ export function getRememberedDepositActivity(account) {
   return readRememberedItems().filter(
     (item) =>
       item.account === null ||
-      (normalizedAccount !== null && item.account === normalizedAccount)
+      (normalizedAccount !== null && item.account === normalizedAccount),
   );
 }
 
@@ -382,12 +382,12 @@ export function getRememberedDepositActivity(account) {
  */
 export function getRememberedDepositTransaction(
   transactionHash,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = normalizedDuskTxHash(transactionHash);
   return hash
     ? (readRememberedItems(scope).find(
-        (item) => item.transactionHash === hash
+        (item) => item.transactionHash === hash,
       ) ?? null)
     : null;
 }
@@ -405,7 +405,7 @@ export const rememberedDeposits = (scope) => readRememberedItems(scope);
  */
 export function pendingDepositAmountLux(
   account,
-  items = readRememberedItems()
+  items = readRememberedItems(),
 ) {
   const normalizedAccount = normalizedAddress(account);
 

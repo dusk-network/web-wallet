@@ -26,13 +26,13 @@ describe("forgetBridgeRecords", () => {
     localStorage.setItem(RATE, "{}");
 
     expect(localStorage.getItem("dusk-evm:last-withdrawal-tx-hash")).not.toBe(
-      null
+      null,
     );
 
     forgetBridgeRecords();
 
     expect(
-      Object.keys(localStorage).filter((key) => key.startsWith("dusk-evm:"))
+      Object.keys(localStorage).filter((key) => key.startsWith("dusk-evm:")),
     ).toStrictEqual([]);
     expect(get(depositActivityStore)).toStrictEqual([]);
     expect(get(withdrawalActivityStore)).toStrictEqual([]);

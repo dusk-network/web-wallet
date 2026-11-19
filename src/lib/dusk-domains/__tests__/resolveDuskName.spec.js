@@ -73,11 +73,11 @@ describe("resolveDuskName", () => {
     createLensReader.mockResolvedValue(reader);
 
     await expect(
-      resolveDuskName(" Alice.dusk\n", "testnet", nodeUrl)
+      resolveDuskName(" Alice.dusk\n", "testnet", nodeUrl),
     ).resolves.toStrictEqual({ account, address, name: "alice.dusk" });
     expect(reader.resolve).toHaveBeenCalledExactlyOnceWith(
       "alice.dusk",
-      recordKeys
+      recordKeys,
     );
   });
 
@@ -108,18 +108,18 @@ describe("resolveDuskName", () => {
     "should take only the valid addresses of a name with %s",
     async (_, records, addresses) => {
       createLensReader.mockResolvedValue(
-        readerResolving({ ...records, status: "Active" })
+        readerResolving({ ...records, status: "Active" }),
       );
 
       await expect(
-        resolveDuskName("alice.dusk", "testnet", nodeUrl)
+        resolveDuskName("alice.dusk", "testnet", nodeUrl),
       ).resolves.toStrictEqual({ ...addresses, name: "alice.dusk" });
-    }
+    },
   );
 
   it("should create one reader per network, from the pinned release and the wallet's node", async () => {
     createLensReader.mockResolvedValue(
-      readerResolving({ moonlight: account, status: "Active" })
+      readerResolving({ moonlight: account, status: "Active" }),
     );
 
     await resolveDuskName("alice.dusk", "testnet", nodeUrl);
@@ -127,7 +127,7 @@ describe("resolveDuskName", () => {
     await resolveDuskName(
       "alice.dusk",
       "mainnet",
-      "https://nodes.dusk.network"
+      "https://nodes.dusk.network",
     );
 
     expect(createLensReader).toHaveBeenCalledTimes(2);
@@ -150,18 +150,18 @@ describe("resolveDuskName", () => {
       .mockResolvedValue(reader);
 
     await expect(
-      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl)
+      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl),
     ).resolves.toStrictEqual({
       error: "not-registered",
       name: "zz-nobody-123.dusk",
     });
 
     reader.resolve.mockRejectedValueOnce(
-      new Error("The lens reader took over 15000 ms")
+      new Error("The lens reader took over 15000 ms"),
     );
 
     await expect(
-      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl)
+      resolveDuskName("zz-nobody-123.dusk", "testnet", nodeUrl),
     ).resolves.toStrictEqual({
       error: "not-registered",
       name: "zz-nobody-123.dusk",
@@ -182,7 +182,7 @@ describe("resolveDuskName", () => {
       { account, name: "alice.dusk" },
     ]) {
       await expect(
-        resolveDuskName("alice.dusk", "testnet", nodeUrl)
+        resolveDuskName("alice.dusk", "testnet", nodeUrl),
       ).resolves.toStrictEqual(expected);
     }
 
@@ -206,18 +206,18 @@ describe("resolveDuskName", () => {
     createLensReader.mockResolvedValue(readerResolving(result));
 
     await expect(
-      resolveDuskName("alice.dusk", "testnet", nodeUrl)
+      resolveDuskName("alice.dusk", "testnet", nodeUrl),
     ).resolves.toStrictEqual({ error, name: "alice.dusk" });
   });
 
   it("should refuse invalid names and other networks without creating a reader", async () => {
     await expect(
-      resolveDuskName("bad_name.dusk", "testnet", nodeUrl)
+      resolveDuskName("bad_name.dusk", "testnet", nodeUrl),
     ).resolves.toStrictEqual({ error: "invalid", name: "bad_name.dusk" });
 
     for (const network of ["devnet", "localnet", "unknown"]) {
       await expect(
-        resolveDuskName("alice.dusk", network, nodeUrl)
+        resolveDuskName("alice.dusk", network, nodeUrl),
       ).resolves.toStrictEqual({
         error: "unsupported-network",
         name: "alice.dusk",

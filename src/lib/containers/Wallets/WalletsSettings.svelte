@@ -100,7 +100,7 @@
         error instanceof WalletChangedError
           ? error.message
           : "Couldn't save the name.",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
     }
   }

@@ -27,7 +27,7 @@ describe("getAddressInfo", () => {
     it("should refuse what only has an address's length", () => {
       for (const fill of [0x07, 0x63, 0xff, 0x00]) {
         expect(
-          getAddressInfo(encoded(new Array(64).fill(fill)), "", "").isValid
+          getAddressInfo(encoded(new Array(64).fill(fill)), "", "").isValid,
         ).toBe(false);
       }
     });
@@ -40,8 +40,8 @@ describe("getAddressInfo", () => {
           getAddressInfo(
             address.slice(0, at) + other + address.slice(at + 1),
             "",
-            ""
-          ).isValid
+            "",
+          ).isValid,
         ).toBe(false);
       }
     });
@@ -50,16 +50,16 @@ describe("getAddressInfo", () => {
       const neutral = [1, ...new Array(31).fill(0)];
 
       expect(
-        getAddressInfo(encoded([...neutral, ...neutral]), "", "").isValid
+        getAddressInfo(encoded([...neutral, ...neutral]), "", "").isValid,
       ).toBe(false);
 
       const [, ...second] = Array.from(
-        /** @type {Uint8Array} */ (decodeBase58(address))
+        /** @type {Uint8Array} */ (decodeBase58(address)),
       );
 
       expect(
         getAddressInfo(encoded([...neutral, ...second.slice(31)]), "", "")
-          .isValid
+          .isValid,
       ).toBe(false);
     });
   });

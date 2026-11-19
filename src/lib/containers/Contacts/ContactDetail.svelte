@@ -143,7 +143,7 @@
     toast(
       "success",
       `${contactNameText(contact.name)} now has the new address`,
-      mdiCheckCircleOutline
+      mdiCheckCircleOutline,
     );
   }
 
@@ -216,7 +216,7 @@
     />
     <AnchorButton
       href={addBasePath(
-        `/dashboard/send?to=${encodeURIComponent(contact.address)}`
+        `/dashboard/send?to=${encodeURIComponent(contact.address)}`,
       )}
       icon={{ path: mdiSendOutline }}
       text="Send"
@@ -238,7 +238,7 @@
           <span
             >{contact.duskName} still points to this address. Checked {checkedLabel(
               checkedAt,
-              locale
+              locale,
             )}.</span
           >
         </p>

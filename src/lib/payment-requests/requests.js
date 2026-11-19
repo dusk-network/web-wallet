@@ -151,7 +151,7 @@ export function rememberRequest({ lux, memo, network, to }) {
             to,
           },
           ...list,
-        ])
+        ]),
   );
 }
 
@@ -162,7 +162,7 @@ export function rememberRequest({ lux, memo, network, to }) {
  */
 export function forgetRequest(id) {
   changeRecords(records, walletDataScope(), (list) =>
-    list.filter((kept) => kept.id !== id)
+    list.filter((kept) => kept.id !== id),
   );
 }
 
@@ -200,7 +200,7 @@ export function keepRequestMatches(matches) {
         const payment = paid(kept);
 
         return payment ? { ...kept, paid: payment } : kept;
-      })
+      }),
     );
   }
 }

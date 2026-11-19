@@ -52,9 +52,9 @@
       {formatTimestamp(
         (transfer.paidAt ?? transfer.arrivedAt)
           ? new Date(
-              /** @type {number} */ (transfer.paidAt ?? transfer.arrivedAt)
+              /** @type {number} */ (transfer.paidAt ?? transfer.arrivedAt),
             ).toISOString()
-          : null
+          : null,
       )}
     </dd>
     <dt>{isMigration ? "Dusk payout" : `${chain.name} payout`}</dt>

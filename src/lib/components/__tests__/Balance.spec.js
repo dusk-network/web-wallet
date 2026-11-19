@@ -29,7 +29,7 @@ describe("Balance", () => {
     const { container } = render(Balance, baseOptions);
 
     expect(
-      container.querySelector(".dusk-balance__usage-details")
+      container.querySelector(".dusk-balance__usage-details"),
     ).toBeInTheDocument();
   });
 
@@ -39,15 +39,15 @@ describe("Balance", () => {
     // Check if public percentage displays as 66.67%
     expect(
       container.querySelector(
-        ".dusk-balance__account:first-child .dusk-balance__percentage"
-      )?.textContent
+        ".dusk-balance__account:first-child .dusk-balance__percentage",
+      )?.textContent,
     ).toContain("66.67%");
 
     // Check if shielded percentage displays as 33.33%
     expect(
       container.querySelector(
-        ".dusk-balance__account:last-child .dusk-balance__percentage"
-      )?.textContent
+        ".dusk-balance__account:last-child .dusk-balance__percentage",
+      )?.textContent,
     ).toContain("33.33%");
   });
 
@@ -57,8 +57,8 @@ describe("Balance", () => {
       container.querySelectorAll(".dusk-balance__percentage"),
       (percentage) =>
         Array.from(percentage.children, (child) =>
-          child.tagName.toLowerCase() === "svg" ? "icon" : child.textContent
-        )
+          child.tagName.toLowerCase() === "svg" ? "icon" : child.textContent,
+        ),
     );
 
     expect(percentages).toStrictEqual([
@@ -77,14 +77,14 @@ describe("Balance", () => {
 
     expect(
       container.querySelector(
-        ".dusk-balance__account:first-child .dusk-balance__percentage"
-      )?.textContent
+        ".dusk-balance__account:first-child .dusk-balance__percentage",
+      )?.textContent,
     ).toContain("0%");
 
     expect(
       container.querySelector(
-        ".dusk-balance__account:last-child .dusk-balance__percentage"
-      )?.textContent
+        ".dusk-balance__account:last-child .dusk-balance__percentage",
+      )?.textContent,
     ).toContain("0%");
   });
 
@@ -158,14 +158,14 @@ describe("Balance", () => {
     // The total, its fiat value, and each balance with its percentage.
     expect(masks).toHaveLength(6);
     expect(masks.map((mask) => mask.getAttribute("aria-hidden"))).toStrictEqual(
-      Array(6).fill("true")
+      Array(6).fill("true"),
     );
     expect(
-      getAllByText("hidden").map(({ className }) => className)
+      getAllByText("hidden").map(({ className }) => className),
     ).toStrictEqual(Array(6).fill("sr-only"));
     expect(container.textContent).not.toMatch(/\d/);
     expect(container.querySelector(".dusk-balance__dusk")).toHaveTextContent(
-      /DUSK$/
+      /DUSK$/,
     );
   });
 

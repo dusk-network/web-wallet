@@ -19,7 +19,7 @@ describe("BalanceValue", () => {
 
     expect(shortened.getByText("174.5596")).toHaveAttribute(
       "title",
-      "174.559603271"
+      "174.559603271",
     );
 
     cleanup();

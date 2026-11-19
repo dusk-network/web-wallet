@@ -91,7 +91,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
         body: `query { ${gql} }`,
         headers: { "Content-Type": "text/plain" },
         method: "POST",
-      }
+      },
     );
 
     if (!response.ok) {
@@ -127,7 +127,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
         /** @type {string} */ contractId,
         /** @type {string} */ wasmPath,
         /** @type {unknown} */ args,
-        /** @type {any} */ gas
+        /** @type {any} */ gas,
       ) =>
         record({
           args,
@@ -141,7 +141,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
         /** @type {string} */ contractId,
         /** @type {string} */ wasmPath,
         /** @type {unknown} */ args,
-        /** @type {any} */ gas
+        /** @type {any} */ gas,
       ) =>
         record({
           args,
@@ -153,7 +153,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
       // …and the branch's, which takes the call as the package built it.
       sendDuskEvmWithdrawalCall: (
         /** @type {any} */ call,
-        /** @type {any} */ gas
+        /** @type {any} */ gas,
       ) => record({ call, gas }),
     },
   };
@@ -199,7 +199,7 @@ async function encodedArgs(wasmPath, contractId, fnName, args) {
           driver.init();
 
           return driver;
-        })
+        }),
     );
   }
 
@@ -254,7 +254,7 @@ const settled = (read) =>
     (value) => ({ value }),
     (/** @type {unknown} */ error) => ({
       error: error instanceof Error ? error.message : String(error),
-    })
+    }),
   );
 
 /** The fields the tracking keeps of a withdrawal's status. */
@@ -287,7 +287,7 @@ function accountKey() {
 
   return Uint8Array.from(
     value.toString(16).padStart(192, "0").match(/../g) ?? [],
-    (byte) => parseInt(byte, 16)
+    (byte) => parseInt(byte, 16),
   );
 }
 
@@ -397,7 +397,7 @@ it("captures what this checkout hands the wallet to sign", async () => {
 
     out.found[sender] = listed;
     (listed.value ?? []).forEach((item) =>
-      sentBy.set(item.transactionHash, sender)
+      sentBy.set(item.transactionHash, sender),
     );
   }
 
@@ -415,7 +415,7 @@ it("captures what this checkout hands the wallet to sign", async () => {
   const claims = await settled(() =>
     withdrawals.readWithdrawalClaims(proved, {
       submitter: /** @type {`0x${string}`} */ (signer.submitter),
-    })
+    }),
   );
 
   out.claims = claims.value ? Object.fromEntries(claims.value) : claims;
@@ -429,8 +429,8 @@ it("captures what this checkout hands the wallet to sign", async () => {
     JSON.stringify(
       out,
       (_key, value) => (typeof value === "bigint" ? `${value}n` : value),
-      2
-    )
+      2,
+    ),
   );
 
   expect(Object.keys(out.statuses).length).toBeGreaterThan(0);

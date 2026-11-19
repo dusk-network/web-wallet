@@ -29,7 +29,7 @@ import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
 const mocks = vi.hoisted(() => ({
   estimateGas: vi.fn(
     /** @returns {Promise<bigint>} */ () =>
-      Promise.reject(new Error("No estimate"))
+      Promise.reject(new Error("No estimate")),
   ),
   getGasPrice: vi.fn(async () => 1n),
   sendTransaction: vi.fn(),
@@ -119,7 +119,7 @@ describe("Bridge withdrawal", () => {
     render(Bridge, props);
 
     expect(resumeWithdrawalTracking).toHaveBeenCalledWith(
-      "0x2222222222222222222222222222222222222222"
+      "0x2222222222222222222222222222222222222222",
     );
   });
 
@@ -127,13 +127,13 @@ describe("Bridge withdrawal", () => {
     const rendered = render(Bridge, props);
 
     await fireEvent.click(
-      rendered.getByRole("button", { name: "Swap From and To" })
+      rendered.getByRole("button", { name: "Swap From and To" }),
     );
     await fireEvent.input(rendered.getByRole("textbox"), {
       target: { value: "1" },
     });
     await fireEvent.click(
-      rendered.getByRole("button", { name: "Review bridge" })
+      rendered.getByRole("button", { name: "Review bridge" }),
     );
     await afterConfirmDelay();
     await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
@@ -164,7 +164,7 @@ describe("Bridge withdrawal", () => {
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
     await vi.waitFor(() =>
-      expect(mocks.sendTransaction).toHaveBeenCalledOnce()
+      expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
     );
   });
 
@@ -203,7 +203,7 @@ describe("Bridge withdrawal", () => {
       expect(await findByText("Withdrawal sent")).toBeInTheDocument();
       expect(await findByText(line)).toBeInTheDocument();
       expect(mocks.sendTransaction).toHaveBeenCalledOnce();
-    }
+    },
   );
 
   it("sends the withdrawal on DuskEVM's bridge, from the connected address, paying the wallet's public account", async () => {
@@ -242,7 +242,9 @@ describe("Bridge withdrawal", () => {
    */
   async function failureOf(rendered) {
     await vi.waitFor(() =>
-      expect(rendered.container.querySelector(".dusk-error-alert")).toBeTruthy()
+      expect(
+        rendered.container.querySelector(".dusk-error-alert"),
+      ).toBeTruthy(),
     );
 
     const alert = /** @type {HTMLElement} */ (
@@ -272,7 +274,7 @@ describe("Bridge withdrawal", () => {
     cleanup();
 
     mocks.sendTransaction.mockRejectedValueOnce(
-      new TypeError("Failed to fetch")
+      new TypeError("Failed to fetch"),
     );
 
     const rendered = await sendWithdrawal();
@@ -311,7 +313,7 @@ describe("Bridge withdrawal", () => {
       await get(sendPasswordAsk)?.answer(PASSWORD);
 
       await vi.waitFor(() =>
-        expect(mocks.sendTransaction).toHaveBeenCalledOnce()
+        expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
       );
     });
 
@@ -330,8 +332,8 @@ describe("Bridge withdrawal", () => {
         await sendWithdrawal();
         await vi.waitFor(() =>
           expect(
-            get(sendPasswordAsk) ?? mocks.sendTransaction.mock.calls[0]
-          ).toBeTruthy()
+            get(sendPasswordAsk) ?? mocks.sendTransaction.mock.calls[0],
+          ).toBeTruthy(),
         );
 
         const asked = get(sendPasswordAsk) !== null;
@@ -388,7 +390,7 @@ describe("Bridge withdrawal", () => {
         cause: new BaseError("Insufficient funds.", {
           details: "insufficient funds for gas * price + value",
         }),
-      })
+      }),
     );
 
     expect(await failureOf(await sendWithdrawal())).toStrictEqual([
@@ -399,7 +401,7 @@ describe("Bridge withdrawal", () => {
 
   it("says nothing was sent when it was declined in the EVM wallet", async () => {
     mocks.sendTransaction.mockRejectedValue(
-      new UserRejectedRequestError(new Error("User denied transaction."))
+      new UserRejectedRequestError(new Error("User denied transaction.")),
     );
 
     expect(await failureOf(await sendWithdrawal())).toStrictEqual([

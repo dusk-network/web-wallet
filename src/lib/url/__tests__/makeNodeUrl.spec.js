@@ -96,7 +96,7 @@ describe("nodeBaseUrl", () => {
       vi.stubEnv("VITE_RUSK_PATH", path);
 
       expect(nodeBaseUrl()).toBe(base);
-    }
+    },
   );
 
   it("should key the history by the base it gives", () => {

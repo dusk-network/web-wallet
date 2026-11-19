@@ -9,7 +9,7 @@ async function profileGeneratorFrom(seed) {
   seed = seed.slice();
 
   const pwd = new TextDecoder().decode(
-    crypto.getRandomValues(new Uint8Array(32))
+    crypto.getRandomValues(new Uint8Array(32)),
   );
   const encryptInfo = await encryptBuffer(seed, pwd);
 

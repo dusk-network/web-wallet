@@ -42,7 +42,7 @@ describe("Textbox", () => {
     expect(inputHandler).toHaveBeenCalledWith(
       expect.objectContaining({
         target: expect.objectContaining({ value: newValue }),
-      })
+      }),
     );
   });
 
@@ -68,7 +68,7 @@ describe("Textbox", () => {
 
     const selectedText = input.value.substring(
       Number(input.selectionStart),
-      Number(input.selectionEnd)
+      Number(input.selectionEnd),
     );
 
     expect(selectedText).toBe(props.value);

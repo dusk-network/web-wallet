@@ -471,7 +471,7 @@ export function ledgerOf({ item, kind }, { evm = {}, locale, rows, steps }) {
  */
 export function transferOutcome(
   transfer,
-  { locale, masked = false, now = Date.now(), time }
+  { locale, masked = false, now = Date.now(), time },
 ) {
   const { failure, route, stage } = transfer;
   const what = masked
@@ -619,7 +619,7 @@ function approvalTitle(approval, before, unit, locale, masked) {
  */
 export function approvalRow(
   approval,
-  { approvals = [], locale, masked = false, route }
+  { approvals = [], locale, masked = false, route },
 ) {
   if (approval.state === "spent") {
     return null;
@@ -633,7 +633,7 @@ export function approvalRow(
     .slice(0, at < 0 ? 0 : at)
     .findLast(
       ({ owner, route: routeId }) =>
-        owner === approval.owner && routeId === approval.route
+        owner === approval.owner && routeId === approval.route,
     );
 
   return {
@@ -663,7 +663,7 @@ export function approvalRow(
       before,
       route.chain.tokenLabel ?? "DUSK",
       locale,
-      masked
+      masked,
     ),
     to: route.destination,
     when: approval.at ?? 0,

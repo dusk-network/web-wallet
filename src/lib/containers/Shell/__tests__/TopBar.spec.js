@@ -44,18 +44,18 @@ describe("TopBar", () => {
 
     expect(getByRole("link", { name: "Dusk Wallet, home" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard"
+      "/some-base-path/dashboard",
     );
     expect(getByRole("link", { name: "History" })).toHaveAttribute(
       "aria-current",
-      "page"
+      "page",
     );
     expect(getByRole("link", { name: "Home" })).not.toHaveAttribute(
-      "aria-current"
+      "aria-current",
     );
     expect(getByRole("link", { name: "Settings" })).toHaveAttribute(
       "href",
-      "/some-base-path/settings"
+      "/some-base-path/settings",
     );
   });
 
@@ -75,7 +75,7 @@ describe("TopBar", () => {
     // On a phone too the wordmark stays, to say whose site this is: only
     // the wallet's own bar, a link, shows the round mark alone there.
     const phone = styleRules("../TopBar.svelte").filter(
-      (rule) => rule.media && /dusk-(glyph|wordmark)/.test(rule.selector)
+      (rule) => rule.media && /dusk-(glyph|wordmark)/.test(rule.selector),
     );
 
     expect(phone.length).toBeGreaterThan(0);
@@ -91,11 +91,11 @@ describe("TopBar", () => {
 
     expect(brand.querySelector("svg.dusk-wordmark")).toHaveAttribute(
       "aria-hidden",
-      "true"
+      "true",
     );
     expect(brand.querySelector(".top-bar__divider")).toHaveAttribute(
       "aria-hidden",
-      "true"
+      "true",
     );
     expect(brand).toHaveTextContent(/^Wallet$/);
   });
@@ -106,7 +106,7 @@ describe("TopBar", () => {
 
     expect(brand.querySelector("svg.dusk-glyph")).toHaveAttribute(
       "aria-hidden",
-      "true"
+      "true",
     );
 
     const bar = styleRules("../TopBar.svelte");
@@ -116,30 +116,30 @@ describe("TopBar", () => {
       bar.find(
         (rule) =>
           rule.selector === "a.top-bar__brand :global(.dusk-wordmark)" &&
-          rule.declarations.display === "none"
+          rule.declarations.display === "none",
       )?.media ?? "";
 
     // The wordmark takes 370 px beside the phone's controls and the
     // network pill's longest label, Connecting: the round mark below that.
     expect(maxWidthPx(narrow)).toBeGreaterThanOrEqual(370.1);
     expect(
-      ruleOf(".top-bar__brand :global(.dusk-glyph)")?.declarations.display
+      ruleOf(".top-bar__brand :global(.dusk-glyph)")?.declarations.display,
     ).toBe("none");
     expect(
       ruleOf("a.top-bar__brand :global(.dusk-glyph)", narrow)?.declarations
-        .display
+        .display,
     ).toBe("block");
     // Nothing shrinks under its content to make room.
     expect(
       bar.find((rule) => rule.selector === "& > :global(*)")?.declarations[
         "flex-shrink"
-      ]
+      ],
     ).toBe("0");
 
     // The round mark beside the pill takes 339 px: its dot alone below,
     // with the network's name still there for screen readers.
     const name = styleRules("../NetworkPill.svelte").find(
-      (rule) => rule.selector === ".network-pill__name" && rule.media
+      (rule) => rule.selector === ".network-pill__name" && rule.media,
     );
 
     expect(maxWidthPx(name?.media ?? "")).toBeGreaterThanOrEqual(339.2);
@@ -154,17 +154,17 @@ describe("TopBar", () => {
     // network's name takes 35 px more than its dot, and the profile's number
     // and .dusk name don't fit beside it: they give way below 420 px.
     const name = styleRules("../NetworkPill.svelte").find(
-      (rule) => rule.selector === ".network-pill__name" && rule.media
+      (rule) => rule.selector === ".network-pill__name" && rule.media,
     );
     const picker = styleRules(
-      "../../../components/AddressPicker/AddressPicker.css"
+      "../../../components/AddressPicker/AddressPicker.css",
     );
     const narrow = (/** @type {string} */ part) =>
       picker.find(
         (rule) =>
           rule.selector.includes(".address-picker__trigger--wallet") &&
           rule.selector.includes(part) &&
-          maxWidthPx(rule.media) >= 419.8
+          maxWidthPx(rule.media) >= 419.8,
       )?.declarations;
 
     expect(maxWidthPx(name?.media ?? "")).toBeGreaterThanOrEqual(419.8);
@@ -181,7 +181,7 @@ describe("TopBar", () => {
       maxWidthPx(media) >= 767.8;
     const pill = styleRules("../NetworkPill.svelte");
     const picker = styleRules(
-      "../../../components/AddressPicker/AddressPicker.css"
+      "../../../components/AddressPicker/AddressPicker.css",
     );
     const popovers = [
       [pill, ".network-pill__popover"],
@@ -193,13 +193,13 @@ describe("TopBar", () => {
         /** @type {typeof pill} */ (rules).find(
           (rule) =>
             rule.selector === selector &&
-            (media ? onPhones(rule.media) : !rule.media)
-        )
+            (media ? onPhones(rule.media) : !rule.media),
+        ),
       );
 
       // At most the window less 1 rem a side, 1 rem from its right edge.
       expect(always?.declarations.width).toMatch(
-        /^min\(\d+rem, calc\(100vw - 2rem\)\)$/
+        /^min\(\d+rem, calc\(100vw - 2rem\)\)$/,
       );
       expect(phones?.declarations).toMatchObject({
         position: "fixed",
@@ -219,7 +219,7 @@ describe("TopBar", () => {
     await fireEvent.click(
       getByRole("button", {
         name: "Search names, addresses, amounts and transactions",
-      })
+      }),
     );
 
     expect(search).toHaveBeenCalledOnce();
@@ -234,7 +234,7 @@ describe("TopBar", () => {
 
     expect(container.querySelector(".address-picker--compact")).toBeTruthy();
     expect(
-      container.querySelector(".address-picker__compact-name")
+      container.querySelector(".address-picker__compact-name"),
     ).toHaveTextContent("Profile 1");
 
     await fireEvent.click(getByRole("button", { name: "Profile: Profile 1" }));

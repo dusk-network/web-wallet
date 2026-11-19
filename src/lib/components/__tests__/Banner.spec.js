@@ -19,7 +19,7 @@ describe("Banner", () => {
 
     expect(banner).toHaveClass("banner--info");
     expect(getAsHTMLElement(banner, ".banner__title")).toHaveTextContent(
-      "Some title"
+      "Some title",
     );
     expect(banner).toHaveTextContent(/^Some title\s*some text$/);
   });

@@ -24,7 +24,7 @@ export const allowance = async (
   userAddress,
   stableCoinAddress,
   migrationContract,
-  chainId
+  chainId,
 ) => {
   try {
     return /** @type {bigint} */ (
@@ -61,7 +61,7 @@ export const approve = async (
   stableCoinAddress,
   value,
   chainId,
-  owner
+  owner,
 ) => {
   try {
     return await writeContract(wagmiConfig, {
@@ -93,7 +93,7 @@ export const approve = async (
 export const getBalanceOfCoin = async (
   userAddress,
   stableCoinAddress,
-  chainId
+  chainId,
 ) => {
   try {
     return /** @type {bigint} */ (
@@ -230,7 +230,7 @@ export const migrate = async (
   chainId,
   mainnetDuskAddress,
   migrationContract,
-  owner
+  owner,
 ) => {
   const { request } = await simulateContract(wagmiConfig, {
     abi: migrationABI,

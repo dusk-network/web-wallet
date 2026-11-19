@@ -198,7 +198,7 @@ describe("Network store", async () => {
       const { store } = await storeWithAnswers([]);
       const init = store.init();
       const failed = expect(init).rejects.toThrow(
-        "Timed out while connecting to the network"
+        "Timed out while connecting to the network",
       );
 
       await vi.advanceTimersByTimeAsync(10_000);
@@ -319,7 +319,7 @@ describe("Network store", async () => {
       });
 
       await expect(store.getBlockHashByHeight(123n)).resolves.toStrictEqual(
-        expectedHash
+        expectedHash,
       );
 
       networkQuerySpy.mockResolvedValueOnce({ block: null });
@@ -344,7 +344,7 @@ describe("Network store", async () => {
       });
 
       await expect(store.getLastFinalizedBlockHeight()).resolves.toStrictEqual(
-        BigInt(height)
+        BigInt(height),
       );
 
       networkQuerySpy.mockResolvedValueOnce({ lastBlockPair: null });
@@ -365,7 +365,7 @@ describe("Network store", async () => {
         timestamp: 1_793_156_989n,
       });
       expect(networkQuerySpy).toHaveBeenLastCalledWith(
-        "block(height: -1) { header { height timestamp } }"
+        "block(height: -1) { header { height timestamp } }",
       );
 
       networkQuerySpy.mockResolvedValueOnce({
@@ -373,7 +373,7 @@ describe("Network store", async () => {
       });
 
       await expect(store.getLatestBlock()).rejects.toThrow(
-        "The latest block is unavailable"
+        "The latest block is unavailable",
       );
     });
   });

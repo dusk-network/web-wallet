@@ -21,7 +21,7 @@ const sentTransfers = (rows, status) =>
       row.source === "sent" &&
       row.status === status &&
       row.kind === TX_KIND.TRANSFER &&
-      row.direction === "out"
+      row.direction === "out",
   );
 
 /**
@@ -44,5 +44,5 @@ export const onTheirWay = (rows) => sentTransfers(rows, "pending");
  */
 export const notConfirmed = (rows, now = Date.now()) =>
   sentTransfers(rows, "unknown").filter(
-    ({ time }) => time !== null && now - time < PENDING_MS
+    ({ time }) => time !== null && now - time < PENDING_MS,
   );

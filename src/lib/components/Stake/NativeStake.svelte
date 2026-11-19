@@ -109,7 +109,7 @@
   function fill(lux, isMax = false) {
     amountText = amountForField(
       formatDuskPlain(lux),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
     isMaxAmount = isMax;
     document.getElementById(`${id}-amount`)?.focus();
@@ -118,7 +118,7 @@
   /** @param {Event} event */
   function typeAmount(event) {
     amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
   }
@@ -190,7 +190,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -314,7 +314,7 @@
           up to {formatFee(maxGasFee, language, { max: true })} for this fee and {formatFee(
             unstakeFee,
             language,
-            { max: true }
+            { max: true },
           )} to unstake later.
         </p>
       {/if}
@@ -437,7 +437,7 @@
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,
-            gasLimits
+            gasLimits,
           );
 
           if (isGasValid) {
@@ -457,7 +457,7 @@
               value={formatTotal(
                 typedAmount + maxGasFee,
                 availableBalance,
-                language
+                language,
               )}
             /> DUSK
           </dd>

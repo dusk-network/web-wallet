@@ -14,7 +14,7 @@
     profiles,
     currentProfile,
     $networkStore.networkName,
-    $openProfileNames
+    $openProfileNames,
   );
 </script>
 

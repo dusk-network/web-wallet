@@ -100,7 +100,7 @@ describe("Settings store", () => {
       vi.resetModules();
 
       expect(get((await import("../settingsStore")).default).currency).toBe(
-        "USD"
+        "USD",
       );
 
       // Singapore's English starts in Singapore dollars, as DUSK has a
@@ -110,7 +110,7 @@ describe("Settings store", () => {
       vi.resetModules();
 
       expect(get((await import("../settingsStore")).default).currency).toBe(
-        "SGD"
+        "SGD",
       );
 
       localStorage.clear();
@@ -118,7 +118,7 @@ describe("Settings store", () => {
       vi.resetModules();
 
       expect(get((await import("../settingsStore")).default).currency).toBe(
-        "USD"
+        "USD",
       );
       languageSpy.mockReturnValue("it-IT");
     });
@@ -127,7 +127,7 @@ describe("Settings store", () => {
       const kept = async (/** @type {string} */ currency) => {
         localStorage.setItem(
           `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
-          serializeProperty({ ...settingsStoreContent, currency })
+          serializeProperty({ ...settingsStoreContent, currency }),
         );
         vi.resetModules();
 
@@ -148,7 +148,7 @@ describe("Settings store", () => {
 
       const localStorageSettings = JSON.parse(
         // @ts-expect-error
-        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`)
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`),
       );
 
       const expectedSettings = {
@@ -193,10 +193,10 @@ describe("Settings store", () => {
           serializeProperty(
             Object.fromEntries(
               Object.entries({ ...settingsStoreContent, gasLimit }).filter(
-                ([name]) => name !== "customGasLimit"
-              )
-            )
-          )
+                ([name]) => name !== "customGasLimit",
+              ),
+            ),
+          ),
         );
 
       const loadSettings = async () => {
@@ -221,7 +221,7 @@ describe("Settings store", () => {
           expect.objectContaining({
             customGasLimit: null,
             gasLimit: 100_000_000n,
-          })
+          }),
         );
       });
 
@@ -248,9 +248,9 @@ describe("Settings store", () => {
                 ...settingsStoreContent,
                 customGasLimit: 70_000_000n,
                 gasPrice: 2n,
-              }).filter(([name]) => name !== "customGasPrice")
-            )
-          )
+              }).filter(([name]) => name !== "customGasPrice"),
+            ),
+          ),
         );
 
         const settings = await loadSettings();
@@ -268,9 +268,9 @@ describe("Settings store", () => {
                 ...settingsStoreContent,
                 customGasLimit: null,
                 gasPrice: 2n,
-              }).filter(([name]) => name !== "customGasPrice")
-            )
-          )
+              }).filter(([name]) => name !== "customGasPrice"),
+            ),
+          ),
         );
 
         expect((await loadSettings()).customGasPrice).toBeNull();
@@ -281,11 +281,11 @@ describe("Settings store", () => {
         async (autoLockMinutes) => {
           localStorage.setItem(
             key,
-            serializeProperty({ ...settingsStoreContent, autoLockMinutes })
+            serializeProperty({ ...settingsStoreContent, autoLockMinutes }),
           );
 
           expect((await loadSettings()).autoLockMinutes).toBe(15);
-        }
+        },
       );
 
       it.each([0, 5, 15])(
@@ -293,11 +293,11 @@ describe("Settings store", () => {
         async (autoLockMinutes) => {
           localStorage.setItem(
             key,
-            serializeProperty({ ...settingsStoreContent, autoLockMinutes })
+            serializeProperty({ ...settingsStoreContent, autoLockMinutes }),
           );
 
           expect((await loadSettings()).autoLockMinutes).toBe(autoLockMinutes);
-        }
+        },
       );
 
       it("should keep a custom gas limit equal to the old default", async () => {
@@ -306,7 +306,7 @@ describe("Settings store", () => {
           serializeProperty({
             ...settingsStoreContent,
             customGasLimit: 100_000_000n,
-          })
+          }),
         );
 
         expect((await loadSettings()).customGasLimit).toBe(100_000_000n);
@@ -363,8 +363,8 @@ describe("Settings store", () => {
       expect(
         JSON.parse(
           // @ts-ignore
-          localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`)
-        )
+          localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`),
+        ),
       ).toStrictEqual({
         ...expectedState,
         customGasLimit: null,

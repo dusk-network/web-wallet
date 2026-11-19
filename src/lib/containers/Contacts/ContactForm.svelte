@@ -127,7 +127,7 @@
   $: options =
     resolution && !resolution.error
       ? /** @type {const} */ (["account", "address"]).filter(
-          (type) => resolution?.[type]
+          (type) => resolution?.[type],
         )
       : [];
   $: if (options.length && !options.includes(kind)) {
@@ -153,7 +153,7 @@
   // Saving a contact again with its `.dusk` name takes the address the name
   // points to now: said, when it isn't the one saved.
   $: isReplacing = Boolean(
-    contact && address && duskName && address !== contact.address
+    contact && address && duskName && address !== contact.address,
   );
 
   onMount(() => {
@@ -254,7 +254,7 @@
         {#if isReplacing}
           <p class="contact-form__warning" role="alert">
             This isn't the address saved for {contactNameText(
-              contact?.name ?? ""
+              contact?.name ?? "",
             )}. Saving replaces it.
           </p>
         {/if}

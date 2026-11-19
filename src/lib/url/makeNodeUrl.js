@@ -24,7 +24,7 @@ function makeNodeUrl(path = "") {
    */
   const buildHostedNodeUrl = (base) =>
     new URL(
-      `${window.location.protocol}${base}${hostedNodeDomain}${nodeBasePath}${path}`
+      `${window.location.protocol}${base}${hostedNodeDomain}${nodeBasePath}${path}`,
     );
 
   let nodeUrl;
@@ -42,7 +42,7 @@ function makeNodeUrl(path = "") {
     default:
       nodeUrl = new URL(
         `${nodeBaseUrl}${nodeBasePath}${path}`,
-        import.meta.url
+        import.meta.url,
       );
       break;
   }

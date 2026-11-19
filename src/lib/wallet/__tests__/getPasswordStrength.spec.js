@@ -19,13 +19,13 @@ describe("getPasswordStrength", () => {
     "should call %s fair",
     (password) => {
       expect(getPasswordStrength(password)).toBe("fair");
-    }
+    },
   );
 
   it.each(["correct horse battery", "Kettle-42-garden", "Tulp7&ZonnigWeer"])(
     "should call %s strong",
     (password) => {
       expect(getPasswordStrength(password)).toBe("strong");
-    }
+    },
   );
 });

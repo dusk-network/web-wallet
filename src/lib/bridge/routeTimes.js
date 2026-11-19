@@ -84,7 +84,7 @@ function typicalSeconds(route, net) {
     ? routes(net).find(
         (each) =>
           each.kind === kind &&
-          (kind !== "migration" || each.from === route.from)
+          (kind !== "migration" || each.from === route.from),
       )
     : null;
 

@@ -88,7 +88,7 @@ const row = (fields, input) =>
       nameCall: nameFacts,
       network: withBridge(networks.testnet, BRIDGE),
       ...input,
-    }
+    },
   );
 
 /**
@@ -133,7 +133,7 @@ describe("TransactionDetail", () => {
     const { container } = show(row({ timestamp: at }));
 
     expect(mainList(container).replace(/\s+/g, " ")).toContain(
-      `Date ${fullDateTime(at, "en", { seconds: true })} `
+      `Date ${fullDateTime(at, "en", { seconds: true })} `,
     );
     expect(mainList(container)).toMatch(/Date.*\d{1,2}:33:12/);
   });
@@ -142,7 +142,7 @@ describe("TransactionDetail", () => {
     const { container } = show(row({}));
 
     expect(
-      container.querySelector(".tx-detail__tech summary .section-chevron")
+      container.querySelector(".tx-detail__tech summary .section-chevron"),
     ).toBeInTheDocument();
   });
 
@@ -158,12 +158,12 @@ describe("TransactionDetail", () => {
         registeredName: "alice.dusk",
       }),
       {},
-      { network: "testnet" }
+      { network: "testnet" },
     );
 
     expect(getByText("Registered alice.dusk")).toBeInTheDocument();
     expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "Registered alice.dusk"
+      "Registered alice.dusk",
     );
     expect(mainList(container)).not.toContain(STORE);
     expect(mainList(container)).not.toContain("Dusk Domains");
@@ -190,7 +190,7 @@ describe("TransactionDetail", () => {
     const { container, findByText, getByText } = show(
       stake,
       {},
-      { loadSozuFact, network: "testnet" }
+      { loadSozuFact, network: "testnet" },
     );
 
     expect(getByText("Staked with Sozu")).toBeInTheDocument();
@@ -221,7 +221,7 @@ describe("TransactionDetail", () => {
     show(
       row({ ...call, fnName: "sozu_stake", status: "failed" }),
       {},
-      { loadSozuFact }
+      { loadSozuFact },
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -231,7 +231,7 @@ describe("TransactionDetail", () => {
     const { container, findByText } = show(
       row({ ...call, amount: "200000000", fnName: "sozu_unstake" }),
       {},
-      { loadSozuFact }
+      { loadSozuFact },
     );
 
     expect(await findByText("You gave back")).toBeInTheDocument();
@@ -245,7 +245,7 @@ describe("TransactionDetail", () => {
         amount: "100000000",
         bridge: { amount: "100000000", kind: "deposit", to: EVM },
         fnName: "depositETHToWithValue",
-      })
+      }),
     );
 
     expect(getByText("DuskEVM address")).toBeTruthy();
@@ -272,19 +272,19 @@ describe("TransactionDetail", () => {
 
     expect(getByText("Proved · not claimed yet")).toBeTruthy();
     expect(
-      container.querySelector(".tx-detail__amount")?.textContent
+      container.querySelector(".tx-detail__amount")?.textContent,
     ).toContain("1,008");
     // Not arrived yet: greyed.
     expect(container.querySelector(".tx-detail__amount")).toHaveClass(
-      "tx-detail__amount--muted"
+      "tx-detail__amount--muted",
     );
     // When the chain says it can be claimed, in full.
     expect(
-      getByText(`Claim from about ${fullDateTime(CLAIM_AT, "en")}.`)
+      getByText(`Claim from about ${fullDateTime(CLAIM_AT, "en")}.`),
     ).toBeTruthy();
     expect(getByRole("link", { name: "Open withdrawals" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge/transactions"
+      "/some-base-path/dashboard/bridge/transactions",
     );
 
     cleanup();
@@ -304,8 +304,8 @@ describe("TransactionDetail", () => {
     expect(again.getByText("Proof rejected · prove it again")).toBeTruthy();
     expect(
       again.getByText(
-        "Its proof was rejected, so it can't be claimed. Prove it again on Dusk."
-      )
+        "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.",
+      ),
     ).toBeTruthy();
     expect(again.queryByText(/Claim from/)).toBeNull();
 
@@ -313,7 +313,7 @@ describe("TransactionDetail", () => {
 
     // Until the chain has been read: no date made up from a fixed wait.
     expect(
-      show(proved).getByText("Claim it on Dusk once its proof has matured.")
+      show(proved).getByText("Claim it on Dusk once its proof has matured."),
     ).toBeTruthy();
 
     cleanup();
@@ -329,7 +329,7 @@ describe("TransactionDetail", () => {
           hash: "bb".repeat(32),
         },
       ],
-      { network: withBridge(networks.testnet, BRIDGE) }
+      { network: withBridge(networks.testnet, BRIDGE) },
     );
     const done = show(claimed);
 
@@ -351,7 +351,7 @@ describe("TransactionDetail", () => {
         fnName: "register",
       }),
       {},
-      { network: "testnet" }
+      { network: "testnet" },
     );
 
     expect(container.querySelector("#tx-detail-title")).toBeTruthy();
@@ -360,8 +360,8 @@ describe("TransactionDetail", () => {
     expect(container.textContent).toContain(store.slice(-6));
     expect(
       getAllByRole("button", { name: /^Copy/ }).map((button) =>
-        button.getAttribute("aria-label")
-      )
+        button.getAttribute("aria-label"),
+      ),
     ).toStrictEqual(["Copy transaction ID", "Copy contract ID"]);
   });
 
@@ -379,7 +379,7 @@ describe("TransactionDetail", () => {
         fnName: "commit",
       }),
       {},
-      { network: "testnet" }
+      { network: "testnet" },
     );
 
     expect(getByText("Name reservation (step 1 of 2)")).toBeInTheDocument();
@@ -431,7 +431,7 @@ describe("TransactionDetail", () => {
     const [payouts] = routes(local).flatMap((route) =>
       route.kind === "migration" && route.payoutAccount
         ? [route.payoutAccount]
-        : []
+        : [],
     );
     const payout = row(
       {
@@ -444,7 +444,7 @@ describe("TransactionDetail", () => {
         kind: "transfer",
         memo: `0x${"c3".repeat(32)}`,
       },
-      { network: local }
+      { network: local },
     );
 
     setNodeNetwork(local);
@@ -452,13 +452,13 @@ describe("TransactionDetail", () => {
     const { container, getByText } = show(
       payout,
       { net: local },
-      { network: "Localnet" }
+      { network: "Localnet" },
     );
 
     expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
     expect(mainList(container)).toMatch(/From\s*BSC bridge/);
     expect(mainList(container)).toMatch(
-      /Network fee paid\s*Paid by the sender/
+      /Network fee paid\s*Paid by the sender/,
     );
   });
 
@@ -469,7 +469,7 @@ describe("TransactionDetail", () => {
     });
 
     expect(container.querySelector(".tx-detail__error")?.textContent).toContain(
-      "refused \\u202e0001\\u202c"
+      "refused \\u202e0001\\u202c",
     );
   });
 
@@ -483,15 +483,15 @@ describe("TransactionDetail", () => {
 
   it("should say under Technical details the gas used of its limit, its price and the fee paid, as the other apps do", () => {
     const { container } = show(
-      row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" })
+      row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" }),
     );
     const labels = Array.from(
       container.querySelectorAll(".tx-detail__list--tech dt"),
-      (dt) => dt.textContent?.trim()
+      (dt) => dt.textContent?.trim(),
     );
 
     expect(labels).toEqual(
-      expect.arrayContaining(["Gas used", "Gas price", "Fee paid"])
+      expect.arrayContaining(["Gas used", "Gas price", "Fee paid"]),
     );
     expect(techList(container)).toMatch(/Gas used\s*1,853,542 of 2,500,000/);
   });
@@ -519,7 +519,7 @@ describe("TransactionDetail", () => {
       const { container, findByText, getByRole } = show(
         deposited,
         {},
-        { followDeposit }
+        { followDeposit },
       );
 
       expect(followDeposit).toHaveBeenCalledExactlyOnceWith(deposited);
@@ -537,16 +537,16 @@ describe("TransactionDetail", () => {
 
       expect(await findByText("Arrived")).toBeInTheDocument();
       expect(mainList(container)).toContain(
-        `Arrived ${fullDateTime(ARRIVED, "en")}`
+        `Arrived ${fullDateTime(ARRIVED, "en")}`,
       );
       expect(mainList(container)).toContain("DuskEVM transaction 0x0202…029e");
       expect(
         getByRole("link", {
           name: "0x0202…029e (opens the transaction in DuskEVM's explorer)",
-        })
+        }),
       ).toHaveAttribute(
         "href",
-        `https://explorer.testnet.evm.dusk.network/tx/${PAID}`
+        `https://explorer.testnet.evm.dusk.network/tx/${PAID}`,
       );
     });
 
@@ -573,7 +573,7 @@ describe("TransactionDetail", () => {
 
     try {
       const { container } = show(
-        row({ amount: "1000000000", feePaid: "1856398" })
+        row({ amount: "1000000000", feePaid: "1856398" }),
       );
 
       expect(container.textContent).toContain("Network fee paid");
@@ -600,12 +600,12 @@ describe("TransactionDetail", () => {
 
   it("should show a memo in the order it was written, its hidden characters as codes, and say so", () => {
     const { getByText, queryByText } = show(
-      row({ memo: "invoice \u202Egnp.exe\u202C" })
+      row({ memo: "invoice \u202Egnp.exe\u202C" }),
     );
 
     expect(getByText("invoice \\u202egnp.exe\\u202c")).toBeInTheDocument();
     expect(
-      getByText("It has hidden characters, shown here as codes.")
+      getByText("It has hidden characters, shown here as codes."),
     ).toBeInTheDocument();
 
     cleanup();
@@ -614,7 +614,7 @@ describe("TransactionDetail", () => {
 
     expect(getByText("Factura 33, abril")).toBeInTheDocument();
     expect(
-      queryByText("It has hidden characters, shown here as codes.")
+      queryByText("It has hidden characters, shown here as codes."),
     ).toBeNull();
   });
 
@@ -639,7 +639,7 @@ describe("TransactionDetail", () => {
             stDusk: 162_189_471n,
           }),
           network: "testnet",
-        }
+        },
       );
 
       expect(await findByText("You got")).toBeInTheDocument();
@@ -668,17 +668,17 @@ describe("TransactionDetail", () => {
       {
         account: { address: account, label: "Profile 1 · wallet-both.dusk" },
         loadNonce,
-      }
+      },
     );
 
     expect(
-      getByText("Profile 1 · wallet-both.dusk, public balance")
+      getByText("Profile 1 · wallet-both.dusk, public balance"),
     ).toBeInTheDocument();
     expect(getByText("1 LUX")).toBeInTheDocument();
     expect(await findByText("110")).toBeInTheDocument();
     expect(loadNonce).toHaveBeenCalledWith("aa".repeat(32));
     expect(getByRole("link", { name: /^4,687,000/ }).getAttribute("href")).toBe(
-      `/explorer/blocks/block?id=${"bb".repeat(32)}`
+      `/explorer/blocks/block?id=${"bb".repeat(32)}`,
     );
   });
 

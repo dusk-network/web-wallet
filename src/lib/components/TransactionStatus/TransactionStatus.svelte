@@ -283,7 +283,7 @@
   $: kept =
     unconfirmed && hash
       ? $unsentSends.find(
-          (send) => send.handedOver?.hash.toLowerCase() === hash?.toLowerCase()
+          (send) => send.handedOver?.hash.toLowerCase() === hash?.toLowerCase(),
         )
       : undefined;
   $: if (kept) {
@@ -295,7 +295,7 @@
     hash && !outcome
       ? $foundSends.find(
           ({ send }) =>
-            send.handedOver?.hash.toLowerCase() === hash?.toLowerCase()
+            send.handedOver?.hash.toLowerCase() === hash?.toLowerCase(),
         )
       : undefined;
   $: if (found) {

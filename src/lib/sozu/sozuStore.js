@@ -107,10 +107,10 @@ function takeKept(account) {
         store.update((state) =>
           kept && state.account === account && !state.status
             ? { ...state, kept }
-            : state
+            : state,
         );
       },
-      () => {}
+      () => {},
     );
 }
 
@@ -182,7 +182,7 @@ function read(account, contracts, nodeUrl) {
           loading: false,
         }));
       }
-    }
+    },
   );
 
   return promise;
@@ -216,7 +216,7 @@ async function readAlong(profile) {
     account,
     contracts,
     nodeBaseUrl(),
-    ALONG_TIMEOUT_MS
+    ALONG_TIMEOUT_MS,
   ).catch(() => null);
 
   // Shown with the balances, unless one begun after it showed already: a

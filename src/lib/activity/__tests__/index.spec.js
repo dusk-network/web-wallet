@@ -193,13 +193,13 @@ describe("activityFor", () => {
         privacy: "public",
         to: A,
       },
-      { handing: true }
+      { handing: true },
     );
 
     // Asked to broadcast it, the node hasn't answered: nothing shows.
     expect(rowOf()).toBeUndefined();
     expect(
-      (await sender.keptRows()).rows.some((row) => row.hash === hash)
+      (await sender.keptRows()).rows.some((row) => row.hash === hash),
     ).toBe(false);
 
     // Its answer got lost: not confirmed yet.
@@ -213,7 +213,7 @@ describe("activityFor", () => {
 
     expect(rowOf()).toBeUndefined();
     expect(
-      (await sender.keptRows()).rows.some((row) => row.hash === hash)
+      (await sender.keptRows()).rows.some((row) => row.hash === hash),
     ).toBe(false);
 
     // Sent again as it is, the node took it: sent, on its way.

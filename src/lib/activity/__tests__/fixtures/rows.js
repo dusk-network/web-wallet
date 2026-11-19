@@ -71,7 +71,7 @@ const entryOf = (f, network) =>
       success: successOf(f) ?? undefined,
       value: f.amount ?? f.deposit ?? "0",
     },
-    { network }
+    { network },
   );
 
 /**
@@ -126,7 +126,7 @@ export function rowsOf(list, input = {}) {
             status: "submitted",
             submittedAt: Date.now(),
             ...f,
-          })
+          }),
         );
       }
     }

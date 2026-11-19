@@ -39,7 +39,7 @@ function readPools() {
     return new Set(
       Array.isArray(kept)
         ? kept.map(contractIdOf).filter((id) => /^[0-9a-f]{64}$/.test(id))
-        : []
+        : [],
     );
   } catch {
     return new Set();

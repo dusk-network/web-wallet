@@ -34,7 +34,7 @@ vi.mock("$app/stores", async () => {
     page: {
       subscribe: (/** @type {(value: any) => void} */ run) =>
         /** @type {NonNullable<typeof page.store>} */ (page.store).subscribe(
-          run
+          run,
         ),
     },
   };
@@ -132,14 +132,15 @@ describe("Send page", () => {
     /** @param {string} query */
     const openLink = (query) =>
       openAt(
-        new URL(`http://localhost/some-base-path/dashboard/send?${query}`)
+        new URL(`http://localhost/some-base-path/dashboard/send?${query}`),
       );
 
     /** @param {(role: string, options: object) => HTMLElement} getByRole */
     const fieldsAre = (getByRole) =>
       ["To", "Amount", /^Memo/].map(
         (name) =>
-          /** @type {HTMLInputElement} */ (getByRole("textbox", { name })).value
+          /** @type {HTMLInputElement} */ (getByRole("textbox", { name }))
+            .value,
       );
 
     afterEach(() => setNodeNetwork(null));
@@ -165,7 +166,7 @@ describe("Send page", () => {
         "Factura 34",
       ]);
       expect(getByRole("alert")).toHaveTextContent(
-        /^Is that 2\.1250 or 2125\?/
+        /^Is that 2\.1250 or 2125\?/,
       );
 
       await fireEvent.click(getByRole("button", { name: "2.1250 DUSK" }));
@@ -188,7 +189,7 @@ describe("Send page", () => {
 
       expect(fieldsAre(opened.getByRole)[1]).toBe("1,000");
       expect(opened.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/
+        /^Is that 1 or 1000\?/,
       );
 
       cleanup();
@@ -203,11 +204,11 @@ describe("Send page", () => {
       });
       await fireEvent.input(to, { target: { value: link } });
       await vi.waitFor(() =>
-        expect(fieldsAre(pasted.getByRole)[1]).toBe("1,000")
+        expect(fieldsAre(pasted.getByRole)[1]).toBe("1,000"),
       );
 
       expect(pasted.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/
+        /^Is that 1 or 1000\?/,
       );
 
       // Typed, it asks the same.
@@ -216,7 +217,7 @@ describe("Send page", () => {
       });
 
       expect(pasted.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/
+        /^Is that 1 or 1000\?/,
       );
     });
 
@@ -227,7 +228,7 @@ describe("Send page", () => {
       const { getByRole, getByText } = render(SendPage);
 
       expect(
-        getByText("This request is for Mainnet. You are on Testnet.")
+        getByText("This request is for Mainnet. You are on Testnet."),
       ).toBeInTheDocument();
       expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
     });
@@ -258,7 +259,7 @@ describe("Send page", () => {
 
         expect(getByText(words)).toBeInTheDocument();
         expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
-      }
+      },
     );
 
     it("should start the form over for another link while it shows, and keep what it filled in for Send without one, as Back does", async () => {
@@ -270,15 +271,15 @@ describe("Send page", () => {
       await act(() =>
         openAt(
           new URL(
-            `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.5`
-          )
-        )
+            `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.5`,
+          ),
+        ),
       );
 
       expect(fieldsAre(getByRole)[1]).toBe("0.5");
 
       await act(() =>
-        openAt(new URL("http://localhost/some-base-path/dashboard/send"))
+        openAt(new URL("http://localhost/some-base-path/dashboard/send")),
       );
 
       expect(fieldsAre(getByRole)).toStrictEqual([OTHER, "0.5", ""]);
@@ -290,7 +291,7 @@ describe("Send page", () => {
     const to = getByRole("textbox", { name: "To" });
 
     expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
+      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
     );
 
     await fireEvent.input(to, {
@@ -298,7 +299,7 @@ describe("Send page", () => {
     });
 
     expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK from your shielded balance`
+      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK from your shielded balance`,
     );
 
     await fireEvent.input(to, {
@@ -335,12 +336,12 @@ describe("Send page", () => {
       const { gasLimit, gasPrice } = getGasSettings(
         "public-transfer",
         get(settingsStore),
-        get(gasPriceStore)
+        get(gasPriceStore),
       );
       const left = balance.unshielded.value - 12_500_000n;
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`
+        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`,
       );
 
       await fireEvent.input(getByRole("textbox", { name: "To" }), {
@@ -350,7 +351,7 @@ describe("Send page", () => {
 
       // All that's left, less the fee, and what's kept for later as ever.
       expect(getByRole("textbox", { name: "Amount" })).toHaveValue(
-        formatDuskPlain(left - gasLimit * gasPrice - get(feeToKeep).lux)
+        formatDuskPlain(left - gasLimit * gasPrice - get(feeToKeep).lux),
       );
 
       // Handed over, it's counted out until the node took it.
@@ -358,7 +359,7 @@ describe("Send page", () => {
       await act(() => fromShielded.cancel());
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK from your public balance, after what's waiting to go out`
+        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK from your public balance, after what's waiting to go out`,
       );
 
       // Gone out, or called off: all of it again.
@@ -366,8 +367,8 @@ describe("Send page", () => {
 
       await vi.waitFor(() =>
         expect(available(container)).toHaveTextContent(
-          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`
-        )
+          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
+        ),
       );
       expect(available(container)).not.toHaveTextContent("waiting");
     } finally {
@@ -382,8 +383,8 @@ describe("Send page", () => {
       Promise.resolve(
         name === "alice.dusk"
           ? { address: currentProfile.address.toString(), name }
-          : { error: "not-registered", name }
-      )
+          : { error: "not-registered", name },
+      ),
     );
 
     const { container, findByText, getByRole } = render(SendPage);
@@ -397,7 +398,7 @@ describe("Send page", () => {
     await enter("alice.dusk");
 
     expect(
-      await findByText("alice.dusk points to a shielded address")
+      await findByText("alice.dusk points to a shielded address"),
     ).toBeInTheDocument();
     expect(available(container)).toHaveTextContent(/shielded balance$/);
 
@@ -422,16 +423,16 @@ describe("Send page", () => {
     const { gasLimit, gasPrice } = getGasSettings(
       "public-transfer",
       get(settingsStore),
-      get(gasPriceStore)
+      get(gasPriceStore),
     );
     const fee = gasLimit * gasPrice;
     const amount = getByRole("textbox", { name: "Amount" });
 
     expect(available(container)).toHaveTextContent(
-      /^Available •••• hidden DUSK from your public balance$/
+      /^Available •••• hidden DUSK from your public balance$/,
     );
     expect(container).not.toHaveTextContent(
-      formatDusk(balance.unshielded.value, "en")
+      formatDusk(balance.unshielded.value, "en"),
     );
 
     await fireEvent.input(getByRole("textbox", { name: "To" }), {
@@ -441,10 +442,10 @@ describe("Send page", () => {
 
     expect(amount).toHaveValue("••••");
     expect(container).not.toHaveTextContent(
-      formatDuskPlain(balance.unshielded.value - fee)
+      formatDuskPlain(balance.unshielded.value - fee),
     );
     expect(container.querySelector(".send__summary")).toHaveTextContent(
-      /Amount •••• hidden DUSK/
+      /Amount •••• hidden DUSK/,
     );
     expect(available(container)).toHaveTextContent(/•••• hidden/);
 
@@ -453,7 +454,7 @@ describe("Send page", () => {
 
     expect(amount).toHaveValue("1");
     expect(container.querySelector(".send__summary")).toHaveTextContent(
-      /Amount 1 DUSK/
+      /Amount 1 DUSK/,
     );
   });
 
@@ -484,7 +485,7 @@ describe("Send page", () => {
       vi
         .spyOn(networkStore, "connect")
         .mockResolvedValue(
-          /** @type {any} */ ({ query: async () => ({ mempoolTxs }) })
+          /** @type {any} */ ({ query: async () => ({ mempoolTxs }) }),
         );
 
     /** @param {HTMLElement} container */
@@ -495,7 +496,7 @@ describe("Send page", () => {
     const feeAt = (price) =>
       formatDuskPlain(
         getGasSettings("public-transfer", get(settingsStore), price).gasLimit *
-          price
+          price,
       );
 
     afterEach(async () => {
@@ -594,11 +595,11 @@ describe("Send page", () => {
       target: { value: "3000000" },
     });
     await act(() =>
-      settingsStore.update((settings) => ({ ...settings, userId: "someone" }))
+      settingsStore.update((settings) => ({ ...settings, userId: "someone" })),
     );
 
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
-      "0.003"
+      "0.003",
     );
   });
 
@@ -627,8 +628,8 @@ describe("Send page", () => {
     });
     openAt(
       new URL(
-        `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.01`
-      )
+        `http://localhost/some-base-path/dashboard/send?to=${OTHER}&amount=0.01`,
+      ),
     );
 
     try {
@@ -637,7 +638,7 @@ describe("Send page", () => {
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(getByRole("note")).toHaveTextContent(
-        `This address sent you: “${URGENT}” · not in your contacts.`
+        `This address sent you: “${URGENT}” · not in your contacts.`,
       );
     } finally {
       history.whole?.set({
@@ -651,7 +652,7 @@ describe("Send page", () => {
 
   it("should open with the recipient in the address, as from Send again or a contact", () => {
     openAt(
-      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`),
     );
 
     const { getByRole } = render(SendPage);
@@ -661,7 +662,7 @@ describe("Send page", () => {
 
   it("should start again with another recipient the address asks for while the page shows", async () => {
     openAt(
-      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`)
+      new URL(`http://localhost/some-base-path/dashboard/send?to=${OTHER}`),
     );
 
     const { getByRole } = render(SendPage);
@@ -671,8 +672,8 @@ describe("Send page", () => {
 
     await act(() =>
       openAt(
-        new URL(`http://localhost/some-base-path/dashboard/send?to=${another}`)
-      )
+        new URL(`http://localhost/some-base-path/dashboard/send?to=${another}`),
+      ),
     );
 
     expect(getByRole("textbox", { name: "To" })).toHaveValue(another);

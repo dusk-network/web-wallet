@@ -66,7 +66,7 @@ function batchedReader(network, nodeUrl) {
           nodeUrl,
         }),
         nodeUrl,
-      })
+      }),
   );
   const entry = { nodeUrl, reader };
 
@@ -113,7 +113,7 @@ async function readAlone(decodeBase58, network, nodeUrl, accounts, out) {
   for (const account of accounts) {
     try {
       const verified = await reader.verifyPrimary(
-        Array.from(decodeBase58(account) ?? [])
+        Array.from(decodeBase58(account) ?? []),
       );
 
       out.set(account, verified === null ? null : verified.primary.spelling);
@@ -138,7 +138,7 @@ export async function lookupCounterpartyNames(accounts, { network, nodeUrl }) {
   /** @type {Map<string, string | null>} */
   const out = new Map();
   const list = [...new Set(accounts.map((a) => String(a ?? "").trim()))].filter(
-    (a) => ProfileGenerator.typeOf(a) === "account"
+    (a) => ProfileGenerator.typeOf(a) === "account",
   );
 
   if ((network !== "mainnet" && network !== "testnet") || !list.length) {
@@ -151,7 +151,7 @@ export async function lookupCounterpartyNames(accounts, { network, nodeUrl }) {
 
     // Started in one task, so one aggregate takes them.
     const results = await Promise.allSettled(
-      list.map((a) => reader.verifyPrimary(Array.from(decodeBase58(a) ?? [])))
+      list.map((a) => reader.verifyPrimary(Array.from(decodeBase58(a) ?? []))),
     );
 
     /** @type {string[]} */
@@ -206,7 +206,7 @@ export async function verifiedNamesOf(accounts, { network, nodeUrl }) {
 
   const looked = await lookupCounterpartyNames(
     list.filter((account) => !found.has(account)),
-    { network, nodeUrl }
+    { network, nodeUrl },
   );
 
   if (looked.size && epoch !== undefined) {

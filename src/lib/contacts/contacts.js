@@ -137,8 +137,8 @@ const isContact = (value) =>
 const contactsIn = (parsed) =>
   Object.fromEntries(
     Object.entries(
-      typeof parsed === "object" && parsed !== null ? parsed : {}
-    ).filter(([, value]) => isContact(value))
+      typeof parsed === "object" && parsed !== null ? parsed : {},
+    ).filter(([, value]) => isContact(value)),
   );
 
 /**
@@ -182,7 +182,7 @@ const kept = (all) =>
     Object.values(all)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, LIMIT)
-      .map((contact) => [contact.id, contact])
+      .map((contact) => [contact.id, contact]),
   );
 
 /**
@@ -195,7 +195,7 @@ const sorted = (all) =>
   Object.values(all).sort(
     (a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) ||
-      b.updatedAt - a.updatedAt
+      b.updatedAt - a.updatedAt,
   );
 
 /**
@@ -239,7 +239,7 @@ async function readBook(opened) {
   return record === undefined
     ? {}
     : contactsIn(
-        JSON.parse(await unsealContacts(opened.key, opened.namespace, record))
+        JSON.parse(await unsealContacts(opened.key, opened.namespace, record)),
       );
 }
 
@@ -269,7 +269,7 @@ async function keepChange(opened, apply, whenKept) {
       const record = await sealContacts(
         opened.key,
         opened.namespace,
-        JSON.stringify(next)
+        JSON.stringify(next),
       );
 
       if (localStorage.getItem(STORAGE_KEY) !== before || isStale(opened)) {
@@ -452,7 +452,7 @@ async function moveInPlainContacts() {
 
   change(
     (all) => ({ all: { ...plain, ...all }, value: null }),
-    () => localStorage.removeItem(PLAIN_KEY)
+    () => localStorage.removeItem(PLAIN_KEY),
   );
   await writes;
 }
@@ -508,7 +508,7 @@ export async function forgetContactsOf(account) {
       JSON.stringify({
         ...(typeof marks === "object" && marks !== null ? marks : {}),
         [namespace]: newId(),
-      })
+      }),
     );
   });
 }
@@ -575,8 +575,8 @@ export function listContacts(query = "") {
   return q
     ? all.filter((contact) =>
         [contact.name, contact.duskName ?? "", contact.address].some((value) =>
-          searchKey(value).includes(q)
-        )
+          searchKey(value).includes(q),
+        ),
       )
     : all;
 }
@@ -643,7 +643,7 @@ export function findContact(recipient) {
 
   return (
     listContacts().find(
-      (contact) => contact.address === value || contact.duskName === name
+      (contact) => contact.address === value || contact.duskName === name,
     ) ?? null
   );
 }
@@ -781,7 +781,9 @@ export function alikeContacts(contacts, profiles) {
   const alike = lookAlikes([...profiles, ...contacts]);
 
   return new Set(
-    contacts.flatMap((contact) => (alike.has(contact) ? [contact.address] : []))
+    contacts.flatMap((contact) =>
+      alike.has(contact) ? [contact.address] : [],
+    ),
   );
 }
 
@@ -793,5 +795,5 @@ export function alikeContacts(contacts, profiles) {
  */
 export const contactNamesOf = (contacts) =>
   new Map(
-    contacts.map((contact) => [contact.address, contactNameText(contact.name)])
+    contacts.map((contact) => [contact.address, contactNameText(contact.name)]),
   );

@@ -29,7 +29,7 @@ async function initializeWallet(mnemonic, syncFrom) {
   setSendPasswordLimit(null);
 
   const profileGenerator = await profileGeneratorFrom(
-    getSeedFromMnemonic(mnemonic)
+    getSeedFromMnemonic(mnemonic),
   );
   const firstProfile = await profileGenerator.default;
   const isKnownWallet =

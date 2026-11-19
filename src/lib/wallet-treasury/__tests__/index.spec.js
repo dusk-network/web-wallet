@@ -70,7 +70,7 @@ describe("WalletTreasury", () => {
     const nullifierToExclude = cachePendingNotesInfo[1].nullifier;
     const pendingNullifiersAsStrings = pluckFrom(
       cachePendingNotesInfo,
-      "nullifier"
+      "nullifier",
     ).map(String);
     const fakeKey = {
       toString() {
@@ -91,7 +91,7 @@ describe("WalletTreasury", () => {
 
       if (!addressWithPendingNotes) {
         throw new Error(
-          "A pending note with a nullifier present in unspent notes is missing"
+          "A pending note with a nullifier present in unspent notes is missing",
         );
       }
 
@@ -102,8 +102,8 @@ describe("WalletTreasury", () => {
         .and(
           (note) =>
             !pendingNullifiersAsStrings.includes(
-              new Uint8Array(note.nullifier).toString()
-            )
+              new Uint8Array(note.nullifier).toString(),
+            ),
         )
         .toArray()
         .then((entries) =>
@@ -111,7 +111,7 @@ describe("WalletTreasury", () => {
             ...entry,
             note: new Uint8Array(entry.note),
             nullifier: new Uint8Array(entry.nullifier),
-          }))
+          })),
         );
 
       db.close();
@@ -127,7 +127,7 @@ describe("WalletTreasury", () => {
         expect.objectContaining({
           nonce: expect.any(BigInt),
           value: expect.any(BigInt),
-        })
+        }),
       );
     });
 
@@ -149,10 +149,10 @@ describe("WalletTreasury", () => {
 
       expect(expectedNotes.length).toBe(unspentNotesMapA.size);
       expect(sortNullifiers(Array.from(unspentNotesMapA.keys()))).toStrictEqual(
-        sortNullifiers(pluckFrom(expectedNotes, "nullifier"))
+        sortNullifiers(pluckFrom(expectedNotes, "nullifier")),
       );
       expect(
-        sortNullifiers(Array.from(unspentNotesMapA.values()))
+        sortNullifiers(Array.from(unspentNotesMapA.values())),
       ).toStrictEqual(sortNullifiers(pluckFrom(expectedNotes, "note")));
       expect(unspentNotesMapB).toStrictEqual(new Map());
     });
@@ -174,7 +174,7 @@ describe("WalletTreasury", () => {
           faults: expect.any(Number),
           hardFaults: expect.any(Number),
           reward: expect.any(BigInt),
-        })
+        }),
       );
     });
 
@@ -185,7 +185,7 @@ describe("WalletTreasury", () => {
           start(controller) {
             controller.close();
           },
-        })
+        }),
       );
 
     /** @param {Uint8Array[]} nullifiers */
@@ -207,21 +207,21 @@ describe("WalletTreasury", () => {
       const spent = vi
         .spyOn(AddressSyncer.prototype, "spent")
         .mockImplementation(async (nullifiers) =>
-          nullifiers.filter((n) => onChain.has(String(n))).map((n) => n.buffer)
+          nullifiers.filter((n) => onChain.has(String(n))).map((n) => n.buffer),
         );
 
       try {
         await walletTreasury.update(0n, () => {}, new AbortController().signal);
 
         expect(sorted(await walletCache.getUnspentNotesNullifiers())).toEqual(
-          sorted([...stillUnspent, restored])
+          sorted([...stillUnspent, restored]),
         );
         expect(sorted(await walletCache.getSpentNotesNullifiers())).toEqual(
-          sorted([...stillSpent, newlySpent])
+          sorted([...stillSpent, newlySpent]),
         );
         expect(spent).toHaveBeenCalledOnce();
         expect(sorted(spent.mock.calls[0][0])).toEqual(
-          sorted([...unspentBefore, ...spentBefore])
+          sorted([...unspentBefore, ...spentBefore]),
         );
       } finally {
         notes.mockRestore();
@@ -237,7 +237,7 @@ describe("WalletTreasury", () => {
           address: "spent-before",
           note: new ArrayBuffer(8),
           nullifier: Uint32Array.of(i, 1, 2, 3, 4, 5, 6, 7).buffer,
-        }))
+        })),
       );
       db.close();
 
@@ -249,7 +249,7 @@ describe("WalletTreasury", () => {
       const spent = vi
         .spyOn(AddressSyncer.prototype, "spent")
         .mockImplementation(async (nullifiers) =>
-          nullifiers.map((n) => n.buffer)
+          nullifiers.map((n) => n.buffer),
         );
 
       try {
@@ -259,7 +259,7 @@ describe("WalletTreasury", () => {
           1000, 20,
         ]);
         expect(sorted(spent.mock.calls.flatMap(([asked]) => asked))).toEqual(
-          cached
+          cached,
         );
       } finally {
         notes.mockRestore();
@@ -290,7 +290,7 @@ describe("WalletTreasury", () => {
           toString() {
             return "non-existent address";
           },
-        })
+        }),
       ).rejects.toThrow();
     });
 
@@ -335,7 +335,7 @@ describe("WalletTreasury", () => {
           .update(0n, () => {}, new AbortController().signal)
           .then(
             () => null,
-            (error) => error
+            (error) => error,
           );
         await vi.waitUntil(() => spentSpy.mock.calls.length === 1);
         walletTreasury.reset();
@@ -368,7 +368,7 @@ describe("WalletTreasury", () => {
           .update(0n, () => {}, new AbortController().signal)
           .then(
             () => null,
-            (error) => error
+            (error) => error,
           );
         await vi.waitUntil(() => heightSpy.mock.calls.length === 1);
         walletTreasury.reset();
@@ -389,30 +389,30 @@ describe("WalletTreasury", () => {
         .mockRejectedValueOnce(error);
       const addEventListenerSpy = vi.spyOn(
         AddressSyncer.prototype,
-        "addEventListener"
+        "addEventListener",
       );
       const removeEventListenerSpy = vi.spyOn(
         AddressSyncer.prototype,
-        "removeEventListener"
+        "removeEventListener",
       );
 
       try {
         await expect(
-          walletTreasury.update(0n, () => {}, new AbortController().signal)
+          walletTreasury.update(0n, () => {}, new AbortController().signal),
         ).rejects.toBe(error);
 
         expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
         expect(removeEventListenerSpy.mock.calls).toStrictEqual(
-          addEventListenerSpy.mock.calls
+          addEventListenerSpy.mock.calls,
         );
 
         await expect(
-          walletTreasury.update(0n, () => {}, new AbortController().signal)
+          walletTreasury.update(0n, () => {}, new AbortController().signal),
         ).resolves.toBeUndefined();
 
         expect(addEventListenerSpy).toHaveBeenCalledTimes(4);
         expect(removeEventListenerSpy.mock.calls).toStrictEqual(
-          addEventListenerSpy.mock.calls
+          addEventListenerSpy.mock.calls,
         );
       } finally {
         balancesSpy.mockRestore();
@@ -439,11 +439,11 @@ describe("WalletTreasury", () => {
 
     it("should expose a method to get the cached balance", async () => {
       const expected = await walletCache.getBalanceInfo(
-        profiles[0].address.toString()
+        profiles[0].address.toString(),
       );
 
       await expect(
-        walletTreasury.getCachedBalance(profiles[0])
+        walletTreasury.getCachedBalance(profiles[0]),
       ).resolves.toStrictEqual(expected);
     });
 
@@ -451,17 +451,17 @@ describe("WalletTreasury", () => {
       const expected = await walletCache.getSyncInfo();
 
       await expect(walletTreasury.getCachedSyncInfo()).resolves.toStrictEqual(
-        expected
+        expected,
       );
     });
 
     it("should expose a method to get the cached stake info", async () => {
       const expected = await walletCache.getStakeInfo(
-        profiles[0].address.toString()
+        profiles[0].address.toString(),
       );
 
       await expect(
-        walletTreasury.getCachedStakeInfo(profiles[0])
+        walletTreasury.getCachedStakeInfo(profiles[0]),
       ).resolves.toStrictEqual(expected);
     });
 
@@ -482,7 +482,7 @@ describe("WalletTreasury", () => {
       await walletTreasury.setCachedBalance(profiles[0], newBalance);
 
       await expect(walletCache.getBalanceInfo(address)).resolves.toStrictEqual(
-        newBalance
+        newBalance,
       );
     });
 
@@ -501,7 +501,7 @@ describe("WalletTreasury", () => {
       expect(setCachedStakeInfoSpy).toHaveBeenCalledTimes(1);
       expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
         profiles[0].account.toString(),
-        fakeStakeInfo
+        fakeStakeInfo,
       );
 
       setCachedStakeInfoSpy.mockRestore();
@@ -546,7 +546,7 @@ describe("WalletTreasury", () => {
       expect(await nonceOf()).toBe(before + 1n);
       // Not another profile's.
       await expect(
-        walletTreasury.account(profiles[1].account)
+        walletTreasury.account(profiles[1].account),
       ).resolves.toMatchObject({ nonce: before });
 
       // Dropped from the queue, the next takes it again.
@@ -557,7 +557,7 @@ describe("WalletTreasury", () => {
       // In a block, the node's balance has it, and more sent from elsewhere.
       await walletTreasury.updateCachedNonce(profiles[0], before + 1n);
       vi.spyOn(AccountSyncer.prototype, "balances").mockResolvedValueOnce(
-        profiles.map(() => ({ nonce: before + 5n, value: 1n }))
+        profiles.map(() => ({ nonce: before + 5n, value: 1n })),
       );
       await walletTreasury.update(0n, () => {}, signal);
 

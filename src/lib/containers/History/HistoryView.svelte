@@ -224,7 +224,7 @@
           locale,
           network,
           present: context,
-        }).map(({ row }) => row.hash)
+        }).map(({ row }) => row.hash),
       )
     : null;
   $: shown = described.filter(
@@ -237,7 +237,7 @@
             privacy
           ),
         since,
-      })
+      }),
   );
   $: groups = groupByDay(shown, ({ row }) => row.time, {
     full: true,
@@ -342,7 +342,7 @@
           >{shown.length === 1
             ? "1 transaction"
             : `${shown.length} transactions`} found for “{displayText(
-            query.trim()
+            query.trim(),
           ).text}”</span
         >
         <Button

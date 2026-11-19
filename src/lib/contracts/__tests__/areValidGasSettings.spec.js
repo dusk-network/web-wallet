@@ -13,24 +13,27 @@ describe("areValidGasSettings", () => {
 
   it("should validate the provided gas limit and gas price based on the boundaries", () => {
     expect(
-      areValidGasSettings(realStore.gasPriceLower, realStore.gasLimitUpper)
+      areValidGasSettings(realStore.gasPriceLower, realStore.gasLimitUpper),
     ).toBe(true);
 
     expect(
-      areValidGasSettings(realStore.gasPriceLower, realStore.gasLimitLower)
+      areValidGasSettings(realStore.gasPriceLower, realStore.gasLimitLower),
     ).toBe(true);
 
     expect(areValidGasSettings(realStore.gasPriceLower + 1n, 0n)).toBe(false);
 
     expect(
-      areValidGasSettings(realStore.gasPriceLower, realStore.gasLimitLower - 1n)
+      areValidGasSettings(
+        realStore.gasPriceLower,
+        realStore.gasLimitLower - 1n,
+      ),
     ).toBe(false);
 
     expect(
       areValidGasSettings(
         realStore.gasPriceLower - 1n,
-        realStore.gasLimitUpper * 2n
-      )
+        realStore.gasLimitUpper * 2n,
+      ),
     ).toBe(false);
 
     // @ts-ignore
@@ -65,7 +68,7 @@ describe("areValidGasSettings", () => {
     expect(areValidGasSettings(1n, 30_000_000n, stakeLimits)).toBe(false);
     expect(areValidGasSettings(1n, 35_000_000n, stakeLimits)).toBe(true);
     expect(
-      areValidGasSettings(1n, realStore.gasLimitUpper + 1n, stakeLimits)
+      areValidGasSettings(1n, realStore.gasLimitUpper + 1n, stakeLimits),
     ).toBe(false);
   });
 });

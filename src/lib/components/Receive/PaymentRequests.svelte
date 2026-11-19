@@ -125,7 +125,7 @@
         () => {
           checkedAt = Date.now();
         },
-        Math.max(0, first + LOOK_FOR_MS - Date.now())
+        Math.max(0, first + LOOK_FOR_MS - Date.now()),
       );
     }
   }
@@ -312,8 +312,8 @@
     const owed = requests
       .flatMap((request) =>
         paidAgain(matched.get(request.id) ?? { state: "waiting" }).map(
-          (payment) => ({ payment, request })
-        )
+          (payment) => ({ payment, request }),
+        ),
       )
       .sort((x, y) => (y.payment.at ?? 0) - (x.payment.at ?? 0));
 
@@ -324,15 +324,15 @@
         const sent = refund
           ? sentAlready(
               rows.filter(
-                (row) => !taken.includes(row.hash) && isSentAfter(row, paidIn)
+                (row) => !taken.includes(row.hash) && isSentAfter(row, paidIn),
               ),
-              refund
+              refund,
             )
           : null;
         const made = refund
           ? makeRequestLink(
               { amountLux: refund.lux, memo: refund.memo, to: refund.to },
-              net
+              net,
             )
           : null;
 
@@ -349,7 +349,7 @@
             sent,
           },
         ];
-      })
+      }),
     );
   }
 
@@ -437,7 +437,7 @@
         lux: request.lux === null ? null : BigInt(request.lux),
         memo: request.memo,
       },
-      said
+      said,
     );
 
   /**
@@ -521,7 +521,7 @@
   $: saidBy = { language, name: requestName, net: $nodeNetwork };
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
-    ({ network: asked, to }) => asked === network && addresses.includes(to)
+    ({ network: asked, to }) => asked === network && addresses.includes(to),
   );
   // All of the history, not the page History has shown so far: a request
   // paid days ago is paid all the same.
@@ -538,21 +538,21 @@
     $awaitedArrivals,
     addresses,
     historyRows,
-    Math.max(Date.now(), checkedAt)
+    Math.max(Date.now(), checkedAt),
   );
   $: checkUntil(awaited);
   // A payment may be further back than the history read so far: checked
   // for while the rest is read, and said so where it couldn't be.
   $: oldestRead = historyRows.reduce(
     (oldest, { time }) => Math.min(oldest, time ?? Infinity),
-    Infinity
+    Infinity,
   );
   $: olderThanRead = new Set(
     shown
       .filter(
-        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
+        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead,
       )
-      .map(({ id }) => id)
+      .map(({ id }) => id),
   );
   $: isShort = $wholeActivity.failed && olderThanRead.size > 0;
 </script>
@@ -571,7 +571,7 @@
           match,
           language,
           awaited.some(({ to }) => to === request.to) ||
-            ($wholeActivity.reading && olderThanRead.has(request.id))
+            ($wholeActivity.reading && olderThanRead.has(request.id)),
         )}
         <li class="requests__item">
           <p class="requests__head">
@@ -640,7 +640,7 @@
                 <li class="requests__payment">
                   <span
                     >{day.charAt(0).toUpperCase()}{day.slice(
-                      1
+                      1,
                     )}{#if payment.lux !== undefined}, <BalanceValue
                         value={formatDuskExact(payment.lux, language)}
                       /> DUSK{/if}</span
@@ -651,7 +651,7 @@
                       aria-label={`See in History: the payment of ${day}`}
                       class="text-link tap-link"
                       href={addBasePath(
-                        `/dashboard/transactions?tx=${payment.hash}`
+                        `/dashboard/transactions?tx=${payment.hash}`,
                       )}>See in History</a
                     >
                     {#if refund?.back && !refund.sent}
@@ -684,7 +684,7 @@
                         aria-label={`See in History: what was sent back for the payment of ${day}`}
                         class="text-link tap-link"
                         href={addBasePath(
-                          `/dashboard/transactions?tx=${sent.hash}`
+                          `/dashboard/transactions?tx=${sent.hash}`,
                         )}>See in History</a
                       ></span
                     >

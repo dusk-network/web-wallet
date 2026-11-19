@@ -8,7 +8,7 @@ describe("notesArrayToMap", () => {
     const notesMap = notesArrayToMap(cacheUnspentNotes);
     const groupedNotes = Object.groupBy(
       cacheUnspentNotes,
-      ({ address }) => address
+      ({ address }) => address,
     );
     const addresses = Object.keys(groupedNotes);
 

@@ -54,7 +54,7 @@
       toast(
         "error",
         error instanceof Error ? error.message : "Couldn't open the wallet",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
     });
   }

@@ -84,7 +84,7 @@
 
     const options = Array.from(list.querySelectorAll("button"));
     const at = options.indexOf(
-      /** @type {HTMLButtonElement} */ (document.activeElement)
+      /** @type {HTMLButtonElement} */ (document.activeElement),
     );
     const step = event.key === "ArrowDown" ? 1 : -1;
 

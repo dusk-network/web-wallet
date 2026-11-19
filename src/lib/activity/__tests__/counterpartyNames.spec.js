@@ -69,18 +69,18 @@ function useReader(answer) {
 describe("lookupCounterpartyNames", () => {
   it("looks up the public accounts among them at once, each once, with null for an account without a name", async () => {
     const reader = useReader(async (key) =>
-      isKeyOf(key, NAMED) ? primary("shpongle.dusk") : null
+      isKeyOf(key, NAMED) ? primary("shpongle.dusk") : null,
     );
     const result = await names.lookupCounterpartyNames(
       [NAMED, UNNAMED, ` ${NAMED} `, SHIELDED_ADDRESS, "carol.dusk"],
-      { network: "testnet", nodeUrl: NODE }
+      { network: "testnet", nodeUrl: NODE },
     );
 
     expect(result).toEqual(
       new Map([
         [NAMED, "shpongle.dusk"],
         [UNNAMED, null],
-      ])
+      ]),
     );
     expect(reader.verifyPrimary).toHaveBeenCalledTimes(2);
     expect(mocks.createLensReader).toHaveBeenCalledWith(releases.testnet, {
@@ -122,7 +122,7 @@ describe("lookupCounterpartyNames", () => {
         view.setUint32(52, 2, true);
 
         return new Response(reply);
-      })
+      }),
     );
 
     /** @param {number[]} body */
@@ -140,9 +140,9 @@ describe("lookupCounterpartyNames", () => {
     expect(
       await Promise.all(
         answers.map(async (res) =>
-          Array.from(new Uint8Array(await res.arrayBuffer()))
-        )
-      )
+          Array.from(new Uint8Array(await res.arrayBuffer())),
+        ),
+      ),
     ).toEqual([[7], [8]]);
 
     // Each reverse read capped at the SDK client's 842M gas: 203 reads at 4M, and 30M.
@@ -160,19 +160,19 @@ describe("lookupCounterpartyNames", () => {
     useReader(async (key) =>
       isKeyOf(key, NAMED)
         ? primary("a-very-long-name-that-runs-on.dusk")
-        : primary("abc123def456ghi789.dusk")
+        : primary("abc123def456ghi789.dusk"),
     );
 
     await expect(
       names.lookupCounterpartyNames([NAMED, UNNAMED], {
         network: "testnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(
       new Map([
         [NAMED, null],
         [UNNAMED, null],
-      ])
+      ]),
     );
   });
 
@@ -195,12 +195,12 @@ describe("lookupCounterpartyNames", () => {
       names.lookupCounterpartyNames([NAMED, UNNAMED], {
         network: "testnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(
       new Map([
         [NAMED, null],
         [UNNAMED, "noor.dusk"],
-      ])
+      ]),
     );
     expect(mocks.getLensReader).toHaveBeenCalledWith("testnet", NODE);
   });
@@ -218,7 +218,7 @@ describe("lookupCounterpartyNames", () => {
       names.lookupCounterpartyNames([NAMED, UNNAMED], {
         network: "testnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(new Map([[UNNAMED, null]]));
 
     mocks.createLensReader.mockRejectedValue(new Error("no driver"));
@@ -229,7 +229,7 @@ describe("lookupCounterpartyNames", () => {
       names.lookupCounterpartyNames([NAMED], {
         network: "testnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(new Map());
   });
 
@@ -238,7 +238,7 @@ describe("lookupCounterpartyNames", () => {
       names.lookupCounterpartyNames([NAMED], {
         network: "devnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(new Map());
     expect(mocks.createLensReader).not.toHaveBeenCalled();
   });
@@ -248,7 +248,7 @@ describe("verifiedNamesOf", () => {
   it("takes a name checked in the last ten minutes as kept, looks up the others, and keeps them", async () => {
     const store = await import("../activityStore");
     const reader = useReader(async (key) =>
-      isKeyOf(key, NAMED) ? primary("shpongle.dusk") : null
+      isKeyOf(key, NAMED) ? primary("shpongle.dusk") : null,
     );
 
     // UNNAMED was checked a minute ago: it isn't asked again.
@@ -261,18 +261,18 @@ describe("verifiedNamesOf", () => {
       names.verifiedNamesOf([NAMED, UNNAMED, NAMED], {
         network: "testnet",
         nodeUrl: NODE,
-      })
+      }),
     ).resolves.toEqual(
       new Map([
         [UNNAMED, null],
         [NAMED, "shpongle.dusk"],
-      ])
+      ]),
     );
     expect(reader.verifyPrimary).toHaveBeenCalledOnce();
 
     // Kept: asked again, it's what was looked up.
     await expect(
-      names.verifiedNamesOf([NAMED], { network: "testnet", nodeUrl: NODE })
+      names.verifiedNamesOf([NAMED], { network: "testnet", nodeUrl: NODE }),
     ).resolves.toEqual(new Map([[NAMED, "shpongle.dusk"]]));
     expect(reader.verifyPrimary).toHaveBeenCalledOnce();
   });
@@ -285,7 +285,7 @@ describe("verifiedNamesOf", () => {
       () =>
         new Promise((resolve) => {
           answer = resolve;
-        })
+        }),
     );
 
     await store.clearActivityStore();
@@ -302,7 +302,7 @@ describe("verifiedNamesOf", () => {
     await looking;
 
     expect(await store.getCounterpartyNames("testnet", [NAMED])).toEqual(
-      new Map()
+      new Map(),
     );
   });
 });

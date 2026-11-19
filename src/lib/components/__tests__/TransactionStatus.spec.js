@@ -72,20 +72,20 @@ describe("TransactionStatus", () => {
 
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith(
       hash,
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     // Not sent, nor pending, twice over: sending, until a block has it.
     expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute."
+      "Sending… This usually takes under a minute.",
     );
     expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
     expect(
-      getByRole("button", { name: "Copy transaction hash" })
+      getByRole("button", { name: "Copy transaction hash" }),
     ).toBeInTheDocument();
     expect(getByText("Network fee (at most)")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
     expect(
-      getByRole("link", { name: "View in Dusk explorer" })
+      getByRole("link", { name: "View in Dusk explorer" }),
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
   });
 
@@ -98,19 +98,19 @@ describe("TransactionStatus", () => {
       await act(() => setNetworkReach("offline"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… You're offline. It has left your wallet. This updates once you're back online."
+        "Sending… You're offline. It has left your wallet. This updates once you're back online.",
       );
 
       await act(() => setNetworkReach("silent"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… The network isn't answering. It has left your wallet. This updates once it answers."
+        "Sending… The network isn't answering. It has left your wallet. This updates once it answers.",
       );
 
       await act(() => setNetworkReach("answering"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… This usually takes under a minute."
+        "Sending… This usually takes under a minute.",
       );
     } finally {
       setNetworkReach("answering");
@@ -121,7 +121,7 @@ describe("TransactionStatus", () => {
     const following = followNext();
     const { getByRole, getByText, queryByText } = render(
       TransactionStatus,
-      baseProps
+      baseProps,
     );
     const blockTime = Date.UTC(2026, 9, 28, 0, 34, 7);
 
@@ -134,8 +134,8 @@ describe("TransactionStatus", () => {
     // At its block's time, to the second, as the request it paid says it.
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,687,200.`
-      )
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,687,200.`,
+      ),
     );
     expect(getByRole("status")).toHaveTextContent(/Sent at \d{1,2}:34:07/);
 
@@ -165,8 +165,8 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`
-      )
+        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`,
+      ),
     );
     expect(refreshBalance).not.toHaveBeenCalled();
     expect(onFinal).not.toHaveBeenCalled();
@@ -177,7 +177,7 @@ describe("TransactionStatus", () => {
     await vi.waitFor(() => expect(onFinal).toHaveBeenCalledOnce());
     expect(refreshBalance).toHaveBeenCalledOnce();
     expect(getByRole("status")).toHaveTextContent(
-      `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`
+      `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`,
     );
     refreshBalance.mockRestore();
   });
@@ -222,7 +222,7 @@ describe("TransactionStatus", () => {
       followTransaction.mock.lastCall?.[1].onBlock(inBlock);
 
       await vi.waitFor(() =>
-        expect(getByRole("status")).toHaveTextContent(/^Sent at /)
+        expect(getByRole("status")).toHaveTextContent(/^Sent at /),
       );
       await vi.waitFor(() =>
         expect(rowOf()).toMatchObject({
@@ -231,14 +231,14 @@ describe("TransactionStatus", () => {
           status: "executed",
           time: blockTime,
           value: 10_000_000n,
-        })
+        }),
       );
 
       // Final, it says the same, the archive not there yet.
       following.resolve(inBlock);
 
       await vi.waitFor(() =>
-        expect(followTransaction.mock.results[0]?.value).resolves.toBe(inBlock)
+        expect(followTransaction.mock.results[0]?.value).resolves.toBe(inBlock),
       );
       expect(rowOf()).toMatchObject({ status: "executed" });
     } finally {
@@ -260,7 +260,7 @@ describe("TransactionStatus", () => {
     following.resolve(null);
 
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(/^Sent at /)
+      expect(getByRole("status")).toHaveTextContent(/^Sent at /),
     );
     expect(getByRole("status")).not.toHaveTextContent("Still pending");
   });
@@ -279,7 +279,7 @@ describe("TransactionStatus", () => {
     });
 
     expect(container.querySelector(".arrival-notice")).toHaveTextContent(
-      "when it arrives"
+      "when it arrives",
     );
 
     // Away from the page as a block takes it: its title says so.
@@ -293,7 +293,7 @@ describe("TransactionStatus", () => {
     });
 
     await vi.waitFor(() =>
-      expect(get(arrivalTitle)).toBe("Arrived: 0.02 DUSK to Lucas")
+      expect(get(arrivalTitle)).toBe("Arrived: 0.02 DUSK to Lucas"),
     );
     expect(container.querySelector(".arrival-notice")).toBeNull();
     hasFocus.mockRestore();
@@ -325,7 +325,7 @@ describe("TransactionStatus", () => {
         timestamp: 1,
       });
       await vi.waitFor(() =>
-        expect(getByText("Network fee")).toBeInTheDocument()
+        expect(getByText("Network fee")).toBeInTheDocument(),
       );
 
       expect(container.textContent).not.toContain("0.0019");
@@ -338,7 +338,7 @@ describe("TransactionStatus", () => {
     const following = followNext();
     const { container, getByRole, getByText } = render(
       TransactionStatus,
-      baseProps
+      baseProps,
     );
 
     following.resolve({
@@ -348,15 +348,15 @@ describe("TransactionStatus", () => {
     });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Failed It didn't go through. The network fee was charged."
-      )
+        "Failed It didn't go through. The network fee was charged.",
+      ),
     );
 
     expect(getByText("Network fee")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
     expect(getByText("Details")).toBeInTheDocument();
     expect(
-      container.querySelector(".dusk-error-details__error")
+      container.querySelector(".dusk-error-details__error"),
     ).toHaveTextContent("Panic: out of gas");
   });
 
@@ -367,8 +367,8 @@ describe("TransactionStatus", () => {
     following.resolve(null);
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer."
-      )
+        "Sending… Still pending. See its status in the explorer.",
+      ),
     );
 
     const again = followNext();
@@ -377,7 +377,7 @@ describe("TransactionStatus", () => {
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
     expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute."
+      "Sending… This usually takes under a minute.",
     );
     expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
@@ -386,8 +386,8 @@ describe("TransactionStatus", () => {
     again.resolve({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true })} In block 1.`
-      )
+        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true })} In block 1.`,
+      ),
     );
     vi.restoreAllMocks();
   });
@@ -428,7 +428,7 @@ describe("TransactionStatus", () => {
       await act(() => following.resolve(null));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here."
+        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here.",
       );
 
       // A block took it: found, and kept no more.
@@ -444,11 +444,11 @@ describe("TransactionStatus", () => {
               timestamp: landed,
             },
           },
-        ])
+        ]),
       );
 
       expect(getByRole("status")).toHaveTextContent(
-        `Sent after you chose not to send, at ${timeLabel(landed, "en", { seconds: true })} 0.01 DUSK to your Profile 2 In block 4,850,170.`
+        `Sent after you chose not to send, at ${timeLabel(landed, "en", { seconds: true })} 0.01 DUSK to your Profile 2 In block 4,850,170.`,
       );
     } finally {
       kept.set([]);
@@ -463,8 +463,8 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer."
-      )
+        "Sending… Still pending. See its status in the explorer.",
+      ),
     );
   });
 
@@ -489,7 +489,7 @@ describe("TransactionStatus", () => {
 
     expect(followTransaction).not.toHaveBeenCalled();
     expect(getByRole("status")).toHaveTextContent(
-      "Sent The wallet updates automatically."
+      "Sent The wallet updates automatically.",
     );
     expect(queryByRole("link")).toBeNull();
   });

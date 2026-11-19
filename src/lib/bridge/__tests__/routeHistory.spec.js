@@ -200,7 +200,7 @@ describe("waitsOnHistory", () => {
 
     expect(await waits({ rows: [out], sent: [] })).toBe(true);
     expect(
-      await waits({ rows: [{ ...out, status: "executed" }], sent: [] })
+      await waits({ rows: [{ ...out, status: "executed" }], sent: [] }),
     ).toBe(false);
   });
 });
@@ -217,8 +217,8 @@ describe("routeTransfers", () => {
     try {
       await vi.waitFor(() =>
         expect(
-          seen.at(-1)?.find(({ hash }) => hash === MIGRATION)
-        ).toMatchObject({ payout: payout.hash, stage: "paid" })
+          seen.at(-1)?.find(({ hash }) => hash === MIGRATION),
+        ).toMatchObject({ payout: payout.hash, stage: "paid" }),
       );
     } finally {
       stop();

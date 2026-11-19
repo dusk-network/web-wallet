@@ -48,7 +48,7 @@ export default function keyboardInset(node) {
   const update = () => {
     const inset = `${Math.max(
       0,
-      Math.round(window.innerHeight - viewport.height - viewport.offsetTop)
+      Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
     )}px`;
 
     node.style.setProperty("--keyboard-inset", inset);

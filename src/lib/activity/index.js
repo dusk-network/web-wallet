@@ -122,7 +122,7 @@ export const wholeActivity = derived(
     reading: false,
     rows: [],
     whole: false,
-  })
+  }),
 );
 
 /**
@@ -187,7 +187,7 @@ export const currentActivity = () => current;
  */
 export async function noteSentOutcome(
   hash,
-  { blockHeight, error, fee, timestamp }
+  { blockHeight, error, fee, timestamp },
 ) {
   const owners = await changeLocalTransactions(hash, {
     blockHeight: Number(blockHeight),
@@ -259,7 +259,7 @@ export const noteUnconfirmed = (hash, { handing = false } = {}) =>
       record.status === "submitted" ||
       record.status === "mempool" ||
       isHandingElsewhere(record) ||
-      (handing && record.status === NOT_SHOWN)
+      (handing && record.status === NOT_SHOWN),
   );
 
 /**
@@ -274,7 +274,7 @@ export const noteHanding = (hash) =>
   changeSent(
     hash,
     { handing: THIS_PAGE },
-    ({ status }) => status === NOT_SHOWN
+    ({ status }) => status === NOT_SHOWN,
   );
 
 /**
@@ -289,7 +289,7 @@ export const noteSentAccepted = (hash) =>
   changeSent(
     hash,
     { handing: undefined, status: "submitted", submittedAt: Date.now() },
-    ({ status }) => status === NOT_SHOWN || status === "unknown"
+    ({ status }) => status === NOT_SHOWN || status === "unknown",
   );
 
 /**
@@ -304,7 +304,7 @@ export const noteInQueue = (hash) =>
     hash,
     { handing: undefined, status: "mempool" },
     ({ status }) =>
-      status === NOT_SHOWN || status === "submitted" || status === "unknown"
+      status === NOT_SHOWN || status === "submitted" || status === "unknown",
   );
 
 /**
@@ -323,7 +323,7 @@ export const noteNotSentYet = (hash) =>
       status === "submitted" ||
       status === "mempool" ||
       status === "unknown" ||
-      (status === NOT_SHOWN && Boolean(handing))
+      (status === NOT_SHOWN && Boolean(handing)),
   );
 
 /**

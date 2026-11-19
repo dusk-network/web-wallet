@@ -16,7 +16,7 @@ describe("Allocate", () => {
 
     expect(getByRole("textbox", { name: "Public amount" })).toBeInTheDocument();
     expect(
-      getByRole("textbox", { name: "Shielded amount" })
+      getByRole("textbox", { name: "Shielded amount" }),
     ).toBeInTheDocument();
   });
 

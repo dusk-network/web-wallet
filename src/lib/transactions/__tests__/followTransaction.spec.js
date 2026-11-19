@@ -91,12 +91,12 @@ describe("followTransaction", () => {
     expect(query).toHaveBeenNthCalledWith(
       2,
       `tx(hash: "${hash}") { blockHash blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
-      { signal: expect.any(AbortSignal) }
+      { signal: expect.any(AbortSignal) },
     );
     expect(query).toHaveBeenNthCalledWith(
       3,
       `block(hash: "${blockHash}") { status }`,
-      { signal: expect.any(AbortSignal) }
+      { signal: expect.any(AbortSignal) },
     );
   });
 
@@ -135,7 +135,7 @@ describe("followTransaction", () => {
   it("should give the error of a transaction that failed, with the fee it was charged", async () => {
     query
       .mockResolvedValueOnce(
-        spentTx({ err: "Panic: out of gas", gasSpent: 2_500_000 })
+        spentTx({ err: "Panic: out of gas", gasSpent: 2_500_000 }),
       )
       .mockResolvedValueOnce(blockWith("Final"));
 
@@ -285,7 +285,7 @@ describe("followTransaction", () => {
 
   it("should refuse a hash that isn't one", async () => {
     await expect(
-      followTransaction('") { id } block(height: 1')
+      followTransaction('") { id } block(height: 1'),
     ).rejects.toThrow("Invalid transaction hash");
     expect(connect).not.toHaveBeenCalled();
   });

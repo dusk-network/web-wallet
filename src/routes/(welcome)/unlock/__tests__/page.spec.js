@@ -98,7 +98,7 @@ describe("Unlock Wallet", async () => {
         key: id,
         n,
         profileGenerator: expect.any(ProfileGenerator),
-      }))
+      })),
     );
 
   afterEach(async () => {
@@ -157,7 +157,7 @@ describe("Unlock Wallet", async () => {
       expectOpened();
       expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
         "/dashboard/send?to=abc",
-        { replaceState: true }
+        { replaceState: true },
       );
       place.mockRestore();
     });
@@ -185,7 +185,7 @@ describe("Unlock Wallet", async () => {
 
       // Asked for, and turned down: it says so, and the password's there.
       expect(await view.findByRole("alert")).toHaveTextContent(
-        "That didn't unlock the wallet. Try again, or use your password."
+        "That didn't unlock the wallet. Try again, or use your password.",
       );
       expect(getTextInput(view.container)).not.toHaveFocus();
 
@@ -251,7 +251,7 @@ describe("Unlock Wallet", async () => {
 
     it("should say it's off when it opens nothing any more, and offer it no more", async () => {
       const stored = JSON.parse(
-        /** @type {string} */ (localStorage.getItem(PASSKEY))
+        /** @type {string} */ (localStorage.getItem(PASSKEY)),
       );
       const other = device.passkey();
 
@@ -262,16 +262,16 @@ describe("Unlock Wallet", async () => {
           ...stored,
           credentialId: other.credentialId,
           prfSalt: other.prfSalt,
-        })
+        }),
       );
 
       const view = render(UnlockWallet);
 
       expect(await view.findByRole("alert")).toHaveTextContent(
-        "Fingerprint or face unlock is off now."
+        "Fingerprint or face unlock is off now.",
       );
       expect(
-        view.queryByRole("button", { name: "Use fingerprint or face" })
+        view.queryByRole("button", { name: "Use fingerprint or face" }),
       ).toBeNull();
       expect(vault.passkey()).toBeNull();
       expect(openSpy).not.toHaveBeenCalled();
@@ -286,7 +286,7 @@ describe("Unlock Wallet", async () => {
 
       expect(view.getByRole("link", { name: "Back" })).toHaveAttribute(
         "href",
-        expect.stringMatching(/\/setup\?choose$/)
+        expect.stringMatching(/\/setup\?choose$/),
       );
     });
   });
@@ -299,8 +299,8 @@ describe("Unlock Wallet", async () => {
         /** @type {any} */ ({
           state: { lockedAfter: 5 },
           url: new URL("http://localhost/unlock"),
-        })
-      ).subscribe
+        }),
+      ).subscribe,
     );
 
     try {
@@ -310,7 +310,7 @@ describe("Unlock Wallet", async () => {
       const { container, getByRole } = render(UnlockWallet);
 
       expect(getByRole("status")).toHaveTextContent(
-        "Locked after 5 minutes away."
+        "Locked after 5 minutes away.",
       );
       // The password asked for at once: no Create or Restore in the way.
       expect(container.querySelector("input[type=password]")).toBeTruthy();
@@ -331,7 +331,7 @@ describe("Unlock Wallet", async () => {
     const view = render(UnlockWallet);
 
     expect(
-      view.queryByRole("button", { name: "Use fingerprint or face" })
+      view.queryByRole("button", { name: "Use fingerprint or face" }),
     ).toBeNull();
     expect(device.get).not.toHaveBeenCalled();
 
@@ -398,7 +398,7 @@ describe("Unlock Wallet", async () => {
       const boxes = getAllByRole("combobox");
 
       expect(getByRole("group", { name: "Recovery phrase" })).toContainElement(
-        boxes[0]
+        boxes[0],
       );
       expect(boxes).toHaveLength(12);
       expect(getByRole("button", { name: "24 words" })).toBeInTheDocument();
@@ -446,7 +446,7 @@ describe("Unlock Wallet", async () => {
       });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "These words aren't a valid recovery phrase. Check each word."
+        "These words aren't a valid recovery phrase. Check each word.",
       );
       expect(getByRole("button", { name: /unlock/i })).toBeDisabled();
 
@@ -536,7 +536,7 @@ describe("Unlock Wallet", async () => {
 
       expect(get(keptMigrations)).toMatchObject([migration]);
       expect(
-        stored(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`)
+        stored(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`),
       ).toMatchObject([migration]);
       localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations`);
     });
@@ -564,7 +564,7 @@ describe("Unlock Wallet", async () => {
       await fireEvent.submit(form, { currentTarget: form });
       await vi.waitUntil(
         async () => (await navigator.locks.query()).pending?.length,
-        { timeout: 5_000 }
+        { timeout: 5_000 },
       );
       unmount();
       free.resolve(undefined);
@@ -572,7 +572,7 @@ describe("Unlock Wallet", async () => {
       // The unlock's turn comes and goes before this one's.
       await navigator.locks.request(
         name,
-        () => new Promise((resolve) => setTimeout(resolve))
+        () => new Promise((resolve) => setTimeout(resolve)),
       );
 
       expect(localStorage.getItem(name)).not.toBeNull();
@@ -612,7 +612,7 @@ describe("Unlock Wallet", async () => {
       const { getByRole } = render(UnlockWallet, {});
 
       expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-        "Unlock your wallet"
+        "Unlock your wallet",
       );
     });
 
@@ -637,17 +637,17 @@ describe("Unlock Wallet", async () => {
       const errorElement = await vi.waitUntil(getErrorElement);
       const selectedText = textInput.value.substring(
         Number(textInput.selectionStart),
-        Number(textInput.selectionEnd)
+        Number(textInput.selectionEnd),
       );
 
       expect(openSpy).not.toHaveBeenCalled();
       expect(errorElement).toHaveTextContent(
-        "Wrong password. Forgot it? Restore with your recovery phrase."
+        "Wrong password. Forgot it? Restore with your recovery phrase.",
       );
       expect(
         within(/** @type {HTMLElement} */ (errorElement)).getByRole("link", {
           name: "Restore with your recovery phrase",
-        })
+        }),
       ).toHaveAttribute("href", expect.stringMatching(/\/setup\/restore$/));
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);
@@ -676,7 +676,7 @@ describe("Unlock Wallet", async () => {
         expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
           replaceState: true,
         });
-      }
+      },
     );
 
     it("should unlock the Wallet is the entered password is for the last used mnemonic", async () => {
@@ -718,7 +718,7 @@ describe("Unlock Wallet", async () => {
         } finally {
           await vault.setUp(mnemonic, pwd);
         }
-      }
+      },
     );
 
     it("should say a wrong password anew on each try, for screen readers to announce it", async () => {
@@ -792,7 +792,7 @@ describe("Unlock Wallet", async () => {
 
       expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
         "/dashboard/send/?to=alice.dusk",
-        { replaceState: true }
+        { replaceState: true },
       );
     });
 
@@ -815,7 +815,7 @@ describe("Unlock Wallet", async () => {
     it("should open at Home for anything kept that isn't a page of the wallet", async () => {
       sessionStorage.setItem(
         `${CONFIG.LOCAL_STORAGE_APP_KEY}-place`,
-        "//elsewhere.test/dashboard"
+        "//elsewhere.test/dashboard",
       );
 
       await unlock();
@@ -846,7 +846,7 @@ describe("Unlock Wallet", async () => {
 
       expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(
         "/dashboard/stake/?flow=native",
-        { replaceState: true }
+        { replaceState: true },
       );
     });
 
@@ -924,20 +924,20 @@ describe("Unlock Wallet", async () => {
         expect(stored(V2).wallets[0]).toMatchObject(
           fixture === fixtures.current
             ? JSON.parse(fixture.stored)
-            : { version: 1 }
+            : { version: 1 },
         );
         expect(openSpy).toHaveBeenCalledTimes(1);
         expectOpened();
         expect(gotoSpy).toHaveBeenCalledWith("/dashboard", {
           replaceState: true,
         });
-      }
+      },
     );
 
     it("should move nothing with a wrong password", async () => {
       localStorage.setItem(V1, fixtures.legacy.stored);
       settingsStore.update(
-        setUserId(await addressOf(fixtures.legacy.mnemonic))
+        setUserId(await addressOf(fixtures.legacy.mnemonic)),
       );
 
       await unlockWith(`${fixtures.legacy.password}!`);
@@ -971,8 +971,8 @@ describe("Unlock Wallet", async () => {
       expect(
         JSON.parse(
           localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ??
-            "{}"
-        ).legacy
+            "{}",
+        ).legacy,
       ).toBe(moved.id);
       expect(localStorage.getItem(migrations)).toBeNull();
     });
@@ -983,7 +983,7 @@ describe("Unlock Wallet", async () => {
       localStorage.setItem(V1, fixtures.current.stored);
       localStorage.setItem(migrations, "[]");
       settingsStore.update(
-        setUserId(await addressOf(fixtures.current.mnemonic))
+        setUserId(await addressOf(fixtures.current.mnemonic)),
       );
 
       await unlockWith(fixtures.current.password);

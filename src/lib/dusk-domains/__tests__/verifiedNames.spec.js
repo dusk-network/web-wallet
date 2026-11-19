@@ -47,6 +47,6 @@ describe("verifiedNames", () => {
       localStorage.setItem(storageKey, stored);
 
       expect(getVerifiedName("testnet", "account-1")).toBe("");
-    }
+    },
   );
 });

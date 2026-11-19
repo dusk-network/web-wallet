@@ -108,7 +108,7 @@ describe("A transfer's amounts, as its details say them", () => {
     });
 
     return Array.from(container.querySelectorAll("dl > div"), (line) =>
-      line.textContent?.replace(/\s+/g, " ").trim()
+      line.textContent?.replace(/\s+/g, " ").trim(),
     );
   }
 
@@ -144,8 +144,8 @@ describe("A transfer's amounts, as its details say them", () => {
           payout: "0xcc",
           stage: "arrived",
         }),
-        { rows: history }
-      ).at(-1)
+        { rows: history },
+      ).at(-1),
     ).toBe("Received 2.053082083 BEP20 DUSK");
   });
 
@@ -193,19 +193,19 @@ describe("A transfer's amounts, as its details say them", () => {
   it("writes the gas paid to the wei, as the export does, on screen", () => {
     const ledger = ledgerOf(
       /** @type {any} */ ({ item: migration(PAID_AT), kind: "migration" }),
-      { evm: onItsChain(), locale: "en", rows: [], steps: new Map() }
+      { evm: onItsChain(), locale: "en", rows: [], steps: new Map() },
     );
     const { container } = render(TransferLedger, {
       ledger: /** @type {any} */ (ledger),
     });
     const gas = /** @type {Element} */ (
       Array.from(container.querySelectorAll("dl > div")).find((line) =>
-        line.textContent?.includes("Gas")
+        line.textContent?.includes("Gas"),
       )
     );
 
     expect(gas.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Gas, migration 0.00004220500067528 BNB"
+      "Gas, migration 0.00004220500067528 BNB",
     );
   });
 
@@ -232,8 +232,8 @@ describe("A transfer's amounts, as its details say them", () => {
             gasWei: 47_005_000_752_080n,
             totalWei: 93_199_001_491_184n,
           }),
-        }
-      )
+        },
+      ),
     ).toStrictEqual([
       "Sent 4 BEP20 DUSK",
       "Received 4 DUSK",
@@ -248,7 +248,7 @@ describe("A transfer's amounts, as its details say them", () => {
       linesOf({
         ...paid,
         item: { ...paid.item, payout: null, stage: "sent" },
-      })
+      }),
     ).toStrictEqual(["Sent 4 BEP20 DUSK", "You receive 4 DUSK"]);
   });
 
@@ -258,7 +258,7 @@ describe("A transfer's amounts, as its details say them", () => {
         failure: "The memo isn't an address: the bridge can't pay it out",
         stage: "failed",
       }),
-      { rows: history, steps: new Map() }
+      { rows: history, steps: new Map() },
     );
 
     expect(lines).toContain("Sent 3.053082083 DUSK");
@@ -276,7 +276,7 @@ describe("A transfer's amounts, as its details say them", () => {
           transactionHash: HASH,
         },
         kind: "deposit",
-      })
+      }),
     ).toStrictEqual(["Sent 0.25 DUSK", "Received 0.25 DUSK"]);
 
     const proof = "b1".repeat(32);
@@ -300,11 +300,11 @@ describe("A transfer's amounts, as its details say them", () => {
               feePaid: "1000000",
               hash,
               status: "executed",
-            }))
+            })),
           ),
           steps: new Map([[withdrawalHash, { claim, prove: proof }]]),
-        }
-      )
+        },
+      ),
     ).toStrictEqual([
       "Sent 0.090082082 DUSK",
       "Network fee 0.002 DUSK",
@@ -314,7 +314,7 @@ describe("A transfer's amounts, as its details say them", () => {
 
   it("writes them as the language does", () => {
     expect(
-      linesOf(transferOut({}), { locale: "de-DE", rows: history })[0]
+      linesOf(transferOut({}), { locale: "de-DE", rows: history })[0],
     ).toBe("Sent 3,053082083 DUSK");
   });
 

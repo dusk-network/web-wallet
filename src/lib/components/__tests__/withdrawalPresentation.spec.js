@@ -38,17 +38,17 @@ describe("withdrawal presentation", () => {
     expect(
       stageMessage(waiting({ readyAt: READY_AT, readyAtExact: true }), {
         locale,
-      })
+      }),
     ).toBe(`Claim from ${day}`);
     expect(stageMessage(waiting({ readyAt: READY_AT }), { locale })).toBe(
-      `Claim from about ${day}`
+      `Claim from about ${day}`,
     );
     expect(
       stageMessage(waiting({ claimOverdue: true, readyAt: READY_AT }), {
         locale,
-      })
+      }),
     ).toBe(
-      `Waiting for DuskEVM to settle this proof. Claim from ${day} at the soonest.`
+      `Waiting for DuskEVM to settle this proof. Claim from ${day} at the soonest.`,
     );
     expect(claimDateOf(waiting({ readyAt: READY_AT }))).toStrictEqual({
       at: CLAIM_AT,
@@ -59,7 +59,7 @@ describe("withdrawal presentation", () => {
 
   it("makes no date up from a fixed wait: until the chain gives one, the Portal's wait after the proof", () => {
     expect(stageMessage(waiting({}), { locale, time: TIME })).toBe(
-      "Claim 7 days after the proof at the soonest."
+      "Claim 7 days after the proof at the soonest.",
     );
     expect(stageMessage(waiting({}), { locale })).toBe("");
     expect(claimDateOf(waiting({}))).toBeNull();
@@ -69,25 +69,25 @@ describe("withdrawal presentation", () => {
     expect(
       stageMessage(waiting({ proofRejected: true, readyAt: READY_AT }), {
         locale,
-      })
+      }),
     ).toBe(
-      "The proof was rejected. Prove again once DuskEVM reports a new output."
+      "The proof was rejected. Prove again once DuskEVM reports a new output.",
     );
   });
 
   it("says before the proof when it can be proved and claimed, from what the chain said", () => {
     expect(
-      stageMessage({ stage: "waiting_for_output" }, { locale, time: TIME })
+      stageMessage({ stage: "waiting_for_output" }, { locale, time: TIME }),
     ).toBe(
-      "Claim 7 days after you prove. You can prove about 30 minutes after sending."
+      "Claim 7 days after you prove. You can prove about 30 minutes after sending.",
     );
     expect(stageMessage({ stage: "waiting_for_output" }, { locale })).toBe(
-      "Usually within an hour."
+      "Usually within an hour.",
     );
     expect(
-      stageMessage({ stage: "ready_to_prove" }, { locale, time: TIME })
+      stageMessage({ stage: "ready_to_prove" }, { locale, time: TIME }),
     ).toBe(
-      "Step 2 of 3. Fee from your public account. Claim 7 days after you prove."
+      "Step 2 of 3. Fee from your public account. Claim 7 days after you prove.",
     );
     expect(
       stageMessage(
@@ -96,10 +96,10 @@ describe("withdrawal presentation", () => {
           locale,
           proveNow: { at: CLAIM_AT, exact: false, overdue: false },
           time: TIME,
-        }
-      )
+        },
+      ),
     ).toBe(
-      `Step 2 of 3. Fee from your public account. If you prove now, you can claim from about ${day}.`
+      `Step 2 of 3. Fee from your public account. If you prove now, you can claim from about ${day}.`,
     );
   });
 
@@ -108,8 +108,8 @@ describe("withdrawal presentation", () => {
     expect(
       stageMessage(
         { stage: "ready_to_prove", statusMessage: "A longer explanation." },
-        { locale }
-      )
+        { locale },
+      ),
     ).toBe("Step 2 of 3. Fee from your public account.");
   });
 });

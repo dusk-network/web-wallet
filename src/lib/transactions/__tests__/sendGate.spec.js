@@ -29,7 +29,7 @@ describe("A send that can be called off", () => {
       await this.transactions.propagate(transaction.buffer);
 
       return transaction;
-    }
+    },
   );
 
   afterAll(() => execute.mockRestore());
@@ -57,14 +57,14 @@ describe("A send that can be called off", () => {
 
     // The node's check of it doesn't answer, as on Wi-Fi that loads nothing.
     vi.spyOn(network.transactions, "preverify").mockImplementation(
-      () => answer.promise
+      () => answer.promise,
     );
 
     const sent = network.execute(/** @type {any} */ (builder()), { gate });
 
     sent.catch(() => {});
     await vi.waitFor(() =>
-      expect(network.transactions.preverify).toHaveBeenCalled()
+      expect(network.transactions.preverify).toHaveBeenCalled(),
     );
 
     expect(gate.cancel()).toBe(true);
@@ -101,7 +101,7 @@ describe("A send that can be called off", () => {
           nonce: 107n,
         }),
       }),
-      { gate }
+      { gate },
     );
 
     await vi.waitFor(() =>
@@ -109,7 +109,7 @@ describe("A send that can be called off", () => {
         hash: "ab".repeat(32),
         nonce: "107",
         tx: "07",
-      })
+      }),
     );
 
     // It can't be called off now, and isn't broadcast until it's kept.
@@ -149,7 +149,7 @@ describe("A send that can be called off", () => {
     const preverify = vi
       .spyOn(Transactions.prototype, "preverify")
       .mockImplementationOnce(() =>
-        Promise.reject(new TypeError("Failed to fetch"))
+        Promise.reject(new TypeError("Failed to fetch")),
       )
       .mockImplementationOnce(() => checked.promise);
     const network = new SendingNetwork(new URL("https://nodes.example/"));
@@ -160,7 +160,7 @@ describe("A send that can be called off", () => {
 
       const sent = gate.untilHandedOver(
         () => network.execute(/** @type {any} */ (builder()), { gate }),
-        async () => 1n
+        async () => 1n,
       );
 
       sent.catch(() => {});
@@ -213,7 +213,7 @@ describe("A send that couldn't reach the network before it went out", () => {
   it("waits for the network while it can be called off, is made again once the network answers, and goes out once", async () => {
     const gate = sendGate();
     const answers = asking().mockRejectedValueOnce(
-      new TypeError("Failed to fetch")
+      new TypeError("Failed to fetch"),
     );
     /** Whether it said it waits for the network as it was made again. */
     let waitedAsMade = true;
@@ -256,10 +256,10 @@ describe("A send that couldn't reach the network before it went out", () => {
       refused.untilHandedOver(
         () =>
           Promise.reject(
-            new Error("Tx ab not accepted: gas price lower than minimum 1")
+            new Error("Tx ab not accepted: gas price lower than minimum 1"),
           ),
-        answers
-      )
+        answers,
+      ),
     ).rejects.toThrow("gas price lower than minimum");
 
     const out = sendGate();
@@ -270,7 +270,7 @@ describe("A send that couldn't reach the network before it went out", () => {
     });
 
     await expect(out.untilHandedOver(attempt, answers)).rejects.toThrow(
-      "Failed to fetch"
+      "Failed to fetch",
     );
     expect(attempt).toHaveBeenCalledOnce();
     expect(answers).not.toHaveBeenCalled();
@@ -281,7 +281,7 @@ describe("A send that couldn't reach the network before it went out", () => {
     const gate = sendGate();
     const answers = asking();
     const attempt = vi.fn(() =>
-      Promise.reject(new TypeError("Failed to fetch"))
+      Promise.reject(new TypeError("Failed to fetch")),
     );
     const sent = gate.untilHandedOver(attempt, answers);
 
@@ -314,7 +314,7 @@ describe("The sends waiting to go out", () => {
     };
     const whats = () =>
       get(waitingSends).map((send) =>
-        waitingText(send, { hidden: false, locale: "en" })
+        waitingText(send, { hidden: false, locale: "en" }),
       );
 
     // Handed over: listed, as handed over, until the node took it.
@@ -368,13 +368,13 @@ describe("The sends waiting to go out", () => {
     const send = { lux: 10_000_000n, to: "your Profile 2" };
 
     expect(waitingText(send, { hidden: false, locale: "en" })).toBe(
-      "0.01 DUSK to your Profile 2"
+      "0.01 DUSK to your Profile 2",
     );
     expect(waitingText(send, { hidden: true, locale: "en" })).toBe(
-      `${BALANCE_MASK} DUSK to your Profile 2`
+      `${BALANCE_MASK} DUSK to your Profile 2`,
     );
     expect(waitingText(send, { hidden: false, locale: "de" })).toBe(
-      "0,01 DUSK to your Profile 2"
+      "0,01 DUSK to your Profile 2",
     );
   });
 });

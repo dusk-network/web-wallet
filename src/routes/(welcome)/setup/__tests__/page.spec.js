@@ -26,7 +26,7 @@ vi.mock("$lib/dusk-domains", async (importOriginal) => ({
             "sEeMSo7oiV2rxo6aZD3H75XGFZD95BtrmgFD3AezyUkC5W9bUyRwqFr6VuybvuvmvX5kTRt4STaSKbE6FEeMGoPDZNaX1LL82rGzN6BDbajY8qJcweu1mp7m1budNv9kgd7",
           name,
         }
-      : { error: "not-registered", name }
+      : { error: "not-registered", name },
   ),
 }));
 
@@ -89,7 +89,7 @@ describe("Setup", () => {
       const other = render(Setup, {});
 
       expect(
-        other.getByRole("region", { name: "Payment request" })
+        other.getByRole("region", { name: "Payment request" }),
       ).toHaveTextContent("This request is for Mainnet. You are on Testnet.");
       cleanup();
 
@@ -104,7 +104,7 @@ describe("Setup", () => {
       });
 
       expect(twice).toHaveTextContent(
-        "This link asks for two different amounts. Ask for a new one."
+        "This link asks for two different amounts. Ask for a new one.",
       );
       expect(twice).not.toHaveTextContent("Amount");
       cleanup();
@@ -123,7 +123,7 @@ describe("Setup", () => {
         keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
 
         expect(
-          render(Setup, {}).getByRole("region", { name: "Payment request" })
+          render(Setup, {}).getByRole("region", { name: "Payment request" }),
         ).toHaveTextContent(words);
         cleanup();
       }
@@ -147,7 +147,7 @@ describe("Setup", () => {
       });
 
       expect(asked).toHaveTextContent(
-        "This link's address isn't valid. Ask for a new one."
+        "This link's address isn't valid. Ask for a new one.",
       );
       expect(asked).not.toHaveTextContent("to pay it");
     });
@@ -203,7 +203,7 @@ describe("Setup", () => {
       });
 
       expect(
-        render(Setup, {}).getByRole("region", { name: "Payment request" })
+        render(Setup, {}).getByRole("region", { name: "Payment request" }),
       ).toHaveTextContent("Amount 0.011 DUSK");
     });
 
@@ -241,7 +241,7 @@ describe("Setup", () => {
       const { getByRole } = render(Setup, {});
       const switched = new URL(
         getByRole("link", { name: "Switch to Mainnet" }).getAttribute("href") ??
-          ""
+          "",
       );
 
       expect(switched.origin).toBe("https://apps.dusk.network");
@@ -260,7 +260,7 @@ describe("Setup", () => {
 
       expect(getByRole("link", { name: "Switch to Mainnet" })).toHaveAttribute(
         "href",
-        `https://apps.dusk.network/wallet/dashboard/send?to=${TO}&amount=0.011&memo=Factura+044&network=mainnet`
+        `https://apps.dusk.network/wallet/dashboard/send?to=${TO}&amount=0.011&memo=Factura+044&network=mainnet`,
       );
     });
 
@@ -294,19 +294,19 @@ describe("Setup", () => {
 
         expect(app).toHaveAttribute(
           "href",
-          `dusk:public-${TO}@dusk:2?amount=0.011&memo=Factura+044`
+          `dusk:public-${TO}@dusk:2?amount=0.011&memo=Factura+044`,
         );
         expect(firefox).toHaveAttribute(
           "href",
-          `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`
+          `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`,
         );
 
         // A wallet made here leads: it works on any phone.
         expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
-          "dusk-anchor-button--variant--primary"
+          "dusk-anchor-button--variant--primary",
         );
         expect(asked).toHaveTextContent(
-          /Create or restore a wallet to pay it\.\s*Open in the Dusk app\s*Open in Firefox$/
+          /Create or restore a wallet to pay it\.\s*Open in the Dusk app\s*Open in Firefox$/,
         );
 
         for (const other of [app, firefox]) {
@@ -321,13 +321,13 @@ describe("Setup", () => {
           const { getByRole } = openOn(CHROME);
 
           expect(getByRole("link", { name: "Unlock" })).toHaveClass(
-            "dusk-anchor-button--variant--primary"
+            "dusk-anchor-button--variant--primary",
           );
           expect(
-            getByRole("link", { name: "Open in the Dusk app" })
+            getByRole("link", { name: "Open in the Dusk app" }),
           ).toHaveClass("dusk-anchor-button--variant--secondary");
           expect(getByRole("link", { name: "Open in Firefox" })).toHaveClass(
-            "dusk-anchor-button--variant--secondary"
+            "dusk-anchor-button--variant--secondary",
           );
         } finally {
           settingsStore.reset();
@@ -345,11 +345,11 @@ describe("Setup", () => {
         const { getByRole, queryByRole } = render(Setup, {});
 
         expect(
-          queryByRole("link", { name: "Open in the Dusk app" })
+          queryByRole("link", { name: "Open in the Dusk app" }),
         ).toBeNull();
         expect(getByRole("link", { name: "Open in Firefox" })).toHaveAttribute(
           "href",
-          expect.stringContaining("amount=1.000")
+          expect.stringContaining("amount=1.000"),
         );
       });
 
@@ -358,7 +358,7 @@ describe("Setup", () => {
 
         expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
         expect(
-          getByRole("link", { name: "Open in the Dusk app" })
+          getByRole("link", { name: "Open in the Dusk app" }),
         ).toBeInTheDocument();
       });
 
@@ -374,10 +374,10 @@ describe("Setup", () => {
 
         expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
         expect(
-          queryByRole("link", { name: "Open in the Dusk app" })
+          queryByRole("link", { name: "Open in the Dusk app" }),
         ).toBeNull();
         expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
-          "dusk-anchor-button--variant--primary"
+          "dusk-anchor-button--variant--primary",
         );
       });
     });
@@ -411,12 +411,12 @@ describe("Setup", () => {
       };
       const announce = () =>
         window.dispatchEvent(
-          new CustomEvent("dusk:announceProvider", { detail: { provider } })
+          new CustomEvent("dusk:announceProvider", { detail: { provider } }),
         );
 
       window.addEventListener("dusk:requestProvider", announce);
       cleanups.push(() =>
-        window.removeEventListener("dusk:requestProvider", announce)
+        window.removeEventListener("dusk:requestProvider", announce),
       );
 
       return provider;
@@ -445,19 +445,19 @@ describe("Setup", () => {
       const { findByRole, findByText } = render(Setup, {});
 
       await fireEvent.click(
-        await findByRole("button", { name: "Open in the Dusk extension" })
+        await findByRole("button", { name: "Open in the Dusk extension" }),
       );
 
       expect(provider.request).toHaveBeenLastCalledWith({
         method: "dusk_openPaymentLink",
         params: {
           link: expect.stringMatching(
-            new RegExp(`/dashboard/send/?\\?to=${TO}&amount=0\\.011&`)
+            new RegExp(`/dashboard/send/?\\?to=${TO}&amount=0\\.011&`),
           ),
         },
       });
       expect(
-        await findByText("Opened in the Dusk extension.")
+        await findByText("Opened in the Dusk extension."),
       ).toBeInTheDocument();
     });
 
@@ -476,16 +476,16 @@ describe("Setup", () => {
 
       expect(open).toHaveClass("dusk-button--variant--primary");
       expect(
-        getByRole("region", { name: "Payment request" })
+        getByRole("region", { name: "Payment request" }),
       ).toHaveTextContent("Pay it with the Dusk extension.");
       expect(
-        getByRole("region", { name: "Payment request" })
+        getByRole("region", { name: "Payment request" }),
       ).not.toHaveTextContent("Create or restore");
 
       for (const name of ["Create new wallet", "Restore wallet"]) {
         expect(getByRole("link", { name })).toHaveClass(
           "dusk-anchor-button--variant--tertiary",
-          "dusk-anchor-button--size--small"
+          "dusk-anchor-button--size--small",
         );
       }
 
@@ -500,13 +500,13 @@ describe("Setup", () => {
         expect(
           await kept.findByRole("button", {
             name: "Open in the Dusk extension",
-          })
+          }),
         ).toHaveClass("dusk-button--variant--secondary");
         expect(
-          kept.getByRole("region", { name: "Payment request" })
+          kept.getByRole("region", { name: "Payment request" }),
         ).toHaveTextContent("Unlock to pay it.");
         expect(kept.getByRole("link", { name: "Unlock" })).toHaveClass(
-          "dusk-anchor-button--variant--primary"
+          "dusk-anchor-button--variant--primary",
         );
       } finally {
         settingsStore.reset();
@@ -524,25 +524,27 @@ describe("Setup", () => {
       const empty = render(Setup, {});
 
       await fireEvent.click(
-        await empty.findByRole("button", { name: "Open in the Dusk extension" })
+        await empty.findByRole("button", {
+          name: "Open in the Dusk extension",
+        }),
       );
 
       expect(
-        await empty.findByText("The Dusk extension has no wallet to pay with.")
+        await empty.findByText("The Dusk extension has no wallet to pay with."),
       ).toBeInTheDocument();
       // Making one here is the way, then.
       expect(
-        empty.getByRole("region", { name: "Payment request" })
+        empty.getByRole("region", { name: "Payment request" }),
       ).toHaveTextContent("Create or restore a wallet to pay it.");
       expect(
-        empty.getByRole("link", { name: "Create new wallet" })
+        empty.getByRole("link", { name: "Create new wallet" }),
       ).toHaveClass("dusk-anchor-button--variant--primary");
       cleanup();
       cleanups.splice(0).forEach((stop) => stop());
 
       extension(
         ["dusk_openPaymentLink"],
-        Object.assign(new Error("Not a request link"), { code: -32602 })
+        Object.assign(new Error("Not a request link"), { code: -32602 }),
       );
 
       const refused = render(Setup, {});
@@ -550,12 +552,12 @@ describe("Setup", () => {
       await fireEvent.click(
         await refused.findByRole("button", {
           name: "Open in the Dusk extension",
-        })
+        }),
       );
       await vi.waitFor(() =>
         expect(
-          refused.queryByRole("button", { name: "Open in the Dusk extension" })
-        ).toBeNull()
+          refused.queryByRole("button", { name: "Open in the Dusk extension" }),
+        ).toBeNull(),
       );
     });
 
@@ -572,12 +574,12 @@ describe("Setup", () => {
       await vi.waitFor(() =>
         expect(provider.request).toHaveBeenCalledWith({
           method: "dusk_getCapabilities",
-        })
+        }),
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(
-        queryByRole("button", { name: "Open in the Dusk extension" })
+        queryByRole("button", { name: "Open in the Dusk extension" }),
       ).toBeNull();
     });
   });
@@ -594,7 +596,7 @@ describe("Setup", () => {
     /** @param {string} query */
     const loadAt = (query) =>
       load(
-        /** @type {any} */ ({ url: new URL(`http://localhost/setup${query}`) })
+        /** @type {any} */ ({ url: new URL(`http://localhost/setup${query}`) }),
       );
 
     afterEach(() => localStorage.clear());
@@ -636,10 +638,10 @@ describe("Setup", () => {
     const { container, getByRole } = render(Setup, {});
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Dusk Web Wallet"
+      "Dusk Web Wallet",
     );
     expect(container.querySelector("footer")).toHaveTextContent(
-      "Web Wallet v0.1.5"
+      "Web Wallet v0.1.5",
     );
     expect(container.querySelector("css-doodle, img, canvas")).toBeNull();
   });
@@ -652,7 +654,7 @@ describe("Setup", () => {
 
     expect(version).toHaveAttribute(
       "href",
-      "/some-base-path/build-manifest.json"
+      "/some-base-path/build-manifest.json",
     );
     expect(version).toHaveAttribute("target", "_blank");
   });

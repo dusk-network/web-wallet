@@ -19,7 +19,7 @@ describe("walletConnection", () => {
         id,
         name,
         rpcUrls.default.http[0],
-      ])
+      ]),
     ).toStrictEqual([
       [745, "DuskEVM Testnet", "https://rpc.testnet.evm.dusk.network"],
       [745745, "BSC test chain", "https://anvil.testnet.dusk.network"],
@@ -57,7 +57,7 @@ describe("walletConnection", () => {
     await start();
 
     expect(
-      vi.mocked(createAppKit).mock.calls[0][0].customRpcUrls
+      vi.mocked(createAppKit).mock.calls[0][0].customRpcUrls,
     ).toStrictEqual({
       "eip155:1": [{ url: networks.mainnet.routes.chains.ethereum.rpcUrl }],
       "eip155:56": [{ url: networks.mainnet.routes.chains.bsc.rpcUrl }],

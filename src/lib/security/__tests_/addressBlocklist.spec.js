@@ -21,7 +21,7 @@ describe("addressBlocklist", () => {
         "Transfer restricted: this recipient address has been reported as compromised.",
     });
     expect(getBlocklistedRecipient(scam.account)?.reason).toMatch(
-      /fraud\/scam/
+      /fraud\/scam/,
     );
     expect(getBlocklistedRecipient("someone-else")).toBeUndefined();
     expect(getBlocklistedRecipient("")).toBeUndefined();

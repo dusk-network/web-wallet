@@ -23,7 +23,7 @@ export async function ownersOf(names, lookUp) {
         .catch(() => null);
 
       return /** @type {const} */ ([dusk, result]);
-    })
+    }),
   );
 
   /** @type {Map<string, { account?: string, address?: string } | null>} */
@@ -57,9 +57,9 @@ export default function nameOwners(
   name,
   network,
   nodeUrl,
-  resolve = resolveDuskName
+  resolve = resolveDuskName,
 ) {
   return ownersOf(nameDuskNames(name), (dusk) =>
-    resolve(dusk, network, nodeUrl)
+    resolve(dusk, network, nodeUrl),
   );
 }

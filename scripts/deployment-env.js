@@ -51,7 +51,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   try {
     const deployments = JSON.parse(
-      readFileSync(new URL("../deployments.json", import.meta.url), "utf8")
+      readFileSync(new URL("../deployments.json", import.meta.url), "utf8"),
     );
 
     process.stdout.write(envLines(deployments, site));

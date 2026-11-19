@@ -14,7 +14,7 @@ export const serializeProperty = (/** @type {any} */ value) =>
 
 export const deserializeProperty = (/** @type {string} */ value) =>
   JSON.parse(value, (_, v) =>
-    typeof v === "string" && /^\d+n$/.test(v) ? BigInt(v.slice(0, -1)) : v
+    typeof v === "string" && /^\d+n$/.test(v) ? BigInt(v.slice(0, -1)) : v,
   );
 
 // =========================
@@ -140,7 +140,7 @@ const migrate = (settings) => {
 
 const createPersistedStore = (
   /** @type {string} */ key,
-  /** @type {SettingsStoreContent} */ initialValue
+  /** @type {SettingsStoreContent} */ initialValue,
 ) => {
   const load = () => {
     if (!browser) {
@@ -165,7 +165,7 @@ const createPersistedStore = (
 
 const settingsStore = createPersistedStore(
   `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
-  initialState
+  initialState,
 );
 
 const { set, subscribe, update } = settingsStore;

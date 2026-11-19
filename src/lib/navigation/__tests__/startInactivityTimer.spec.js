@@ -37,7 +37,7 @@ describe("startInactivityTimer", () => {
 
       await vi.advanceTimersByTimeAsync(1);
       expect(onInactive).toHaveBeenCalledTimes(1);
-    }
+    },
   );
 
   it("should enforce an elapsed deadline when browser timers were delayed", () => {

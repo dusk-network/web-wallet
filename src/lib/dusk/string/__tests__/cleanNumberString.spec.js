@@ -4,7 +4,7 @@ import { cleanNumberString } from "../";
 describe("cleanNumberString", () => {
   it("should return a valid string represantation of a number when the decimal separator is `,`", () => {
     expect(cleanNumberString("12153,566,68468,,,351", ",")).toBe(
-      "12153,56668468351"
+      "12153,56668468351",
     );
   });
 
@@ -22,7 +22,7 @@ describe("cleanNumberString", () => {
 
   it("should return a valid string represantation of a number if a string containing non valid characters is passed", () => {
     expect(
-      cleanNumberString("1321651.0518asds592asd/*-,/?!@#$%^&*()_=+", ".")
+      cleanNumberString("1321651.0518asds592asd/*-,/?!@#$%^&*()_=+", "."),
     ).toBe("1321651.0518592");
   });
 

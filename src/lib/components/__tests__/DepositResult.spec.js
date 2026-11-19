@@ -42,14 +42,14 @@ describe("DepositResult", () => {
       onRetry: vi.fn(),
       onSeen,
       operation: Promise.reject(
-        outcomeUnknown(new TypeError("Failed to fetch"), hash)
+        outcomeUnknown(new TypeError("Failed to fetch"), hash),
       ),
       what: "0.05 DUSK to DuskEVM",
     });
 
     expect(await findByText("Not confirmed")).toBeInTheDocument();
     expect(getByRole("status")).toHaveTextContent(
-      "0.05 DUSK to DuskEVM It may have reached the network. Wait for it here before you send it again."
+      "0.05 DUSK to DuskEVM It may have reached the network. Wait for it here before you send it again.",
     );
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
     expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
@@ -58,7 +58,7 @@ describe("DepositResult", () => {
     found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
 
     expect(
-      await findByText("Track in activity", { exact: false })
+      await findByText("Track in activity", { exact: false }),
     ).toBeInTheDocument();
     expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash);
   });
@@ -70,15 +70,15 @@ describe("DepositResult", () => {
 
     expect(
       await findByText(
-        "Couldn't reach the network. Nothing was sent and no fee was charged."
-      )
+        "Couldn't reach the network. Nothing was sent and no fee was charged.",
+      ),
     ).toBeInTheDocument();
     expect(container).toHaveTextContent("Not sent");
     expect(container.querySelector("details summary")).toHaveTextContent(
-      /^Details$/
+      /^Details$/,
     );
     expect(container.querySelector("details")).toHaveTextContent(
-      "Failed to fetch"
+      "Failed to fetch",
     );
   });
 
@@ -90,7 +90,7 @@ describe("DepositResult", () => {
     });
 
     await fireEvent.click(
-      await failed.findByRole("button", { name: "Try again" })
+      await failed.findByRole("button", { name: "Try again" }),
     );
 
     expect(onRetry).toHaveBeenCalledOnce();
@@ -100,7 +100,7 @@ describe("DepositResult", () => {
     const unknown = render(DepositResult, {
       onRetry,
       operation: Promise.reject(
-        outcomeUnknown(new TypeError("Failed to fetch"))
+        outcomeUnknown(new TypeError("Failed to fetch")),
       ),
     });
 

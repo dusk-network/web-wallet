@@ -75,7 +75,7 @@ vi.mock("$lib/navigation/goto", () => ({
         state,
         url: new URL(`http://localhost/some-base-path${path}`),
       });
-    }
+    },
   ),
 }));
 
@@ -105,7 +105,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
             ...value,
             currentProfile: stores.profile,
             profiles: [stores.profile],
-          })
+          }),
         ),
     },
   };
@@ -191,13 +191,15 @@ const setHistory = (state) =>
       rows,
       syncing: false,
       ...state,
-    })
+    }),
   );
 
 /** @param {string} path */
 const visit = (path) =>
   act(() =>
-    stores.page?.set({ url: new URL(`http://localhost/some-base-path${path}`) })
+    stores.page?.set({
+      url: new URL(`http://localhost/some-base-path${path}`),
+    }),
   );
 
 /**
@@ -224,7 +226,7 @@ const shownRows = (container) =>
 
         return text?.replace(/\s+/g, " ").trim();
       })
-      .join(" ")
+      .join(" "),
   );
 
 // The contacts open with a wallet, as when it unlocks.
@@ -251,7 +253,7 @@ describe("History", () => {
 
     expect(getByRole("columnheader", { name: "Time" })).toBeInTheDocument();
     expect(container.querySelector(".history__day")).toHaveTextContent(
-      /^Today · /
+      /^Today · /,
     );
     expect(shownRows(container)).toEqual([
       expect.stringMatching(/^alice-shop\.dusk Sent Public .+ −25 DUSK$/),
@@ -272,7 +274,7 @@ describe("History", () => {
       getByRole("combobox", { name: "Public or shielded" }),
       {
         target: { value: "shielded" },
-      }
+      },
     );
 
     expect(shownRows(container)).toEqual([
@@ -282,7 +284,7 @@ describe("History", () => {
 
   it("keeps its filters in its address, for a refresh, Back or a link, and goes back to the default for any that isn't one", async () => {
     await visit(
-      "/dashboard/transactions?kind=received&privacy=shielded&range=30"
+      "/dashboard/transactions?kind=received&privacy=shielded&range=30",
     );
 
     const { container, getByRole } = render(History);
@@ -291,7 +293,7 @@ describe("History", () => {
 
     expect(getByRole("button", { name: "Received" })).toHaveAttribute(
       "aria-pressed",
-      "true"
+      "true",
     );
     expect(privacy).toHaveValue("shielded");
     expect(dates).toHaveValue("30");
@@ -304,14 +306,14 @@ describe("History", () => {
 
     expect(mocks.goto).toHaveBeenLastCalledWith(
       "/dashboard/transactions?kind=staking&privacy=shielded&range=30",
-      expect.objectContaining({ replaceState: true })
+      expect.objectContaining({ replaceState: true }),
     );
 
     await fireEvent.change(dates, { target: { value: "all" } });
 
     expect(mocks.goto).toHaveBeenLastCalledWith(
       "/dashboard/transactions?kind=staking&privacy=shielded",
-      expect.objectContaining({ replaceState: true })
+      expect.objectContaining({ replaceState: true }),
     );
 
     // None of them a filter: each one's default.
@@ -319,7 +321,7 @@ describe("History", () => {
 
     expect(getByRole("button", { name: "All" })).toHaveAttribute(
       "aria-pressed",
-      "true"
+      "true",
     );
     expect(privacy).toHaveValue("all");
     expect(dates).toHaveValue("all");
@@ -333,7 +335,7 @@ describe("History", () => {
     // A step of its own in the browser's history, for Back to close.
     expect(mocks.goto).toHaveBeenCalledWith(
       `/dashboard/transactions?tx=${SENT}`,
-      expect.not.objectContaining({ replaceState: true })
+      expect.not.objectContaining({ replaceState: true }),
     );
     expect(mocks.loadDetail).toHaveBeenCalledWith(SENT);
 
@@ -350,14 +352,14 @@ describe("History", () => {
     // The hash in full, its ending kept on one line.
     expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(SENT);
     expect(
-      detail.querySelector(".tx-detail__id .tx-detail__tail")
+      detail.querySelector(".tx-detail__id .tx-detail__tail"),
     ).toHaveTextContent(SENT.slice(-6));
     expect(
-      getByRole("link", { name: "View in Dusk explorer" })
+      getByRole("link", { name: "View in Dusk explorer" }),
     ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${SENT}`);
     expect(getByRole("link", { name: "Send again" })).toHaveAttribute(
       "href",
-      `/some-base-path/dashboard/send?to=${ALICE}`
+      `/some-base-path/dashboard/send?to=${ALICE}`,
     );
 
     // Its close takes that step back, as Back does.
@@ -387,7 +389,7 @@ describe("History", () => {
     expect(back).not.toHaveBeenCalled();
     expect(mocks.goto).toHaveBeenLastCalledWith(
       "/dashboard/transactions",
-      expect.objectContaining({ replaceState: true })
+      expect.objectContaining({ replaceState: true }),
     );
 
     back.mockRestore();
@@ -436,15 +438,15 @@ describe("History", () => {
     const { container, getByRole, queryByRole } = render(History);
 
     expect(shownRows(container)[0]).toMatch(
-      /^Alice's shop · alice-shop\.dusk Sent/
+      /^Alice's shop · alice-shop\.dusk Sent/,
     );
 
     await fireEvent.click(
-      getByRole("button", { name: /^Alice's shop · alice-shop\.dusk/ })
+      getByRole("button", { name: /^Alice's shop · alice-shop\.dusk/ }),
     );
 
     expect(container.querySelector(".tx-detail")).toHaveTextContent(
-      "Sent to Alice's shop · alice-shop.dusk"
+      "Sent to Alice's shop · alice-shop.dusk",
     );
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
 
@@ -481,7 +483,7 @@ describe("History", () => {
     });
 
     expect(getByRole("alert")).toHaveTextContent(
-      `You have a contact called Shop (old phone), at ${shortAddress(OLD_PHONE)}. Is this someone else?`
+      `You have a contact called Shop (old phone), at ${shortAddress(OLD_PHONE)}. Is this someone else?`,
     );
 
     // Typed, Enter, Enter: the question never takes the focus, so the
@@ -519,12 +521,12 @@ describe("History", () => {
     const mark = `${shortAddress(ALICE)} · name looks like another`;
 
     expect(container.querySelector(".history__row")).toHaveTextContent(
-      `Estudio Marta · alice-shop.dusk ${mark}`
+      `Estudio Marta · alice-shop.dusk ${mark}`,
     );
     expect(
       getByRole("button", {
         name: new RegExp(`^Estudio Marta · alice-shop\\.dusk, ${mark}`),
-      })
+      }),
     ).toBeInTheDocument();
 
     for (const contact of listContacts()) {
@@ -536,7 +538,7 @@ describe("History", () => {
     await rerender({});
 
     expect(shownRows(container)[0]).toMatch(
-      /^\\u202eecilA · alice-shop\.dusk Sent/
+      /^\\u202eecilA · alice-shop\.dusk Sent/,
     );
   });
 
@@ -546,7 +548,7 @@ describe("History", () => {
     const { container, queryByRole } = render(History);
 
     expect(container.querySelector(".tx-detail")).toHaveTextContent(
-      "Network fee paid Paid by the sender"
+      "Network fee paid Paid by the sender",
     );
     expect(queryByRole("link", { name: "Send again" })).toBeNull();
   });
@@ -582,7 +584,7 @@ describe("History", () => {
         /** @this {HTMLAnchorElement} */
         function () {
           names.push(this.download);
-        }
+        },
       );
     });
 
@@ -618,7 +620,7 @@ describe("History", () => {
 
       expect(getByRole("button", { name: "Export" })).toHaveAttribute(
         "aria-expanded",
-        "true"
+        "true",
       );
 
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
@@ -635,13 +637,13 @@ describe("History", () => {
       expect(lines[0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},/);
       expect(names).toStrictEqual([
         expect.stringMatching(
-          /^dusk-profile-1-testnet-all-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/
+          /^dusk-profile-1-testnet-all-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/,
         ),
       ]);
       expect(mocks.whole).toHaveBeenCalledOnce();
 
       await vi.waitFor(() =>
-        expect(queryByRole("button", { name: "Save CSV" })).toBeNull()
+        expect(queryByRole("button", { name: "Save CSV" })).toBeNull(),
       );
     });
 
@@ -664,7 +666,7 @@ describe("History", () => {
           "dusk-sofiadesign-dusk-testnet-all-2026-11-11-2343.csv",
         ]);
         expect(
-          new Set(lines.map((line) => line.split(",")[accountName]))
+          new Set(lines.map((line) => line.split(",")[accountName])),
         ).toStrictEqual(new Set(["sofiadesign.dusk"]));
       } finally {
         forgetVerifiedNames();
@@ -705,7 +707,7 @@ describe("History", () => {
 
       await fireEvent.click(getByRole("button", { name: "Export" }));
       await fireEvent.click(
-        getByRole("checkbox", { name: /Add my contact names/ })
+        getByRole("checkbox", { name: /Add my contact names/ }),
       );
       await fireEvent.click(getByRole("checkbox", { name: /^For Excel/ }));
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
@@ -723,7 +725,7 @@ describe("History", () => {
       const MIGRATION = `0x${"a7".repeat(32)}`;
       const BSC = /** @type {any} */ (
         networks.mainnet.routes.migrations?.find(
-          ({ id }) => id === "bsc-to-dusk"
+          ({ id }) => id === "bsc-to-dusk",
         )
       );
       const { toastList } = await import("$lib/dusk/components/Toast/store");
@@ -772,7 +774,7 @@ describe("History", () => {
               timestamp: NOW - 60_000,
             },
           ],
-          { network: networks.mainnet }
+          { network: networks.mainnet },
         ),
         shieldedWaiting: false,
       });
@@ -785,13 +787,13 @@ describe("History", () => {
         const said = await feesSaid(container);
 
         expect(said).toBe(
-          "1 migration's fee on BNB Smart Chain couldn't be read. Some network fees couldn't be read."
+          "1 migration's fee on BNB Smart Chain couldn't be read. Some network fees couldn't be read.",
         );
         expect(said).not.toMatch(/0x7cdb/i);
 
         // Added for the file: what it isn't is said, what it is is listed.
         await fireEvent.click(
-          getByRole("button", { name: "Add an EVM address" })
+          getByRole("button", { name: "Add an EVM address" }),
         );
 
         const field = getByRole("textbox", {
@@ -802,14 +804,14 @@ describe("History", () => {
         await fireEvent.click(getByRole("button", { name: "Add" }));
 
         expect(getByRole("alert")).toHaveTextContent(
-          "That isn't an EVM address."
+          "That isn't an EVM address.",
         );
 
         await fireEvent.input(field, { target: { value: ADDED } });
         await fireEvent.click(getByRole("button", { name: "Add" }));
 
         expect(
-          getByRole("list", { name: "EVM addresses added" })
+          getByRole("list", { name: "EVM addresses added" }),
         ).toHaveTextContent(/0x90fE…4b39/i);
 
         const withAdded = await feesSaid(container);
@@ -825,14 +827,14 @@ describe("History", () => {
               withAdded
                 .replace(
                   "couldn't be read.",
-                  "couldn't be read: export again to add it."
+                  "couldn't be read: export again to add it.",
                 )
                 .replace(
                   /couldn't be read\.$/,
-                  "couldn't be read: export again to add them."
-                )
+                  "couldn't be read: export again to add them.",
+                ),
             ),
-          ])
+          ]),
         );
 
         // Kept for this profile, through a lock and an unlock, as it opens
@@ -845,16 +847,16 @@ describe("History", () => {
         await fireEvent.click(unlocked.getByRole("button", { name: "Export" }));
 
         expect(
-          unlocked.getByRole("list", { name: "EVM addresses added" })
+          unlocked.getByRole("list", { name: "EVM addresses added" }),
         ).toHaveTextContent(/0x90fE…4b39/i);
 
         // And Remove takes it off this one's.
         await fireEvent.click(
-          unlocked.getByRole("button", { name: `Remove ${ADDED}` })
+          unlocked.getByRole("button", { name: `Remove ${ADDED}` }),
         );
 
         expect(
-          unlocked.queryByRole("list", { name: "EVM addresses added" })
+          unlocked.queryByRole("list", { name: "EVM addresses added" }),
         ).toBeNull();
         expect(hydrateExportAddresses()).toStrictEqual({});
       } finally {
@@ -888,8 +890,8 @@ describe("History", () => {
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
       await vi.waitFor(() =>
         expect(getByRole("alert")).toHaveTextContent(
-          "There's nothing in that period, so nothing was saved."
-        )
+          "There's nothing in that period, so nothing was saved.",
+        ),
       );
       expect(blobs).toHaveLength(0);
 
@@ -905,7 +907,7 @@ describe("History", () => {
 
       expect(lines.join("\n")).toContain("Order 1042");
       expect(names[0]).toMatch(
-        /-\d{4}-q[1-4](-testnet)?-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/
+        /-\d{4}-q[1-4](-testnet)?-\d{4}-\d{2}-\d{2}-\d{4}\.csv$/,
       );
     });
 
@@ -917,7 +919,7 @@ describe("History", () => {
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "Couldn't read your whole history from this node, so nothing was saved. Try again."
+        "Couldn't read your whole history from this node, so nothing was saved. Try again.",
       );
       expect(blobs).toHaveLength(0);
     });
@@ -933,9 +935,9 @@ describe("History", () => {
               prices: String(url).includes("coingecko")
                 ? [[NOW - 60_000, 0.25]]
                 : [],
-            })
-          )
-        )
+            }),
+          ),
+        ),
       );
 
       vi.stubGlobal("fetch", prices);
@@ -960,7 +962,7 @@ describe("History", () => {
 
       for (const url of asked) {
         expect(url).toMatch(
-          /^https:\/\/api\.coingecko\.com\/api\/v3\/coins\/dusk-network\/market_chart\/range\?vs_currency=eur&from=\d+&to=\d+$/
+          /^https:\/\/api\.coingecko\.com\/api\/v3\/coins\/dusk-network\/market_chart\/range\?vs_currency=eur&from=\d+&to=\d+$/,
         );
       }
 
@@ -994,7 +996,7 @@ describe("History", () => {
           kind: i < 2 ? "withdraw_reward" : "transfer",
           status: "executed",
           timestamp,
-        }))
+        })),
       );
       /** @param {string} hash */
       const rowOf = (hash) =>
@@ -1008,9 +1010,9 @@ describe("History", () => {
           new Response(
             JSON.stringify({
               prices: [june, june + 3_600_000, NOW].map((at) => [at, 0.5]),
-            })
-          )
-        )
+            }),
+          ),
+        ),
       );
 
       // Lena's: 10 DUSK into Sozu, 0.025 of it its fee, for 5 stDUSK at
@@ -1043,8 +1045,8 @@ describe("History", () => {
               unstake.hash,
               { pool: { stake: 21n, supply: 10n }, stDusk: 2_500_000_000n },
             ],
-          ])
-        )
+          ]),
+        ),
       );
       mocks.sozuStatus.mockResolvedValue({
         contracts: { pool: "ab".repeat(32) },
@@ -1062,24 +1064,24 @@ describe("History", () => {
             (row) =>
               Array.from(
                 /** @type {HTMLTableRowElement} */ (row).cells,
-                (cell) => cell.textContent?.trim()
-              )
+                (cell) => cell.textContent?.trim(),
+              ),
           );
 
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" })
+          getByRole("button", { name: "Show staking rewards by year" }),
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
             [`${year - 1}`, "1 DUSK", "0 DUSK", "0 DUSK"],
             [`${year}`, "2 DUSK", "0.75 DUSK", "0.25 DUSK"],
-          ])
+          ]),
         );
         expect(
           Array.from(
             container.querySelectorAll(".rewards-by-year thead th"),
-            (cell) => cell.textContent?.trim()
-          )
+            (cell) => cell.textContent?.trim(),
+          ),
         ).toStrictEqual([
           "Year",
           "Native staking, claimed",
@@ -1088,13 +1090,13 @@ describe("History", () => {
         ]);
         // How what unstaking took out is counted, under them.
         expect(container).toHaveTextContent(
-          "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included."
+          "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included.",
         );
         expect(prices).not.toHaveBeenCalled();
 
         // The file's values ask nothing of them.
         await fireEvent.click(
-          getByRole("checkbox", { name: /^Add each payment's value in euros/ })
+          getByRole("checkbox", { name: /^Add each payment's value in euros/ }),
         );
 
         expect(prices).not.toHaveBeenCalled();
@@ -1103,7 +1105,7 @@ describe("History", () => {
         await fireEvent.click(
           getByRole("checkbox", {
             name: "Add each reward's value in euros, from CoinGecko's prices",
-          })
+          }),
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -1120,7 +1122,7 @@ describe("History", () => {
               "0.75 DUSK · €0.39, 1 with no euro value",
               "0.25 DUSK · €0.13",
             ],
-          ])
+          ]),
         );
         // The panel stays, with no file.
         expect(names).toStrictEqual([]);
@@ -1142,7 +1144,7 @@ describe("History", () => {
               "•••• hidden DUSK · •••• hidden, 1 with no euro value",
               "•••• hidden DUSK · •••• hidden",
             ],
-          ])
+          ]),
         );
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
 
@@ -1150,10 +1152,10 @@ describe("History", () => {
         // shows as under that.
         settingsStore.update((store) => ({ ...store, currency: "JPY" }));
         await vi.waitFor(() =>
-          getByRole("checkbox", { name: /reward's value in Japanese yen/ })
+          getByRole("checkbox", { name: /reward's value in Japanese yen/ }),
         );
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" })
+          getByRole("button", { name: "Show staking rewards by year" }),
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -1169,7 +1171,7 @@ describe("History", () => {
               "0.75 DUSK · under ¥1, 1 with no Japanese yen value",
               "0.25 DUSK · under ¥1",
             ],
-          ])
+          ]),
         );
       } finally {
         mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
@@ -1214,9 +1216,9 @@ describe("History", () => {
               prices: String(url).includes("coingecko")
                 ? [[NOW - 60_000, 0.25]]
                 : [],
-            })
-          )
-        )
+            }),
+          ),
+        ),
       );
 
       vi.stubGlobal("fetch", prices);
@@ -1228,7 +1230,7 @@ describe("History", () => {
       await fireEvent.click(
         getByRole("checkbox", {
           name: `Add each payment's value in ${words}, from CoinGecko's prices (the past year)`,
-        })
+        }),
       );
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
       await vi.waitFor(() => expect(names).toHaveLength(1));
@@ -1250,9 +1252,9 @@ describe("History", () => {
               prices: String(url).includes("coingecko")
                 ? [[NOW - 60_000, 0.25]]
                 : [],
-            })
-          )
-        )
+            }),
+          ),
+        ),
       );
 
       vi.stubGlobal("fetch", prices);
@@ -1291,23 +1293,25 @@ describe("History", () => {
         });
         await fireEvent.click(getByRole("button", { name: "Export" }));
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" })
+          getByRole("button", { name: "Show staking rewards by year" }),
         );
 
         const rewardValues = await vi.waitFor(() =>
           getByRole("checkbox", {
             name: "Add each reward's value in euros, from CoinGecko's prices",
-          })
+          }),
         );
 
         expect(rewardValues).toBeDisabled();
         expect(
           container.querySelector(
-            ".rewards-by-year__option + .rewards-by-year__note"
-          )
+            ".rewards-by-year__option + .rewards-by-year__note",
+          ),
         ).toHaveTextContent("Test DUSK has no value.");
         expect(
-          prices.mock.calls.filter(([url]) => String(url).includes("coingecko"))
+          prices.mock.calls.filter(([url]) =>
+            String(url).includes("coingecko"),
+          ),
         ).toStrictEqual([]);
       } finally {
         settingsStore.reset();
@@ -1326,7 +1330,7 @@ describe("History", () => {
     await setHistory({ error: "fetch failed", rows: [] });
 
     expect(
-      getByText("Couldn't reach the network's history.")
+      getByText("Couldn't reach the network's history."),
     ).toBeInTheDocument();
   });
 });

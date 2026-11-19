@@ -18,10 +18,10 @@ describe("GasFee", () => {
 
     expect(getByText("Network fee (at most)")).toBeInTheDocument();
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
-      formatFee(fee, settings.language, { max: true })
+      formatFee(fee, settings.language, { max: true }),
     );
     expect(container.querySelector(".gas-fee__amount")).toHaveTextContent(
-      "0.1 DUSK"
+      "0.1 DUSK",
     );
   });
 });

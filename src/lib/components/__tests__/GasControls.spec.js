@@ -84,7 +84,7 @@ describe("GasControls", () => {
   it("should warn under the minimum gas limit, and over the maximum, while it is typed", async () => {
     const { getByLabelText, getByText, queryByText } = render(
       GasControls,
-      baseOptions
+      baseOptions,
     );
     const limitInput = getByLabelText("Gas limit");
 
@@ -118,7 +118,7 @@ describe("GasControls", () => {
     await fireInput(priceInput, 21);
 
     expect(priceInput).toHaveAccessibleDescription(
-      "It can't be higher than the gas limit."
+      "It can't be higher than the gas limit.",
     );
   });
 });

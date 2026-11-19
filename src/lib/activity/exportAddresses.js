@@ -41,11 +41,12 @@ const records = walletRecords({
                 Array.isArray(addresses)
                   ? addresses.filter(
                       (address) =>
-                        typeof address === "string" && EVM_ADDRESS.test(address)
+                        typeof address === "string" &&
+                        EVM_ADDRESS.test(address),
                     )
                   : [],
               ])
-              .filter(([, addresses]) => addresses.length)
+              .filter(([, addresses]) => addresses.length),
           )
         : {};
     } catch {
@@ -104,10 +105,10 @@ export function addExportAddress(account, address) {
 export function removeExportAddress(account, address) {
   changeRecords(records, walletDataScope(), (all) => {
     const left = (all[account] ?? []).filter(
-      (kept) => kept.toLowerCase() !== address.toLowerCase()
+      (kept) => kept.toLowerCase() !== address.toLowerCase(),
     );
     const others = Object.fromEntries(
-      Object.entries(all).filter(([owner]) => owner !== account)
+      Object.entries(all).filter(([owner]) => owner !== account),
     );
 
     return left.length ? { ...others, [account]: left } : others;

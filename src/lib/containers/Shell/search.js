@@ -109,7 +109,7 @@ export const contactHas = (contact, query, duskNames) =>
   nameHas(contact.name, query) ||
   has(
     `${contact.duskName ?? ""} ${duskNames?.get(contact.address) ?? ""} ${contact.address}`,
-    searchKey(query)
+    searchKey(query),
   );
 
 /**
@@ -202,7 +202,7 @@ const isHash = (row, q) => q.length >= 4 && row.hash.includes(q);
  */
 export function transactionsFound(
   query,
-  { contacts = [], history, locale, network = "", present = {} }
+  { contacts = [], history, locale, network = "", present = {} },
 ) {
   const q = searchKey(query);
 
@@ -215,7 +215,7 @@ export function transactionsFound(
   const foundPeople = new Set(
     contacts
       .filter((c) => contactHas(c, query, duskNames))
-      .map(({ address }) => address)
+      .map(({ address }) => address),
   );
 
   /** @param {ActivityRow} row */
@@ -238,13 +238,13 @@ export function transactionsFound(
             has(`${knownBy(row, network)} ${shown.title}`, q)) ||
           (q.length >= 4 && has(shown.counterparty ?? "", q)) ||
           foundPeople.has(shown.counterparty ?? "") ||
-          hasAmountMeant(row)
+          hasAmountMeant(row),
       )
       // The amount typed, to the lux, before those that only start with it.
       .sort(
         (a, b) =>
           Number(amounts.some(({ from }) => luxOf(b.row) === from)) -
-          Number(amounts.some(({ from }) => luxOf(a.row) === from))
+          Number(amounts.some(({ from }) => luxOf(a.row) === from)),
       )
   );
 }
@@ -269,7 +269,7 @@ export function searchLocally(
     pages,
     present = {},
     profiles,
-  }
+  },
 ) {
   const q = searchKey(query);
 
@@ -298,7 +298,7 @@ export function searchLocally(
         href: page.href,
         id: `page:${page.href}`,
         label: page.label,
-      }))
+      })),
   );
   add(
     profiles
@@ -310,7 +310,7 @@ export function searchLocally(
         id: `profile:${p.account}`,
         label: p.name ? `${p.label} · ${p.name}` : p.label,
         value: p.account,
-      }))
+      })),
   );
 
   // As History names them: a contact saved without its .dusk name is
@@ -333,7 +333,7 @@ export function searchLocally(
       sub: alike.has(contact.address)
         ? `${shortAddress(contact.address)} · name looks like another`
         : undefined,
-    }))
+    })),
   );
 
   // People saved as contacts show as contacts.
@@ -353,7 +353,7 @@ export function searchLocally(
         label: person.name || shortAddress(person.address),
         labelIsCode: !person.name,
         value: person.address,
-      }))
+      })),
   );
 
   // The transactions by what they're known by, by amount and by who they're
@@ -403,7 +403,7 @@ export function searchLocally(
             .join(" · ") || undefined,
         value: row.hash,
       };
-    })
+    }),
   );
 
   // The rest, in History, where the group can't show them all.

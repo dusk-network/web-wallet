@@ -53,7 +53,7 @@
   /** @param {string} id */
   const isEnabled = (id) =>
     contractDescriptors.some(
-      (contract) => contract.id === id && contract.enabled === true
+      (contract) => contract.id === id && contract.enabled === true,
     );
 
   const actions = [
@@ -110,7 +110,7 @@
     : null;
   // From all of the history, not the page History has shown so far.
   $: hasPastStaking = $wholeActivity.rows.some(
-    (row) => row.category === "staking"
+    (row) => row.category === "staking",
   );
 
   // What is staked with Sozu, read for the profile shown as the wallet
@@ -143,7 +143,7 @@
         ? ($sozuStore.readAt ?? sozuKept?.at ?? null)
         : null,
     ].filter((time) => time !== null),
-    Infinity
+    Infinity,
   );
   $: stakeReading = isSozuShown && sozuLoading && !sozuStatus && !sozuKept;
 
@@ -175,7 +175,7 @@
       toast(
         "info",
         `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}. Nothing left your wallet.`,
-        mdiCheck
+        mdiCheck,
       );
     }
   }
@@ -243,12 +243,12 @@
           {
             checking: Boolean(
               send.meanwhile &&
-              $sentMeanwhileChecking.has(meanwhileKey(send.meanwhile))
+              $sentMeanwhileChecking.has(meanwhileKey(send.meanwhile)),
             ),
             hidden: $settingsStore.hideBalances,
             locale: language,
             nameOf: $accountNamer,
-          }
+          },
         )}
         <Banner
           className="home__waiting"

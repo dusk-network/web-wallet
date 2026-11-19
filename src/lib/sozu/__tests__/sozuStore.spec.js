@@ -6,7 +6,7 @@ const { followTransaction, readSozuStatus, refreshBalance } = vi.hoisted(
     readSozuStatus: vi.fn(async () => /** @type {SozuStatus | null} */ (null)),
     // The balances read again, with what's read along.
     refreshBalance: vi.fn(async () => {}),
-  })
+  }),
 );
 
 /** What the store reads along with the balances, as the wallet store calls it. */
@@ -27,7 +27,7 @@ vi.mock("$lib/stores", async () => {
     walletStore: {
       ...readable({ currentProfile: { account: "account-1" } }),
       readWithBalances: (
-        /** @type {(profile: any) => Promise<(() => void) | null>} */ read
+        /** @type {(profile: any) => Promise<(() => void) | null>} */ read,
       ) => {
         along.read = read;
 
@@ -57,7 +57,7 @@ describe("sozuStore", () => {
     followTransaction.mockReturnValueOnce(
       new Promise((resolve) => {
         final = resolve;
-      })
+      }),
     );
 
     const after = sozuStore.readAfter("a-hash");
@@ -104,7 +104,7 @@ describe("sozuStore", () => {
           hub: "bae85f8c24730a5a19fbe3d3bd58248ac8c302b62fe414a8c640d8c0ed286b9e",
         }),
         nodeUrl: "https://node.example/rusk",
-      })
+      }),
     );
   });
 
@@ -171,7 +171,7 @@ describe("sozuStore", () => {
         error: expect.any(Error),
         kept: { balance: 2_747_100_000n, stDusk: 864_521_348n },
         status: null,
-      })
+      }),
     );
 
     // A sync tried again reads it with the balances, as it reads a position
@@ -182,7 +182,7 @@ describe("sozuStore", () => {
           contracts: { pool: "a" },
           position: { balance: 2_747_200_000n, stDusk: 864_521_348n },
         })
-      )
+      ),
     );
 
     const show = await read({ account: "account-1" });
@@ -197,8 +197,8 @@ describe("sozuStore", () => {
     // And it's what the next unlock shows until it's read.
     await vi.waitFor(() =>
       expect(
-        currentWalletCache().getSozuPosition("account-1")
-      ).resolves.toMatchObject({ balance: 2_747_200_000n })
+        currentWalletCache().getSozuPosition("account-1"),
+      ).resolves.toMatchObject({ balance: 2_747_200_000n }),
     );
     sozuStore.reset();
   });

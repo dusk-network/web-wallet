@@ -170,7 +170,7 @@ const direction = (container) =>
   ["from", "to"].map((side) =>
     container
       .querySelector(`button[data-side='${side}']`)
-      ?.getAttribute("data-value")
+      ?.getAttribute("data-value"),
   );
 
 describe("the Bridge card's routes to and from other chains", () => {
@@ -208,14 +208,14 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(amount).toHaveValue("••••");
       expect(container.querySelector("output")).toHaveTextContent(
-        "•••• hidden"
+        "•••• hidden",
       );
 
       await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
       expect(container).toHaveTextContent("•••• DUSK to");
       expect(container.querySelector(".route-review")).not.toHaveTextContent(
-        /\d DUSK arrives/
+        /\d DUSK arrives/,
       );
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -238,13 +238,13 @@ describe("the Bridge card's routes to and from other chains", () => {
       });
 
       await vi.waitFor(() =>
-        expect(getByRole("button", { name: "Max" })).toBeEnabled()
+        expect(getByRole("button", { name: "Max" })).toBeEnabled(),
       );
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(amount).toHaveValue("••••");
       expect(container.querySelector("output")).toHaveTextContent(
-        "•••• hidden"
+        "•••• hidden",
       );
 
       await fireEvent.input(amount, { target: { value: "•••" } });
@@ -289,12 +289,12 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     expect(direction(container)).toStrictEqual(["duskDs", "bsc"]);
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "~10 hours · 1 DUSK bridge fee"
+      "~10 hours · 1 DUSK bridge fee",
     );
     // No field for an address: it comes from the wallet.
     expect(queryByRole("textbox", { name: /address/i })).toBeNull();
     expect(
-      getByRole("button", { name: "Connect an EVM wallet" })
+      getByRole("button", { name: "Connect an EVM wallet" }),
     ).toBeEnabled();
 
     connect({ address: EVM, chainId: 1 });
@@ -305,17 +305,17 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.input(amount, { target: { value: "1" } });
 
     expect(
-      getByRole("button", { name: "Send more than the 1 DUSK bridge fee" })
+      getByRole("button", { name: "Send more than the 1 DUSK bridge fee" }),
     ).toBeDisabled();
 
     await fireEvent.input(amount, { target: { value: "2" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
     expect(container).toHaveTextContent(
-      "2 DUSK sent · 1 DUSK bridge fee · 1 DUSK arrives on BNB Smart Chain"
+      "2 DUSK sent · 1 DUSK bridge fee · 1 DUSK arrives on BNB Smart Chain",
     );
     expect(container).toHaveTextContent(
-      "It usually arrives in about 10 hours."
+      "It usually arrives in about 10 hours.",
     );
     expect(container).toHaveTextContent(EVM);
 
@@ -329,7 +329,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       2n * DUSK,
       EVM,
       1n,
-      2_500_000n
+      2_500_000n,
     );
   });
 
@@ -354,7 +354,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     await tick();
 
     expect(
-      getByRole("button", { name: "Switch to BNB Smart Chain" })
+      getByRole("button", { name: "Switch to BNB Smart Chain" }),
     ).toBeEnabled();
 
     connect({ address: EVM, chainId: 56 });
@@ -366,7 +366,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(mocks.getBalanceOfCoin).toHaveBeenCalledWith(
       EVM,
       networks.mainnet.routes.chains.bsc.token,
-      56
+      56,
     );
 
     await fireEvent.input(amount, { target: { value: "2,5" } });
@@ -374,10 +374,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     expect(await findByRole("button", { name: "Migrate" })).toBeEnabled();
     expect(container).toHaveTextContent(
-      "Approve the amount, then migrate, in your wallet"
+      "Approve the amount, then migrate, in your wallet",
     );
     expect(container).toHaveTextContent(
-      `Amount 2.5 DUSK From BNB Smart Chain ${EVM} To Your public account on Dusk ${ACCOUNT}`
+      `Amount 2.5 DUSK From BNB Smart Chain ${EVM} To Your public account on Dusk ${ACCOUNT}`,
     );
 
     await afterConfirmDelay();
@@ -391,18 +391,18 @@ describe("the Bridge card's routes to and from other chains", () => {
       networks.mainnet.routes.chains.bsc.token,
       wei,
       56,
-      EVM
+      EVM,
     );
     expect(mocks.migrate).toHaveBeenCalledWith(
       wei,
       56,
       ACCOUNT,
       migration.contract,
-      EVM
+      EVM,
     );
     // Kept for Bridge › Activity until it's paid.
     expect(
-      JSON.parse(localStorage.getItem("web-wallet-migrations") ?? "[]")
+      JSON.parse(localStorage.getItem("web-wallet-migrations") ?? "[]"),
     ).toMatchObject([
       { amountLux: String(2_500_000_000n), hash: `0x${"bb".repeat(32)}` },
     ]);
@@ -422,7 +422,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     await fireEvent.input(
       await findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-      { target: { value: "1" } }
+      { target: { value: "1" } },
     );
     await fireEvent.click(getByRole("button", { name: "Review migration" }));
     await findByRole("button", { name: "Migrate" });
@@ -464,26 +464,26 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         typed.getByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await lockAndUnlock();
 
       const back = render(Bridge, props);
 
       expect(
-        back.getByRole("textbox", { name: "Amount, in DUSK" })
+        back.getByRole("textbox", { name: "Amount, in DUSK" }),
       ).toHaveValue("2");
 
       mocks.executeSend.mockReturnValue(new Promise(() => {}));
       await fireEvent.click(
-        back.getByRole("button", { name: "Review bridge" })
+        back.getByRole("button", { name: "Review bridge" }),
       );
       await afterConfirmDelay();
       await fireEvent.click(back.getByRole("button", { name: "Send" }));
       await lockAndUnlock();
 
       expect(
-        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" }),
       ).toHaveValue("");
     });
 
@@ -498,10 +498,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         await fireEvent.input(
           view.getByRole("textbox", { name: "Amount, in DUSK" }),
-          { target: { value: "2" } }
+          { target: { value: "2" } },
         );
         await fireEvent.click(
-          view.getByRole("button", { name: "Review bridge" })
+          view.getByRole("button", { name: "Review bridge" }),
         );
         await afterConfirmDelay();
         await fireEvent.click(view.getByRole("button", { name: "Send" }));
@@ -515,19 +515,19 @@ describe("the Bridge card's routes to and from other chains", () => {
       cleanup();
 
       expect(
-        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" }),
       ).toHaveValue("2");
       cleanup();
 
       const unknown = await failWith(
-        outcomeUnknown(new TypeError("Failed to fetch"))
+        outcomeUnknown(new TypeError("Failed to fetch")),
       );
 
       await unknown.findByText("Not confirmed");
       cleanup();
 
       expect(
-        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" })
+        render(Bridge, props).getByRole("textbox", { name: "Amount, in DUSK" }),
       ).toHaveValue("");
     });
 
@@ -542,7 +542,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await typed.findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "1,5" } }
+        { target: { value: "1,5" } },
       );
       await lockAndUnlock();
 
@@ -555,7 +555,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await vi.waitFor(() => expect(amount).toBeEnabled());
       await fireEvent.click(
-        back.getByRole("button", { name: "Review migration" })
+        back.getByRole("button", { name: "Review migration" }),
       );
       await back.findByRole("button", { name: "Migrate" });
       await afterConfirmDelay();
@@ -566,7 +566,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(
         await render(Bridge, opened).findByRole("textbox", {
           name: "Amount, in BEP20 DUSK",
-        })
+        }),
       ).toHaveValue("");
     });
 
@@ -576,7 +576,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       const typed = render(Bridge, props);
 
       await fireEvent.click(
-        typed.getByRole("button", { name: "Swap From and To" })
+        typed.getByRole("button", { name: "Swap From and To" }),
       );
 
       const picked = direction(typed.container);
@@ -590,8 +590,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(
         direction(
           render(Bridge, { ...props, linkedRoute: "ethereum-to-dusk" })
-            .container
-        )
+            .container,
+        ),
       ).toStrictEqual(["ethereum", "duskDs"]);
     });
   });
@@ -624,10 +624,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value } }
+        { target: { value } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review migration" })
+        view.getByRole("button", { name: "Review migration" }),
       );
       await view.findByRole("button", { name: "Migrate" });
       await afterConfirmDelay();
@@ -645,7 +645,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(mocks.approve).not.toHaveBeenCalled();
 
       await expect(get(sendPasswordAsk)?.answer("wrong")).rejects.toThrow(
-        InvalidPasswordError
+        InvalidPasswordError,
       );
 
       expect(mocks.migrate).not.toHaveBeenCalled();
@@ -662,7 +662,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       get(sendPasswordAsk)?.cancel();
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "It waits for your password, so nothing moved."
+        "It waits for your password, so nothing moved.",
       );
       expect(await findByRole("button", { name: "Migrate" })).toBeVisible();
       expect(mocks.migrate).not.toHaveBeenCalled();
@@ -705,17 +705,17 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(await findByRole("button", { name: "Revoke" })).toBeEnabled();
       expect(getByRole("button", { name: "Finish" })).toBeEnabled();
       expect(panel(container)).toHaveTextContent(
-        "Open approval The migration contract may still take 0.5 BEP20 DUSK from this wallet."
+        "Open approval The migration contract may still take 0.5 BEP20 DUSK from this wallet.",
       );
       expect(mocks.allowance).toHaveBeenCalledWith(
         EVM,
         BSC.token,
         BSC_CONTRACT,
-        56
+        56,
       );
       // Nothing of it is kept here.
       expect(
-        Object.keys(localStorage).filter((key) => /approv/i.test(key))
+        Object.keys(localStorage).filter((key) => /approv/i.test(key)),
       ).toStrictEqual([]);
     });
 
@@ -730,7 +730,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Revoke" });
       await fireEvent.input(
         getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "0.5" } }
+        { target: { value: "0.5" } },
       );
 
       expect(steps()).toContain("migrate, in your BNB Smart Chain wallet");
@@ -738,11 +738,11 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "0.6" } }
+        { target: { value: "0.6" } },
       );
 
       expect(steps()).toContain(
-        "approve, then migrate, in your BNB Smart Chain wallet"
+        "approve, then migrate, in your BNB Smart Chain wallet",
       );
     });
 
@@ -756,7 +756,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       const none = render(Bridge, { ...props, linkedRoute: "bsc-to-dusk" });
 
       await fireEvent.click(
-        await none.findByRole("button", { name: "Add DUSK to Test MetaMask" })
+        await none.findByRole("button", { name: "Add DUSK to Test MetaMask" }),
       );
       expect(mocks.switchChain).not.toHaveBeenCalled();
       expect(mocks.watchAsset).toHaveBeenCalledOnce();
@@ -770,13 +770,13 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await vi.waitFor(() =>
         expect(
-          some.container.querySelector("#migration-balance")
-        ).toHaveTextContent("1 BEP20 DUSK")
+          some.container.querySelector("#migration-balance"),
+        ).toHaveTextContent("1 BEP20 DUSK"),
       );
       await tick();
 
       expect(
-        some.queryByRole("button", { name: "Add DUSK to Test MetaMask" })
+        some.queryByRole("button", { name: "Add DUSK to Test MetaMask" }),
       ).toBeNull();
     });
 
@@ -826,7 +826,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await hidden.findByRole("button", { name: "Revoke" });
 
       expect(panel(hidden.container)).toHaveTextContent(
-        "may still take •••• hidden BEP20 DUSK"
+        "may still take •••• hidden BEP20 DUSK",
       );
       cleanup();
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -838,21 +838,21 @@ describe("the Bridge card's routes to and from other chains", () => {
       await unlimited.findByRole("button", { name: "Revoke" });
 
       expect(panel(unlimited.container)).toHaveTextContent(
-        "may still take any amount of BEP20 DUSK from this wallet"
+        "may still take any amount of BEP20 DUSK from this wallet",
       );
 
       await fireEvent.input(
         unlimited.getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "1" } }
+        { target: { value: "1" } },
       );
       await fireEvent.click(
-        unlimited.getByRole("button", { name: "Review migration" })
+        unlimited.getByRole("button", { name: "Review migration" }),
       );
 
       await vi.waitFor(() =>
         expect(unlimited.container).toHaveTextContent(
-          "An earlier approval with no limit covers this, so you aren't asked to approve. It stays approved after it."
-        )
+          "An earlier approval with no limit covers this, so you aren't asked to approve. It stays approved after it.",
+        ),
       );
     });
 
@@ -866,13 +866,13 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await findByRole("heading", { name: "Review" });
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent("Migrate, in your wallet")
+        expect(container).toHaveTextContent("Migrate, in your wallet"),
       );
       expect(container.querySelector(".review-amount")).toHaveTextContent(
-        "0.5 DUSK"
+        "0.5 DUSK",
       );
       expect(container).toHaveTextContent(
-        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. None of it stays approved after it."
+        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. None of it stays approved after it.",
       );
 
       await afterConfirmDelay();
@@ -889,12 +889,12 @@ describe("the Bridge card's routes to and from other chains", () => {
       const more = openRoute();
 
       await fireEvent.click(
-        await more.findByRole("button", { name: "Finish" })
+        await more.findByRole("button", { name: "Finish" }),
       );
       await more.findByRole("heading", { name: "Review" });
 
       expect(more.container.querySelector(".review-amount")).toHaveTextContent(
-        "5 DUSK"
+        "5 DUSK",
       );
       cleanup();
 
@@ -915,15 +915,15 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "0.2" } }
+        { target: { value: "0.2" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review migration" }));
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent("Migrate, in your wallet")
+        expect(container).toHaveTextContent("Migrate, in your wallet"),
       );
 
       expect(container).toHaveTextContent(
-        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. 0.3 BEP20 DUSK stays approved after it."
+        "Approval An earlier approval of 0.5 BEP20 DUSK covers this, so you aren't asked to approve. 0.3 BEP20 DUSK stays approved after it.",
       );
       expect(queryByText(/exactly this amount/)).toBeNull();
     });
@@ -935,17 +935,17 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "1" } }
+        { target: { value: "1" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review migration" }));
       await vi.waitFor(() =>
         expect(container).toHaveTextContent(
-          "Approve the amount, then migrate, in your wallet"
-        )
+          "Approve the amount, then migrate, in your wallet",
+        ),
       );
 
       expect(container).toHaveTextContent(
-        "You allow the migration contract to take exactly this amount."
+        "You allow the migration contract to take exactly this amount.",
       );
       expect(container).not.toHaveTextContent("An earlier approval");
     });
@@ -958,11 +958,11 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
-        { target: { value: "0.2" } }
+        { target: { value: "0.2" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review migration" }));
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent("An earlier approval")
+        expect(container).toHaveTextContent("An earlier approval"),
       );
 
       expect(container).not.toHaveTextContent("0.3 BEP20");
@@ -975,7 +975,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         const view = openRoute();
 
         await fireEvent.click(
-          await view.findByRole("button", { name: "Revoke" })
+          await view.findByRole("button", { name: "Revoke" }),
         );
         await view.findByRole("heading", { name: "Review" });
         await afterConfirmDelay();
@@ -999,7 +999,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         const view = openRoute();
 
         await fireEvent.click(
-          await view.findByRole("button", { name: "Revoke" })
+          await view.findByRole("button", { name: "Revoke" }),
         );
 
         const review = /** @type {HTMLElement} */ (
@@ -1011,15 +1011,15 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(review).toHaveTextContent("Approved now 0.5 BEP20 DUSK");
         expect(review).toHaveTextContent(`From BNB Smart Chain ${EVM}`);
         expect(review).toHaveTextContent(
-          "Steps Revoke, in your wallet: nothing moves"
+          "Steps Revoke, in your wallet: nothing moves",
         );
         expect(review).toHaveTextContent(
-          "After it The migration contract can take no BEP20 DUSK from this wallet."
+          "After it The migration contract can take no BEP20 DUSK from this wallet.",
         );
         await vi.waitFor(() =>
           expect(review).toHaveTextContent(
-            "Network fees About 0.000024 BNB, from your 1 BNB"
-          )
+            "Network fees About 0.000024 BNB, from your 1 BNB",
+          ),
         );
         expect(mocks.getRevokeFee).toHaveBeenCalledWith({
           chainId: 56,
@@ -1051,7 +1051,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         // Back on the form, which says so.
         expect(await findByRole("alert")).toHaveTextContent(
-          "The approval is revoked."
+          "The approval is revoked.",
         );
         expect(queryByRole("heading", { name: "Review" })).toBeNull();
         expect(mocks.approve).toHaveBeenCalledExactlyOnceWith(
@@ -1059,11 +1059,11 @@ describe("the Bridge card's routes to and from other chains", () => {
           BSC.token,
           0n,
           56,
-          EVM
+          EVM,
         );
         expect(mocks.waitForTransactionReceipt).toHaveBeenCalledWith(
           {},
-          { chainId: 56, hash: `0x${"dd".repeat(32)}` }
+          { chainId: 56, hash: `0x${"dd".repeat(32)}` },
         );
         await vi.waitFor(() => expect(panel(container)).toBeNull());
         expect(queryByRole("button", { name: "Revoke" })).toBeNull();
@@ -1077,7 +1077,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         mocks.approve.mockReturnValue(
           new Promise((resolve) => {
             signed = resolve;
-          })
+          }),
         );
         mocks.waitForTransactionReceipt.mockReturnValue(new Promise(() => {}));
 
@@ -1087,14 +1087,14 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(revokeIn(view));
 
         await vi.waitFor(() =>
-          expect(statuses(view)).toContain("Revoke in your wallet")
+          expect(statuses(view)).toContain("Revoke in your wallet"),
         );
         expect(revokeIn(view)).toBeDisabled();
 
         signed(`0x${"dd".repeat(32)}`);
 
         await vi.waitFor(() =>
-          expect(statuses(view)).toContain("Waiting for BNB Smart Chain…")
+          expect(statuses(view)).toContain("Waiting for BNB Smart Chain…"),
         );
         expect(revokeIn(view)).toBeDisabled();
       });
@@ -1120,7 +1120,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         mocks.approve.mockReturnValueOnce(
           new Promise((resolve) => {
             signed = resolve;
-          })
+          }),
         );
 
         const { page } = await import("$app/stores");
@@ -1146,14 +1146,14 @@ describe("the Bridge card's routes to and from other chains", () => {
           await vi.waitFor(() =>
             expect(mocks.waitForTransactionReceipt).toHaveBeenCalledWith(
               {},
-              { chainId: 56, hash: `0x${"dd".repeat(32)}` }
-            )
+              { chainId: 56, hash: `0x${"dd".repeat(32)}` },
+            ),
           );
           await new Promise((resolve) => setTimeout(resolve, 0));
 
           expect(back).not.toHaveBeenCalled();
           expect(
-            second.getByRole("heading", { name: "Review" })
+            second.getByRole("heading", { name: "Review" }),
           ).toBeInTheDocument();
         } finally {
           at({});
@@ -1164,7 +1164,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       it("says the approval stands when it's declined in the wallet", async () => {
         mocks.allowance.mockResolvedValue(HALF);
         mocks.approve.mockRejectedValue(
-          new Error("User rejected the request.")
+          new Error("User rejected the request."),
         );
 
         const view = await toRevoke();
@@ -1173,7 +1173,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         // Said on the review, which stays: it can be signed again.
         expect(await view.findByRole("alert")).toHaveTextContent(
-          "You cancelled the revoke in your wallet. The approval stands."
+          "You cancelled the revoke in your wallet. The approval stands.",
         );
         expect(view.getByRole("heading", { name: "Review" })).toBeVisible();
         expect(view.container).toHaveTextContent("Approved now 0.5 BEP20 DUSK");
@@ -1193,12 +1193,12 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(revokeIn(view));
 
         expect(await view.findByRole("alert")).toHaveTextContent(
-          "The approval wasn't revoked. Check your EVM wallet's activity before you try again."
+          "The approval wasn't revoked. Check your EVM wallet's activity before you try again.",
         );
         await vi.waitFor(() =>
           expect(view.container).toHaveTextContent(
-            "Approved now 0.5 BEP20 DUSK"
-          )
+            "Approved now 0.5 BEP20 DUSK",
+          ),
         );
       });
 
@@ -1212,7 +1212,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(revokeIn(view));
 
         expect(await findByRole("alert")).toHaveTextContent(
-          "The approval is revoked."
+          "The approval is revoked.",
         );
         expect(mocks.approve).not.toHaveBeenCalled();
         await vi.waitFor(() => expect(panel(container)).toBeNull());
@@ -1230,7 +1230,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         mocks.allowance.mockReturnValueOnce(
           new Promise((resolve) => {
             answer = resolve;
-          })
+          }),
         );
         await fireEvent.click(revokeIn(view));
         mocks.account?.update((now) => ({
@@ -1240,7 +1240,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         answer(HALF);
 
         expect(await findByRole("alert")).toHaveTextContent(
-          "Your EVM wallet switched to another account, so nothing moved."
+          "Your EVM wallet switched to another account, so nothing moved.",
         );
         expect(mocks.approve).not.toHaveBeenCalled();
       });
@@ -1279,7 +1279,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         it("asks the EVM wallet for nothing once the wallet locked", async () => {
           const generator = new ProfileGenerator(async () =>
-            crypto.getRandomValues(new Uint8Array(64))
+            crypto.getRandomValues(new Uint8Array(64)),
           );
 
           await walletStore.init(generator);
@@ -1297,7 +1297,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         it("asks the EVM wallet for nothing once another wallet opened", async () => {
           const generator = new ProfileGenerator(async () =>
-            crypto.getRandomValues(new Uint8Array(64))
+            crypto.getRandomValues(new Uint8Array(64)),
           );
 
           await walletStore.init(generator);
@@ -1320,7 +1320,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         const view = openRoute();
 
         await fireEvent.click(
-          await view.findByRole("button", { name: "Revoke" })
+          await view.findByRole("button", { name: "Revoke" }),
         );
         await view.findByRole("heading", { name: "Review" });
         await fireEvent.click(revokeIn(view));
@@ -1350,11 +1350,11 @@ describe("the Bridge card's routes to and from other chains", () => {
         props.transferGasSettings.gasLimit * props.transferGasSettings.gasPrice;
 
       expect(/** @type {HTMLInputElement} */ (amount).value).toBe(
-        formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux)
+        formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux),
       );
       expect(queryByText(/too little to unstake/)).toBeNull();
       expect(
-        getByText("Max keeps 0.05 DUSK to unstake later.")
+        getByText("Max keeps 0.05 DUSK to unstake later."),
       ).toBeInTheDocument();
 
       await fireEvent.input(amount, {
@@ -1364,18 +1364,18 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(queryByText(/^Max keeps/)).toBeNull();
 
       expect(
-        getByText("That leaves too little to unstake later.")
+        getByText("That leaves too little to unstake later."),
       ).toBeInTheDocument();
     });
 
     it("keeps what's said under the From panel's amount clear of the flip button over its edge", () => {
       const clears = styleRules(
         "../SwapCard/SwapCard.svelte",
-        import.meta.url
+        import.meta.url,
       ).find(
         (rule) =>
           /\.swap-panel:has\(~ \.swap-flip\)/.test(rule.selector) &&
-          rule.media === ""
+          rule.media === "",
       );
       // The flip button reaches 1.375rem into the panel above it.
       const reach = 1.375;
@@ -1384,7 +1384,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(clears?.selector).toContain(`> ${line}`);
       }
       expect(
-        parseFloat(clears?.declarations["padding-bottom"] ?? "0")
+        parseFloat(clears?.declarations["padding-bottom"] ?? "0"),
       ).toBeGreaterThan(reach);
     });
   });
@@ -1398,10 +1398,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review bridge" })
+        view.getByRole("button", { name: "Review bridge" }),
       );
       await afterConfirmDelay();
       await fireEvent.click(view.getByRole("button", { name: "Send" }));
@@ -1409,7 +1409,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(view.getByRole("link", { name: /Dusk explorer/ })).toHaveAttribute(
         "href",
-        expect.stringContaining("ab".repeat(32))
+        expect.stringContaining("ab".repeat(32)),
       );
     });
 
@@ -1429,10 +1429,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review bridge" })
+        view.getByRole("button", { name: "Review bridge" }),
       );
       await afterConfirmDelay();
       await fireEvent.click(view.getByRole("button", { name: "Send" }));
@@ -1449,7 +1449,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         Object.assign(function () {}, {
           permission: "default",
           requestPermission,
-        })
+        }),
       );
 
       const view = await sendOut();
@@ -1457,7 +1457,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(requestPermission).not.toHaveBeenCalled();
 
       await fireEvent.click(
-        view.getByRole("button", { name: "Tell me when it arrives" })
+        view.getByRole("button", { name: "Tell me when it arrives" }),
       );
 
       expect(requestPermission).toHaveBeenCalledOnce();
@@ -1490,18 +1490,18 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(document.querySelector(".route-result")).toHaveTextContent("Sent");
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "1 DUSK arrives on BNB Smart Chain in about 10 hours."
+        "1 DUSK arrives on BNB Smart Chain in about 10 hours.",
       );
 
       mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
 
       await findByText("Arrived");
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "1 DUSK arrived on BNB Smart Chain."
+        "1 DUSK arrived on BNB Smart Chain.",
       );
       expect(getByRole("link", { name: "View in activity" })).toHaveAttribute(
         "href",
-        expect.stringContaining(HASH)
+        expect.stringContaining(HASH),
       );
     });
 
@@ -1527,12 +1527,12 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       connect({ address: EVM, chainId: 1, connector: wallet });
       mocks.watchAsset.mockRejectedValueOnce(
-        Object.assign(new Error("User rejected the request."), { code: 4001 })
+        Object.assign(new Error("User rejected the request."), { code: 4001 }),
       );
       await fireEvent.click(await findByRole("button", offer));
 
       await vi.waitFor(async () =>
-        expect(await findByRole("button", offer)).toBeEnabled()
+        expect(await findByRole("button", offer)).toBeEnabled(),
       );
       expect(document.querySelector(".route-result [role=alert]")).toBeNull();
 
@@ -1549,15 +1549,15 @@ describe("the Bridge card's routes to and from other chains", () => {
             symbol: "DUSK",
           },
           type: "ERC20",
-        }
+        },
       );
       await vi.waitFor(() => expect(queryByRole("button", offer)).toBeNull());
       expect(getByText("DUSK added to Test MetaMask.")).toHaveAttribute(
         "role",
-        "status"
+        "status",
       );
       expect(
-        JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? "")
+        JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? ""),
       ).toStrictEqual([`56:${EVM.toLowerCase()}`]);
     });
 
@@ -1583,7 +1583,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await tick();
 
       expect(
-        queryByRole("button", { name: "Add DUSK to Phone wallet" })
+        queryByRole("button", { name: "Add DUSK to Phone wallet" }),
       ).toBeNull();
     });
 
@@ -1592,7 +1592,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       connect({ address: EVM, chainId: 56 });
       mocks.executeSend.mockRejectedValueOnce(
-        outcomeUnknown(new TypeError("Failed to fetch"), HASH)
+        outcomeUnknown(new TypeError("Failed to fetch"), HASH),
       );
       mocks.followTransaction.mockReturnValueOnce(found.promise);
 
@@ -1600,10 +1600,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review bridge" })
+        view.getByRole("button", { name: "Review bridge" }),
       );
       await afterConfirmDelay();
       await fireEvent.click(view.getByRole("button", { name: "Send" }));
@@ -1615,20 +1615,20 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
 
       expect(result).toHaveTextContent(
-        "2 DUSK to BNB Smart Chain It may have reached the network. Wait for it here before you send it again."
+        "2 DUSK to BNB Smart Chain It may have reached the network. Wait for it here before you send it again.",
       );
       expect(result).not.toHaveTextContent("Sent");
       expect(view.queryByRole("button", { name: "Try again" })).toBeNull();
       expect(mocks.followTransaction).toHaveBeenCalledWith(
         HASH,
-        expect.anything()
+        expect.anything(),
       );
 
       found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
 
       await view.findByText("Sent");
       expect(result).toHaveTextContent(
-        "1 DUSK arrives on BNB Smart Chain in about 10 hours."
+        "1 DUSK arrives on BNB Smart Chain in about 10 hours.",
       );
     });
 
@@ -1646,7 +1646,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-        { target: { value: "2,5" } }
+        { target: { value: "2,5" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review migration" }));
       await findByRole("button", { name: "Migrate" });
@@ -1656,7 +1656,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       // Until it's paid, it says what's on its way.
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "2.5 DUSK arrives on Dusk"
+        "2.5 DUSK arrives on Dusk",
       );
 
       mocks.transfers?.set([
@@ -1675,7 +1675,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await findByText("Arrived");
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "2.5 DUSK arrived in your public balance on Dusk."
+        "2.5 DUSK arrived in your public balance on Dusk.",
       );
     });
 
@@ -1695,7 +1695,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await findByText("The bridge didn't take this transfer.");
       expect(document.querySelector(".route-result")).not.toHaveTextContent(
-        "It usually arrives"
+        "It usually arrives",
       );
     });
 
@@ -1708,10 +1708,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await findByText("Arrived");
       expect(document.querySelector(".route-result")).toHaveTextContent(
-        "It arrived on BNB Smart Chain."
+        "It arrived on BNB Smart Chain.",
       );
       expect(document.querySelector(".route-result")).not.toHaveTextContent(
-        "1 DUSK"
+        "1 DUSK",
       );
     });
 
@@ -1743,10 +1743,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-        { target: { value: "1" } }
+        { target: { value: "1" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review migration" })
+        view.getByRole("button", { name: "Review migration" }),
       );
 
       return view;
@@ -1766,7 +1766,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       ).contract;
 
       expect(container).toHaveTextContent(
-        "Approval You allow the migration contract to take exactly this amount. Nothing moves yet."
+        "Approval You allow the migration contract to take exactly this amount. Nothing moves yet.",
       );
 
       // One click away, for whoever checks them against the wallet.
@@ -1780,7 +1780,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(check).toHaveTextContent(`Migration contract ${contract}`);
       expect(check).toHaveTextContent(`ERC20 DUSK ${ethereum().token}`);
       expect(check).toHaveTextContent(
-        "Public on Ethereum and Dusk, and linked:"
+        "Public on Ethereum and Dusk, and linked:",
       );
     });
 
@@ -1792,8 +1792,8 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await vi.waitFor(() =>
         expect(view.container).toHaveTextContent(
-          "Network fees About 0.00012 ETH, from your 1.2345 ETH. No bridge fee"
-        )
+          "Network fees About 0.00012 ETH, from your 1.2345 ETH. No bridge fee",
+        ),
       );
       expect(view.container).toHaveTextContent("Arrives 1 DUSK on Dusk in");
       expect(mocks.getNativeBalance).toHaveBeenCalledWith(EVM, 1);
@@ -1803,7 +1803,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       view = await reviewMigration();
 
       expect(
-        await view.findByRole("button", { name: "No ETH for the network fee" })
+        await view.findByRole("button", { name: "No ETH for the network fee" }),
       ).toBeDisabled();
       expect(view.queryByRole("button", { name: "Migrate" })).toBeNull();
     });
@@ -1818,8 +1818,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Migrate" });
       await vi.waitFor(() =>
         expect(container).toHaveTextContent(
-          /Network fees About 0\.00012 ETH, from your \S+ ETH/
-        )
+          /Network fees About 0\.00012 ETH, from your \S+ ETH/,
+        ),
       );
       expect(container).not.toHaveTextContent("1.2345");
     });
@@ -1833,7 +1833,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       mocks.getNativeBalance.mockReturnValueOnce(
         new Promise((resolve) => {
           answerOld = resolve;
-        })
+        }),
       );
 
       const { findByRole, getByRole, queryByRole } = await reviewMigration();
@@ -1848,7 +1848,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await tick();
 
       expect(
-        queryByRole("button", { name: "No ETH for the network fee" })
+        queryByRole("button", { name: "No ETH for the network fee" }),
       ).toBeNull();
     });
 
@@ -1861,8 +1861,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Migrate" });
       await vi.waitFor(() =>
         expect(container).toHaveTextContent(
-          "Network fees On Ethereum, as your wallet shows"
-        )
+          "Network fees On Ethereum, as your wallet shows",
+        ),
       );
     });
 
@@ -1876,7 +1876,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
@@ -1885,7 +1885,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
 
       expect(container).toHaveTextContent(
-        "Through The bridge's account, which pays your address"
+        "Through The bridge's account, which pays your address",
       );
 
       const check = /** @type {HTMLDetailsElement} */ (
@@ -1896,7 +1896,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(check).toHaveTextContent(`Bridge account ${service.account}`);
       expect(check).toHaveTextContent(`Memo ${EVM}`);
       expect(check).toHaveTextContent(
-        "Public on Dusk and BNB Smart Chain, and linked:"
+        "Public on Dusk and BNB Smart Chain, and linked:",
       );
     });
 
@@ -1907,11 +1907,11 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await out.findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "1.0123456789" } }
+        { target: { value: "1.0123456789" } },
       );
 
       expect(
-        out.getByRole("button", { name: "Use at most 9 decimals" })
+        out.getByRole("button", { name: "Use at most 9 decimals" }),
       ).toBeDisabled();
       cleanup();
 
@@ -1920,11 +1920,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(await view.findByRole("button", { name: "Back" }));
       await fireEvent.input(
         view.getByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-        { target: { value: "1.0123456789" } }
+        { target: { value: "1.0123456789" } },
       );
 
       expect(
-        view.getByRole("button", { name: "Use at most 9 decimals" })
+        view.getByRole("button", { name: "Use at most 9 decimals" }),
       ).toBeDisabled();
     });
 
@@ -1947,13 +1947,13 @@ describe("the Bridge card's routes to and from other chains", () => {
       await tick();
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
       expect(
-        getByRole("textbox", { name: "Amount, in ERC20 DUSK" })
+        getByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
       ).toHaveValue("1");
 
       at({ routeReview: true });
       await tick();
       expect(
-        await findByRole("button", { name: "Migrate" })
+        await findByRole("button", { name: "Migrate" }),
       ).toBeInTheDocument();
       at({});
     });
@@ -1981,7 +1981,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       // With the marker still there, a new review uses it, stacking none.
       mocks.pushState.mockClear();
       await fireEvent.click(
-        await findByRole("button", { name: "Review migration" })
+        await findByRole("button", { name: "Review migration" }),
       );
 
       expect(mocks.pushState).not.toHaveBeenCalled();
@@ -2002,7 +2002,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("textbox", { name: "Amount, in BEP20 DUSK" });
 
       expect(document.activeElement).toBe(
-        getByRole("button", { name: "Swap From and To" })
+        getByRole("button", { name: "Swap From and To" }),
       );
       expect(document.body).toHaveTextContent("From BNB Smart Chain to Dusk");
     });
@@ -2017,15 +2017,15 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "0.5" } }
+        { target: { value: "0.5" } },
       );
 
       expect(container.querySelector(".route-amount-reason")).toHaveTextContent(
-        "Send more than the 1 DUSK bridge fee"
+        "Send more than the 1 DUSK bridge fee",
       );
       expect(container.querySelector("output")).toHaveAttribute(
         "aria-live",
-        "off"
+        "off",
       );
     });
 
@@ -2035,12 +2035,12 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       const { findByRole, findByText, getByRole, getAllByRole } = render(
         Bridge,
-        { ...props, linkedRoute: "dusk-to-bsc" }
+        { ...props, linkedRoute: "dusk-to-bsc" },
       );
 
       await fireEvent.input(
         await findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(getByRole("button", { name: "Review bridge" }));
       await afterConfirmDelay();
@@ -2053,14 +2053,14 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(tab);
 
       expect(
-        await findByRole("textbox", { name: "Amount, in DUSK" })
+        await findByRole("textbox", { name: "Amount, in DUSK" }),
       ).toHaveValue("");
     });
   });
 
   describe("when the wallet or its account changes course", () => {
     const REFUSED = new Error(
-      "An error occurred while approving the DUSK: User rejected the request."
+      "An error occurred while approving the DUSK: User rejected the request.",
     );
 
     /** A migration of 1 ERC20 DUSK, up to its review. */
@@ -2076,10 +2076,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-        { target: { value: "1" } }
+        { target: { value: "1" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review migration" })
+        view.getByRole("button", { name: "Review migration" }),
       );
       await view.findByRole("button", { name: "Migrate" });
       await afterConfirmDelay();
@@ -2097,7 +2097,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "You cancelled the approval in your wallet. Nothing moved."
+        "You cancelled the approval in your wallet. Nothing moved.",
       );
       expect(getByRole("button", { name: "Migrate" })).toBeInTheDocument();
       expect(queryByText("The migration didn't go through")).toBeNull();
@@ -2109,7 +2109,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       mocks.allowance.mockResolvedValueOnce(0n);
       mocks.approve.mockResolvedValue(`0x${"aa".repeat(32)}`);
       mocks.migrate.mockRejectedValueOnce(
-        new Error("User rejected the request.")
+        new Error("User rejected the request."),
       );
 
       const { container, findByRole, getByRole } = await toReview();
@@ -2117,7 +2117,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved."
+        "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved.",
       );
 
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
@@ -2126,7 +2126,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Migrate" });
 
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent("Migrate, in your wallet")
+        expect(container).toHaveTextContent("Migrate, in your wallet"),
       );
     });
 
@@ -2135,7 +2135,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.migrate.mockRejectedValue(
-        outcomeUnknown(new Error("The request took too long to respond."))
+        outcomeUnknown(new Error("The request took too long to respond.")),
       );
 
       const { container, findByText, getByRole, queryByRole } =
@@ -2145,7 +2145,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await findByText("Not confirmed");
       expect(container).toHaveTextContent(
-        "It may have reached the network. Check your EVM wallet and Activity before you send it again."
+        "It may have reached the network. Check your EVM wallet and Activity before you send it again.",
       );
       expect(queryByRole("button", { name: "Back" })).toBeNull();
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
@@ -2170,8 +2170,8 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(
         await findByText(
-          "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved."
-        )
+          "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved.",
+        ),
       ).toBeInTheDocument();
       expect(mocks.approve).toHaveBeenCalledOnce();
       expect(container).not.toHaveTextContent("no fee was charged");
@@ -2180,7 +2180,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     it("offers to try again when it failed before it went out", async () => {
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.migrate.mockRejectedValueOnce(
-        new Error("The contract would revert.")
+        new Error("The contract would revert."),
       );
 
       const { findByRole, getByRole } = await toReview();
@@ -2189,7 +2189,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(
-        await findByRole("button", { name: "Migrate" })
+        await findByRole("button", { name: "Migrate" }),
       ).toBeInTheDocument();
     });
 
@@ -2198,8 +2198,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       const usedUp = () =>
         outcomeUnknown(
           new Error(
-            "execution reverted: BEP20: transfer amount exceeds allowance"
-          )
+            "execution reverted: BEP20: transfer amount exceeds allowance",
+          ),
         );
 
       it("says nothing was sent and why, and offers to approve again once the allowance was used up elsewhere", async () => {
@@ -2218,26 +2218,26 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         expect(
           await findByText(
-            "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it."
-          )
+            "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
+          ),
         ).toBeInTheDocument();
         expect(container).toHaveTextContent("The migration didn't go through");
         expect(queryByText("Not confirmed")).toBeNull();
         expect(container).not.toHaveTextContent("may have reached");
         expect(container.querySelector("details")).toHaveTextContent(
-          "BEP20: transfer amount exceeds allowance"
+          "BEP20: transfer amount exceeds allowance",
         );
 
         await fireEvent.click(getByRole("button", { name: "Approve again" }));
 
         // The review again, which now has the approval as a step of its own.
         expect(
-          await findByRole("button", { name: "Migrate" })
+          await findByRole("button", { name: "Migrate" }),
         ).toBeInTheDocument();
         await vi.waitFor(() =>
           expect(container).toHaveTextContent(
-            "Approve the amount, then migrate, in your wallet"
-          )
+            "Approve the amount, then migrate, in your wallet",
+          ),
         );
         expect(mocks.migrate).toHaveBeenCalledOnce();
       });
@@ -2245,7 +2245,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       it("says why where the allowance still covers it, and offers to try again, not to approve", async () => {
         mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
         mocks.migrate.mockRejectedValueOnce(
-          outcomeUnknown(new Error("execution reverted: Paused"))
+          outcomeUnknown(new Error("execution reverted: Paused")),
         );
 
         const { findByRole, findByText, getByRole, queryByRole } =
@@ -2255,15 +2255,15 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         expect(
           await findByText(
-            "The network would refuse it, so nothing was sent. See Details for why."
-          )
+            "The network would refuse it, so nothing was sent. See Details for why.",
+          ),
         ).toBeInTheDocument();
         expect(queryByRole("button", { name: "Approve again" })).toBeNull();
 
         await fireEvent.click(getByRole("button", { name: "Try again" }));
 
         expect(
-          await findByRole("button", { name: "Migrate" })
+          await findByRole("button", { name: "Migrate" }),
         ).toBeInTheDocument();
       });
 
@@ -2273,7 +2273,7 @@ describe("the Bridge card's routes to and from other chains", () => {
           mocks.allowance.mockResolvedValue(0n);
 
           throw new Error(
-            'The contract function "migrate" reverted with the following reason:\nBEP20: transfer amount exceeds allowance'
+            'The contract function "migrate" reverted with the following reason:\nBEP20: transfer amount exceeds allowance',
           );
         });
 
@@ -2282,7 +2282,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
         expect(
-          await findByRole("button", { name: "Approve again" })
+          await findByRole("button", { name: "Approve again" }),
         ).toBeInTheDocument();
       });
 
@@ -2302,12 +2302,12 @@ describe("the Bridge card's routes to and from other chains", () => {
         await findByText("Not confirmed");
 
         expect(container).toHaveTextContent(
-          "It may have reached the network. Check your EVM wallet and Activity before you send it again."
+          "It may have reached the network. Check your EVM wallet and Activity before you send it again.",
         );
         expect(queryByRole("button", { name: "Approve again" })).toBeNull();
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
         expect(container.querySelector(".route-result a")).toHaveTextContent(
-          "Home"
+          "Home",
         );
       });
 
@@ -2319,14 +2319,14 @@ describe("the Bridge card's routes to and from other chains", () => {
           await toReview();
 
         mocks.waitForTransactionReceipt.mockRejectedValue(
-          new Error("execution reverted")
+          new Error("execution reverted"),
         );
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
         await findByText("Not confirmed");
 
         expect(container).toHaveTextContent(
-          "It was sent to Ethereum. Check Activity before you try again."
+          "It was sent to Ethereum. Check Activity before you try again.",
         );
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
       });
@@ -2340,7 +2340,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       mocks.approve.mockReturnValue(
         new Promise((resolve) => {
           signed = resolve;
-        })
+        }),
       );
 
       const { getByRole, unmount } = await toReview();
@@ -2351,7 +2351,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       unmount();
       signed(`0x${"aa".repeat(32)}`);
       await vi.waitFor(() =>
-        expect(mocks.waitForTransactionReceipt).toHaveBeenCalled()
+        expect(mocks.waitForTransactionReceipt).toHaveBeenCalled(),
       );
       await tick();
       await tick();
@@ -2363,7 +2363,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.migrate.mockResolvedValue(`0x${"cc".repeat(32)}`);
       mocks.switchChain.mockRejectedValueOnce(
-        new Error("User rejected the request.")
+        new Error("User rejected the request."),
       );
 
       const { askToSwitch } = await import("$lib/bridge/chainSwitch");
@@ -2384,7 +2384,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await afterConfirmDelay();
 
       expect(
-        await findByRole("button", { name: "Migrate" })
+        await findByRole("button", { name: "Migrate" }),
       ).toBeInTheDocument();
       expect(getByRole("heading", { name: "Review" })).toBeInTheDocument();
       expect(mocks.migrate).not.toHaveBeenCalled();
@@ -2402,7 +2402,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("alert");
       await fireEvent.input(
         getByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
 
       expect(queryByRole("alert")).toBeNull();
@@ -2424,11 +2424,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "Your EVM wallet switched to another account, so nothing moved. Review again."
+        "Your EVM wallet switched to another account, so nothing moved. Review again.",
       );
       expect(mocks.migrate).not.toHaveBeenCalled();
       expect(
-        getByRole("button", { name: "Review migration" })
+        getByRole("button", { name: "Review migration" }),
       ).toBeInTheDocument();
     });
 
@@ -2457,11 +2457,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       });
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "Your EVM wallet switched to another account, so nothing moved. Review again."
+        "Your EVM wallet switched to another account, so nothing moved. Review again.",
       );
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
       expect(
-        getByRole("button", { name: "Review migration" })
+        getByRole("button", { name: "Review migration" }),
       ).toBeInTheDocument();
     });
 
@@ -2472,10 +2472,10 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.input(
         await view.findByRole("textbox", { name: "Amount, in DUSK" }),
-        { target: { value: "2" } }
+        { target: { value: "2" } },
       );
       await fireEvent.click(
-        view.getByRole("button", { name: "Review bridge" })
+        view.getByRole("button", { name: "Review bridge" }),
       );
       await view.findByRole("button", { name: "Send" });
 
@@ -2485,7 +2485,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       });
 
       expect(await view.findByRole("alert")).toHaveTextContent(
-        "Your EVM wallet switched to another account, so nothing was sent. Review again."
+        "Your EVM wallet switched to another account, so nothing was sent. Review again.",
       );
       expect(view.queryByRole("button", { name: "Send" })).toBeNull();
     });
@@ -2493,7 +2493,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     it("offers to ask again when the wallet refuses to change chain, and asks", async () => {
       mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
       mocks.switchChain.mockRejectedValueOnce(
-        new Error("User rejected the request.")
+        new Error("User rejected the request."),
       );
       connect({ address: EVM, chainId: 1 });
 
@@ -2518,15 +2518,15 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(mocks.switchChain).toHaveBeenCalledTimes(2);
       await vi.waitFor(() =>
         expect(
-          getByRole("button", { name: "Switching to BNB Smart Chain…" })
-        ).toBeDisabled()
+          getByRole("button", { name: "Switching to BNB Smart Chain…" }),
+        ).toBeDisabled(),
       );
 
       // Asking again takes over from the ask left without an answer.
       await askToSwitch(56);
 
       expect(
-        await findByRole("button", { name: "Switch to BNB Smart Chain" })
+        await findByRole("button", { name: "Switch to BNB Smart Chain" }),
       ).toBeEnabled();
     });
 
@@ -2537,15 +2537,15 @@ describe("the Bridge card's routes to and from other chains", () => {
       const { container, getByRole } = await toReview();
 
       expect(document.activeElement).toBe(
-        getByRole("heading", { name: "Review" })
+        getByRole("heading", { name: "Review" }),
       );
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
       await vi.waitFor(() =>
         expect(container.querySelector(".route-result")).toHaveTextContent(
-          "Migration sent"
-        )
+          "Migration sent",
+        ),
       );
     });
   });
@@ -2567,12 +2567,12 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     expect(
       await findByText(
-        "The network refused it: the gas price is under its minimum. Raise it and try again."
-      )
+        "The network refused it: the gas price is under its minimum. Raise it and try again.",
+      ),
     ).toBeInTheDocument();
     expect(container).toHaveTextContent("The transfer didn't go through");
     expect(container.querySelector("details summary")).toHaveTextContent(
-      /^Details$/
+      /^Details$/,
     );
     expect(container.querySelector("details")).toHaveTextContent(reason);
 
@@ -2580,14 +2580,14 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
     expect(container.querySelector(".route-review__line")).toHaveTextContent(
-      "2 DUSK sent"
+      "2 DUSK sent",
     );
     expect(mocks.executeSend).toHaveBeenCalledOnce();
   });
 
   it("offers no Try again on a transfer out when it may have gone out", async () => {
     mocks.executeSend.mockRejectedValue(
-      outcomeUnknown(new TypeError("Failed to fetch"))
+      outcomeUnknown(new TypeError("Failed to fetch")),
     );
     connect({ address: EVM, chainId: 1 });
 
@@ -2614,13 +2614,13 @@ describe("the Bridge card's routes to and from other chains", () => {
     });
 
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "Not running on testnet right now"
+      "Not running on testnet right now",
     );
     expect(
-      getByRole("button", { name: "Not running right now" })
+      getByRole("button", { name: "Not running right now" }),
     ).toBeDisabled();
     expect(
-      getByRole("textbox", { name: "Amount, in BEP20 DUSK" })
+      getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
     ).toBeDisabled();
   });
 });

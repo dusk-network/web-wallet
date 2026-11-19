@@ -43,7 +43,7 @@ const manifest = (changes = {}) =>
       },
       version: "2.0.0",
       ...changes,
-    })
+    }),
   );
 
 describe("Verifying a deployment", () => {
@@ -53,7 +53,7 @@ describe("Verifying a deployment", () => {
       mode: "production",
     });
     expect(() => readManifest(null)).toThrow(
-      "built before builds were reproducible"
+      "built before builds were reproducible",
     );
 
     for (const changes of [
@@ -73,7 +73,7 @@ describe("Verifying a deployment", () => {
       { node: "v24.13.0\u001b[2K" },
     ]) {
       expect(() => readManifest(manifest(changes))).toThrow(
-        "serves a build-manifest.json with"
+        "serves a build-manifest.json with",
       );
     }
   });
@@ -91,13 +91,13 @@ describe("Verifying a deployment", () => {
               [file.slice(0, -11), digest],
             ]
           : [[file, digest]];
-      })
+      }),
     );
     const get = async (/** @type {string} */ address) =>
       served.get(address) ?? null;
 
     expect((await compareSite(SITE, files, files, get)).differences).toEqual(
-      []
+      [],
     );
 
     for (const page of [
@@ -110,7 +110,7 @@ describe("Verifying a deployment", () => {
 
       served.set(page, hash("9"));
       expect(
-        (await compareSite(SITE, files, files, get)).differences
+        (await compareSite(SITE, files, files, get)).differences,
       ).toMatchObject([{ address: page, rebuild: kept, served: hash("9") }]);
       served.set(page, kept);
     }
@@ -132,8 +132,8 @@ describe("Verifying a deployment", () => {
           ["VITE_A", "1"],
           ["VITE_B", "3"],
           ["VITE_C", "4"],
-        ])
-      )
+        ]),
+      ),
     ).toEqual(["VITE_B", "VITE_C"]);
   });
 
@@ -144,7 +144,7 @@ describe("Verifying a deployment", () => {
     expect(modeOf(["-m", "staging"])).toBe("staging");
     expect(() => modeOf(["--minify", "false"])).toThrow("only --mode");
     expect(() => modeOf(["-m", "staging", "--sourcemap"])).toThrow(
-      "only --mode"
+      "only --mode",
     );
     expect(() => modeOf(["--mode", "../staging"])).toThrow("a mode is");
     expect(() => modeOf(["--mode"])).toThrow("a mode is");
@@ -185,10 +185,10 @@ describe("Verifying a deployment", () => {
       });
 
     expect(await at("setup", "setup/")).toBe(
-      createHash("sha256").update(page).digest("hex")
+      createHash("sha256").update(page).digest("hex"),
     );
     expect(await at("setup/index.html", "setup/")).toBe(
-      createHash("sha256").update(page).digest("hex")
+      createHash("sha256").update(page).digest("hex"),
     );
     expect(await at("setup")).toBe("a redirect");
     expect(await at("setup/index.html")).toBe("a redirect");
@@ -203,7 +203,7 @@ describe("Verifying a deployment", () => {
       fetchFrom("https://wallet.example/wallet/build-manifest.json", {
         get,
         limit: 2 ** 21,
-      })
+      }),
     ).rejects.toThrow("redirects /wallet/build-manifest.json");
   });
 
@@ -217,14 +217,14 @@ describe("Verifying a deployment", () => {
     });
 
     expect(await fetchFrom("https://wallet.example/wallet/", { get })).toBe(
-      createHash("sha256").update(page).digest("hex")
+      createHash("sha256").update(page).digest("hex"),
     );
     expect(get).toHaveBeenCalledTimes(2);
 
     failures = 2;
     get.mockClear();
     await expect(
-      fetchFrom("https://wallet.example/wallet/", { get })
+      fetchFrom("https://wallet.example/wallet/", { get }),
     ).rejects.toThrow("fetch failed");
     expect(get).toHaveBeenCalledTimes(2);
   });
@@ -237,7 +237,7 @@ describe("Verifying a deployment", () => {
       "index.html": "<!doctype html>",
     };
     const files = new Map(
-      Object.entries(bodies).map(([path, body]) => [path, digest(body)])
+      Object.entries(bodies).map(([path, body]) => [path, digest(body)]),
     );
     /** @type {Record<string, () => Response>} */
     const served = {
@@ -258,7 +258,7 @@ describe("Verifying a deployment", () => {
     const get = async (/** @type {string} */ address) =>
       served[address]?.() ?? new Response(null, { status: 404 });
     const { differences } = await compareSite(SITE, files, files, (at, to) =>
-      fetchFrom(at, { get, to })
+      fetchFrom(at, { get, to }),
     );
 
     expect(differences).toMatchObject([
@@ -279,7 +279,7 @@ describe("Verifying a deployment", () => {
       "setup/index.html": "<!doctype html><title>Setup</title>",
     };
     const files = new Map(
-      Object.entries(bodies).map(([path, body]) => [path, digest(body)])
+      Object.entries(bodies).map(([path, body]) => [path, digest(body)]),
     );
     const redirect = (/** @type {string} */ location) => () =>
       new Response(null, { headers: { location }, status: 307 });
@@ -353,7 +353,7 @@ describe("Verifying a deployment", () => {
   it("should check with GitHub that its Deploy workflow attested a site's manifest, as served, built from the commit it names on GitHub's own runners, from the ref it deploys the site from", () => {
     expect(REPOSITORY).toBe("dusk-network/web-wallet");
     expect(
-      attestationArgs("/tmp/build-manifest.json", COMMIT, "refs/heads/main")
+      attestationArgs("/tmp/build-manifest.json", COMMIT, "refs/heads/main"),
     ).toStrictEqual([
       "attestation",
       "verify",
@@ -372,11 +372,11 @@ describe("Verifying a deployment", () => {
     // Testnet from main, mainnet from its release's tag, nothing else.
     expect(sourceRefOf(TESTNET_SITE, "2.0.0")).toBe("refs/heads/main");
     expect(sourceRefOf(MAINNET_SITE, "2.0.0")).toBe(
-      "refs/tags/web-wallet-v2.0.0"
+      "refs/tags/web-wallet-v2.0.0",
     );
     expect(sourceRefOf(SITE.href, "2.0.0")).toBeNull();
     expect(
-      sourceRefOf("https://apps.devnet.dusk.network/wallet/", "2.0.0")
+      sourceRefOf("https://apps.devnet.dusk.network/wallet/", "2.0.0"),
     ).toBeNull();
 
     // As the workflow deploys them, and as deployments.json lists them.
@@ -384,13 +384,13 @@ describe("Verifying a deployment", () => {
     const listed = JSON.parse(readFileSync("deployments.json", "utf8"));
 
     expect(workflow).toContain(
-      `SITE: \${{ github.ref_type == 'tag' && '${MAINNET_SITE}' || '${TESTNET_SITE}' }}`
+      `SITE: \${{ github.ref_type == 'tag' && '${MAINNET_SITE}' || '${TESTNET_SITE}' }}`,
     );
     expect(workflow).toMatch(
-      /branches: \["main"\]\n {4}tags: \["web-wallet-v\*"\]/
+      /branches: \["main"\]\n {4}tags: \["web-wallet-v\*"\]/,
     );
     expect(Object.keys(listed)).toEqual(
-      expect.arrayContaining([MAINNET_SITE, TESTNET_SITE])
+      expect.arrayContaining([MAINNET_SITE, TESTNET_SITE]),
     );
   });
 
@@ -399,16 +399,16 @@ describe("Verifying a deployment", () => {
     const at = (/** @type {string} */ text) => workflow.indexOf(text);
 
     expect(workflow).toMatch(
-      /uses: actions\/attest-build-provenance@[0-9a-f]{40} # v\d/
+      /uses: actions\/attest-build-provenance@[0-9a-f]{40} # v\d/,
     );
     expect(workflow).toMatch(/subject-path: build\/build-manifest\.json\n/);
     expect(workflow).toMatch(/\n {6}attestations: write\n/);
     expect(workflow).toMatch(/\n {6}id-token: write\n/);
     expect(at("run: npm run build")).toBeLessThan(
-      at("actions/attest-build-provenance")
+      at("actions/attest-build-provenance"),
     );
     expect(at("actions/attest-build-provenance")).toBeLessThan(
-      at("wrangler deploy")
+      at("wrangler deploy"),
     );
   });
 });

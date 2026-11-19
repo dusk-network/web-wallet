@@ -20,26 +20,26 @@ describe("What Share and Copy give of a request", () => {
     expect(
       requestText(
         { link: LINK, lux: 30_000_000n, memo: "Factura F-2026-071" },
-        { language: "es-ES", name: "sofiadesign.dusk", net: networks.testnet }
-      )
+        { language: "es-ES", name: "sofiadesign.dusk", net: networks.testnet },
+      ),
     ).toBe(
-      `sofiadesign.dusk asks you to pay 0,03 DUSK on Testnet · Factura F-2026-071\nPay here: ${LINK}`
+      `sofiadesign.dusk asks you to pay 0,03 DUSK on Testnet · Factura F-2026-071\nPay here: ${LINK}`,
     );
     // On Mainnet, a name given here, no memo.
     expect(
       requestText(
         { link: LINK, lux: 20_000_000n, memo: "" },
-        { language: "en-SG", name: "Chen", net: networks.mainnet }
-      )
+        { language: "en-SG", name: "Chen", net: networks.mainnet },
+      ),
     ).toBe(`Chen asks you to pay 0.02 DUSK\nPay here: ${LINK}`);
     // A profile known by its number, asking any amount.
     expect(
       requestText(
         { link: LINK, lux: null, memo: "chicken rice" },
-        { language: "en", name: "", net: networks.testnet }
-      )
+        { language: "en", name: "", net: networks.testnet },
+      ),
     ).toBe(
-      `You're asked for a payment in DUSK on Testnet · chicken rice\nPay here: ${LINK}`
+      `You're asked for a payment in DUSK on Testnet · chicken rice\nPay here: ${LINK}`,
     );
   });
 });
@@ -60,15 +60,15 @@ describe("What's pasted of a request", () => {
     for (const link of [duskLink, httpsLink]) {
       const copied = requestText(
         { link, lux: 30_000_000n, memo: "Factura 71" },
-        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
       );
 
       expect(readPastedLink(link, networks.testnet, "en")).toStrictEqual(asked);
       expect(readPastedLink(copied, networks.testnet, "en")).toStrictEqual(
-        asked
+        asked,
       );
       expect(
-        readPastedLink(copied.replace("\n", ""), networks.testnet, "en")
+        readPastedLink(copied.replace("\n", ""), networks.testnet, "en"),
       ).toStrictEqual(asked);
     }
   });
@@ -88,7 +88,7 @@ describe("What's pasted of a request", () => {
     // Its memo last, as Lena's link had it.
     const memoLast = httpsLink.replace(
       /&memo=Factura\+71(.*)$/,
-      "$1&memo=Factura+71"
+      "$1&memo=Factura+71",
     );
 
     expect(memoLast).toMatch(/&memo=Factura\+71$/);
@@ -101,7 +101,7 @@ describe("What's pasted of a request", () => {
         "\u00a0danke!",
       ]) {
         expect(
-          readPastedLink(`${link}${after}`, networks.testnet, "en")
+          readPastedLink(`${link}${after}`, networks.testnet, "en"),
         ).toStrictEqual(refused);
       }
 
@@ -110,15 +110,15 @@ describe("What's pasted of a request", () => {
         readPastedLink(
           link.replace("Factura+71", "Factura 71"),
           networks.testnet,
-          "en"
-        )
+          "en",
+        ),
       ).toStrictEqual(refused);
       expect(
         readPastedLink(
           link.replace("amount=0.03", "amount=1 000"),
           networks.testnet,
-          "en"
-        )
+          "en",
+        ),
       ).toStrictEqual(refused);
     }
 
@@ -127,8 +127,8 @@ describe("What's pasted of a request", () => {
       readPaymentLink(
         httpsLink.replace("amount=0.03", "amount=1 000"),
         networks.testnet,
-        "en"
-      )
+        "en",
+      ),
     ).toMatchObject({ problem: LINK_BAD_AMOUNT });
   });
 
@@ -149,40 +149,40 @@ describe("What's pasted of a request", () => {
     const said = (/** @type {string} */ link) =>
       requestText(
         { link, lux: 30_000_000n, memo: "Factura 71" },
-        { language: "en", name: "sofiadesign.dusk", net: networks.testnet }
+        { language: "en", name: "sofiadesign.dusk", net: networks.testnet },
       );
 
     expect(
-      readPastedLink(said(httpsLink), networks.testnet, "en")
+      readPastedLink(said(httpsLink), networks.testnet, "en"),
     ).toMatchObject({ amount: "0.03", memo: "Factura 71", problem: "" });
     // The link's amount changed under the line.
     expect(
       readPastedLink(
         said(httpsLink).replace("amount=0.03", "amount=0.15"),
         networks.testnet,
-        "en"
-      )
+        "en",
+      ),
     ).toStrictEqual(
-      refused("The message says 0.03 DUSK; its link asks 0.15 DUSK.")
+      refused("The message says 0.03 DUSK; its link asks 0.15 DUSK."),
     );
     // The line's amount, or its memo.
     expect(
       readPastedLink(
         said(httpsLink).replace("0.03 DUSK", "0.002 DUSK"),
         networks.testnet,
-        "en"
-      )
+        "en",
+      ),
     ).toStrictEqual(
-      refused("The message says 0.002 DUSK; its link asks 0.03 DUSK.")
+      refused("The message says 0.002 DUSK; its link asks 0.03 DUSK."),
     );
     expect(
       readPastedLink(
         said(httpsLink).replace("· Factura 71", "· coffee"),
         networks.testnet,
-        "en"
-      )
+        "en",
+      ),
     ).toStrictEqual(
-      refused("The message's memo is “coffee”; its link's is “Factura 71”.")
+      refused("The message's memo is “coffee”; its link's is “Factura 71”."),
     );
     // Its name, where the name service says that name pays another account,
     // or no one.
@@ -201,7 +201,7 @@ describe("What's pasted of a request", () => {
         lux: 30_000_000n,
         memo: "Factura 71",
       },
-      { language: "en", name: "sofiadesign.dusk", net: networks.mainnet }
+      { language: "en", name: "sofiadesign.dusk", net: networks.mainnet },
     );
 
     expect(pastedNames(onMainnet, networks.testnet)).toStrictEqual([]);
@@ -215,12 +215,12 @@ describe("What's pasted of a request", () => {
           said(httpsLink),
           networks.testnet,
           "en",
-          new Map([["sofiadesign.dusk", owner]])
-        )
+          new Map([["sofiadesign.dusk", owner]]),
+        ),
       ).toStrictEqual(
         refused(
-          "The message says sofiadesign.dusk; its link pays 25z9o6…5Etftt."
-        )
+          "The message says sofiadesign.dusk; its link pays 25z9o6…5Etftt.",
+        ),
       );
     }
 
@@ -229,8 +229,8 @@ describe("What's pasted of a request", () => {
         said(httpsLink),
         networks.testnet,
         "en",
-        new Map([["sofiadesign.dusk", { account }]])
-      )
+        new Map([["sofiadesign.dusk", { account }]]),
+      ),
     ).toMatchObject({ amount: "0.03", problem: "" });
   });
 
@@ -254,8 +254,8 @@ describe("What's pasted of a request", () => {
       readPastedLink(
         `Pay here: ${duskLink} or here: ${httpsLink}`,
         networks.testnet,
-        "en"
-      )
+        "en",
+      ),
     ).toStrictEqual({
       amount: "",
       elsewhere: null,
@@ -281,7 +281,7 @@ describe("What's pasted of a request", () => {
     }
     expect(readPastedLink(account, networks.testnet, "en")).toBeNull();
     expect(
-      readPastedLink("sofiadesign.dusk", networks.testnet, "en")
+      readPastedLink("sofiadesign.dusk", networks.testnet, "en"),
     ).toBeNull();
   });
 });

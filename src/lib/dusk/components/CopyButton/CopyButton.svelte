@@ -84,7 +84,7 @@
         error instanceof Error && error.name === "NotAllowedError"
           ? "Clipboard access denied"
           : `Couldn't copy the ${name}`,
-        mdiAlertOutline
+        mdiAlertOutline,
       );
 
       return;

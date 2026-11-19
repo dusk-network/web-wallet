@@ -317,7 +317,7 @@
     forgetTerms();
     amountText = amountForField(
       formatDuskPlain(lux),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
     isMaxAmount = true;
     document.getElementById(`${id}-amount`)?.focus();
@@ -327,7 +327,7 @@
   function typeAmount(event) {
     forgetTerms();
     amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
   }
@@ -471,7 +471,7 @@
         pool,
         order.lux,
         order.gasPrice,
-        order.gasLimit
+        order.gasLimit,
       );
 
       sentStDusk = [];
@@ -535,7 +535,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -674,7 +674,7 @@
   $: contractName =
     contractLabel(
       status?.contracts.pool,
-      String($networkStore.networkName ?? "")
+      String($networkStore.networkName ?? ""),
     ) || "Sozu pool";
 </script>
 
@@ -1015,7 +1015,7 @@
             <p>
               {feePercent(fees.deposit, language)} of each deposit · {feePercent(
                 fees.reward,
-                language
+                language,
               )} of rewards · no unstake fee
             </p>
           </div>
@@ -1101,7 +1101,7 @@
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,
-            gasLimits
+            gasLimits,
           );
 
           if (isGasValid) {

@@ -49,7 +49,7 @@
         hash ===
         String(deposit?.transactionHash ?? "")
           .replace(/^0x/i, "")
-          .toLowerCase()
+          .toLowerCase(),
     )?.fee ?? null;
 
   onMount(() => {

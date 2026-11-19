@@ -100,20 +100,20 @@ describe("Export's network fees of migrations", () => {
     render(ExportPanel, props);
 
     expect(said()).toBe(
-      "Reading which network fees of migrations the file has…"
+      "Reading which network fees of migrations the file has…",
     );
     expect(files.make).toHaveBeenCalledWith(
       expect.objectContaining({
         choices: expect.objectContaining({ period: "all" }),
-      })
+      }),
     );
 
     made.resolve(fileWith({ booked: [B746] }));
 
     await vi.waitFor(() =>
       expect(said()).toMatch(
-        /^The file has the network fees paid from 0xb746…aa25\.$/i
-      )
+        /^The file has the network fees paid from 0xb746…aa25\.$/i,
+      ),
     );
     expect(said()).not.toMatch(/0x90fe/i);
   });
@@ -130,13 +130,13 @@ describe("Export's network fees of migrations", () => {
     await fireEvent.change(getByRole("combobox", { name: "Period" }), {
       target: {
         value: getByRole("combobox", { name: "Period" }).querySelectorAll(
-          "option"
+          "option",
         )[1].value,
       },
     });
 
     await vi.waitFor(() =>
-      expect(said()).toBe("The file has no network fees of migrations.")
+      expect(said()).toBe("The file has no network fees of migrations."),
     );
 
     // Back to all of it, whose migration's chain doesn't answer now.
@@ -144,7 +144,7 @@ describe("Export's network fees of migrations", () => {
       fileWith({
         booked: [X90FE],
         unread: [{ chain: "BNB Smart Chain", hash: `0x${"a7".repeat(32)}` }],
-      })
+      }),
     );
     await fireEvent.change(getByRole("combobox", { name: "Period" }), {
       target: { value: "all" },
@@ -152,8 +152,8 @@ describe("Export's network fees of migrations", () => {
 
     await vi.waitFor(() =>
       expect(said()).toMatch(
-        /^The file has the network fees paid from 0x90fe…2cbe\. 1 migration's fee on BNB Smart Chain couldn't be read\.$/i
-      )
+        /^The file has the network fees paid from 0x90fe…2cbe\. 1 migration's fee on BNB Smart Chain couldn't be read\.$/i,
+      ),
     );
   });
 
@@ -179,8 +179,8 @@ describe("Export's network fees of migrations", () => {
 
       await vi.waitFor(() =>
         expect(said()).toMatch(
-          /^The file has the network fees paid from 0xb746…aa25\.$/i
-        )
+          /^The file has the network fees paid from 0xb746…aa25\.$/i,
+        ),
       );
       expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
 
@@ -190,7 +190,7 @@ describe("Export's network fees of migrations", () => {
       await tick();
 
       expect(said()).toMatch(
-        /^The file has the network fees paid from 0xb746…aa25\.$/i
+        /^The file has the network fees paid from 0xb746…aa25\.$/i,
       );
     } finally {
       spies.forEach((spy) => spy.mockRestore());
@@ -203,8 +203,8 @@ describe("Export's network fees of migrations", () => {
 
     await vi.waitFor(() =>
       expect(said()).toBe(
-        "Couldn't read which network fees of migrations the file has."
-      )
+        "Couldn't read which network fees of migrations the file has.",
+      ),
     );
   });
 });

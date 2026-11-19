@@ -51,7 +51,7 @@
             (position === "sticky" || position === "fixed")
             ? each.offsetHeight + (Number.parseFloat(bottom) || 0)
             : 0;
-        })
+        }),
       );
     };
     // As a keyboard comes or goes, once its inset is said.

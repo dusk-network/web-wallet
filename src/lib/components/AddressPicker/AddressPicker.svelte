@@ -231,7 +231,7 @@
   // Whether it has a name given here, which the pill shows where it shows a
   // `.dusk` name, rather than a label its number says already.
   $: isNamedHere = Boolean(
-    currentProfile && normalizeWalletName(profileNames[profileNumber - 1])
+    currentProfile && normalizeWalletName(profileNames[profileNumber - 1]),
   );
 
   $: currentAccount = currentProfile ? currentProfile.account.toString() : "";
@@ -415,7 +415,7 @@
                       account,
                       wallet.addresses?.[index] ?? "",
                       index,
-                      profileNameAt(wallet.profileNames, index)
+                      profileNameAt(wallet.profileNames, index),
                     )}
                   {/each}
                 {/if}
@@ -447,7 +447,7 @@
 
 {#snippet profileName(
   /** @type {string} */ account,
-  /** @type {string} */ name
+  /** @type {string} */ name,
 )}
   {#if name}
     <span class="address-picker__address-name" title={name}>{name}</span>
@@ -461,7 +461,7 @@
 
 {#snippet copyButtons(
   /** @type {string} */ account,
-  /** @type {string} */ address
+  /** @type {string} */ address,
 )}
   <div class="address-picker__copy-buttons">
     {#if account}
@@ -529,7 +529,7 @@
   /** @type {string} */ account,
   /** @type {string} */ address,
   /** @type {number} */ index,
-  /** @type {string} */ label
+  /** @type {string} */ label,
 )}
   <li class="address-picker__profile" role="none">
     <div class="address-picker__profile-container">
@@ -542,7 +542,7 @@
         on:click={() => handleWalletProfileSelect(key, index)}
         on:keydown={(event) =>
           handleProfileKeyDown(event, () =>
-            handleWalletProfileSelect(key, index)
+            handleWalletProfileSelect(key, index),
           )}
       >
         <!-- Its name as last verified here: no lookup until it opens. -->

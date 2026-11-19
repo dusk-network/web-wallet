@@ -101,7 +101,7 @@
 
   const takeFocusIf = (
     /** @type {HTMLElement} */ node,
-    /** @type {boolean} */ yes
+    /** @type {boolean} */ yes,
   ) => {
     if (yes) {
       node.focus();
@@ -126,7 +126,7 @@
   function typeAmount(event) {
     note = "";
     amount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
   }
@@ -284,7 +284,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
   }
@@ -373,9 +373,9 @@
 
             amount = amountForField(
               formatDuskPlain(
-                all > keepForLater.lux ? all - keepForLater.lux : all
+                all > keepForLater.lux ? all - keepForLater.lux : all,
               ),
-              getDecimalSeparator(language)
+              getDecimalSeparator(language),
             );
             isMaxAmount = true;
           }}
@@ -551,7 +551,7 @@
         ? `${BALANCE_MASK} DUSK to ${chainName}, less the ${formatDuskExact(route.feeLux, language)} DUSK bridge fee.`
         : serviceLine(
             { chain: chainName, feeLux: route.feeLux, sentLux: amountLux },
-            language
+            language,
           )}
     </p>
     {#if timeText}

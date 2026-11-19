@@ -13,7 +13,7 @@ declare module "@dusk/w3sper" {
 
   type BiMapValue<V extends string, I extends number> = {
     [Symbol.toPrimitive]<T extends ToPrimitiveHint>(
-      hint: T
+      hint: T,
     ): T extends "number" ? I : T extends "string" ? V : BiMapValue<V, I>;
 
     toString(): V;
@@ -57,7 +57,7 @@ declare module "@dusk/w3sper" {
 
   function useAsProtocolDriver(
     source: string | URL | Uint8Array<ArrayBuffer>,
-    importsURL?: URL
+    importsURL?: URL,
   ): PromiseLike<void> & {
     cleanup: Promise<void>;
   };
@@ -103,7 +103,7 @@ declare module "@dusk/w3sper" {
     amount(value: bigint): this;
 
     build(
-      network?: Network
+      network?: Network,
     ): Promise<ShieldedTransferResult | UnshieldedTransferResult>;
 
     gas(value?: GasValues | null): this;
@@ -126,7 +126,7 @@ declare module "@dusk/w3sper" {
   abstract class Rues extends EventTarget {
     static connect(
       url: string | URL,
-      options?: { signal: AbortSignal }
+      options?: { signal: AbortSignal },
     ): Promise<string>;
 
     get connected(): boolean;
@@ -146,7 +146,7 @@ declare module "@dusk/w3sper" {
   abstract class RuesEvent extends Event {
     static from(
       event: MessageEvent | RuesEvent,
-      options?: { as: "component" | "string" }
+      options?: { as: "component" | "string" },
     ): RuesEvent;
 
     get headers(): Headers;
@@ -187,7 +187,7 @@ declare module "@dusk/w3sper" {
 
   interface Transactions extends RuesScope {
     eventFrom<T extends MessageEvent | RuesEvent>(
-      ruesEvent: T
+      ruesEvent: T,
     ): T extends RuesEvent
       ? T["origin"]["topic"] extends "executed"
         ? TransactionExecutedEvent
@@ -204,7 +204,7 @@ declare module "@dusk/w3sper" {
   interface Treasury {
     account(identifier: Key): Promise<AccountBalance>;
     address(
-      identifier: Key
+      identifier: Key,
     ): Promise<Map<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>>;
     stakeInfo(identifier: Key): Promise<StakeInfo>;
   }
@@ -224,7 +224,7 @@ declare module "@dusk/w3sper" {
   type BookEntry = Readonly<{
     get info(): {
       balance<T extends "account" | "address">(
-        type: T
+        type: T,
       ): Promise<T extends "account" ? AccountBalance : AddressBalance>;
 
       stake(): Promise<StakeInfo>;
@@ -257,7 +257,7 @@ declare module "@dusk/w3sper" {
 
   type Key = {
     [Symbol.toPrimitive]<T extends ToPrimitiveHint>(
-      hint: T
+      hint: T,
     ): T extends "number" ? number : T extends "string" ? string : null;
 
     get seed(): Uint8Array<ArrayBuffer>;
@@ -329,7 +329,7 @@ declare module "@dusk/w3sper" {
     // The `signal` in the options isn't in w3sper yet
     notes(
       profiles: Profile[],
-      options?: { from?: bigint | Bookmark; signal?: AbortSignal }
+      options?: { from?: bigint | Bookmark; signal?: AbortSignal },
     ): Promise<
       ReadableStream<
         [
@@ -343,7 +343,7 @@ declare module "@dusk/w3sper" {
     >;
 
     openings(
-      notes: Map<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>
+      notes: Map<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>,
     ): Promise<ArrayBuffer[]>;
 
     spent(nullifiers: Uint8Array<ArrayBuffer>[]): Promise<ArrayBuffer[]>;
@@ -360,7 +360,7 @@ declare module "@dusk/w3sper" {
 
     pick(
       identifier: Key,
-      amount: bigint
+      amount: bigint,
     ): Promise<Map<Uint8Array<ArrayBuffer>, Uint8Array<ArrayBuffer>>>;
 
     stakeInfo(identifier: Key): Promise<StakeInfo>;
@@ -401,7 +401,7 @@ declare module "@dusk/w3sper" {
 
     static connect(
       url: string | URL,
-      options?: { signal: AbortSignal }
+      options?: { signal: AbortSignal },
     ): Promise<Network>;
 
     get blockHeight(): Promise<bigint>;
@@ -432,7 +432,7 @@ declare module "@dusk/w3sper" {
 
     query(
       gql?: string,
-      options?: Record<string, any>
+      options?: Record<string, any>,
     ): Promise<Record<string, any>>;
   }
 
@@ -469,7 +469,7 @@ declare module "@dusk/w3sper" {
     constructor(buffer: Uint8Array<ArrayBuffer>);
 
     [Symbol.toPrimitive]<T extends ToPrimitiveHint>(
-      hint: T
+      hint: T,
     ): T extends "number" ? number : null;
 
     get account(): Key;
@@ -490,7 +490,7 @@ declare module "@dusk/w3sper" {
     get length(): number;
 
     static seedFrom<T>(
-      target: T
+      target: T,
     ): T extends WithSeeder ? Uint8Array<ArrayBuffer> : undefined;
 
     static typeOf(value: string): "account" | "address" | "undefined";
@@ -542,17 +542,17 @@ declare module "@dusk/w3sper" {
 
     encodeInputFn(
       fnName: string,
-      json: string
+      json: string,
     ): Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>>;
 
     decodeOutputFn(
       fnName: string,
-      bytes: Uint8Array<ArrayBuffer>
+      bytes: Uint8Array<ArrayBuffer>,
     ): unknown | Promise<unknown>;
 
     decodeEvent(
       name: string,
-      bytes: Uint8Array<ArrayBuffer>
+      bytes: Uint8Array<ArrayBuffer>,
     ): unknown | Promise<unknown>;
   }
 
@@ -609,13 +609,13 @@ declare module "@dusk/w3sper" {
 
     encode(
       fnName: string | number | symbol,
-      jsonValue?: unknown
+      jsonValue?: unknown,
     ): Promise<Uint8Array<ArrayBuffer>>;
 
     readonly call: {
       [fnName: string]: (
         args?: unknown,
-        options?: ContractCallOptions
+        options?: ContractCallOptions,
       ) => Promise<any>;
     };
 

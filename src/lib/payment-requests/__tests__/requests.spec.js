@@ -93,7 +93,7 @@ describe("The requests a wallet made", () => {
       const row = payment({ time: at + HOUR });
 
       keepRequestMatches(
-        new Map([[id, { at: row.time ?? 0, hash: "h1", state: "paid" }]])
+        new Map([[id, { at: row.time ?? 0, hash: "h1", state: "paid" }]]),
       );
 
       expect(get(requestsStore)[0].paid).toStrictEqual({
@@ -164,7 +164,7 @@ describe("The requests a wallet made", () => {
       const [paid] = get(requestsStore);
 
       keepRequestMatches(
-        new Map([[paid.id, { at: 1, hash: "h", state: "paid" }]])
+        new Map([[paid.id, { at: 1, hash: "h", state: "paid" }]]),
       );
 
       for (let i = 0; i < 50; i += 1) {

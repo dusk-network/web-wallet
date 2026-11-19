@@ -61,7 +61,7 @@ export default class MediaQueryList extends EventTarget {
         new MediaQueryListEvent("change", {
           matches: this.#matches,
           media: this.#media,
-        })
+        }),
       );
     }
   }

@@ -101,7 +101,7 @@ describe("CommandBar, with a history", () => {
     expect(option).not.toHaveTextContent("depositETHToWithValue");
     expect(option.querySelector(".command-bar__sub")).toHaveTextContent(when);
     expect(option.querySelector(".command-bar__detail--end")).toHaveTextContent(
-      "40c50a…111111"
+      "40c50a…111111",
     );
   });
 
@@ -121,7 +121,7 @@ describe("CommandBar, with a history", () => {
 
     expect(option).toHaveAttribute("id", `command-tx:${ids.older}`);
     expect(option.querySelector(".command-bar__memo")).toHaveTextContent(
-      `From ${shortAddress(ids.stranger)} · not in your contacts “Pour le marché, merci”`
+      `From ${shortAddress(ids.stranger)} · not in your contacts “Pour le marché, merci”`,
     );
   });
 });

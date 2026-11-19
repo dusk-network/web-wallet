@@ -82,12 +82,12 @@
   async function checkWords() {
     try {
       const generator = await profileGeneratorFrom(
-        getSeedFromMnemonic(importedPhrase)
+        getSeedFromMnemonic(importedPhrase),
       );
       const account = String((await generator.default).account);
       const known =
         Object.values($walletDirectory.wallets).some(
-          ({ walletId }) => walletId === account
+          ({ walletId }) => walletId === account,
         ) || $walletStore.profiles.some((p) => String(p.account) === account);
 
       if (known) {
@@ -145,7 +145,7 @@
       await add(
         mode === "create" ? mnemonicPhrase.join(" ") : importedPhrase,
         password,
-        await syncOptions()
+        await syncOptions(),
       );
       password = "";
       toast("success", "Wallet added.", mdiWalletOutline);

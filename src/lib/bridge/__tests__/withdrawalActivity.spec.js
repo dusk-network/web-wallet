@@ -104,13 +104,13 @@ describe("DuskEVM withdrawal activity", () => {
 
     expect(
       getRememberedWithdrawalActivity(account).map(
-        (item) => item.transactionHash
-      )
+        (item) => item.transactionHash,
+      ),
     ).toEqual([withdrawalHash]);
     expect(
       getRememberedWithdrawalActivity(otherAccount).map(
-        (item) => item.transactionHash
-      )
+        (item) => item.transactionHash,
+      ),
     ).toEqual([otherHash]);
   });
 
@@ -252,8 +252,8 @@ describe("DuskEVM withdrawal activity", () => {
     expect(
       mergeWithdrawalActivity(
         [/** @type {any} */ (remembered)],
-        [/** @type {any} */ (indexed)]
-      )
+        [/** @type {any} */ (indexed)],
+      ),
     ).toEqual([
       expect.objectContaining({
         createdAt: 1_000,
@@ -274,20 +274,20 @@ describe("DuskEVM withdrawal activity", () => {
         {
           account,
           createdAt: Date.parse("2026-10-26T01:10:00Z"),
-        }
+        },
       ),
       sentAt: "2026-09-24T20:49:00.000Z",
     };
     const sentHere = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (sentLast),
-      { account, createdAt: Date.parse("2026-10-01T09:00:00Z") }
+      { account, createdAt: Date.parse("2026-10-01T09:00:00Z") },
     );
 
     expect(
       mergeWithdrawalActivity(
         [/** @type {any} */ (lookedUp), /** @type {any} */ (sentHere)],
-        []
-      ).map((item) => item.transactionHash)
+        [],
+      ).map((item) => item.transactionHash),
     ).toEqual([sentLast, sentFirst]);
   });
 
@@ -313,8 +313,8 @@ describe("DuskEVM withdrawal activity", () => {
     expect(
       mergeWithdrawalActivity(
         [/** @type {any} */ (remembered)],
-        [/** @type {any} */ (indexed)]
-      )
+        [/** @type {any} */ (indexed)],
+      ),
     ).toEqual([
       expect.objectContaining({
         stage: "ready_to_prove",
@@ -398,7 +398,7 @@ describe("DuskEVM withdrawal activity", () => {
           status: "executed",
           timestamp: 1,
           ...fields,
-        }))
+        })),
       );
 
       expect(historyWithdrawals(history)).toStrictEqual([
@@ -417,7 +417,7 @@ describe("DuskEVM withdrawal activity", () => {
             : {
                 items: [listed(43), listed(42), listed(41)],
                 ["next_page_params"]: { nonce: 41 },
-              }
+              },
         );
       });
 
@@ -438,28 +438,28 @@ describe("DuskEVM withdrawal activity", () => {
           amountWei: "1000000000000000000",
           createdAt: Date.parse("2026-10-01T12:50:11Z"),
           withdrawalHash: hashOf(41),
-        })
+        }),
       );
       // The list of all withdrawals, newest first, only until the oldest asked for.
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(String(fetchMock.mock.calls[0][0])).toBe(
-        `${mocks.explorerUrl}/api/v2/optimism/withdrawals`
+        `${mocks.explorerUrl}/api/v2/optimism/withdrawals`,
       );
       expect(String(fetchMock.mock.calls[1][0])).toContain("nonce=41");
       expect(
-        hydrateWithdrawalActivity().map((item) => item.withdrawalHash)
+        hydrateWithdrawalActivity().map((item) => item.withdrawalHash),
       ).toEqual(expect.arrayContaining([hashOf(41), hashOf(40)]));
 
       // Remembered: not asked for again.
       await expect(
-        rememberHistoryWithdrawals([{ hash: hashOf(41), nonce: nonceOf(41) }])
+        rememberHistoryWithdrawals([{ hash: hashOf(41), nonce: nonceOf(41) }]),
       ).resolves.toStrictEqual([]);
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it("give one kept before whom it pays was read the account the history says it pays, without asking for it", async () => {
       const fetchMock = vi.fn(async () =>
-        jsonResponse({ items: [], ["next_page_params"]: null })
+        jsonResponse({ items: [], ["next_page_params"]: null }),
       );
 
       vi.stubGlobal("fetch", fetchMock);
@@ -478,7 +478,7 @@ describe("DuskEVM withdrawal activity", () => {
         rememberHistoryWithdrawals([
           { hash: hashOf(44), nonce: nonceOf(44), recipient: PAID },
           { hash: hashOf(45), nonce: nonceOf(45), recipient: null },
-        ])
+        ]),
       ).resolves.toStrictEqual([]);
       expect(hydrateWithdrawalActivity()).toEqual([
         expect.objectContaining({ recipient: PAID, transactionHash: claimed }),
@@ -489,7 +489,7 @@ describe("DuskEVM withdrawal activity", () => {
 
     it("aren't asked for again for a while when the explorer doesn't list them", async () => {
       const fetchMock = vi.fn(async () =>
-        jsonResponse({ items: [listed(43)], ["next_page_params"]: null })
+        jsonResponse({ items: [listed(43)], ["next_page_params"]: null }),
       );
 
       vi.stubGlobal("fetch", fetchMock);
@@ -497,10 +497,10 @@ describe("DuskEVM withdrawal activity", () => {
       const missing = [{ hash: hashOf(12), nonce: nonceOf(12) }];
 
       await expect(rememberHistoryWithdrawals(missing)).resolves.toStrictEqual(
-        []
+        [],
       );
       await expect(rememberHistoryWithdrawals(missing)).resolves.toStrictEqual(
-        []
+        [],
       );
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
@@ -510,7 +510,7 @@ describe("DuskEVM withdrawal activity", () => {
         .fn()
         .mockResolvedValueOnce(new Response("Bad gateway", { status: 502 }))
         .mockResolvedValue(
-          jsonResponse({ items: [listed(13)], ["next_page_params"]: null })
+          jsonResponse({ items: [listed(13)], ["next_page_params"]: null }),
         );
 
       vi.stubGlobal("fetch", fetchMock);
@@ -519,7 +519,7 @@ describe("DuskEVM withdrawal activity", () => {
 
       // In the wallet's words: Bridge › Activity shows them.
       await expect(rememberHistoryWithdrawals(missing)).rejects.toThrow(
-        new Error("Blockscout request failed with HTTP 502.")
+        new Error("Blockscout request failed with HTTP 502."),
       );
 
       const found = await rememberHistoryWithdrawals(missing);

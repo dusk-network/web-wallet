@@ -150,7 +150,7 @@ const readV2 = () => parse(localStorage.getItem(V2_KEY));
 function iterationsOf(record) {
   try {
     return getWalletEncryptionIterations(
-      /** @type {number | undefined} */ (record.version)
+      /** @type {number | undefined} */ (record.version),
     );
   } catch {
     return 0;
@@ -223,7 +223,7 @@ const canonical = (value) =>
       ? Object.fromEntries(
           Object.keys(value)
             .sort()
-            .map((key) => [key, canonical(value[key])])
+            .map((key) => [key, canonical(value[key])]),
         )
       : value;
 
@@ -288,7 +288,7 @@ function keyring(password) {
 
     if (!key) {
       key = Promise.resolve().then(() =>
-        getDerivedKey(password, decode(salt), iterations, false)
+        getDerivedKey(password, decode(salt), iterations, false),
       );
 
       // A salt that isn't one fails each phrase that has it, on its own.
@@ -329,7 +329,7 @@ async function seal(mnemonic, keys, like) {
   const key = await keys(like.salt, iterationsOf(like));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = new Uint8Array(
-    await crypto.subtle.encrypt({ iv, name: "AES-GCM" }, key, utf8(mnemonic))
+    await crypto.subtle.encrypt({ iv, name: "AES-GCM" }, key, utf8(mnemonic)),
   );
 
   return {
@@ -354,7 +354,7 @@ async function openSealed(sealed, keys) {
     const plain = await crypto.subtle.decrypt(
       { iv: decode(sealed.iv), name: "AES-GCM" },
       key,
-      decode(sealed.data)
+      decode(sealed.data),
     );
 
     return new TextDecoder().decode(plain);
@@ -488,7 +488,7 @@ async function wrappingKey(prf, prfSalt) {
     material,
     { length: 256, name: "AES-GCM" },
     false,
-    ["wrapKey", "unwrapKey"]
+    ["wrapKey", "unwrapKey"],
   );
 }
 
@@ -523,7 +523,7 @@ function wrappedKeyring({ credentialId, keys }, wrapping) {
     }
 
     const held = keys.find(
-      (key) => key.salt === salt && key.iterations === iterations
+      (key) => key.salt === salt && key.iterations === iterations,
     );
 
     if (!held) {
@@ -541,7 +541,7 @@ function wrappedKeyring({ credentialId, keys }, wrapping) {
       },
       { length: 256, name: "AES-GCM" },
       false,
-      ["decrypt"]
+      ["decrypt"],
     );
 
     // One that doesn't open fails each phrase that has it, on its own.
@@ -622,7 +622,7 @@ async function moveV1(v1, mnemonic, keys, opened) {
         ? wallets.map((w) => (w.id === id ? holder : w))
         : [...wallets, holder],
     },
-    { changed: [{ id, keys, mnemonic }] }
+    { changed: [{ id, keys, mnemonic }] },
   );
   localStorage.removeItem(V1_KEY);
 
@@ -639,7 +639,7 @@ async function moveV1(v1, mnemonic, keys, opened) {
  */
 async function dropMovedV1(id, mnemonic, keys) {
   const back = readV2()?.wallets?.find(
-    (/** @type {VaultWallet} */ w) => w.id === id
+    (/** @type {VaultWallet} */ w) => w.id === id,
   );
 
   if (!back || !samePhrase(await openSealed(back, keys), mnemonic)) {
@@ -676,7 +676,7 @@ async function takeInV1(v1, mnemonic, keys, { opened, wallets }) {
   }
 
   const holder = opened.find(
-    (w) => w.id === moved.id || samePhrase(w.mnemonic, mnemonic)
+    (w) => w.id === moved.id || samePhrase(w.mnemonic, mnemonic),
   );
 
   if (!holder) {
@@ -783,7 +783,7 @@ const vault = {
       const m = String(mnemonic ?? "").trim();
       const { keys, opened, record } = await openForChange(
         String(password ?? ""),
-        held
+        held,
       );
 
       if (opened.some((w) => samePhrase(w.mnemonic, m))) {
@@ -800,7 +800,7 @@ const vault = {
       // time. Never a legacy one's.
       const like =
         record.wallets.find(
-          (w) => isCurrent(w) && opened.some((o) => o.id === w.id)
+          (w) => isCurrent(w) && opened.some((o) => o.id === w.id),
         ) ?? freshSalt();
       const sealed = await seal(m, keys, like);
 
@@ -810,7 +810,7 @@ const vault = {
       if (
         !readPasskey()?.keys.some(
           ({ iterations, salt }) =>
-            salt === like.salt && iterations === iterationsOf(like)
+            salt === like.salt && iterations === iterationsOf(like),
         )
       ) {
         dropPasskey();
@@ -821,7 +821,7 @@ const vault = {
           version: VAULT_VERSION,
           wallets: [...record.wallets, { ...wallet, ...sealed }],
         },
-        { changed: [{ id: wallet.id, keys, mnemonic: m }] }
+        { changed: [{ id: wallet.id, keys, mnemonic: m }] },
       );
 
       return wallet;
@@ -841,7 +841,7 @@ const vault = {
   changePassword(
     password,
     newPassword,
-    { beforeWrite = () => {}, held = [] } = {}
+    { beforeWrite = () => {}, held = [] } = {},
   ) {
     return alone(async () => {
       const next = String(newPassword ?? "");
@@ -852,7 +852,7 @@ const vault = {
 
       const { opened, record } = await openForChange(
         String(password ?? ""),
-        held
+        held,
       );
       const phrases = new Map(opened.map((w) => [w.id, w.mnemonic]));
 
@@ -867,7 +867,7 @@ const vault = {
         wallets.push(
           mnemonic === undefined
             ? w
-            : { id: w.id, n: w.n, ...(await seal(mnemonic, keys, like)) }
+            : { id: w.id, n: w.n, ...(await seal(mnemonic, keys, like)) },
         );
       }
 
@@ -883,7 +883,7 @@ const vault = {
             keys,
             mnemonic,
           })),
-        }
+        },
       );
     });
   },
@@ -952,14 +952,14 @@ const vault = {
   addPasskey(
     { credentialId, prf, prfSalt, transports },
     password,
-    { beforeWrite = () => {}, held = [] } = {}
+    { beforeWrite = () => {}, held = [] } = {},
   ) {
     return alone(async () => {
       const typed = String(password ?? "");
       const { opened, record } = await openForChange(typed, held);
       const wrapping = await wrappingKey(prf, prfSalt);
       const own = record.wallets.filter((w) =>
-        opened.some(({ id }) => id === w.id)
+        opened.some(({ id }) => id === w.id),
       );
 
       /** @type {WrappedKey[]} */
@@ -971,7 +971,7 @@ const vault = {
 
         if (
           !keys.some(
-            (key) => key.salt === salt && key.iterations === iterations
+            (key) => key.salt === salt && key.iterations === iterations,
           )
         ) {
           const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -983,7 +983,7 @@ const vault = {
               additionalData: wrapBinding(credentialId, salt, iterations),
               iv,
               name: "AES-GCM",
-            }
+            },
           );
 
           keys.push({
@@ -1008,7 +1008,7 @@ const vault = {
       if (
         again.length !== opened.length ||
         !opened.every(({ id, mnemonic }) =>
-          again.some((w) => w.id === id && w.mnemonic === mnemonic)
+          again.some((w) => w.id === id && w.mnemonic === mnemonic),
         )
       ) {
         throw new Error(NOT_SAVED);
@@ -1058,7 +1058,7 @@ const vault = {
 
       const opened = await openWallets(
         v2.wallets.filter(isWallet),
-        wrappedKeyring(record, await wrappingKey(prf, record.prfSalt))
+        wrappedKeyring(record, await wrappingKey(prf, record.prfSalt)),
       );
 
       if (!opened.length) {
@@ -1152,7 +1152,7 @@ const vault = {
           version: VAULT_VERSION,
           wallets: record.wallets.filter((w) => w.id !== key),
         },
-        { gone: [key] }
+        { gone: [key] },
       );
     });
   },
@@ -1184,7 +1184,7 @@ const vault = {
           version: VAULT_VERSION,
           wallets: [{ ...wallet, ...(await seal(m, keys, freshSalt())) }],
         },
-        { changed: [{ id: wallet.id, keys, mnemonic: m }] }
+        { changed: [{ id: wallet.id, keys, mnemonic: m }] },
       );
       localStorage.removeItem(V1_KEY);
 

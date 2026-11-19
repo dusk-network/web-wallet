@@ -93,11 +93,11 @@ describe("Dashboard Layout", () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledWith(
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
 
       await expect(result.currentPrice).resolves.toStrictEqual(
-        apiMarketData.market_data.current_price
+        apiMarketData.market_data.current_price,
       );
     });
 
@@ -117,11 +117,11 @@ describe("Dashboard Layout", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(fetchMock).toHaveBeenNthCalledWith(
         1,
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
       await expect(result1.currentPrice).resolves.toStrictEqual({});
       await expect(result2.currentPrice).resolves.toStrictEqual({});
@@ -134,7 +134,7 @@ describe("Dashboard Layout", () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledWith(
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
 
       await expect(result.currentPrice).resolves.toStrictEqual({});
@@ -162,11 +162,11 @@ describe("Dashboard Layout", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       expect(fetchMock).toHaveBeenNthCalledWith(
         1,
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
-        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false"
+        "https://api.coingecko.com/api/v3/coins/dusk-network?community_data=false&developer_data=false&localization=false&market_data=true&sparkline=false&tickers=false",
       );
       await expect(result1.currentPrice).resolves.toStrictEqual({});
       await expect(result2.currentPrice).resolves.toStrictEqual({});

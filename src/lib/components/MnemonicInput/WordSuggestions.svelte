@@ -44,7 +44,7 @@
 
       if (now.length) {
         frame = requestAnimationFrame(() =>
-          node.scrollIntoView?.({ block: "nearest" })
+          node.scrollIntoView?.({ block: "nearest" }),
         );
       }
     };

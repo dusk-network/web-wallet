@@ -45,7 +45,7 @@ const history = (...steps) =>
       status: "executed",
       timestamp: 1,
       ...fields,
-    }))
+    })),
   );
 
 /** @param {`0x${string}`[]} hashes */
@@ -54,7 +54,7 @@ const answer = (hashes) =>
     hashes.map((hash) => [
       hash,
       { at: 1, claimed: false, exact: false, overdue: false, ready: false },
-    ])
+    ]),
   );
 
 describe("withdrawalClaims", () => {
@@ -70,7 +70,7 @@ describe("withdrawalClaims", () => {
     mocks.submitter = `0x${"2c".repeat(20)}`;
     mocks.readWithdrawalClaims.mockReset();
     mocks.readWithdrawalClaims.mockImplementation(async (hashes) =>
-      answer(hashes)
+      answer(hashes),
     );
     ({ default: withdrawalClaims, provedWithdrawals } =
       await import("../withdrawalClaims"));
@@ -85,7 +85,7 @@ describe("withdrawalClaims", () => {
       ["prove", 0xa],
       ["prove", 0xb],
       ["claim", 0xb],
-      ["prove", 0xc, { status: "failed" }]
+      ["prove", 0xc, { status: "failed" }],
     );
 
     expect(provedWithdrawals(rows)).toStrictEqual([hashOf(0xa)]);
@@ -94,7 +94,7 @@ describe("withdrawalClaims", () => {
 
     expect(mocks.readWithdrawalClaims).toHaveBeenCalledExactlyOnceWith(
       [hashOf(0xa)],
-      { submitter: mocks.submitter }
+      { submitter: mocks.submitter },
     );
     expect([...get(withdrawalClaims).keys()]).toStrictEqual([hashOf(0xa)]);
   });
@@ -104,7 +104,7 @@ describe("withdrawalClaims", () => {
     await withdrawalClaims.load(history(["prove", 0xa], ["prove", 0xd]));
 
     expect(
-      mocks.readWithdrawalClaims.mock.calls.map(([hashes]) => hashes)
+      mocks.readWithdrawalClaims.mock.calls.map(([hashes]) => hashes),
     ).toStrictEqual([[hashOf(0xa)], [hashOf(0xd)]]);
 
     vi.advanceTimersByTime(60_000);
@@ -112,7 +112,7 @@ describe("withdrawalClaims", () => {
 
     expect(mocks.readWithdrawalClaims).toHaveBeenLastCalledWith(
       [hashOf(0xa), hashOf(0xd)],
-      { submitter: mocks.submitter }
+      { submitter: mocks.submitter },
     );
     expect(get(withdrawalClaims).size).toBe(2);
   });
@@ -125,7 +125,7 @@ describe("withdrawalClaims", () => {
       (hashes) =>
         new Promise((resolve) => {
           finish = () => resolve(answer(hashes));
-        })
+        }),
     );
 
     const first = withdrawalClaims.load(history(["prove", 0xa]));

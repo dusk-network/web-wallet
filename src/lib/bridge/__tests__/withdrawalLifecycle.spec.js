@@ -55,10 +55,10 @@ describe("DuskEVM withdrawal lifecycle", () => {
 
   it("says which step wasn't sent, only where it can be sent again", () => {
     expect(withdrawalActionFailure("ready_to_prove")).toBe(
-      "The proof wasn't sent. Try again."
+      "The proof wasn't sent. Try again.",
     );
     expect(withdrawalActionFailure("ready_to_finalize")).toBe(
-      "The claim wasn't sent. Try again."
+      "The claim wasn't sent. Try again.",
     );
     expect(withdrawalActionFailure("proven_waiting")).toBe("");
     expect(withdrawalActionFailure("failed")).toBe("");
@@ -67,11 +67,14 @@ describe("DuskEVM withdrawal lifecycle", () => {
   it("keeps the gas refusal's own line, as trying again wouldn't help", () => {
     for (const stage of ["ready_to_prove", "ready_to_finalize"]) {
       expect(withdrawalActionFailure(stage, WITHDRAWAL_GAS_REFUSAL)).toBe(
-        WITHDRAWAL_GAS_REFUSAL
+        WITHDRAWAL_GAS_REFUSAL,
       );
     }
     expect(
-      withdrawalActionFailure("ready_to_finalize", "User rejected the request.")
+      withdrawalActionFailure(
+        "ready_to_finalize",
+        "User rejected the request.",
+      ),
     ).toBe("The claim wasn't sent. Try again.");
   });
 });

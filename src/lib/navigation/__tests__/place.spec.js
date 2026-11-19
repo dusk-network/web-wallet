@@ -113,7 +113,7 @@ const RECIPIENT_SHIELDED =
  */
 const isKept = (typed) =>
   Object.values({ ...sessionStorage }).some((held) =>
-    JSON.stringify(JSON.parse(held)?.values ?? null).includes(typed)
+    JSON.stringify(JSON.parse(held)?.values ?? null).includes(typed),
   );
 
 const seed = getSeedFromMnemonic(generateMnemonic());
@@ -156,7 +156,7 @@ const leave = cleanup;
  */
 function goHome(
   type = "link",
-  to = "http://localhost/some-base-path/dashboard"
+  to = "http://localhost/some-base-path/dashboard",
 ) {
   const cancel = vi.fn();
 
@@ -272,7 +272,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       expectTyped(back);
       expect(back.container.querySelector(".send")).not.toHaveClass(
-        "send--review"
+        "send--review",
       );
       expect(sendProps.execute).not.toHaveBeenCalled();
     });
@@ -347,7 +347,9 @@ describe("Keeping what's typed in a form that moves money", () => {
       cleanup();
 
       expect(
-        fields(render(Send, { ...sendProps, ...link, initialAmount: "0.5" }))[1]
+        fields(
+          render(Send, { ...sendProps, ...link, initialAmount: "0.5" }),
+        )[1],
       ).toHaveValue("0.5");
     });
 
@@ -397,7 +399,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
     it("keeps none of it after a send that may have gone out", async () => {
       sendProps.execute.mockRejectedValueOnce(
-        outcomeUnknown(new TypeError("Failed to fetch"))
+        outcomeUnknown(new TypeError("Failed to fetch")),
       );
 
       const failed = await typedForm();
@@ -419,7 +421,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       await press(failed);
       await fireEvent.click(
-        await failed.findByRole("button", { name: "Try again" })
+        await failed.findByRole("button", { name: "Try again" }),
       );
 
       expect(isKept(RECIPIENT)).toBe(true);
@@ -472,10 +474,10 @@ describe("Keeping what's typed in a form that moves money", () => {
       });
 
       expect(question).toHaveTextContent(
-        "This clears your unfinished payment."
+        "This clears your unfinished payment.",
       );
       await vi.waitFor(() =>
-        expect(typed.getByRole("button", { name: "Stay" })).toHaveFocus()
+        expect(typed.getByRole("button", { name: "Stay" })).toHaveFocus(),
       );
 
       await fireEvent.click(typed.getByRole("button", { name: "Stay" }));
@@ -514,10 +516,12 @@ describe("Keeping what's typed in a form that moves money", () => {
 
         expect(goHome("goto", send.href)).toBe(false);
         expect(goHome("goto", `${send.href}?to=${RECIPIENT_SHIELDED}`)).toBe(
-          true
+          true,
         );
         expect(
-          await typed.findByRole("alertdialog", { name: "Leave this payment?" })
+          await typed.findByRole("alertdialog", {
+            name: "Leave this payment?",
+          }),
         ).toBeInTheDocument();
       } finally {
         // Gone before the page is SvelteKit's own again.
@@ -532,7 +536,7 @@ describe("Keeping what's typed in a form that moves money", () => {
     it("goes where a press was going as it was asked once Leave lets it go, in the page's place where it replaced it", async () => {
       const contacts = new URL(
         "/some-base-path/dashboard/contacts",
-        location.href
+        location.href,
       );
       const { goto } = await import("$lib/navigation");
 
@@ -580,7 +584,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       expect(goHome()).toBe(true);
       expect(await opened.findByRole("alertdialog")).toHaveTextContent(
-        "This clears the payment the link filled in."
+        "This clears the payment the link filled in.",
       );
     });
 
@@ -700,7 +704,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       });
 
       expect(linked.getByRole("textbox", { name: "To" })).toHaveValue(
-        "bob.dusk"
+        "bob.dusk",
       );
       expect(linked.getByRole("textbox", { name: "Amount" })).toHaveValue("");
       cleanup();
@@ -709,7 +713,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       const fromLink = await typedForm({ initialRecipient: "bob.dusk" });
 
       expect(fromLink.getByRole("textbox", { name: "To" })).toHaveValue(
-        RECIPIENT
+        RECIPIENT,
       );
 
       await lockAndUnlock();
@@ -734,7 +738,7 @@ describe("Keeping what's typed in a form that moves money", () => {
           target: { value: "alice.dusk" },
         });
         await fireEvent.click(
-          await typed.findByRole("radio", { name: "Shielded address" })
+          await typed.findByRole("radio", { name: "Shielded address" }),
         );
         await fireEvent.click(typed.getByRole("button", { name: "Max" }));
         await fireEvent.click(typed.getByRole("button", { name: "Edit" }));
@@ -746,13 +750,13 @@ describe("Keeping what's typed in a form that moves money", () => {
         const back = render(Send, sendProps);
 
         expect(back.getByRole("textbox", { name: "Amount" })).toHaveValue(
-          "••••"
+          "••••",
         );
         expect(
-          await back.findByRole("radio", { name: "Shielded address" })
+          await back.findByRole("radio", { name: "Shielded address" }),
         ).toBeChecked();
         expect(
-          getAsHTMLElement(back.container, ".send__summary .gas-fee")
+          getAsHTMLElement(back.container, ".send__summary .gas-fee"),
         ).toHaveTextContent("0.03 DUSK");
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -806,7 +810,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       await switchProfileAndUnlock();
 
       expect(
-        render(NativeStake, stakeProps).getByLabelText("Stake amount")
+        render(NativeStake, stakeProps).getByLabelText("Stake amount"),
       ).toHaveValue("1200");
     });
 
@@ -846,12 +850,12 @@ describe("Keeping what's typed in a form that moves money", () => {
       await fireEvent.click(failed.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(
-        failed.getByRole("button", { name: /^Stake 1,200/ })
+        failed.getByRole("button", { name: /^Stake 1,200/ }),
       );
       leave();
 
       expect(
-        render(NativeStake, stakeProps).getByLabelText("Stake amount")
+        render(NativeStake, stakeProps).getByLabelText("Stake amount"),
       ).toHaveValue("");
     });
   });
@@ -902,7 +906,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       await switchProfileAndUnlock();
 
       expect(
-        render(liquidView, liquidProps).getByLabelText("Stake amount")
+        render(liquidView, liquidProps).getByLabelText("Stake amount"),
       ).toHaveValue("7");
     });
 
@@ -917,7 +921,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       nav.navigating?.set(null);
 
       expect(
-        render(liquidView, liquidProps).getByLabelText("Stake amount")
+        render(liquidView, liquidProps).getByLabelText("Stake amount"),
       ).toHaveValue("7");
     });
 
@@ -944,7 +948,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(
-        back.getByRole("button", { name: "Stake 7 DUSK with Sozu" })
+        back.getByRole("button", { name: "Stake 7 DUSK with Sozu" }),
       );
       await vi.waitFor(() => expect(liquidProps.execute).toHaveBeenCalled());
 
@@ -1036,22 +1040,22 @@ describe("Keeping what's typed in a form that moves money", () => {
 
         expect(navigator.language).not.toMatch(/^de/);
         expect(
-          typed.getByRole("textbox", { name: "Shielded amount" })
+          typed.getByRole("textbox", { name: "Shielded amount" }),
         ).toHaveValue("2000,123");
 
         await fireEvent.input(
           typed.getByRole("textbox", { name: "Shielded amount" }),
-          { target: { value: "2500,5" } }
+          { target: { value: "2500,5" } },
         );
         await lockAndUnlock();
 
         const back = render(Allocate, allocateProps);
 
         expect(
-          back.getByRole("textbox", { name: "Shielded amount" })
+          back.getByRole("textbox", { name: "Shielded amount" }),
         ).toHaveValue("2500,5");
         expect(
-          back.getByRole("textbox", { name: "Public amount" })
+          back.getByRole("textbox", { name: "Public amount" }),
         ).toHaveValue("499,5");
       } finally {
         settingsStore.reset();
@@ -1063,17 +1067,17 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       await fireEvent.input(
         typed.getByRole("textbox", { name: "Shielded amount" }),
-        { target: { value: "2500" } }
+        { target: { value: "2500" } },
       );
       await lockAndUnlock();
 
       const back = render(Allocate, allocateProps);
 
       expect(
-        back.getByRole("textbox", { name: "Shielded amount" })
+        back.getByRole("textbox", { name: "Shielded amount" }),
       ).toHaveValue("2500");
       expect(back.getByRole("textbox", { name: "Public amount" })).toHaveValue(
-        "500"
+        "500",
       );
 
       const shield = vi
@@ -1121,7 +1125,7 @@ describe("Keeping what's typed in a form that moves money", () => {
     await lockAndUnlock();
 
     expect(
-      render(NativeStake, stakeProps).getByLabelText("Stake amount")
+      render(NativeStake, stakeProps).getByLabelText("Stake amount"),
     ).toHaveValue("");
 
     networks.mockRestore();

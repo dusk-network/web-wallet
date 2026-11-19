@@ -102,7 +102,7 @@ function anchorStateRegistryContractId() {
     ? ""
     : duskEvmContractId(
         "anchor_state_registry",
-        isContractId(set.trim()) ? set : undefined
+        isContractId(set.trim()) ? set : undefined,
       );
 }
 
@@ -115,19 +115,19 @@ export function getWithdrawalFinalizationConfig() {
   const missing = [];
   const optimismPortalContractId = duskEvmContractId(
     "optimism_portal",
-    env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID
+    env.VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID,
   );
   const disputeGameFactoryContractId = duskEvmContractId(
     "dispute_game_factory",
-    env.VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
+    env.VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID,
   );
   const optimismPortalDataDriverUrl = duskEvmDriverUrl(
     "optimismPortal",
-    env.VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL
+    env.VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL,
   );
   const disputeGameFactoryDataDriverUrl = duskEvmDriverUrl(
     "disputeGameFactory",
-    env.VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL
+    env.VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL,
   );
 
   if (!isContractId(optimismPortalContractId)) {
@@ -150,7 +150,7 @@ export function getWithdrawalFinalizationConfig() {
     anchorStateRegistryContractId: anchorStateRegistryContractId(),
     configured: missing.length === 0,
     disputeGameFactoryContractId: normalizeContractId(
-      disputeGameFactoryContractId
+      disputeGameFactoryContractId,
     ),
     disputeGameFactoryDataDriverUrl,
     l2RpcUrl: duskEvm.rpcUrls.default.http[0],
@@ -166,8 +166,8 @@ function requireWithdrawalFinalizationConfig() {
   if (!config.configured) {
     throw new Error(
       `DuskEVM withdrawal finalization is not configured: ${config.missing.join(
-        ", "
-      )}`
+        ", ",
+      )}`,
     );
   }
 
@@ -190,12 +190,12 @@ function setForLocalWork(evm) {
   const factory = normalizeContractId(
     duskEvmContractId(
       "dispute_game_factory",
-      env.VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID
-    )
+      env.VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID,
+    ),
   );
   const registry = anchorStateRegistryContractId();
   const l2Bridge = String(
-    duskEvm.contracts?.L2StandardBridge?.address ?? ""
+    duskEvm.contracts?.L2StandardBridge?.address ?? "",
   ).toLowerCase();
   /** @param {string} name */
   const idOf = (name) =>
@@ -497,7 +497,7 @@ export async function loadWithdrawalStatus(txHash, { proofGame = null } = {}) {
         proofGame,
         submitter: walletStore.getDuskEvmProofSubmitter(),
       })
-      .catch(inWords)
+      .catch(inWords),
   );
 }
 
@@ -575,7 +575,7 @@ export async function loadDuskTransactionExecution(txHash) {
 
   const network = await networkStore.connect();
   const result = await network.query(
-    `tx(hash: "${normalizedHash.toLowerCase()}") { err blockHeight }`
+    `tx(hash: "${normalizedHash.toLowerCase()}") { err blockHeight }`,
   );
 
   if (!result?.tx) {
@@ -671,7 +671,7 @@ export const loadProveNowClaim = (txHash) =>
  */
 function sendForThisWallet() {
   const send = walletStore.forThisWallet()(
-    walletStore.sendDuskEvmWithdrawalCall
+    walletStore.sendDuskEvmWithdrawalCall,
   );
 
   return async (call) => (await send(call, gasOf(call))).hash;

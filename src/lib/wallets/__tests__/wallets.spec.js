@@ -104,7 +104,7 @@ function fromOtherTab(event) {
       key: EVENT,
       newValue: JSON.stringify({ ...event, id: crypto.randomUUID() }),
       storageArea: localStorage,
-    })
+    }),
   );
 }
 
@@ -116,10 +116,10 @@ describe("The wallets on this device", () => {
 
   vi.spyOn(Bookkeeper.prototype, "minimumStake", "get").mockResolvedValue(1n);
   vi.spyOn(Bookkeeper.prototype, "balance").mockResolvedValue(
-    /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n })
+    /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n }),
   );
   vi.spyOn(Bookkeeper.prototype, "stakeInfo").mockResolvedValue(
-    /** @type {any} */ ({ amount: null, faults: 0, hardFaults: 0, reward: 0n })
+    /** @type {any} */ ({ amount: null, faults: 0, hardFaults: 0, reward: 0n }),
   );
   vi.spyOn(networkStore, "checkBlock").mockResolvedValue(true);
   vi.spyOn(networkStore, "getBlockHashByHeight").mockResolvedValue("hash");
@@ -211,7 +211,7 @@ describe("The wallets on this device", () => {
           }
 
           return setItem.call(this, key, value);
-        }
+        },
       );
 
       // Another wallet's v2 here, under another password, and v1 beside it.
@@ -261,7 +261,7 @@ describe("The wallets on this device", () => {
       await vault.setUp(A, PASSWORD);
 
       await expect(unlockWallets("password12")).rejects.toBeInstanceOf(
-        InvalidPasswordError
+        InvalidPasswordError,
       );
       expect(get(walletStore).initialized).toBe(false);
     });
@@ -299,7 +299,7 @@ describe("The wallets on this device", () => {
       });
 
       await expect(
-        unlockWallets(fixtures.current.password, { signal: cut.signal })
+        unlockWallets(fixtures.current.password, { signal: cut.signal }),
       ).rejects.toThrow();
       expect(localStorage.getItem(V1)).toBeNull();
       expect(get(walletStore).initialized).toBe(false);
@@ -323,12 +323,12 @@ describe("The wallets on this device", () => {
 
       for (const phrase of [A, `  ${A.replaceAll(" ", "  ")}\n`]) {
         await expect(addWallet(phrase, PASSWORD)).rejects.toThrow(
-          DUPLICATE_PHRASE
+          DUPLICATE_PHRASE,
         );
       }
 
       await expect(addWallet(B, "password12")).rejects.toBeInstanceOf(
-        InvalidPasswordError
+        InvalidPasswordError,
       );
       expect(vault.list()).toEqual([first]);
       expect(get(walletStore).walletKey).toBe(first.id);
@@ -355,7 +355,7 @@ describe("The wallets on this device", () => {
         wallets: { [second.id]: { height: "7" } },
       });
       expect(String(get(walletStore).profiles[0].account)).toBe(
-        String((await firstProfileOf(B)).account)
+        String((await firstProfileOf(B)).account),
       );
     });
 
@@ -389,7 +389,7 @@ describe("The wallets on this device", () => {
 
       expect(get(walletStore).walletKey).toBe(first.id);
       expect(get(walletStore).currentProfile).toBe(
-        get(walletStore).profiles[1]
+        get(walletStore).profiles[1],
       );
       expect(firstAccounts).not.toEqual(secondAccounts);
       expect(lastEvent()).toMatchObject({
@@ -424,7 +424,7 @@ describe("The wallets on this device", () => {
       const { first } = await twoWallets();
 
       await vi.waitFor(() =>
-        expect(get(walletStore).syncStatus.isInProgress).toBe(false)
+        expect(get(walletStore).syncStatus.isInProgress).toBe(false),
       );
 
       const execute = vi.spyOn(Network.prototype, "execute");
@@ -432,7 +432,7 @@ describe("The wallets on this device", () => {
 
       vi.spyOn(
         WalletTreasury.prototype,
-        "getCachedSyncInfo"
+        "getCachedSyncInfo",
       ).mockReturnValueOnce(/** @type {any} */ (pending.promise));
 
       const transfer = walletStore
@@ -440,7 +440,7 @@ describe("The wallets on this device", () => {
           String(get(walletStore).profiles[1].account),
           1n,
           "",
-          new Gas({ limit: 10_000_000n, price: 1n })
+          new Gas({ limit: 10_000_000n, price: 1n }),
         )
         .catch((error) => error);
 
@@ -461,7 +461,7 @@ describe("The wallets on this device", () => {
       const { first, second } = await twoWallets();
 
       await vi.waitFor(async () =>
-        expect(await databases()).toContain(`${CACHE}:${second.id}`)
+        expect(await databases()).toContain(`${CACHE}:${second.id}`),
       );
 
       const own = {
@@ -479,11 +479,11 @@ describe("The wallets on this device", () => {
         JSON.stringify({
           [await contactsNamespace(own[first.id])]: { kept: 1 },
           [await contactsNamespace(own[second.id])]: { kept: 2 },
-        })
+        }),
       );
 
       await expect(
-        removeWallet(second.id, "password12")
+        removeWallet(second.id, "password12"),
       ).rejects.toBeInstanceOf(InvalidPasswordError);
       expect(vault.list()).toHaveLength(2);
       expect(get(walletStore).walletKey).toBe(second.id);
@@ -500,7 +500,7 @@ describe("The wallets on this device", () => {
       expect(localStorage.getItem(`${MIGRATIONS}:${second.id}`)).toBeNull();
       expect(localStorage.getItem(`${MIGRATIONS}:${first.id}`)).toBe("[]");
       expect(
-        Object.values(JSON.parse(localStorage.getItem(CONTACTS) ?? "{}"))
+        Object.values(JSON.parse(localStorage.getItem(CONTACTS) ?? "{}")),
       ).toEqual([{ kept: 1 }]);
       expect(await databases()).not.toContain(`${CACHE}:${second.id}`);
       expect(await databases()).toContain(`${CACHE}:${first.id}`);
@@ -510,14 +510,14 @@ describe("The wallets on this device", () => {
         await import("$lib/activity/activityStore");
 
       expect(await listLocalTransactions(`testnet::${own[second.id]}`)).toEqual(
-        []
+        [],
       );
       expect(
-        await listLocalTransactions(`testnet::${own[first.id]}`)
+        await listLocalTransactions(`testnet::${own[first.id]}`),
       ).toHaveLength(1);
 
       await expect(removeWallet(first.id, PASSWORD)).rejects.toThrow(
-        ONLY_WALLET
+        ONLY_WALLET,
       );
     });
   });
@@ -532,7 +532,7 @@ describe("The wallets on this device", () => {
 
       try {
         await expect(removeWallet(second.id, PASSWORD)).rejects.toThrow(
-          refusal
+          refusal,
         );
       } finally {
         switching.mockRestore();
@@ -552,7 +552,7 @@ describe("The wallets on this device", () => {
 
       expect(get(walletDirectory).wallets[first.id].name).toBe("Savings jar");
       expect(
-        walletLabel({ n: 1, ...get(walletDirectory).wallets[first.id] })
+        walletLabel({ n: 1, ...get(walletDirectory).wallets[first.id] }),
       ).toBe("Savings jar");
       expect(vault.list()?.[0]).toEqual(first);
 
@@ -568,16 +568,16 @@ describe("The wallets on this device", () => {
       const { first, second } = await twoWallets();
 
       await expect(
-        changeWalletPassword("password12", "a new password")
+        changeWalletPassword("password12", "a new password"),
       ).rejects.toBeInstanceOf(InvalidPasswordError);
 
       await changeWalletPassword(PASSWORD, "a new password");
 
       await expect(vault.unlock(PASSWORD)).rejects.toBeInstanceOf(
-        InvalidPasswordError
+        InvalidPasswordError,
       );
       expect(
-        (await vault.unlock("a new password")).wallets.map(({ id }) => id)
+        (await vault.unlock("a new password")).wallets.map(({ id }) => id),
       ).toEqual([first.id, second.id]);
       expect(lastEvent()).toMatchObject({ type: "password" });
     });
@@ -616,7 +616,7 @@ describe("The wallets on this device", () => {
           key: EVENT,
           newValue: localStorage.getItem(EVENT),
           storageArea: localStorage,
-        })
+        }),
       );
 
       expect(heard).toEqual([
@@ -633,7 +633,7 @@ describe("The wallets on this device", () => {
 
       await vi.waitFor(() => expect(get(walletStore).walletKey).toBe(first.id));
       expect(get(walletStore).currentProfile).toBe(
-        get(walletStore).profiles[1]
+        get(walletStore).profiles[1],
       );
       expect(logoutSpy).not.toHaveBeenCalled();
     });
@@ -704,7 +704,7 @@ describe("The wallets on this device", () => {
       fromOtherTab({ type: "wallets" });
 
       await vi.waitFor(() =>
-        expect(get(walletStore).wallets).toEqual([{ key: first.id, n: 1 }])
+        expect(get(walletStore).wallets).toEqual([{ key: first.id, n: 1 }]),
       );
       expect(get(walletStore).walletKey).toBe(first.id);
       expect(logoutSpy).not.toHaveBeenCalled();

@@ -151,7 +151,7 @@
           try {
             await initializeWallet(
               mnemonicPhrase.join(" "),
-              currentBlockHeight
+              currentBlockHeight,
             );
             settingsStore.update((settings) => ({
               ...settings,

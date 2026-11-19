@@ -28,7 +28,7 @@ describe("the password on big sends, in Settings", () => {
   /** @param {import("@testing-library/svelte").RenderResult<any>} view */
   const toggle = ({ getByRole }) =>
     fireEvent.click(
-      getByRole("switch", { name: "Ask for the password on big sends" })
+      getByRole("switch", { name: "Ask for the password on big sends" }),
     );
 
   /**
@@ -51,7 +51,7 @@ describe("the password on big sends, in Settings", () => {
 
     expect(sendPasswordLimit()).toBeNull();
     expect(
-      getByRole("switch", { name: "Ask for the password on big sends" })
+      getByRole("switch", { name: "Ask for the password on big sends" }),
     ).toHaveAttribute("aria-checked", "false");
     expect(queryByLabelText("Password you unlock with")).toBeNull();
   });
@@ -75,18 +75,18 @@ describe("the password on big sends, in Settings", () => {
     await fireEvent.click(view.getByRole("button", { name: "Save" }));
 
     await vi.waitFor(() =>
-      expect(sendPasswordLimit()).toBe(1_000_500_000_000n)
+      expect(sendPasswordLimit()).toBe(1_000_500_000_000n),
     );
 
     expect(
       await view.findByText(
-        "Sends, stakes, shielding and the bridge above 1,000.5 DUSK, network fee included."
-      )
+        "Sends, stakes, shielding and the bridge above 1,000.5 DUSK, network fee included.",
+      ),
     ).toBeInTheDocument();
     expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     // The password goes with the form.
     expect(
-      localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-send-password`)
+      localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-send-password`),
     ).toBe("1000500000000");
     expect(JSON.stringify({ ...localStorage })).not.toContain(PASSWORD);
     expect(JSON.stringify({ ...sessionStorage })).not.toContain(PASSWORD);
@@ -102,7 +102,7 @@ describe("the password on big sends, in Settings", () => {
     await fireEvent.click(view.getByRole("button", { name: "Save" }));
 
     expect(view.getByRole("alert")).toHaveTextContent(
-      "Enter an amount such as 100 or 100.5. 0 asks on every send."
+      "Enter an amount such as 100 or 100.5. 0 asks on every send.",
     );
     expect(check).not.toHaveBeenCalled();
 
@@ -173,7 +173,7 @@ describe("the password on big sends, in Settings", () => {
 
     setSendPasswordLimit(2n * DUSK);
     window.dispatchEvent(
-      new StorageEvent("storage", { storageArea: localStorage })
+      new StorageEvent("storage", { storageArea: localStorage }),
     );
 
     expect(await view.findByText(/above 2 DUSK/)).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("the password on big sends, in Settings", () => {
 
     expect(queryByRole("switch")).toBeNull();
     expect(container).toHaveTextContent(
-      "Asking for the password on big sends needs a wallet with a password. This one opens with its recovery phrase, so there's none to ask for."
+      "Asking for the password on big sends needs a wallet with a password. This one opens with its recovery phrase, so there's none to ask for.",
     );
   });
 });

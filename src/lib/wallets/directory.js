@@ -132,7 +132,7 @@ export function readDirectory() {
           Object.entries(stored.wallets).map(([key, entry]) => [
             key,
             walletOf(entry),
-          ])
+          ]),
         )
       : {},
   };
@@ -257,7 +257,7 @@ export const setProfileName = (key, index, name, check = () => {}) =>
     const entry = { ...(directory.wallets[key] ?? walletOf(null)) };
     const names = Array.from(
       { length: Math.max(entry.profileNames?.length ?? 0, index + 1) },
-      (_, i) => (i === index ? name : (entry.profileNames?.[i] ?? ""))
+      (_, i) => (i === index ? name : (entry.profileNames?.[i] ?? "")),
     );
     const profileNames = profileNamesOf(names);
 

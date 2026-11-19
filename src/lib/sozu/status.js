@@ -96,7 +96,7 @@ const contractRead = (reader) => async (contractId, fnName, args) => {
       headers: { "Content-Type": "application/octet-stream" },
       method: "POST",
       signal: reader.signal,
-    }
+    },
   );
 
   if (!res.ok) {

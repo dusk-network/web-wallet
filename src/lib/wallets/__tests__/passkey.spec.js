@@ -73,14 +73,14 @@ describe("Fingerprint or face unlock of the wallets here", () => {
     await unlockWithPasskey();
 
     expect(String(get(walletStore).currentProfile?.account)).toBe(
-      String(account)
+      String(account),
     );
     expect(device.get).toHaveBeenCalledTimes(2);
   });
 
   it("asks the device nothing for a wrong password, and stays off", async () => {
     await expect(enablePasskey("wrong")).rejects.toBeInstanceOf(
-      InvalidPasswordError
+      InvalidPasswordError,
     );
 
     expect(device.create).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("Fingerprint or face unlock of the wallets here", () => {
 
       expect(localStorage.getItem(PASSKEY)).toBeNull();
       expect(device.signalled).toHaveLength(step === "get" ? 1 : 0);
-    }
+    },
   );
 
   it("stores nothing, for a device with no PRF", async () => {
@@ -132,7 +132,7 @@ describe("Fingerprint or face unlock of the wallets here", () => {
     const ask = get(sendPasswordAsk);
 
     await expect(ask?.answer("wrong")).rejects.toBeInstanceOf(
-      InvalidPasswordError
+      InvalidPasswordError,
     );
     await expect(ask?.answer(PASSWORD)).resolves.toBeUndefined();
     await expect(going).resolves.toBeUndefined();

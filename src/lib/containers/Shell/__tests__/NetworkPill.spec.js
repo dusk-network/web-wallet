@@ -16,8 +16,8 @@ const askNode = vi.hoisted(() =>
   vi.fn(
     /** @type {(signal?: AbortSignal) => Promise<bigint>} */ (
       () => Promise.resolve(1n)
-    )
-  )
+    ),
+  ),
 );
 
 const pageStore = vi.hoisted(() => ({
@@ -36,7 +36,7 @@ vi.mock("$app/stores", async () => {
 // A step of the history, as SvelteKit's shallow routing makes one.
 vi.mock("$app/navigation", () => ({
   pushState: vi.fn((/** @type {string} */ _url, /** @type {any} */ state) =>
-    pageStore.page?.update((page) => ({ ...page, state }))
+    pageStore.page?.update((page) => ({ ...page, state })),
   ),
 }));
 
@@ -71,7 +71,7 @@ describe("NetworkPill", () => {
       mockedWalletStore.setMockedStoreValue({
         ...initialState,
         syncStatus: { ...initialState.syncStatus, ...status },
-      })
+      }),
     );
 
   beforeEach(() => {
@@ -90,20 +90,20 @@ describe("NetworkPill", () => {
 
     // A screen reader hears what the button is, then the network and its sync.
     expect(
-      getByRole("button", { name: "Network: Testnet, in sync" })
+      getByRole("button", { name: "Network: Testnet, in sync" }),
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--synced")).toBeTruthy();
 
     await setSync({ isInProgress: true, progress: 0.25 });
 
     expect(
-      getByRole("button", { name: "Network: Testnet, syncing 25%" })
+      getByRole("button", { name: "Network: Testnet, syncing 25%" }),
     ).toBeInTheDocument();
 
     await setSync({ error: new Error("The node is out of reach") });
 
     expect(
-      getByRole("button", { name: "Network: Testnet, sync failed" })
+      getByRole("button", { name: "Network: Testnet, sync failed" }),
     ).toBeInTheDocument();
   });
 
@@ -114,22 +114,22 @@ describe("NetworkPill", () => {
     await act(() => window.dispatchEvent(new Event("offline")));
 
     expect(
-      getByRole("button", { name: "Network: Testnet, offline" })
+      getByRole("button", { name: "Network: Testnet, offline" }),
     ).toBeInTheDocument();
     expect(container.querySelector(".network-pill__dot--offline")).toBeTruthy();
     expect(get(networkReach)).toBe("offline");
     // In a word on the pill, not by its dot alone.
     expect(container.querySelector(".network-pill__button")).toHaveTextContent(
-      "Testnet Offline"
+      "Testnet Offline",
     );
 
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-      "Offline"
+      "Offline",
     );
     expect(
-      getByText("Your balance may be out of date until you're back online.")
+      getByText("Your balance may be out of date until you're back online."),
     ).toBeInTheDocument();
     // Nothing to try while offline: the sync starts once it's back.
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
@@ -137,7 +137,7 @@ describe("NetworkPill", () => {
     await act(() => window.dispatchEvent(new Event("online")));
 
     expect(
-      getByRole("button", { name: "Network: Testnet, in sync" })
+      getByRole("button", { name: "Network: Testnet, in sync" }),
     ).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("NetworkPill", () => {
       await act(() => vi.advanceTimersByTimeAsync(29_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, syncing" })
+        getByRole("button", { name: "Network: Testnet, syncing" }),
       ).toBeInTheDocument();
 
       await act(() => vi.advanceTimersByTimeAsync(1_000));
@@ -159,14 +159,14 @@ describe("NetworkPill", () => {
       expect(
         getByRole("button", {
           name: "Network: Testnet, can't reach the network",
-        })
+        }),
       ).toBeInTheDocument();
       // Not Offline, as a phone with bars isn't.
       expect(
-        container.querySelector(".network-pill__button")
+        container.querySelector(".network-pill__button"),
       ).toHaveTextContent("Testnet Can't reach");
       expect(
-        container.querySelector(".network-pill__button")
+        container.querySelector(".network-pill__button"),
       ).not.toHaveTextContent("Offline");
       // And where a send waits on it.
       expect(get(networkReach)).toBe("silent");
@@ -174,21 +174,21 @@ describe("NetworkPill", () => {
       await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
       expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-        "Can't reach the network Your balance may be out of date. Try again"
+        "Can't reach the network Your balance may be out of date. Try again",
       );
 
       // Something back, and it waits again.
       await setSync({ isInProgress: true, progress: 0.5 });
 
       expect(
-        getByRole("button", { name: "Network: Testnet, syncing 50%" })
+        getByRole("button", { name: "Network: Testnet, syncing 50%" }),
       ).toBeInTheDocument();
 
       await setSync({ isInProgress: false, progress: 1 });
       await act(() => vi.advanceTimersByTimeAsync(60_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, in sync" })
+        getByRole("button", { name: "Network: Testnet, in sync" }),
       ).toBeInTheDocument();
       expect(get(networkReach)).toBe("answering");
     } finally {
@@ -214,7 +214,7 @@ describe("NetworkPill", () => {
           ...mockedWalletStore.getMockedStoreValue(),
           balanceReadFailed: true,
           stakeReadFailed: true,
-        })
+        }),
       );
       await act(() => vi.advanceTimersByTimeAsync(20_000));
 
@@ -222,7 +222,7 @@ describe("NetworkPill", () => {
       expect(
         getByRole("button", {
           name: "Network: Testnet, can't reach the network",
-        })
+        }),
       ).toBeInTheDocument();
       expect(get(networkReach)).toBe("silent");
 
@@ -234,7 +234,7 @@ describe("NetworkPill", () => {
       await setSync({ isInProgress: true, progress: 0.5 });
 
       expect(
-        getByRole("button", { name: "Network: Testnet, syncing 50%" })
+        getByRole("button", { name: "Network: Testnet, syncing 50%" }),
       ).toBeInTheDocument();
       expect(get(networkReach)).toBe("answering");
     } finally {
@@ -255,7 +255,7 @@ describe("NetworkPill", () => {
       await act(() => vi.advanceTimersByTimeAsync(60_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, in sync" })
+        getByRole("button", { name: "Network: Testnet, in sync" }),
       ).toBeInTheDocument();
 
       // From here it answers nothing: its next ask, 4 seconds on, gets no
@@ -264,7 +264,7 @@ describe("NetworkPill", () => {
       await act(() => vi.advanceTimersByTimeAsync(9_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, in sync" })
+        getByRole("button", { name: "Network: Testnet, in sync" }),
       ).toBeInTheDocument();
       expect(get(networkReach)).toBe("answering");
 
@@ -273,12 +273,12 @@ describe("NetworkPill", () => {
       expect(
         getByRole("button", {
           name: "Network: Testnet, can't reach the network",
-        })
+        }),
       ).toBeInTheDocument();
       expect(get(networkReach)).toBe("silent");
       // In a word on a phone, whole where there's room.
       expect(pill()).toHaveTextContent(
-        "Testnet Can't reach Can't reach the network"
+        "Testnet Can't reach Can't reach the network",
       );
 
       // It answers again: in sync by its next ask.
@@ -286,7 +286,7 @@ describe("NetworkPill", () => {
       await act(() => vi.advanceTimersByTimeAsync(4_000));
 
       expect(
-        getByRole("button", { name: "Network: Testnet, in sync" })
+        getByRole("button", { name: "Network: Testnet, in sync" }),
       ).toBeInTheDocument();
       expect(pill()).toHaveTextContent(/^Testnet$/);
     } finally {
@@ -311,9 +311,9 @@ describe("NetworkPill", () => {
           signal?.addEventListener("abort", () => {
             node.open -= 1;
             reject(signal.reason);
-          })
+          }),
         );
-      }
+      },
     );
 
     try {
@@ -386,7 +386,7 @@ describe("NetworkPill", () => {
           .catch(() => {})
           .finally(() => {
             wallet.balancesRead += 1;
-          })
+          }),
       );
 
       if (syncAfter) {
@@ -427,7 +427,7 @@ describe("NetworkPill", () => {
         abortSync.mockReset();
         vi.useRealTimers();
       }
-    }
+    },
   );
 
   it("says a sync that couldn't reach the network did so in plain words, not the browser's", async () => {
@@ -437,7 +437,7 @@ describe("NetworkPill", () => {
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-      "Can't reach the network Your balance may be out of date. Try again"
+      "Can't reach the network Your balance may be out of date. Try again",
     );
     expect(queryByText(/Failed to fetch/)).toBeNull();
 
@@ -450,7 +450,7 @@ describe("NetworkPill", () => {
     const back = vi
       .spyOn(history, "back")
       .mockImplementation(() =>
-        pageStore.page?.update((page) => ({ ...page, state: {} }))
+        pageStore.page?.update((page) => ({ ...page, state: {} })),
       );
     const { getByRole, queryByRole } = render(NetworkPill);
     const pill = getByRole("button", { name: /testnet/i });
@@ -486,7 +486,7 @@ describe("NetworkPill", () => {
     const back = vi
       .spyOn(history, "back")
       .mockImplementation(() =>
-        pageStore.page?.update((page) => ({ ...page, state: {} }))
+        pageStore.page?.update((page) => ({ ...page, state: {} })),
       );
     const outside = document.createElement("button");
     const pressed = vi.fn();
@@ -512,7 +512,7 @@ describe("NetworkPill", () => {
 
       expect(queryByRole("dialog")).toBeNull();
       expect(document.activeElement).toBe(
-        getByRole("button", { name: /testnet/i })
+        getByRole("button", { name: /testnet/i }),
       );
 
       // Send, say: pressed once, it does what it's for.
@@ -586,7 +586,7 @@ describe("NetworkPill", () => {
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-      /^Dusk Testnet Sync failed/
+      /^Dusk Testnet Sync failed/,
     );
     expect(getByText("The node is out of reach")).toBeInTheDocument();
     expect(getByText("Your balance may be out of date.")).toBeInTheDocument();

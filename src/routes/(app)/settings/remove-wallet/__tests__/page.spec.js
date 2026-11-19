@@ -60,7 +60,7 @@ describe("Remove wallet", () => {
     [first] = vault.list() ?? [];
     await addWallet(B, PASSWORD);
     page.url = new URL(
-      `http://localhost/settings/remove-wallet?wallet=${first.id}`
+      `http://localhost/settings/remove-wallet?wallet=${first.id}`,
     );
   });
 
@@ -81,8 +81,8 @@ describe("Remove wallet", () => {
 
     expect(
       getByText(
-        "Wallet 1 leaves this device, with its contacts and activity. Its funds and stake stay on Dusk."
-      )
+        "Wallet 1 leaves this device, with its contacts and activity. Its funds and stake stay on Dusk.",
+      ),
     ).toBeInTheDocument();
 
     const password = getByLabelText("Password you unlock with");
@@ -96,8 +96,8 @@ describe("Remove wallet", () => {
 
     await fireEvent.click(
       getByLabelText(
-        "I have Wallet 1's recovery phrase. It brings this wallet back."
-      )
+        "I have Wallet 1's recovery phrase. It brings this wallet back.",
+      ),
     );
     await fireEvent.input(password, { target: { value: "" } });
 
@@ -110,7 +110,7 @@ describe("Remove wallet", () => {
     await fireEvent.click(remove);
 
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
     );
     expect(vault.list()).toHaveLength(2);
 

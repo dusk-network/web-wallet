@@ -53,13 +53,13 @@ describe("logout", () => {
       window.history.replaceState(
         null,
         "",
-        "/some-base-path/dashboard/stake/?flow=liquid&action=unstake"
+        "/some-base-path/dashboard/stake/?flow=liquid&action=unstake",
       );
 
       await navigation.logout(false);
 
       expect(navigation.takePlace()).toBe(
-        "/dashboard/stake/?flow=liquid&action=unstake"
+        "/dashboard/stake/?flow=liquid&action=unstake",
       );
     });
 

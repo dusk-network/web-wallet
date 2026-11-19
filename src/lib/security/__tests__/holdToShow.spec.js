@@ -73,14 +73,14 @@ describe("holdToShow", () => {
         document.body.dispatchEvent(
           Object.assign(new Event("touchstart", { bubbles: true }), {
             touches: [{}, {}],
-          })
+          }),
         ),
     ],
     [
       "a menu over the page",
       () =>
         document.body.dispatchEvent(
-          new Event("contextmenu", { bubbles: true, cancelable: true })
+          new Event("contextmenu", { bubbles: true, cancelable: true }),
         ),
     ],
     ["the button's focus gone", () => button.dispatchEvent(new Event("blur"))],
@@ -161,7 +161,7 @@ describe("holdToShow", () => {
       () => press({ pointerType: "mouse" }),
       () =>
         document.body.dispatchEvent(
-          pointer("pointermove", { pointerType: "mouse" })
+          pointer("pointermove", { pointerType: "mouse" }),
         ),
       () =>
         button.dispatchEvent(pointer("pointerup", { pointerType: "mouse" })),
@@ -170,7 +170,7 @@ describe("holdToShow", () => {
       "by a key",
       () =>
         button.dispatchEvent(
-          new KeyboardEvent("keydown", { cancelable: true, key: " " })
+          new KeyboardEvent("keydown", { cancelable: true, key: " " }),
         ),
       () =>
         button.dispatchEvent(
@@ -178,7 +178,7 @@ describe("holdToShow", () => {
             cancelable: true,
             key: " ",
             repeat: true,
-          })
+          }),
         ),
       () => button.dispatchEvent(new KeyboardEvent("keyup", { key: " " })),
     ],
@@ -204,7 +204,7 @@ describe("holdToShow", () => {
       hold();
 
       expect(told).toStrictEqual([true, false, true]);
-    }
+    },
   );
 
   it("ends a hold with a press on the button, which shows nothing; the one after it does", () => {
@@ -221,7 +221,7 @@ describe("holdToShow", () => {
 
   it("is held with the space bar or Enter too, and lets go with it", () => {
     button.dispatchEvent(
-      new KeyboardEvent("keydown", { cancelable: true, key: " " })
+      new KeyboardEvent("keydown", { cancelable: true, key: " " }),
     );
 
     expect(isShown()).toBe(true);

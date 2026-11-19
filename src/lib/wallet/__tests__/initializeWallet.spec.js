@@ -120,7 +120,7 @@ describe("initializeWallet", () => {
     expect(clearWalletAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       from,
-      { key: "", n: 1 }
+      { key: "", n: 1 },
     );
   });
 
@@ -144,7 +144,7 @@ describe("initializeWallet", () => {
 
     expect(localStorage.getItem(`${migrations}:other`)).toBeNull();
     expect(
-      localStorage.getItem("dusk-evm:deposit-activity:v1:other")
+      localStorage.getItem("dusk-evm:deposit-activity:v1:other"),
     ).toBeNull();
     expect(readDirectory()).toStrictEqual({
       active: id,
@@ -154,7 +154,7 @@ describe("initializeWallet", () => {
     expect(clearWalletAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       3n,
-      { key: id, n: 1 }
+      { key: id, n: 1 },
     );
 
     await vault.clear();

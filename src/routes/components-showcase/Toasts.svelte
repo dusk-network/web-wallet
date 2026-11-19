@@ -11,7 +11,7 @@
     toast(
       "error",
       "This is a long message to test the wrapping of text",
-      mdiAlertCircleOutline
+      mdiAlertCircleOutline,
     );
   }
 </script>

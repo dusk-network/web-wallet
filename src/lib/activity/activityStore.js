@@ -192,7 +192,7 @@ export async function patchActivityEntries(ownerKey, details, epoch, check) {
  */
 export async function listActivityEntries(
   ownerKey,
-  { before, limit = 200 } = {}
+  { before, limit = 200 } = {},
 ) {
   const bounded = Number.isFinite(before);
 
@@ -203,7 +203,7 @@ export async function listActivityEntries(
       [ownerKey, Dexie.minKey],
       [ownerKey, bounded ? before : Dexie.maxKey],
       true,
-      !bounded
+      !bounded,
     )
     .reverse()
     .limit(limit)
@@ -225,7 +225,7 @@ export async function listActivityEntries(
 export async function clearChainActivity(
   network,
   epoch,
-  { check, ownerKey } = {}
+  { check, ownerKey } = {},
 ) {
   const prefix = `${network}::`;
 
@@ -246,7 +246,7 @@ export async function clearChainActivity(
       await db.table("local").where("ownerKey").startsWith(prefix).delete();
       await db.table("shielded").where("ownerKey").startsWith(prefix).delete();
       await db.table("pools").delete(network);
-    }
+    },
   );
 }
 
@@ -288,7 +288,7 @@ export async function getCounterpartyNames(network, accounts) {
 export async function putCounterpartyNames(
   network,
   names,
-  { at = Date.now(), epoch } = {}
+  { at = Date.now(), epoch } = {},
 ) {
   if (!names.size) {
     return;
@@ -302,8 +302,8 @@ export async function putCounterpartyNames(
         id: `${network}::${account}`,
         name: name ?? null,
         network,
-      }))
-    )
+      })),
+    ),
   );
 }
 
@@ -328,7 +328,7 @@ export async function getNoteHeightPool(network) {
  */
 export async function putNoteHeightPool(network, heights, notes, epoch) {
   await guardedWrite(["pools"], epoch, () =>
-    db.table("pools").put({ at: Date.now(), heights, network, notes })
+    db.table("pools").put({ at: Date.now(), heights, network, notes }),
   );
 }
 
@@ -352,7 +352,7 @@ export async function getShieldedHistoryRecord(ownerKey) {
  */
 export async function putShieldedHistoryRecord(ownerKey, record, epoch) {
   await guardedWrite(["shielded"], epoch, () =>
-    db.table("shielded").put({ ...record, at: Date.now(), ownerKey })
+    db.table("shielded").put({ ...record, at: Date.now(), ownerKey }),
   );
 }
 
@@ -426,7 +426,7 @@ export async function putLocalTransaction(ownerKey, record, epoch) {
 export async function changeLocalTransactions(
   hash,
   change,
-  isToChange = () => true
+  isToChange = () => true,
 ) {
   const lower = String(hash).toLowerCase();
 
@@ -468,7 +468,7 @@ export async function recoverUnfinishedHandOvers(page) {
         (record) =>
           record.status === NOT_SHOWN &&
           typeof record.handing === "string" &&
-          record.handing !== page
+          record.handing !== page,
       )
       .toArray();
 
@@ -520,7 +520,7 @@ export async function deleteLocalTransactions(ownerKey, hashes) {
     await db
       .table("local")
       .bulkDelete(
-        hashes.map((hash) => `${ownerKey}::${String(hash).toLowerCase()}`)
+        hashes.map((hash) => `${ownerKey}::${String(hash).toLowerCase()}`),
       );
   }
 }
@@ -559,7 +559,7 @@ export async function putArchiveRefusal(url, at = Date.now()) {
  */
 export async function forgetWalletActivity(
   { accounts, addresses },
-  tables = ["entries", "local", "meta", "shielded"]
+  tables = ["entries", "local", "meta", "shielded"],
 ) {
   const own = new Set([...accounts, ...addresses].map(String).filter(Boolean));
 
@@ -576,7 +576,7 @@ export async function forgetWalletActivity(
   };
 
   await db.transaction("rw", tables, () =>
-    Promise.all(tables.map((name) => db.table(name).filter(isOwn).delete()))
+    Promise.all(tables.map((name) => db.table(name).filter(isOwn).delete())),
   );
 }
 

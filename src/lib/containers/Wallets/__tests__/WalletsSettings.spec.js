@@ -55,23 +55,23 @@ describe("Settings › Wallets", () => {
 
     expect(
       getAllByRole("listitem").map(
-        (item) => item.querySelector(".wallets-settings__title")?.textContent
-      )
+        (item) => item.querySelector(".wallets-settings__title")?.textContent,
+      ),
     ).toEqual(["Wallet 1", "Wallet 2"]);
     expect(
-      getByRole("button", { name: "Rename Wallet 1" })
+      getByRole("button", { name: "Rename Wallet 1" }),
     ).toBeInTheDocument();
     expect(getByRole("link", { name: "Remove Wallet 1" })).toHaveAttribute(
       "href",
-      addBasePath(`/settings/remove-wallet?wallet=${first.id}`)
+      addBasePath(`/settings/remove-wallet?wallet=${first.id}`),
     );
     expect(getByRole("link", { name: "Add wallet" })).toHaveAttribute(
       "href",
-      addBasePath("/wallets/add")
+      addBasePath("/wallets/add"),
     );
     expect(getByRole("link", { name: "Change password" })).toHaveAttribute(
       "href",
-      addBasePath("/settings/password")
+      addBasePath("/settings/password"),
     );
   });
 
@@ -109,12 +109,12 @@ describe("Settings › Wallets", () => {
     await fireEvent.keyDown(getByLabelText("Name"), { key: "Enter" });
 
     await vi.waitFor(() =>
-      expect(get(walletDirectory).wallets[first.id].name).toBe("Savings jar")
+      expect(get(walletDirectory).wallets[first.id].name).toBe("Savings jar"),
     );
     await vi.waitFor(() =>
       expect(
-        getByRole("button", { name: "Rename Savings jar" })
-      ).toBeInTheDocument()
+        getByRole("button", { name: "Rename Savings jar" }),
+      ).toBeInTheDocument(),
     );
 
     // Named, its field opens with the name in it.
@@ -144,8 +144,8 @@ describe("Settings › Wallets", () => {
     expect(queryByRole("link", { name: "Change password" })).toBeNull();
     expect(
       getByText(
-        "Adding a wallet needs a password. Restore this wallet with one first."
-      )
+        "Adding a wallet needs a password. Restore this wallet with one first.",
+      ),
     ).toBeInTheDocument();
   });
 });

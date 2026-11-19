@@ -83,7 +83,7 @@ describe("OperationResult", () => {
   it("sits a result's parts close on a phone on its side, so what follows them, as the offer to be told when a transfer arrives, shows without a scroll", () => {
     const sideways = (/** @type {string} */ file) =>
       styleRules(file, import.meta.url).filter(({ media }) =>
-        /max-height:\s*30rem/.test(media)
+        /max-height:\s*30rem/.test(media),
       );
     const [gap] = sideways("../../../style/dusk-components/suspense.css");
 
@@ -99,7 +99,7 @@ describe("OperationResult", () => {
     ]) {
       const padding = sideways(file).map(
         ({ declarations }) =>
-          declarations.padding ?? declarations["padding-block"] ?? ""
+          declarations.padding ?? declarations["padding-block"] ?? "",
       );
 
       expect(padding, file).toEqual([expect.stringMatching(/^0\.5em/)]);

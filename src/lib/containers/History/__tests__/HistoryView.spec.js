@@ -112,15 +112,15 @@ describe("HistoryView", () => {
       state,
     });
     const cells = Array.from(
-      container.querySelectorAll("td.history__col-time")
+      container.querySelectorAll("td.history__col-time"),
     );
 
     // Said once: "time" not twice.
     expect(
-      getByText(/^Shown in your local time\./, { exact: false })
+      getByText(/^Shown in your local time\./, { exact: false }),
     ).toBeInTheDocument();
     expect(container.querySelector("th.history__col-time")).toHaveTextContent(
-      /^Time$/
+      /^Time$/,
     );
     // To the second on hover: two in the same minute read apart.
     expect(cells.map((cell) => cell.getAttribute("title"))).toStrictEqual([
@@ -130,8 +130,8 @@ describe("HistoryView", () => {
     expect(cells[0].getAttribute("title")).toMatch(/ \d{1,2}:\d{2}:\d{2} /);
     expect(
       Array.from(container.querySelectorAll(".history__phone-meta"), (meta) =>
-        meta.textContent?.replace(/\s+/g, " ").trim()
-      )
+        meta.textContent?.replace(/\s+/g, " ").trim(),
+      ),
     ).toStrictEqual([
       `· ${timeLabel(WINTER, "en")} · Public`,
       `· ${timeLabel(SUMMER, "en")} · Public`,
@@ -141,7 +141,7 @@ describe("HistoryView", () => {
   it("should leave a row's amount out of its name while balances are hidden", () => {
     const names = (/** @type {HTMLElement} */ container) =>
       Array.from(container.querySelectorAll(".history__open"), (open) =>
-        open.getAttribute("aria-label")
+        open.getAttribute("aria-label"),
       );
     const shown = render(HistoryView, { locale: "en", state });
 
@@ -187,7 +187,7 @@ describe("HistoryView", () => {
     history.whole.mockResolvedValue(whole);
     await fireEvent.click(getByRole("button", { name: "Export" }));
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" })
+      getByRole("button", { name: "Show staking rewards by year" }),
     );
     await vi.waitFor(() => expect(years()).toHaveTextContent("2 DUSK"));
 
@@ -201,14 +201,14 @@ describe("HistoryView", () => {
 
     history.whole.mockReturnValueOnce(late.promise);
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" })
+      getByRole("button", { name: "Show staking rewards by year" }),
     );
     await rerender({ account: own });
     late.resolve(whole);
     await vi.waitFor(() =>
       expect(
-        getByRole("button", { name: "Show staking rewards by year" })
-      ).toBeEnabled()
+        getByRole("button", { name: "Show staking rewards by year" }),
+      ).toBeEnabled(),
     );
 
     expect(years()).toBeNull();
@@ -266,15 +266,15 @@ describe("HistoryView", () => {
 
     expect(rowText()).toContain("Sent after you chose not to send");
     expect(
-      container.querySelectorAll(".history__open")[1].textContent
+      container.querySelectorAll(".history__open")[1].textContent,
     ).not.toContain("chose not to send");
 
     await rerender({ selected: declined.hash });
 
     expect(
       getByText(
-        `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`
-      )
+        `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`,
+      ),
     ).toBeInTheDocument();
     expect(get(sentAfterDontSend)).toStrictEqual({});
 
@@ -304,7 +304,7 @@ describe("HistoryView", () => {
       });
 
       expect(
-        container.querySelector(".history__open")?.textContent
+        container.querySelector(".history__open")?.textContent,
       ).not.toContain("chose not to send");
 
       await rerender({ selected: hash });
@@ -334,15 +334,15 @@ describe("HistoryView", () => {
     try {
       expect(
         await findByText(
-          `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`
-        )
+          `Sent after you chose not to send, at ${timeLabel(WINTER, "en", { seconds: true })}`,
+        ),
       ).toBeInTheDocument();
       expect(get(sentAfterDontSend)).toStrictEqual({});
 
       await rerender({ selected: null });
 
       expect(
-        container.querySelector(".history__open")?.textContent
+        container.querySelector(".history__open")?.textContent,
       ).not.toContain("chose not to send");
     } finally {
       seenSentAfterDontSend(declined.hash);
@@ -360,7 +360,7 @@ describe("HistoryView", () => {
     });
 
     expect(getByRole("status")).toHaveTextContent(
-      "Couldn't reach the network's history. A row has no date or fee yet."
+      "Couldn't reach the network's history. A row has no date or fee yet.",
     );
   });
 
@@ -369,7 +369,7 @@ describe("HistoryView", () => {
     const [first] = getAllByRole("button", { name: /DUSK/ });
 
     expect(first).toHaveAccessibleName(
-      `${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)}, Sent, −0.1 DUSK, ${fullDateTime(WINTER, "en", { seconds: true })}, Public`
+      `${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)}, Sent, −0.1 DUSK, ${fullDateTime(WINTER, "en", { seconds: true })}, Public`,
     );
   });
 
@@ -392,12 +392,12 @@ describe("HistoryView", () => {
     });
 
     expect(getByRole("status")).toHaveTextContent(
-      "2 transactions found for “marché”"
+      "2 transactions found for “marché”",
     );
     expect(
       Array.from(container.querySelectorAll(".history__memo"), (memo) =>
-        memo.textContent?.trim()
-      )
+        memo.textContent?.trim(),
+      ),
     ).toStrictEqual(["Les fleurs du marché", "Pour le marché, merci"]);
   });
 
@@ -406,7 +406,7 @@ describe("HistoryView", () => {
     const invoices = [1, 2, 3, 4, 5, 6, 7].map((n) =>
       row(`b${n}`.repeat(32), WINTER - n * 60_000, {
         memo: `Factura 2026-05${n}`,
-      })
+      }),
     );
     const { container, getByRole, getByText, queryByText } = render(
       HistoryView,
@@ -424,24 +424,24 @@ describe("HistoryView", () => {
             ],
           },
         },
-      }
+      },
     );
 
     // Every one found, not five, each with its memo.
     expect(getByRole("status")).toHaveTextContent(
-      "7 transactions found for “Factura 2026-05”"
+      "7 transactions found for “Factura 2026-05”",
     );
     expect(
       Array.from(container.querySelectorAll(".history__memo"), (memo) =>
-        memo.textContent?.trim()
-      )
+        memo.textContent?.trim(),
+      ),
     ).toStrictEqual(invoices.map((_, i) => `Factura 2026-05${i + 1}`));
     expect(queryByText(/Rent/)).toBeNull();
 
     await fireEvent.click(getByRole("button", { name: "Clear search" }));
 
     expect(filter).toHaveBeenCalledWith(
-      expect.objectContaining({ detail: { q: "" } })
+      expect.objectContaining({ detail: { q: "" } }),
     );
     cleanup();
 
@@ -502,7 +502,7 @@ describe("HistoryView", () => {
             received(
               "f1".repeat(32),
               STRANGER,
-              "URGENT: wallet suspended - pay now to restore"
+              "URGENT: wallet suspended - pay now to restore",
             ),
             received("f2".repeat(32), SOFIA, "Factura 71", "sofiadesign.dusk"),
             received("f3".repeat(32), ACCOUNT, "Dinner"),
@@ -527,8 +527,8 @@ describe("HistoryView", () => {
       expect(
         Array.from(
           container.querySelectorAll(".history__memo-from"),
-          (from) => from.textContent
-        )
+          (from) => from.textContent,
+        ),
       ).toStrictEqual([
         `From ${shortAddress(STRANGER)} · not in your contacts`,
         "From sofiadesign.dusk · not in your contacts",
@@ -543,7 +543,7 @@ describe("HistoryView", () => {
       await rerender({ query: "", selected: "f1".repeat(32) });
 
       expect(container.querySelector(".tx-detail__memo")).toHaveTextContent(
-        `From ${shortAddress(STRANGER)} · not in your contacts “URGENT: wallet suspended - pay now to restore”`
+        `From ${shortAddress(STRANGER)} · not in your contacts “URGENT: wallet suspended - pay now to restore”`,
       );
     } finally {
       removeContact(lucas.id);
@@ -583,7 +583,7 @@ describe("HistoryView", () => {
     const memos = () =>
       Array.from(
         rendered.container.querySelectorAll(".history__memo"),
-        (memo) => memo.textContent?.trim()
+        (memo) => memo.textContent?.trim(),
       );
 
     expect(memos()).toStrictEqual(["Kopi 1"]);
@@ -597,7 +597,7 @@ describe("HistoryView", () => {
     // None further back: it says so, at the history's end.
     await fireEvent.click(rendered.getByRole("button", { name: "Show more" }));
     await vi.waitFor(() =>
-      expect(rendered.getByText("Nothing more found.")).toBeInTheDocument()
+      expect(rendered.getByText("Nothing more found.")).toBeInTheDocument(),
     );
 
     expect(onMore).toHaveBeenCalledTimes(4);
@@ -623,7 +623,7 @@ describe("HistoryView", () => {
     });
     const amounts = Array.from(
       container.querySelectorAll(".history__amount"),
-      (amount) => amount.classList.contains("history__amount--muted")
+      (amount) => amount.classList.contains("history__amount--muted"),
     );
 
     expect(amounts).toStrictEqual([true, false]);
@@ -657,7 +657,7 @@ describe("HistoryView", () => {
         narrow: who.querySelector(".history__narrow")?.textContent,
         note: who.querySelector(".history__claim")?.textContent?.trim(),
         wide: who.querySelector(".history__wide")?.textContent,
-      })
+      }),
     );
 
     // A desktop's line keeps the date; a phone's has it under the line.
@@ -678,12 +678,12 @@ describe("HistoryView", () => {
       rules.find(
         (rule) =>
           rule.media === media &&
-          rule.selector.split(",").some((part) => part.trim() === selector)
+          rule.selector.split(",").some((part) => part.trim() === selector),
       );
 
     expect(ruleOf(".history__claim")?.declarations.display).toBe("none");
     expect(ruleOf(".history__claim", phone)?.declarations.display).toBe(
-      "block"
+      "block",
     );
     expect(ruleOf(".history__wide", phone)?.declarations.display).toBe("none");
     expect(
@@ -691,8 +691,8 @@ describe("HistoryView", () => {
         (rule) =>
           rule.selector.includes(".history__note") &&
           (rule.declarations.display === "none" ||
-            rule.declarations["white-space"] === "nowrap")
-      )
+            rule.declarations["white-space"] === "nowrap"),
+      ),
     ).toStrictEqual([]);
   });
   it("should give a deposit's time a line of its own on phones, as its DuskEVM address makes its line long", () => {
@@ -718,7 +718,7 @@ describe("HistoryView", () => {
         line: who.querySelector(".history__line")?.textContent?.trim(),
         meta: who.querySelector(".history__phone-meta"),
         when: who.querySelector(".history__when")?.textContent?.trim(),
-      })
+      }),
     );
 
     expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
@@ -733,12 +733,12 @@ describe("HistoryView", () => {
       rules.find(
         (rule) =>
           rule.media === media &&
-          rule.selector.split(",").some((part) => part.trim() === selector)
+          rule.selector.split(",").some((part) => part.trim() === selector),
       );
 
     expect(ruleOf(".history__when")?.declarations.display).toBe("none");
     expect(
-      ruleOf(".history__when", "(max-width: 47.99rem)")?.declarations.display
+      ruleOf(".history__when", "(max-width: 47.99rem)")?.declarations.display,
     ).toBe("block");
   });
 });

@@ -146,7 +146,7 @@
             heard();
           }
         },
-        () => {}
+        () => {},
       )
       .finally(end);
   }
@@ -188,7 +188,7 @@
    */
   const isUnreachable = (error) =>
     /failed to fetch|fetch failed|load failed|networkerror/i.test(
-      error?.message ?? ""
+      error?.message ?? "",
     );
 
   $: ({ networkName } = $networkStore);
@@ -197,13 +197,13 @@
   // out of date.
   $: lastRead = lastReadText(
     $walletStore.balanceReadAt,
-    $settingsStore.language
+    $settingsStore.language,
   );
   $: watchStall(
     syncStatus.isInProgress,
     syncStatus.progress,
     syncStatus.from,
-    syncStatus.last
+    syncStatus.last,
   );
   $: watchNode(isShown && !isOffline);
   $: label = networkLabel(networkName);
@@ -222,7 +222,7 @@
       ? "offline"
       : state === "unreachable"
         ? "silent"
-        : "answering"
+        : "answering",
   );
   $: stateText =
     state === "offline"

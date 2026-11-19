@@ -91,8 +91,8 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "This removes the wallet from this browser, with its settings and contacts. Your DUSK stays on the network. The wallet comes back only with its recovery phrase."
-      )
+        "This removes the wallet from this browser, with its settings and contacts. Your DUSK stays on the network. The wallet comes back only with its recovery phrase.",
+      ),
     ).toBeInTheDocument();
     expect(back).toHaveAttribute("href", expect.stringMatching(/\/setup$/));
     expect(back).toHaveClass("dusk-anchor-button--variant--primary");
@@ -107,11 +107,11 @@ describe("Restore", async () => {
     // Public BIP39 test phrases, never a real wallet's.
     await vault.setUp(
       "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-      pwd
+      pwd,
     );
     await vault.add(
       "scheme spot photo card baby mountain device kick cradle pact join borrow",
-      pwd
+      pwd,
     );
     settingsStore.update(setUserId(userId));
 
@@ -119,8 +119,8 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
-      )
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+      ),
     ).toBeInTheDocument();
 
     await vault.clear();
@@ -129,11 +129,11 @@ describe("Restore", async () => {
   it("should count the phrase of earlier versions still to move as a wallet of its own", async () => {
     await vault.setUp(
       "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-      pwd
+      pwd,
     );
     localStorage.setItem(
       `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`,
-      fixtures.current.stored
+      fixtures.current.stored,
     );
     settingsStore.update(setUserId(userId));
 
@@ -141,8 +141,8 @@ describe("Restore", async () => {
 
     expect(
       await findByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in."
-      )
+        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+      ),
     ).toBeInTheDocument();
 
     await vault.clear();
@@ -171,7 +171,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(asInput(getByLabelText("Word 1")).value).toBe(
-      mnemonic.split(" ")[0]
+      mnemonic.split(" ")[0],
     );
     expect(nextButton).not.toBeDisabled();
   });
@@ -185,7 +185,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
     expect(asInput(getByLabelText("Word 12")).value).toBe(
-      mnemonic.split(" ")[11]
+      mnemonic.split(" ")[11],
     );
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
 
@@ -209,7 +209,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(getByRole("alert")).toHaveTextContent(
-      "These words aren't a valid recovery phrase. Check each word."
+      "These words aren't a valid recovery phrase. Check each word.",
     );
     expect(nextButton).toBeDisabled();
   });
@@ -224,7 +224,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That's 25 words. A recovery phrase has 12 or 24."
+      "That's 25 words. A recovery phrase has 12 or 24.",
     );
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
@@ -246,7 +246,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await pasteInto(
       getByLabelText("Word 1"),
-      phrase.replace("legal", "Légal").replace("wave", "wáve")
+      phrase.replace("legal", "Légal").replace("wave", "wáve"),
     );
     await tick();
 
@@ -305,7 +305,7 @@ describe("Restore", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       0n,
-      { key: "", n: 1 }
+      { key: "", n: 1 },
     );
 
     // Syncing Step
@@ -336,8 +336,8 @@ describe("Restore", async () => {
     // What syncing does, in a line.
     expect(
       getByText(
-        "Next, the wallet syncs with the network to find your balance and past payments."
-      )
+        "Next, the wallet syncs with the network to find your balance and past payments.",
+      ),
     ).toBeInTheDocument();
 
     const advanced = /** @type {HTMLDetailsElement} */ (
@@ -347,7 +347,7 @@ describe("Restore", async () => {
     expect(advanced.open).toBe(false);
     expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
     expect(
-      advanced.contains(getByRole("switch", { name: "Block height" }))
+      advanced.contains(getByRole("switch", { name: "Block height" })),
     ).toBe(true);
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
@@ -426,7 +426,7 @@ describe("Restore", async () => {
 
     expect(field).toHaveValue("");
     expect(field).toHaveAccessibleDescription(
-      "The block your wallet was made at, or earlier. Not sure? Leave this off."
+      "The block your wallet was made at, or earlier. Not sure? Leave this off.",
     );
     expect(nextButton).toBeDisabled();
 
@@ -457,7 +457,7 @@ describe("Restore", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       999000n,
-      { key: "", n: 1 }
+      { key: "", n: 1 },
     );
 
     heightSpy.mockRestore();
@@ -506,12 +506,12 @@ describe("Restore", async () => {
     expect(clearAndInitSpy).toHaveBeenCalledWith(
       expect.any(ProfileGenerator),
       0n,
-      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 }
+      { key: expect.stringMatching(/^[0-9a-f]{32}$/), n: 1 },
     );
     expect(
       JSON.parse(
-        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}"
-      ).legacy
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`) ?? "{}",
+      ).legacy,
     ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // Network Sync step

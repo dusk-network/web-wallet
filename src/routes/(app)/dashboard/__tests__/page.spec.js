@@ -90,7 +90,7 @@ vi.mock("$lib/activity", async (importOriginal) => {
         reading: false,
         rows: [...rows, ...older],
         whole: true,
-      })
+      }),
     ),
   };
 });
@@ -229,7 +229,7 @@ describe("Dashboard", () => {
 
       const banners = () =>
         Array.from(document.querySelectorAll(".home__waiting"), (banner) =>
-          banner.textContent?.replace(/\s+/g, " ").trim()
+          banner.textContent?.replace(/\s+/g, " ").trim(),
         );
 
       expect(banners()).toStrictEqual([
@@ -241,7 +241,7 @@ describe("Dashboard", () => {
       await fireEvent.click(
         /** @type {HTMLElement} */ (
           document.querySelector(".home__waiting button")
-        )
+        ),
       );
 
       expect(get(first)).toBe("cancelled");
@@ -249,7 +249,7 @@ describe("Dashboard", () => {
         `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet."
+        "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet.",
       );
 
       // The other goes out once the network answers: sent, with nothing to
@@ -308,13 +308,13 @@ describe("Dashboard", () => {
       gate
         .untilHandedOver(
           () => Promise.reject(new TypeError("Failed to fetch")),
-          () => new Promise(() => {})
+          () => new Promise(() => {}),
         )
         .catch(() => {});
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`
-        )
+          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`,
+        ),
       );
 
       // Handed over: sent, with nothing to call off, until the node took
@@ -364,7 +364,7 @@ describe("Dashboard", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(banner()).toBe(
-        `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`
+        `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`,
       );
 
       // The node is asked to check it: it goes out, its answer slow, and can
@@ -372,7 +372,7 @@ describe("Dashboard", () => {
       await act(() => gate.checking());
 
       expect(banner()).toBe(
-        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`
+        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`,
       );
 
       // Handed over: sent, with nothing to call off, until the node took
@@ -415,7 +415,7 @@ describe("Dashboard", () => {
     const button = (name) =>
       /** @type {HTMLElement} */ (
         Array.from(document.querySelectorAll(".home__waiting button")).find(
-          (each) => each.textContent?.trim() === name
+          (each) => each.textContent?.trim() === name,
         )
       );
 
@@ -446,7 +446,7 @@ describe("Dashboard", () => {
         () => {
           goesOn = true;
         },
-        () => {}
+        () => {},
       );
       await act();
 
@@ -459,12 +459,12 @@ describe("Dashboard", () => {
       const at = timeLabel(get(waitingSends)[0].at, "en");
 
       expect(banner()).toBe(
-        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`
+        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`,
       );
       expect(
         Array.from(document.querySelectorAll(".home__waiting button"), (b) =>
-          b.textContent?.trim()
-        )
+          b.textContent?.trim(),
+        ),
       ).toStrictEqual(["Send it too", "Don't send"]);
 
       // Send it too: to Send's review, filled in with it, to send from
@@ -499,7 +499,7 @@ describe("Dashboard", () => {
           message:
             "Not sent: 0.01 DUSK to your Profile 2. Nothing left your wallet.",
           type: "info",
-        })
+        }),
       );
     } finally {
       dropped.gate.cancel();
@@ -519,7 +519,7 @@ describe("Dashboard", () => {
     const sentAt = Date.now() - 30_000;
     const hex = (/** @type {string} */ text) =>
       Array.from(new TextEncoder().encode(text), (byte) =>
-        byte.toString(16).padStart(2, "0")
+        byte.toString(16).padStart(2, "0"),
       ).join("");
     // The archive lists what the account sent meanwhile: the same payment.
     const query = vi
@@ -601,8 +601,8 @@ describe("Dashboard", () => {
     try {
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`
-        )
+          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`,
+        ),
       );
       // Read again as it was held, and as what was sent was found.
       expect(mocks.activityRefresh).toHaveBeenCalledTimes(2);
@@ -648,7 +648,7 @@ describe("Dashboard", () => {
         (button) => [
           button.textContent?.trim(),
           /** @type {HTMLButtonElement} */ (button).disabled,
-        ]
+        ],
       );
 
     vi.useFakeTimers({ toFake: ["setTimeout"] });
@@ -682,7 +682,7 @@ describe("Dashboard", () => {
       await act(() => vi.advanceTimersByTimeAsync(CHECKING_FOR_MS));
 
       expect(banner()).toMatch(
-        /^Your account sent something else while this waited\. Not sent/
+        /^Your account sent something else while this waited\. Not sent/,
       );
       expect(buttons()).toStrictEqual([
         ["Send it too", false],
@@ -725,26 +725,26 @@ describe("Dashboard", () => {
       expect(banner()).toContain("Not sent yet: 0.01 DUSK to Profile 2.");
 
       await act(() =>
-        settingsStore.update((store) => ({ ...store, hideBalances: true }))
+        settingsStore.update((store) => ({ ...store, hideBalances: true })),
       );
 
       expect(banner()).toContain(
-        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`
+        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`,
       );
       expect(banner()).not.toContain("0.01");
 
       await fireEvent.click(
         /** @type {HTMLElement} */ (
           document.querySelector(".home__waiting button")
-        )
+        ),
       );
 
       expect(get(gate)).toBe("cancelled");
       expect(get(toastList).map(({ message }) => message)).toContain(
-        `Not sent: ${BALANCE_MASK} DUSK to Profile 2. Nothing left your wallet.`
+        `Not sent: ${BALANCE_MASK} DUSK to Profile 2. Nothing left your wallet.`,
       );
       expect(
-        get(toastList).filter(({ message }) => message.includes("0.01 DUSK"))
+        get(toastList).filter(({ message }) => message.includes("0.01 DUSK")),
       ).toStrictEqual([]);
     } finally {
       gate.cancel();
@@ -757,10 +757,10 @@ describe("Dashboard", () => {
 
     // 1,172.5 public, 2,345 shielded and 1,000 staked.
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "4,517.5"
+      "4,517.5",
     );
     expect(container.querySelector(".home-balance__legend")).toHaveTextContent(
-      "Public 1,172.5 Shielded 2,345 Staked 1,000"
+      "Public 1,172.5 Shielded 2,345 Staked 1,000",
     );
 
     for (const [name, href] of [
@@ -772,14 +772,14 @@ describe("Dashboard", () => {
     ]) {
       expect(getByRole("link", { name })).toHaveAttribute(
         "href",
-        `/some-base-path${href}`
+        `/some-base-path${href}`,
       );
     }
 
     await vi.waitFor(() =>
       expect(container.querySelector(".home-balance__fiat")).toHaveTextContent(
-        "≈ $2,258.75"
-      )
+        "≈ $2,258.75",
+      ),
     );
   });
 
@@ -788,7 +788,7 @@ describe("Dashboard", () => {
 
     expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge?route=bsc-to-dusk"
+      "/some-base-path/dashboard/bridge?route=bsc-to-dusk",
     );
     unmount();
 
@@ -802,10 +802,10 @@ describe("Dashboard", () => {
     const testnet = render(Dashboard, props);
 
     expect(
-      testnet.getByRole("link", { name: "Migrate it to Dusk" })
+      testnet.getByRole("link", { name: "Migrate it to Dusk" }),
     ).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/bridge?route=bsc-to-dusk"
+      "/some-base-path/dashboard/bridge?route=bsc-to-dusk",
     );
     testnet.unmount();
 
@@ -858,16 +858,16 @@ describe("Dashboard", () => {
     const { getByText, queryByRole } = render(Dashboard, props);
 
     expect(
-      getByText("Visible on chain. Staking and the bridge use this balance.")
+      getByText("Visible on chain. Staking and the bridge use this balance."),
     ).toBeInTheDocument();
     expect(
-      getByText("Amounts and accounts stay hidden on chain.")
+      getByText("Amounts and accounts stay hidden on chain."),
     ).toBeInTheDocument();
     expect(getByText("Nothing staked right now")).toBeInTheDocument();
     expect(
       getByText(
-        "From 1,000 DUSK with your own node, or any amount with Sozu (third party)."
-      )
+        "From 1,000 DUSK with your own node, or any amount with Sozu (third party).",
+      ),
     ).toBeInTheDocument();
     expect(queryByRole("link", { name: "Past staking" })).toBeNull();
 
@@ -885,7 +885,7 @@ describe("Dashboard", () => {
 
     expect(queryByRole("link", { name: "Past staking" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/transactions?kind=staking"
+      "/some-base-path/dashboard/transactions?kind=staking",
     );
   });
 
@@ -901,7 +901,7 @@ describe("Dashboard", () => {
         rowOf({
           ...FIELDS[1],
           hash: (i + 1).toString(16).padStart(64, "0"),
-        })
+        }),
       ),
     });
     history.older?.set([
@@ -918,14 +918,14 @@ describe("Dashboard", () => {
 
     expect(getByRole("link", { name: "Past staking" })).toHaveAttribute(
       "href",
-      "/some-base-path/dashboard/transactions?kind=staking"
+      "/some-base-path/dashboard/transactions?kind=staking",
     );
 
     await fireEvent.click(getByRole("button", { name: "Staking" }));
 
     expect(queryByText("Nothing here yet.")).toBeNull();
     expect(
-      container.querySelector(".activity-panel .activity-row")
+      container.querySelector(".activity-panel .activity-row"),
     ).toHaveTextContent("Staked");
   });
 
@@ -953,7 +953,7 @@ describe("Dashboard", () => {
             status: "executed",
             timestamp: NOW,
           },
-          { network: networks.mainnet }
+          { network: networks.mainnet },
         ),
       ],
     });
@@ -972,20 +972,20 @@ describe("Dashboard", () => {
           pool: { stake: 3n, supply: 1n },
           position: { balance: 1_500_000_000_000n, stDusk: 487_000_000_000n },
         },
-      })
+      }),
     );
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Staking 1,500 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+      "Staking 1,500 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
     );
 
     // Another profile's position isn't this one's.
     await act(() =>
-      sozu.store?.update((state) => ({ ...state, account: "another" }))
+      sozu.store?.update((state) => ({ ...state, account: "another" })),
     );
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Nothing staked right now"
+      "Nothing staked right now",
     );
   });
 
@@ -1014,20 +1014,20 @@ describe("Dashboard", () => {
         balanceReadFailed: true,
         stakeReadAt: stakeAt,
         stakeReadFailed: true,
-      })
+      }),
     );
 
     expect(total()).toContain(
-      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`
+      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`,
     );
     expect(card(0)).toBe(
-      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
+      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
     );
     expect(card(1)).toBe(
-      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
+      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
     );
     expect(card(2)).toContain(
-      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`
+      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`,
     );
 
     // The balances alone.
@@ -1036,11 +1036,11 @@ describe("Dashboard", () => {
         ...initialStore,
         balanceReadAt: balanceAt,
         balanceReadFailed: true,
-      })
+      }),
     );
 
     expect(total()).toContain(
-      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`
+      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
     );
     expect(card(2)).not.toContain("out of date");
 
@@ -1049,11 +1049,11 @@ describe("Dashboard", () => {
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
         stakeReadFailed: true,
-      })
+      }),
     );
 
     expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date."
+      "Your stake couldn't be read just now. This total may be out of date.",
     );
     expect(total()).not.toContain("Last read");
     expect([card(0), card(1)].join(" ")).not.toContain("out of date");
@@ -1084,14 +1084,14 @@ describe("Dashboard", () => {
         kept: { at: 1, balance: 2_747_100_000n, stDusk: 864_521_348n },
         loading: false,
         status: null,
-      })
+      }),
     );
 
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "4,520.2471"
+      "4,520.2471",
     );
     expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date."
+      "Your stake couldn't be read just now. This total may be out of date.",
     );
   });
 
@@ -1114,7 +1114,7 @@ describe("Dashboard", () => {
           loading: false,
           status: null,
           ...state,
-        })
+        }),
       );
 
     mockedWalletStore.setMockedStoreValue({
@@ -1135,7 +1135,7 @@ describe("Dashboard", () => {
     });
 
     expect(card()).toBe(
-      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`
+      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`,
     );
     expect(total()).toBe("3,520.2471");
 
@@ -1143,7 +1143,7 @@ describe("Dashboard", () => {
     await sozuSays({ error: new Error("timed out") });
 
     expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking"
+      "Staking Your stake couldn't be read Try again Open staking",
     );
 
     // Try again reads it again, Sozu's and the native stake both, and says
@@ -1171,7 +1171,7 @@ describe("Dashboard", () => {
     });
 
     expect(card()).toBe(
-      "Staking 2.7472 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+      "Staking 2.7472 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
     );
 
     // Being read for the first time, with nothing read before.
@@ -1189,7 +1189,7 @@ describe("Dashboard", () => {
     await act(() => {});
 
     expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking"
+      "Staking Your stake couldn't be read Try again Open staking",
     );
   });
 
@@ -1206,7 +1206,7 @@ describe("Dashboard", () => {
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
         currentProfile: profiles[1],
-      })
+      }),
     );
 
     expect(sozu.load).toHaveBeenCalledTimes(2);
@@ -1220,7 +1220,7 @@ describe("Dashboard", () => {
         connected: true,
         net: networks.devnet,
         networkName: "devnet",
-      })
+      }),
     );
 
     try {
@@ -1256,14 +1256,14 @@ describe("Dashboard", () => {
         kept: null,
         loading: true,
         status: null,
-      })
+      }),
     );
 
     expect(textOf(container.querySelector(".home-balance"))).toContain(
-      "Reading your stake…"
+      "Reading your stake…",
     );
     expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
-      "Staking Reading your stake… Open staking"
+      "Staking Reading your stake… Open staking",
     );
 
     // It answers: counted in the total, and shown under staking.
@@ -1279,17 +1279,17 @@ describe("Dashboard", () => {
           pool: { stake: 3n, supply: 1n },
           position: { balance: 247_700_000n, stDusk: 77_400_000n },
         },
-      })
+      }),
     );
 
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "3,517.7477"
+      "3,517.7477",
     );
     expect(textOf(container.querySelector(".home-balance"))).not.toContain(
-      "Reading"
+      "Reading",
     );
     expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
-      "Staking 0.2477 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking"
+      "Staking 0.2477 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
     );
   });
 
@@ -1315,7 +1315,7 @@ describe("Dashboard", () => {
             pool: { stake: 3n, supply: 1n },
             position: { balance, stDusk: balance / 3n },
           },
-        })
+        }),
       );
 
     // Natively: 1,000 DUSK.
@@ -1332,7 +1332,7 @@ describe("Dashboard", () => {
 
     // Hidden with the other balances.
     await act(() =>
-      settingsStore.update((settings) => ({ ...settings, hideBalances: true }))
+      settingsStore.update((settings) => ({ ...settings, hideBalances: true })),
     );
 
     expect(parts()).not.toMatch(/\d/);
@@ -1357,7 +1357,7 @@ describe("Dashboard", () => {
     expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 0.5002");
 
     await act(() =>
-      sozu.store?.update((state) => ({ ...state, status: null }))
+      sozu.store?.update((state) => ({ ...state, status: null })),
     );
   });
 
@@ -1365,7 +1365,7 @@ describe("Dashboard", () => {
     const { container } = render(Dashboard, props);
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Staking 1,000 DUSK staked Rewards: 11,022.8426 DUSK Open staking"
+      "Staking 1,000 DUSK staked Rewards: 11,022.8426 DUSK Open staking",
     );
   });
 
@@ -1375,21 +1375,21 @@ describe("Dashboard", () => {
     const { container, getByRole } = render(Dashboard, props);
     const items = () =>
       Array.from(container.querySelectorAll(".activity-row"), (row) =>
-        row.textContent?.replace(/\s+/g, " ").trim()
+        row.textContent?.replace(/\s+/g, " ").trim(),
       );
 
     expect(items()).toEqual([
       expect.stringMatching(
-        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/
+        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/,
       ),
       expect.stringMatching(
-        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/
+        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/,
       ),
       `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",
-      `/some-base-path/dashboard/transactions?tx=${"a1".repeat(32)}`
+      `/some-base-path/dashboard/transactions?tx=${"a1".repeat(32)}`,
     );
 
     await fireEvent.click(getByRole("button", { name: "Received" }));
@@ -1435,7 +1435,7 @@ describe("Dashboard", () => {
         row
           .querySelector(".activity-row__theirs")
           ?.textContent?.replace(/\s+/g, " ")
-          .trim()
+          .trim(),
       );
 
     expect(marks()).toStrictEqual([
@@ -1454,11 +1454,11 @@ describe("Dashboard", () => {
     const { container } = render(Dashboard, props);
     const [item] = Array.from(
       container.querySelectorAll(".activity-row"),
-      (row) => row.textContent?.replace(/\s+/g, " ").trim()
+      (row) => row.textContent?.replace(/\s+/g, " ").trim(),
     );
 
     expect(item).toMatch(
-      /^alice-shop\.dusk Not confirmed yet · .+ · Public −5 DUSK$/
+      /^alice-shop\.dusk Not confirmed yet · .+ · Public −5 DUSK$/,
     );
     expect(item).not.toMatch(/Sent|Pending/);
   });
@@ -1470,10 +1470,10 @@ describe("Dashboard", () => {
     const { container } = render(Dashboard, props);
 
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "•••• hidden"
+      "•••• hidden",
     );
     expect(container.querySelector(".activity-row")).toHaveTextContent(
-      "fee 0.0037 DUSK paid · Public •••• hidden DUSK"
+      "fee 0.0037 DUSK paid · Public •••• hidden DUSK",
     );
     expect(get(settingsStore).hideBalances).toBe(true);
   });
@@ -1484,7 +1484,7 @@ describe("Dashboard", () => {
     const { getByRole, getByText } = render(Dashboard, props);
 
     expect(
-      getByText("Couldn't reach the network's history.")
+      getByText("Couldn't reach the network's history."),
     ).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
@@ -1498,7 +1498,7 @@ describe("Dashboard", () => {
     const shown = render(Dashboard, props);
 
     expect(
-      shown.container.querySelector(".activity-panel")
+      shown.container.querySelector(".activity-panel"),
     ).toBeInTheDocument();
 
     cleanup();
@@ -1509,8 +1509,8 @@ describe("Dashboard", () => {
     expect(hidden.container.querySelector(".activity-panel")).toBeNull();
     expect(
       hidden.getByText(
-        "Transaction history isn't available here yet. The Dusk explorer has your transactions."
-      )
+        "Transaction history isn't available here yet. The Dusk explorer has your transactions.",
+      ),
     ).toBeInTheDocument();
   });
 });

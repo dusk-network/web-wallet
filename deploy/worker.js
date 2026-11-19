@@ -101,7 +101,7 @@ export default {
                 "Cache-Control": "public, max-age=3600",
                 "Content-Type": "application/json",
               },
-            }
+            },
           )
         : answer(404);
     }

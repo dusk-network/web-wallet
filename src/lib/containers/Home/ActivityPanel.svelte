@@ -100,7 +100,7 @@
     <a
       class="activity-panel__more text-link"
       href={addBasePath(
-        `/dashboard/transactions${only ? `?kind=${only}` : ""}`
+        `/dashboard/transactions${only ? `?kind=${only}` : ""}`,
       )}>History <Icon path={mdiChevronRight} /></a
     >
   </header>

@@ -73,7 +73,7 @@ vi.mock("$lib/activity", async (importOriginal) => {
         ...flags,
         rows: [...rows, ...older],
         whole: !flags.failed && !flags.reading,
-      })
+      }),
     ),
   };
 });
@@ -176,7 +176,7 @@ describe("Receive", () => {
     await vi.runAllTimersAsync();
 
     expect(
-      getAllByRole("button").map((button) => button.getAttribute("aria-label"))
+      getAllByRole("button").map((button) => button.getAttribute("aria-label")),
     ).toStrictEqual(["Copy address", null]);
     expect(getByRole("button", { name: "Download QR" })).toBeInTheDocument();
     expect(getByRole("link", { name: "Back" })).toBeInTheDocument();
@@ -184,7 +184,7 @@ describe("Receive", () => {
     await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
-      expectedAccount
+      expectedAccount,
     );
 
     await fireEvent.click(getByRole("radio", { checked: false }));
@@ -192,7 +192,7 @@ describe("Receive", () => {
     await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
     expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
-      expectedAddress
+      expectedAddress,
     );
   });
 
@@ -247,7 +247,7 @@ describe("Receive", () => {
         true;
       await fireEvent(
         /** @type {HTMLElement} */ (summary.closest("details")),
-        new Event("toggle")
+        new Event("toggle"),
       );
     };
 
@@ -281,11 +281,13 @@ describe("Receive", () => {
 
       expect(get(requestsStore)).toStrictEqual([]);
       await vi.waitFor(() =>
-        expect(qrAlt()).toHaveAccessibleName("QR code for your payment request")
+        expect(qrAlt()).toHaveAccessibleName(
+          "QR code for your payment request",
+        ),
       );
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request" })
+        screen.getByRole("button", { name: "Copy request" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -293,10 +295,10 @@ describe("Receive", () => {
 
       // What it asks in a line, as the extension gives it, then the link.
       expect(copied.split("\n")[0]).toBe(
-        "You're asked to pay 0.15 DUSK on Testnet · Factura 33"
+        "You're asked to pay 0.15 DUSK on Testnet · Factura 33",
       );
       expect(linkIn(copied)).toMatch(
-        /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/
+        /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/,
       );
       expect(parsePaymentLink(linkIn(copied))).toMatchObject({
         amountDusk: "0.15",
@@ -353,13 +355,13 @@ describe("Receive", () => {
 
         await vi.waitFor(() =>
           expect(
-            screen.getByText(/^≈ €1\.00 · price at \d{1,2}:\d{2}/)
-          ).toBeInTheDocument()
+            screen.getByText(/^≈ €1\.00 · price at \d{1,2}:\d{2}/),
+          ).toBeInTheDocument(),
         );
 
         // The link asks what it asked: DUSK.
         await fireEvent.click(
-          screen.getByRole("button", { name: "Copy request" })
+          screen.getByRole("button", { name: "Copy request" }),
         );
         await vi.advanceTimersByTimeAsync(0);
 
@@ -399,21 +401,21 @@ describe("Receive", () => {
       await vi.runAllTimersAsync();
 
       expect(screen.getByRole("alert")).toHaveTextContent(
-        /^Is that 2\.1250 or 2125\?/
+        /^Is that 2\.1250 or 2125\?/,
       );
       expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "2.1250 DUSK" })
+        screen.getByRole("button", { name: "2.1250 DUSK" }),
       );
       await vi.runAllTimersAsync();
 
       expect(
-        screen.getByRole("textbox", { name: "Amount (optional)" })
+        screen.getByRole("textbox", { name: "Amount (optional)" }),
       ).toHaveValue("2.1250");
       expect(screen.queryByRole("alert")).toBeNull();
       expect(
-        screen.getByRole("button", { name: "Copy request" })
+        screen.getByRole("button", { name: "Copy request" }),
       ).toBeInTheDocument();
     });
 
@@ -430,7 +432,7 @@ describe("Receive", () => {
       );
 
       expect(flag).toHaveTextContent(
-        "It has hidden characters, shown here as codes."
+        "It has hidden characters, shown here as codes.",
       );
 
       await type("Memo (optional)", "Factura 33");
@@ -447,7 +449,7 @@ describe("Receive", () => {
       await fireEvent.click(screen.getByRole("radio", { checked: false }));
       await vi.runAllTimersAsync();
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request" })
+        screen.getByRole("button", { name: "Copy request" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -491,7 +493,7 @@ describe("Receive", () => {
       ]);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share address" })
+        screen.getByRole("button", { name: "Share address" }),
       );
       await vi.runAllTimersAsync();
 
@@ -512,7 +514,7 @@ describe("Receive", () => {
       const isAfterForm = (name) =>
         Boolean(
           form.compareDocumentPosition(screen.getByRole("button", { name })) &
-          Node.DOCUMENT_POSITION_FOLLOWING
+          Node.DOCUMENT_POSITION_FOLLOWING,
         ) && !form.contains(screen.getByRole("button", { name }));
 
       expect(isAfterForm("Copy address")).toBe(true);
@@ -531,18 +533,18 @@ describe("Receive", () => {
         "Download QR",
       ]);
       expect(screen.getByRole("button", { name: "Copy request" })).toHaveClass(
-        "dusk-button--variant--primary"
+        "dusk-button--variant--primary",
       );
       expect(screen.getByRole("button", { name: "Share request" })).toHaveClass(
-        "dusk-button--variant--primary"
+        "dusk-button--variant--primary",
       );
       expect(screen.getByRole("button", { name: "Copy address" })).toHaveClass(
-        "dusk-button--variant--secondary"
+        "dusk-button--variant--secondary",
       );
 
       // By the address, still the address alone.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share address" })
+        screen.getByRole("button", { name: "Share address" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -553,19 +555,19 @@ describe("Receive", () => {
       expect(get(requestsStore)).toStrictEqual([]);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share request" })
+        screen.getByRole("button", { name: "Share request" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
       // The request in a line, then its link, as text alone.
       expect(share.mock.lastCall?.[0]).toStrictEqual({
         text: expect.stringMatching(
-          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/,
         ),
         title: "Dusk payment request",
       });
       expect(
-        parsePaymentLink(linkIn(share.mock.lastCall?.[0].text))
+        parsePaymentLink(linkIn(share.mock.lastCall?.[0].text)),
       ).toMatchObject({
         amountDusk: "2",
         to: ACCOUNT,
@@ -574,12 +576,12 @@ describe("Receive", () => {
 
       // The sheet closed unused keeps nothing new.
       share.mockRejectedValueOnce(
-        Object.assign(new Error("closed"), { name: "AbortError" })
+        Object.assign(new Error("closed"), { name: "AbortError" }),
       );
       await type("Amount (optional)", "3");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share request" })
+        screen.getByRole("button", { name: "Share request" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -587,21 +589,21 @@ describe("Receive", () => {
 
       // In the list, each its own, beside its Copy request.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share the request for 2 DUSK" })
+        screen.getByRole("button", { name: "Share the request for 2 DUSK" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
       expect(share.mock.lastCall?.[0]).toStrictEqual({
         text: expect.stringMatching(
-          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/
+          /^You're asked to pay 2 DUSK on Testnet\nPay here: https:/,
         ),
         title: "Dusk payment request",
       });
       expect(
         Array.from(
           document.querySelectorAll(".requests__actions button"),
-          (b) => b.textContent?.trim()
-        )
+          (b) => b.textContent?.trim(),
+        ),
       ).toStrictEqual(["Copy request", "Share", "Remove"]);
 
       // No two buttons of the page share a name.
@@ -643,24 +645,26 @@ describe("Receive", () => {
 
       expect(form.open).toBe(true);
       expect(
-        screen.getByRole("textbox", { name: "Amount (optional)" })
+        screen.getByRole("textbox", { name: "Amount (optional)" }),
       ).toHaveValue("2");
       await vi.waitFor(() =>
-        expect(qrAlt()).toHaveAccessibleName("QR code for your payment request")
+        expect(qrAlt()).toHaveAccessibleName(
+          "QR code for your payment request",
+        ),
       );
       expect(
         form.compareDocumentPosition(
-          screen.getByRole("button", { name: "Download QR" })
-        ) & Node.DOCUMENT_POSITION_FOLLOWING
+          screen.getByRole("button", { name: "Download QR" }),
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
       expect(
-        /** @type {HTMLAnchorElement} */ (click.mock.contexts[0]).download
+        /** @type {HTMLAnchorElement} */ (click.mock.contexts[0]).download,
       ).toBe("dusk-testnet-request-2-DUSK-Factura-34.png");
 
       click.mockRestore();
@@ -745,7 +749,7 @@ describe("Receive", () => {
       await type("Memo (optional)", "Factura 33");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
@@ -760,7 +764,7 @@ describe("Receive", () => {
       setNodeNetwork(networks.mainnet);
       written.mockClear();
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
 
@@ -777,7 +781,7 @@ describe("Receive", () => {
       getPrimaryName.mockReturnValue(
         new Promise((resolve) => {
           named = resolve;
-        })
+        }),
       );
 
       const click = vi
@@ -792,7 +796,7 @@ describe("Receive", () => {
       await type("Memo (optional)", "Factura 33");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await type("Memo (optional)", "Factura 34");
       await vi.advanceTimersByTimeAsync(0);
@@ -801,7 +805,7 @@ describe("Receive", () => {
 
       expect(written.mock.calls.map(([text]) => text)).toContain("Factura 33");
       expect(written.mock.calls.map(([text]) => text)).not.toContain(
-        "Factura 34"
+        "Factura 34",
       );
       expect(get(requestsStore)).toMatchObject([{ memo: "Factura 33" }]);
 
@@ -816,7 +820,7 @@ describe("Receive", () => {
       getPrimaryName.mockReturnValue(
         new Promise((resolve) => {
           named = resolve;
-        })
+        }),
       );
 
       const click = vi
@@ -830,7 +834,7 @@ describe("Receive", () => {
       await type("Amount (optional)", "0.05");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await fireEvent.click(screen.getByRole("radio", { checked: false }));
       await vi.advanceTimersByTimeAsync(0);
@@ -838,7 +842,7 @@ describe("Receive", () => {
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
       expect(written.mock.calls.map(([text]) => text)).toContain(
-        `To ${shortenAddress(ACCOUNT)}`
+        `To ${shortenAddress(ACCOUNT)}`,
       );
       expect(get(requestsStore)).toMatchObject([{ to: ACCOUNT }]);
 
@@ -854,7 +858,7 @@ describe("Receive", () => {
       render(Receive);
       await vi.runAllTimersAsync();
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
@@ -869,7 +873,7 @@ describe("Receive", () => {
       await type("Memo (optional)", "Factura 33");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
 
@@ -881,24 +885,24 @@ describe("Receive", () => {
       await type("Memo (optional)", " Factura 2026/052: \u202Eabril ");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(3));
 
       expect(anchorOf(2).download).toBe(
-        "dusk-testnet-request-0.05-DUSK-Factura-2026-052-abril.png"
+        "dusk-testnet-request-0.05-DUSK-Factura-2026-052-abril.png",
       );
 
       // In letters any browser keeps in a file's name: no accents.
       await type("Memo (optional)", "Factura 2026-071 Diseño web ß");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(4));
 
       expect(anchorOf(3).download).toBe(
-        "dusk-testnet-request-0.05-DUSK-Factura-2026-071-Diseno-web.png"
+        "dusk-testnet-request-0.05-DUSK-Factura-2026-071-Diseno-web.png",
       );
 
       click.mockRestore();
@@ -947,7 +951,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -973,10 +977,10 @@ describe("Receive", () => {
 
       // On the card, beside its Copy and Share: Paid, with when.
       expect(actionsOf(once)).toHaveTextContent(
-        `Paid ${inSentence(paidAt(at + 500))} Copy request Share Remove`
+        `Paid ${inSentence(paidAt(at + 500))} Copy request Share Remove`,
       );
       expect(actionsOf(twice)).toHaveTextContent(
-        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy request Share Remove`
+        `Paid twice, first ${inSentence(paidAt(at + 1500))} Copy request Share Remove`,
       );
 
       // Copy request asks first, on the card, brought into view: nothing
@@ -986,17 +990,17 @@ describe("Receive", () => {
       await fireEvent.click(
         screen.getByRole("button", {
           name: "Copy request for 0.013 DUSK, Factura 2026-071",
-        })
+        }),
       );
 
       const asked = `This request was paid already, ${inSentence(paidAt(at + 500))}.`;
 
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
       expect(once.querySelector("[role=alert]")).toHaveTextContent(
-        `${asked} Copy anyway Cancel`
+        `${asked} Copy anyway Cancel`,
       );
       expect(scrolled.mock.contexts).toContainEqual(
-        once.querySelector(".paid-already")
+        once.querySelector(".paid-already"),
       );
       scrolled.mockRestore();
 
@@ -1012,22 +1016,22 @@ describe("Receive", () => {
       await fireEvent.click(
         screen.getByRole("button", {
           name: "Copy request for 0.013 DUSK, Factura 2026-071",
-        })
+        }),
       );
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy anyway" })
+        screen.getByRole("button", { name: "Copy anyway" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
       const copied = String(
-        vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0]
+        vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0],
       );
 
       expect(copied).toMatch(
-        /^You're asked to pay 0\.013 DUSK on Testnet · Factura 2026-071\nPay here: https:\/\/\S+$/
+        /^You're asked to pay 0\.013 DUSK on Testnet · Factura 2026-071\nPay here: https:\/\/\S+$/,
       );
       expect(
-        parsePaymentLink(copied.slice(copied.indexOf("https:")))
+        parsePaymentLink(copied.slice(copied.indexOf("https:"))),
       ).toMatchObject({ amountDusk: "0.013", memo: "Factura 2026-071" });
       expect(once.querySelector("[role=alert]")).toBeNull();
 
@@ -1035,22 +1039,22 @@ describe("Receive", () => {
       await fireEvent.click(
         screen.getByRole("button", {
           name: "Share the request for 0.03 DUSK, Factura 2026-101",
-        })
+        }),
       );
 
       expect(share).not.toHaveBeenCalled();
       expect(twice.querySelector("[role=alert]")).toHaveTextContent(
-        `This request was paid already, ${inSentence(paidAt(at + 1500))}. Share anyway Cancel`
+        `This request was paid already, ${inSentence(paidAt(at + 1500))}. Share anyway Cancel`,
       );
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share anyway" })
+        screen.getByRole("button", { name: "Share anyway" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
       expect(share).toHaveBeenCalledOnce();
       expect(share.mock.lastCall?.[0].text).toMatch(
-        /^You're asked to pay 0\.03 DUSK on Testnet · Factura 2026-101\nPay here: /
+        /^You're asked to pay 0\.03 DUSK on Testnet · Factura 2026-101\nPay here: /,
       );
       expect(get(toastList)).toStrictEqual([]);
 
@@ -1080,7 +1084,7 @@ describe("Receive", () => {
             paid: { at: at + 500, hash: "ab".repeat(32), lux: "13000000" },
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       render(Receive);
@@ -1097,14 +1101,14 @@ describe("Receive", () => {
 
       // Copy request: asked under it first.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request" })
+        screen.getByRole("button", { name: "Copy request" }),
       );
 
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
       expect(question()).toHaveTextContent(`${asked} Copy anyway Cancel`);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy anyway" })
+        screen.getByRole("button", { name: "Copy anyway" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -1120,7 +1124,7 @@ describe("Receive", () => {
 
       // Share request: the same, and Cancel shares nothing.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Share request" })
+        screen.getByRole("button", { name: "Share request" }),
       );
 
       expect(question()).toHaveTextContent(`${asked} Share anyway Cancel`);
@@ -1133,17 +1137,17 @@ describe("Receive", () => {
 
       // Download QR, as the QR holds it: asked under it first.
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download QR" })
+        screen.getByRole("button", { name: "Download QR" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
       expect(click).not.toHaveBeenCalled();
       expect(
-        document.querySelector(".address-actions [role=alert]")
+        document.querySelector(".address-actions [role=alert]"),
       ).toHaveTextContent(`${asked} Download anyway Cancel`);
 
       await fireEvent.click(
-        screen.getByRole("button", { name: "Download anyway" })
+        screen.getByRole("button", { name: "Download anyway" }),
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
@@ -1154,7 +1158,7 @@ describe("Receive", () => {
       await type("Memo (optional)", "Factura 2026-072");
       await vi.advanceTimersByTimeAsync(0);
       await fireEvent.click(
-        screen.getByRole("button", { name: "Copy request" })
+        screen.getByRole("button", { name: "Copy request" }),
       );
       await vi.advanceTimersByTimeAsync(0);
 
@@ -1194,7 +1198,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.refresh.mockClear();
@@ -1216,7 +1220,7 @@ describe("Receive", () => {
 
       expect(screen.getByRole("listitem")).toHaveTextContent("Paid");
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        `Amount and memo match a payment of 0.15 DUSK ${inSentence(paidAt(at + 500))}.`
+        `Amount and memo match a payment of 0.15 DUSK ${inSentence(paidAt(at + 500))}.`,
       );
       // It stays paid with its payment out of what's read, and what it paid.
       expect(get(requestsStore)[0].paid).toStrictEqual({
@@ -1241,7 +1245,7 @@ describe("Receive", () => {
 
       expect(history.refresh).toHaveBeenCalledOnce();
       expect(
-        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state"),
       ).toHaveTextContent(/^Paid twice$/);
 
       // Not with the page gone.
@@ -1267,7 +1271,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       // The page History shows: fifty payments since, none of them its.
@@ -1300,7 +1304,7 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(
-          screen.getByRole("listitem").querySelector(".requests__state")
+          screen.getByRole("listitem").querySelector(".requests__state"),
         ).toHaveTextContent(/^Paid$/);
         expect(screen.queryByText(/further back/)).toBeNull();
       } finally {
@@ -1332,7 +1336,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -1384,7 +1388,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
 
@@ -1393,7 +1397,7 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Nothing matching has come in."
+          "Nothing matching has come in.",
         );
 
         // Sent from another profile here, and seen to go out: the history
@@ -1402,10 +1406,10 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Checking for payments…"
+          "Checking for payments…",
         );
         expect(screen.getByRole("listitem")).not.toHaveTextContent(
-          "Nothing matching"
+          "Nothing matching",
         );
 
         // In the history: what came in.
@@ -1441,7 +1445,7 @@ describe("Receive", () => {
               network: "testnet",
               to: ACCOUNT,
             },
-          ])
+          ]),
         );
         hydrateRequests();
         awaitArrival({ hash: "cd".repeat(32), to: ACCOUNT });
@@ -1449,13 +1453,13 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Checking for payments…"
+          "Checking for payments…",
         );
 
         await vi.advanceTimersByTimeAsync(120_000);
 
         expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Nothing matching has come in."
+          "Nothing matching has come in.",
         );
       } finally {
         forgetArrivals();
@@ -1490,7 +1494,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -1503,7 +1507,7 @@ describe("Receive", () => {
       const [item] = screen.getAllByRole("listitem");
 
       expect(item.querySelector(".requests__state")).toHaveTextContent(
-        /^Paid twice$/
+        /^Paid twice$/,
       );
       expect(item).toHaveTextContent("Amount and memo match 2 payments.");
 
@@ -1516,7 +1520,7 @@ describe("Receive", () => {
         Array.from(payments.querySelectorAll("a"), (link) => [
           link.textContent,
           link.getAttribute("href"),
-        ])
+        ]),
       ).toStrictEqual([
         [
           "See in History",
@@ -1536,7 +1540,7 @@ describe("Receive", () => {
       // Each to the second: two made in the same minute read apart.
       const times = Array.from(
         payments.querySelectorAll(".requests__payment > span:first-child"),
-        (line) => line.textContent?.split(",").slice(0, 2).join(",")
+        (line) => line.textContent?.split(",").slice(0, 2).join(","),
       );
 
       expect(times).toStrictEqual([paidAt(at + 500), paidAt(at + 2500)]);
@@ -1546,20 +1550,20 @@ describe("Receive", () => {
       expect(
         screen
           .getByRole("link", { name: /^Send back the payment of/ })
-          .closest(".requests__payment")
+          .closest(".requests__payment"),
       ).toHaveTextContent(paidAt(at + 2500));
 
       const back = new URL(
         String(
           screen
             .getByRole("link", { name: /^Send back the payment of/ })
-            .getAttribute("href")
+            .getAttribute("href"),
         ),
-        "https://wallet.test"
+        "https://wallet.test",
       );
       const asked = parsePaymentLink(
         `https://wallet.test/some-base-path${back.pathname.replace(/^\/some-base-path/, "")}${back.search}`,
-        { walletUrl: "https://wallet.test/some-base-path" }
+        { walletUrl: "https://wallet.test/some-base-path" },
       );
 
       expect(asked).toMatchObject({
@@ -1590,7 +1594,7 @@ describe("Receive", () => {
           REQUESTS,
           JSON.stringify([
             { at, id: "asked", network: "testnet", to: ACCOUNT, ...request },
-          ])
+          ]),
         );
         hydrateRequests();
         history.state?.set({ hasMore: false, rows });
@@ -1612,10 +1616,10 @@ describe("Receive", () => {
       ]);
 
       expect(paid.querySelector(".requests__state")).toHaveTextContent(
-        /^Paid$/
+        /^Paid$/,
       );
       expect(paid).toHaveTextContent(
-        `Amount and memo match a payment of 0.01 DUSK ${inSentence(paidAt(at + 1000))}. Also the same memo ${inSentence(paidAt(at + 4000))}, for 0.02 DUSK.`
+        `Amount and memo match a payment of 0.01 DUSK ${inSentence(paidAt(at + 1000))}. Also the same memo ${inSentence(paidAt(at + 4000))}, for 0.02 DUSK.`,
       );
       expect(paid).not.toHaveTextContent("same amount");
 
@@ -1633,10 +1637,12 @@ describe("Receive", () => {
       const line = open.querySelector(".requests__line")?.textContent ?? "";
 
       expect(open.querySelector(".requests__state")).toHaveTextContent(
-        /^Check$/
+        /^Check$/,
       );
       expect(
-        line.match(/Also the same (memo|amount)/g)?.map((also) => also.slice(9))
+        line
+          .match(/Also the same (memo|amount)/g)
+          ?.map((also) => also.slice(9)),
       ).toStrictEqual([
         "same memo",
         "same amount",
@@ -1644,13 +1650,13 @@ describe("Receive", () => {
         "same amount",
       ]);
       expect(line).toContain(
-        `Also the same amount ${inSentence(paidAt(at + 2000))}, with another memo: "Fra \\u202e34 aruc".`
+        `Also the same amount ${inSentence(paidAt(at + 2000))}, with another memo: "Fra \\u202e34 aruc".`,
       );
       expect(line).toContain(`with another memo: "Factura 73".`);
       expect(line).not.toContain("Factura 74");
       expect(open).not.toHaveTextContent("\u202E");
       expect(open).toHaveTextContent(
-        "A memo here has hidden characters, shown as codes."
+        "A memo here has hidden characters, shown as codes.",
       );
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1684,7 +1690,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -1698,9 +1704,9 @@ describe("Receive", () => {
         String(
           screen
             .getByRole("link", { name: /^Send back the payment of/ })
-            .getAttribute("href")
+            .getAttribute("href"),
         ),
-        "https://wallet.test"
+        "https://wallet.test",
       );
 
       expect(back.searchParams.get("memo")).toBe("Refund");
@@ -1740,7 +1746,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({ hasMore: false, rows: paidTwice });
@@ -1755,12 +1761,12 @@ describe("Receive", () => {
 
       vi.mocked(goto).mockClear();
       await fireEvent.click(
-        screen.getByRole("link", { name: /^Send back the payment of/ })
+        screen.getByRole("link", { name: /^Send back the payment of/ }),
       );
 
       expect(goto).toHaveBeenCalledWith(
         expect.stringMatching(/^\/some-base-path\/dashboard\/send\?/),
-        { state: { amountHidden: true, sendBack: true } }
+        { state: { amountHidden: true, sendBack: true } },
       );
 
       // Sent back, on its way: at a time this device's clock says, behind
@@ -1789,18 +1795,18 @@ describe("Receive", () => {
       // What went back, and where to see it: on its way, with no time a
       // block's would change.
       expect(payments()).toHaveTextContent(
-        "Sent back 0.012 DUSK, on its way · See in History"
+        "Sent back 0.012 DUSK, on its way · See in History",
       );
       expect(
         screen.getByRole("link", {
           name: /^See in History: what was sent back for the payment of/,
-        })
+        }),
       ).toHaveAttribute(
         "href",
-        `/some-base-path/dashboard/transactions?tx=${"f0".repeat(32)}`
+        `/some-base-path/dashboard/transactions?tx=${"f0".repeat(32)}`,
       );
       expect(
-        screen.queryByRole("link", { name: /^Send back the payment of/ })
+        screen.queryByRole("link", { name: /^Send back the payment of/ }),
       ).toBeNull();
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1845,7 +1851,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -1889,7 +1895,7 @@ describe("Receive", () => {
 
       expect(payments()).not.toHaveTextContent("Sent back");
       expect(
-        screen.getByRole("link", { name: /^Send back the payment of/ })
+        screen.getByRole("link", { name: /^Send back the payment of/ }),
       ).toBeInTheDocument();
 
       // One in a block after the payment's is its own.
@@ -1910,7 +1916,7 @@ describe("Receive", () => {
 
       // Its time first, as the payments' above it, once a block has it.
       expect(payments()).toHaveTextContent(
-        `${paidAt(at + 4000)}, sent back 0.012 DUSK · See in History`
+        `${paidAt(at + 4000)}, sent back 0.012 DUSK · See in History`,
       );
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1932,8 +1938,8 @@ describe("Receive", () => {
             lux: "12000000",
             network: "testnet",
             to: ACCOUNT,
-          }))
-        )
+          })),
+        ),
       );
       hydrateRequests();
       history.state?.set({
@@ -1950,16 +1956,16 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(
-        screen.getAllByRole("list", { name: "Payments for this request" })
+        screen.getAllByRole("list", { name: "Payments for this request" }),
       ).toHaveLength(2);
       expect(
         screen
           .getAllByRole("list", { name: "Payments for this request" })
           .flatMap((list) => Array.from(list.children))
-          .filter((payment) => /sent back/i.test(payment.textContent ?? ""))
+          .filter((payment) => /sent back/i.test(payment.textContent ?? "")),
       ).toHaveLength(1);
       expect(
-        screen.getAllByRole("link", { name: /^Send back the payment of/ })
+        screen.getAllByRole("link", { name: /^Send back the payment of/ }),
       ).toHaveLength(1);
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1988,7 +1994,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       // One lux with its memo pays it: what came in says how little.
@@ -2005,7 +2011,7 @@ describe("Receive", () => {
       expect(badge()).toHaveTextContent(/^0\.000000001 DUSK$/);
       expect(badge()).not.toHaveClass("requests__state--paid");
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        `Its memo matches a payment of 0.000000001 DUSK ${inSentence(paidAt(at + 500))}.`
+        `Its memo matches a payment of 0.000000001 DUSK ${inSentence(paidAt(at + 500))}.`,
       );
       await vi.waitFor(() => expect(get(requestsStore)[0].paid?.lux).toBe("1"));
 
@@ -2018,14 +2024,14 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        "Its memo matches a payment of 0.000000001 DUSK"
+        "Its memo matches a payment of 0.000000001 DUSK",
       );
 
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       await vi.advanceTimersByTimeAsync(0);
 
       expect(screen.getByRole("listitem")).toHaveTextContent(
-        `Its memo matches a payment of ${BALANCE_MASK}`
+        `Its memo matches a payment of ${BALANCE_MASK}`,
       );
       expect(badge()).toHaveTextContent(BALANCE_MASK);
       expect(badge()).not.toHaveTextContent("0.000000001");
@@ -2039,7 +2045,7 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(
-        screen.getAllByRole("listitem")[0].querySelector(".requests__state")
+        screen.getAllByRole("listitem")[0].querySelector(".requests__state"),
       ).toHaveTextContent(/^Paid twice$/);
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -2058,7 +2064,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -2085,10 +2091,10 @@ describe("Receive", () => {
       expect(item).not.toHaveTextContent("Paid");
       // As it's written, its Arabic-Indic zero set apart from what's around it.
       expect(item.textContent?.replace(/[\u2066-\u2069]/g, "")).toContain(
-        'with another memo: "Factura 1\u06605"'
+        'with another memo: "Factura 1\u06605"',
       );
       expect(item).toHaveTextContent(
-        "A number in a memo here may not be what it looks like."
+        "A number in a memo here may not be what it looks like.",
       );
       expect(get(requestsStore)[0].paid).toBeUndefined();
       history.state?.set({ hasMore: false, rows: [] });
@@ -2135,7 +2141,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -2169,14 +2175,14 @@ describe("Receive", () => {
 
       for (const memo of ["Les tulipes de dimanche", "Factura F-2026-101"]) {
         expect(card(memo).querySelector(".requests__state")).toHaveTextContent(
-          /^Waiting$/
+          /^Waiting$/,
         );
         expect(card(memo)).toHaveTextContent("Nothing matching has come in.");
         expect(card(memo)).not.toHaveTextContent(/Check|Wi-Fi|F-2026-102/);
       }
 
       expect(
-        card("Factura F-2026-102").querySelector(".requests__state")
+        card("Factura F-2026-102").querySelector(".requests__state"),
       ).toHaveTextContent(/^Paid$/);
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -2196,7 +2202,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       history.state?.set({
@@ -2224,7 +2230,7 @@ describe("Receive", () => {
       expect(
         screen
           .getByRole("button", { name: /^Remove the request/ })
-          .getAttribute("aria-label")
+          .getAttribute("aria-label"),
       ).not.toMatch(/0[.,]15/);
 
       settingsStore.reset();
@@ -2252,7 +2258,7 @@ describe("Receive", () => {
             network: "testnet",
             to: ACCOUNT,
           },
-        ])
+        ]),
       );
       hydrateRequests();
       render(Receive);
@@ -2265,20 +2271,20 @@ describe("Receive", () => {
       const card = screen.getByRole("listitem");
 
       await fireEvent.click(
-        within(card).getByRole("button", { name: /^Copy request for / })
+        within(card).getByRole("button", { name: /^Copy request for / }),
       );
       await fireEvent.click(
-        within(card).getByRole("button", { name: /^Share the request for / })
+        within(card).getByRole("button", { name: /^Share the request for / }),
       );
 
       const copied = vi.mocked(navigator.clipboard.writeText).mock
         .lastCall?.[0];
 
       expect(copied).toMatch(
-        /^sofiadesign\.dusk asks you to pay 0\.01 DUSK on Testnet · Factura F-2026-125\n/
+        /^sofiadesign\.dusk asks you to pay 0\.01 DUSK on Testnet · Factura F-2026-125\n/,
       );
       expect(share).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({ text: copied })
+        expect.objectContaining({ text: copied }),
       );
     });
 
@@ -2304,7 +2310,7 @@ describe("Receive", () => {
           kept({ id: "open", memo: "Factura 34" }),
           kept({ id: "elsewhere", network: "mainnet" }),
           kept({ id: "other", to: "someone-else" }),
-        ])
+        ]),
       );
       hydrateRequests();
       render(Receive);
@@ -2315,21 +2321,23 @@ describe("Receive", () => {
       expect(items).toHaveLength(2);
       expect(items[0]).toHaveTextContent("Paid");
       expect(items[0]).toHaveTextContent(
-        `Asked ${inSentence(claimDay(at, "en"))}. Amount and memo match a payment ${inSentence(paidAt(at + 500))}.`
+        `Asked ${inSentence(claimDay(at, "en"))}. Amount and memo match a payment ${inSentence(paidAt(at + 500))}.`,
       );
       expect(items[1]).toHaveTextContent("Waiting");
       expect(items[1]).toHaveTextContent("Nothing matching has come in.");
       expect(
-        screen.getByRole("link", { name: "See in History" })
+        screen.getByRole("link", { name: "See in History" }),
       ).toHaveAttribute(
         "href",
-        expect.stringContaining(`/dashboard/transactions?tx=${"ab".repeat(32)}`)
+        expect.stringContaining(
+          `/dashboard/transactions?tx=${"ab".repeat(32)}`,
+        ),
       );
 
       await fireEvent.click(
         screen.getByRole("button", {
           name: /^Remove the request for .*, Factura 34$/,
-        })
+        }),
       );
 
       expect(screen.getAllByRole("listitem")).toHaveLength(1);
@@ -2366,14 +2374,14 @@ describe("Receive", () => {
         expectedAccount,
         "unknown",
         expect.any(String),
-        undefined
+        undefined,
       );
 
       await fireEvent.click(getByRole("button", { name: "About this name" }));
 
       expect(getNote(container)).toBeVisible();
       expect(getNote(container)).toHaveTextContent(
-        "People who send to alice.dusk reach this public account."
+        "People who send to alice.dusk reach this public account.",
       );
     });
 
@@ -2389,7 +2397,7 @@ describe("Receive", () => {
       async (_, shieldedName, shieldedNote) => {
         getPrimaryName.mockImplementation(
           (account, network, nodeUrl, shieldedAddress) =>
-            Promise.resolve(shieldedAddress ? shieldedName : "alice.dusk")
+            Promise.resolve(shieldedAddress ? shieldedName : "alice.dusk"),
         );
 
         const { container, getByRole, queryByRole } = render(Receive);
@@ -2407,27 +2415,27 @@ describe("Receive", () => {
         // What the name reaches, behind its info button.
         if (shieldedName) {
           await fireEvent.click(
-            getByRole("button", { name: "About this name" })
+            getByRole("button", { name: "About this name" }),
           );
         }
 
         expect(getNote(container)?.textContent?.trim() ?? "").toBe(
-          shieldedNote
+          shieldedNote,
         );
         expect(queryByRole("button", { name: "Copy name" }) !== null).toBe(
-          Boolean(shieldedName)
+          Boolean(shieldedName),
         );
         expect(
-          queryByRole("button", { name: "About this name" }) !== null
+          queryByRole("button", { name: "About this name" }) !== null,
         ).toBe(Boolean(shieldedName));
         expect(getByRole("button", { name: "Copy address" })).toBeVisible();
         expect(getPrimaryName).toHaveBeenLastCalledWith(
           expectedAccount,
           "unknown",
           expect.any(String),
-          expectedAddress
+          expectedAddress,
         );
-      }
+      },
     );
 
     it("should show no name, and only the address to copy, when the lookup fails", async () => {
@@ -2442,8 +2450,8 @@ describe("Receive", () => {
       expect(shownAddress()).toBe(expectedAccount);
       expect(
         getAllByRole("button").map((button) =>
-          button.getAttribute("aria-label")
-        )
+          button.getAttribute("aria-label"),
+        ),
       ).toStrictEqual(["Copy address", null]);
     });
 
@@ -2456,13 +2464,13 @@ describe("Receive", () => {
       await fireEvent.click(getByRole("button", { name: "Copy name" }));
 
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
-        "alice.dusk"
+        "alice.dusk",
       );
 
       await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
-        expectedAccount
+        expectedAccount,
       );
       expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(2);
     });
