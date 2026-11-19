@@ -52,7 +52,7 @@ describe("GasSettings", () => {
       {
         ...baseOptions,
         props: { ...baseProps, fee: 2_151_569n },
-      }
+      },
     );
 
     // Rounded up beside Edit, as everywhere.
@@ -66,11 +66,11 @@ describe("GasSettings", () => {
     );
 
     expect(line.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "0.002151569 DUSK at most: it pays only for the gas used, up to 20,000,000 gas at 1 LUX each."
+      "0.002151569 DUSK at most: it pays only for the gas used, up to 20,000,000 gas at 1 LUX each.",
     );
     // Before the gas fields.
     expect(
-      line.compareDocumentPosition(getByRole("textbox", { name: "Gas limit" }))
+      line.compareDocumentPosition(getByRole("textbox", { name: "Gas limit" })),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
@@ -93,7 +93,7 @@ describe("GasSettings", () => {
               gasPrice: String(median),
             })),
           }),
-        })
+        }),
       );
       await gasPriceStore.refresh();
     };

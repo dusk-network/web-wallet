@@ -16,7 +16,7 @@
   $: gasSettings = getGasSettings(
     "allocate",
     { customGasLimit, customGasPrice },
-    $gasPriceStore
+    $gasPriceStore,
   );
   $: ({ balance, currentProfile } = $walletStore);
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";

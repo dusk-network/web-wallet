@@ -16,7 +16,7 @@ const THUMBS = `${PHONES}, (pointer: coarse)`;
 const onPhones = (file, selector, media = PHONES) =>
   styleRules(file, import.meta.url).find(
     (rule) =>
-      rule.media === media && rule.selector.replace(/\s+/g, " ") === selector
+      rule.media === media && rule.selector.replace(/\s+/g, " ") === selector,
   )?.declarations;
 
 describe("tap areas on phones", () => {
@@ -25,8 +25,8 @@ describe("tap areas on phones", () => {
       onPhones(
         "../SwapCard/SwapCard.svelte",
         ".swap-card :global(.swap-mini)",
-        THUMBS
-      )
+        THUMBS,
+      ),
     ).toStrictEqual({
       "background-clip": "padding-box",
       "border-block": "8px solid transparent",
@@ -41,8 +41,8 @@ describe("tap areas on phones", () => {
       onPhones(
         "../../containers/Home/HomeBalance.svelte",
         ".home-balance__toggle",
-        THUMBS
-      )
+        THUMBS,
+      ),
     ).toStrictEqual({
       height: "44px",
       margin: "-6px",
@@ -65,22 +65,22 @@ describe("tap areas on phones", () => {
     "shows the fee's Edit with the form where the fee is what's short, in %s, as its summary waits for the review",
     (file, selector) => {
       expect(onPhones(file, selector)).toStrictEqual({ display: "block" });
-    }
+    },
   );
 
   it("keeps them for a phone held sideways, which has a desktop's width", () => {
     const touch = styleRules(
       "../../../style/app-components/tap-targets.css",
-      import.meta.url
+      import.meta.url,
     ).filter((rule) => rule.media.includes("(pointer: coarse)"));
 
     expect(touch.map(({ selector }) => selector)).toContain(
-      ".dusk-icon-button::before,\n  .dusk-button--size--small::before,\n  .dusk-anchor-button--size--small::before,\n  .dusk-switch::before,\n  .swap-mini::before"
+      ".dusk-icon-button::before,\n  .dusk-button--size--small::before,\n  .dusk-anchor-button--size--small::before,\n  .dusk-switch::before,\n  .swap-mini::before",
     );
     expect(
       styleRules("../../containers/Shell/TopBar.svelte", import.meta.url).find(
-        ({ media }) => media === "(pointer: coarse)"
-      )?.declarations
+        ({ media }) => media === "(pointer: coarse)",
+      )?.declarations,
     ).toStrictEqual({ "min-height": "44px", "min-width": "44px" });
   });
 
@@ -102,7 +102,7 @@ describe("tap areas on phones", () => {
       const size = onPhones(file, selector, THUMBS)?.[side];
 
       expect(size === "44px" || size === "2.75rem").toBe(true);
-    }
+    },
   );
 
   it("keeps History's kinds at a thumb's height, held sideways too", () => {
@@ -110,8 +110,8 @@ describe("tap areas on phones", () => {
       onPhones(
         "../../containers/History/HistoryView.svelte",
         ".history__kind",
-        "(pointer: coarse)"
-      )
+        "(pointer: coarse)",
+      ),
     ).toStrictEqual({ height: "2.75rem" });
   });
 });

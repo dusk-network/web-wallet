@@ -119,7 +119,7 @@ export function evmAddressesOf({ account, added = [], rows = [] }) {
     get(keptMigrations)
       .filter(({ recipient }) => recipient === account)
       .map(({ sender }) => sender),
-    "migrated"
+    "migrated",
   );
   take(bridgedTo(rows), "bridged");
   take(added, "added");
@@ -156,7 +156,7 @@ export function stampedName(name, at = Date.now()) {
 
   return name.replace(
     /(\.[a-z0-9]+)?$/i,
-    (extension) => `-${stamp}${extension}`
+    (extension) => `-${stamp}${extension}`,
   );
 }
 
@@ -268,7 +268,7 @@ export async function makeExport({
   const period = periodOf(choices);
   const whole = await session.whole().catch(() => {
     throw new Error(
-      "Couldn't read your whole history from this node, so nothing was saved. Try again."
+      "Couldn't read your whole history from this node, so nothing was saved. Try again.",
     );
   });
   // A stake whose stDUSK can't be read yet says so in its line.
@@ -279,8 +279,8 @@ export async function makeExport({
   const kept = get(keptMigrations);
   const approvals = new Map(
     kept.flatMap(({ approval, hash }) =>
-      approval ? [[hash.toLowerCase(), approval]] : []
-    )
+      approval ? [[hash.toLowerCase(), approval]] : [],
+    ),
   );
   const made = await accountingCsv({
     bom: choices.excel,
@@ -315,7 +315,7 @@ export async function makeExport({
     // Whose file an approval is can't always be told: another of the
     // person's profiles may have it.
     hasOtherProfiles: profiles.some(
-      ({ account }) => Boolean(account) && account !== profile.account
+      ({ account }) => Boolean(account) && account !== profile.account,
     ),
     shieldedWaiting: whole.shieldedWaiting,
   };
@@ -355,7 +355,7 @@ export async function readRewardsByYear({
   const valued = fiat && hasPrice(net);
   const whole = await session.whole().catch(() => {
     throw new Error(
-      "Couldn't read your whole history from this node. Try again."
+      "Couldn't read your whole history from this node. Try again.",
     );
   });
   const [facts, status] = await Promise.all([
@@ -418,7 +418,7 @@ export function followRewardsByYear(asked, { onError, onRead }) {
         if (!isStopped) {
           onError(error);
         }
-      }
+      },
     );
 
   void read();
@@ -442,7 +442,7 @@ export function followRewardsByYear(asked, { onError, onRead }) {
  */
 export function migrationFeeWords(
   { evm, hasOtherProfiles },
-  { saved = true } = {}
+  { saved = true } = {},
 ) {
   const chains = [...new Set(evm.unread.map(({ chain }) => chain))];
   const unread = evm.unread.length;
@@ -456,7 +456,7 @@ export function migrationFeeWords(
   const before = new Map(
     evm.approvalsUnread
       .filter(({ from, state }) => state !== "error" && from !== null)
-      .map(({ chain, from }) => [`${chain}\n${from}`, { chain, from }])
+      .map(({ chain, from }) => [`${chain}\n${from}`, { chain, from }]),
   );
 
   return [
@@ -475,7 +475,7 @@ export function migrationFeeWords(
       : "",
     ...[...before.values()].map(
       ({ chain, from }) =>
-        `Network fees on ${chain || "its chain"} from before block ${Number(from).toLocaleString("en")} aren't in the file.`
+        `Network fees on ${chain || "its chain"} from before block ${Number(from).toLocaleString("en")} aren't in the file.`,
     ),
   ].filter(Boolean);
 }
@@ -523,5 +523,5 @@ export const otherProfiles = (names, own) =>
     .map(([address, label]) =>
       label.endsWith(", shielded")
         ? { address, name: label.slice(0, -", shielded".length) }
-        : { account: address, name: label }
+        : { account: address, name: label },
     );

@@ -68,7 +68,7 @@ describe("Check your recovery words", () => {
       (label) => ({
         box: /** @type {HTMLInputElement} */ (label.querySelector("input")),
         n: Number(label.textContent?.replace(/\D/g, "")),
-      })
+      }),
     );
 
   it("asks for the password first, and says a wrong one is, asking for no word", async () => {
@@ -82,7 +82,7 @@ describe("Check your recovery words", () => {
     await fireEvent.click(getByRole("button", { name: "Continue" }));
 
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
     );
     expect(askedIn(container)).toStrictEqual([]);
   });
@@ -254,7 +254,7 @@ describe("Check your recovery words", () => {
 
     // A phone's keyboard says where Enter goes.
     expect(
-      [first, second, third].map(({ box }) => box.getAttribute("enterkeyhint"))
+      [first, second, third].map(({ box }) => box.getAttribute("enterkeyhint")),
     ).toStrictEqual(["next", "next", "done"]);
     expect(check).toBeDisabled();
 
@@ -286,7 +286,7 @@ describe("Check your recovery words", () => {
 
     // However it's sent, a check half filled in says nothing.
     await fireEvent.submit(
-      /** @type {HTMLFormElement} */ (container.querySelector("form"))
+      /** @type {HTMLFormElement} */ (container.querySelector("form")),
     );
 
     expect(queryByRole("alert")).toBeNull();
@@ -318,7 +318,7 @@ describe("Check your recovery words", () => {
     await fireEvent.keyDown(third.box, { key: "Enter" });
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That doesn't match your recovery words."
+      "That doesn't match your recovery words.",
     );
   });
 
@@ -332,7 +332,7 @@ describe("Check your recovery words", () => {
     /** Which of the phrase's words are on the page, by their whole word. */
     const wordsShown = () =>
       words.filter((word) =>
-        new RegExp(`\\b${word}\\b`).test(container.textContent ?? "")
+        new RegExp(`\\b${word}\\b`).test(container.textContent ?? ""),
       );
 
     await fireEvent.input(getByLabelText("Password you unlock with"), {
@@ -355,15 +355,15 @@ describe("Check your recovery words", () => {
       await fireEvent.click(getByRole("button", { name: "Check" }));
 
       expect(getByRole("alert")).toHaveTextContent(
-        /^That doesn't match your recovery words\. Check the words you wrote down\.$/
+        /^That doesn't match your recovery words\. Check the words you wrote down\.$/,
       );
       expect(wordsShown()).toStrictEqual([]);
       expect(container.querySelector(".dusk-words")).toBeNull();
       expect(askedIn(container)).toStrictEqual([]);
       expect(
         Array.from(container.querySelectorAll("button"), (b) =>
-          b.textContent?.trim()
-        )
+          b.textContent?.trim(),
+        ),
       ).toStrictEqual(["Try again", "Show my recovery words"]);
 
       // Amélie's: the two side by side, the same size, a caller need only
@@ -375,14 +375,14 @@ describe("Check your recovery words", () => {
       expect(
         Array.from(
           container.querySelectorAll(".recovery-check .dusk-button"),
-          (b) => b.textContent?.trim()
-        )
+          (b) => b.textContent?.trim(),
+        ),
       ).toStrictEqual(["Try again"]);
       expect(show).not.toHaveClass("dusk-button");
       expect(tryAgain.parentElement).not.toContainElement(show);
       expect(
         tryAgain.compareDocumentPosition(show) &
-          Node.DOCUMENT_POSITION_FOLLOWING
+          Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
 
       // Try again: the same three, empty, the first to type in.
@@ -395,7 +395,7 @@ describe("Check your recovery words", () => {
         "",
       ]);
       await vi.waitFor(() =>
-        expect(document.activeElement).toBe(askedIn(container)[0].box)
+        expect(document.activeElement).toBe(askedIn(container)[0].box),
       );
       expect(queryByRole("alert")).toBeNull();
     }
@@ -407,7 +407,7 @@ describe("Check your recovery words", () => {
 
     await fireEvent.click(getByRole("button", { name: "Check" }));
     await fireEvent.click(
-      getByRole("button", { name: "Show my recovery words" })
+      getByRole("button", { name: "Show my recovery words" }),
     );
 
     const password = getByLabelText("Password you unlock with");
@@ -418,25 +418,25 @@ describe("Check your recovery words", () => {
 
     await fireEvent.input(password, { target: { value: "not the password" } });
     await fireEvent.click(
-      getByRole("button", { name: "Show my recovery words" })
+      getByRole("button", { name: "Show my recovery words" }),
     );
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
     );
     expect(wordsShown()).toStrictEqual([]);
 
     await fireEvent.input(password, { target: { value: PASSWORD } });
     await fireEvent.click(
-      getByRole("button", { name: "Show my recovery words" })
+      getByRole("button", { name: "Show my recovery words" }),
     );
 
     await vi.waitFor(() =>
       expect(
         Array.from(
           container.querySelectorAll(".dusk-words__word"),
-          (word) => word.textContent
-        )
-      ).toStrictEqual(words)
+          (word) => word.textContent,
+        ),
+      ).toStrictEqual(words),
     );
     expect(askedIn(container)).toStrictEqual([]);
   });

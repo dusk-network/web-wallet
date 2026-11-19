@@ -86,7 +86,7 @@ export const toFollow = (transfers) =>
   transfers.filter(
     ({ kind, stage }) =>
       (kind === "migration" && stage === "sending") ||
-      (kind === "service" && stage === "sent")
+      (kind === "service" && stage === "sent"),
   );
 
 /**
@@ -115,7 +115,7 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
     await checkMigration(
       transfer,
       rpcFor(transfer.route.chain.rpcUrl),
-      scope
+      scope,
     ).catch(() => null);
   }
 
@@ -136,7 +136,7 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
         })),
         // This browser may see a transfer only long after it was sent.
         waitMs: Infinity,
-      })
+      }),
     )
     .catch(() => null);
 
@@ -149,7 +149,7 @@ export async function followTransfers(transfers, arrivals, rpcFor = chainRpc) {
           arrivedAt: arrival.at,
           payout: arrival.hash,
         },
-        scope
+        scope,
       );
     } else if (arrival.scan) {
       keepArrival(hash, { scan: arrival.scan }, scope);

@@ -25,7 +25,7 @@ const accounts = /** @type {any} */ (fixture.accounts);
 /** @param {number} height */
 const entryOfA = (height) =>
   [...accounts[A].sender, ...accounts[A].receiver].find(
-    (e) => e.block_height === height
+    (e) => e.block_height === height,
   );
 
 /** @type {import("@dusk-network/app-core/shielded").ShieldedEntry} */
@@ -79,7 +79,7 @@ beforeEach(async () => {
   sessions = await import("../activitySession");
   // On a testnet node: the recordings' network.
   (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
-    (await import("@dusk-network/networks")).networks.testnet
+    (await import("@dusk-network/networks")).networks.testnet,
   );
   mocks.lookupCounterpartyNames.mockReset();
   mocks.lookupCounterpartyNames.mockResolvedValue(new Map());
@@ -104,9 +104,9 @@ describe("ActivitySession", () => {
     expect(rows.filter(({ source }) => source !== "shielded").length).toBe(
       new Set(
         [...accounts[A].sender, ...accounts[A].receiver].map(
-          (entry) => entry.origin
-        )
-      ).size
+          (entry) => entry.origin,
+        ),
+      ).size,
     );
     expect(count).toBeGreaterThan(0);
     expect(rows.every(({ incomplete }) => !incomplete)).toBe(true);
@@ -156,7 +156,7 @@ describe("ActivitySession", () => {
     await syncA();
     node.finalized = FINALIZED;
     mocks.lookupCounterpartyNames.mockResolvedValue(
-      new Map([[sender, "faucet.dusk"]])
+      new Map([[sender, "faucet.dusk"]]),
     );
 
     const session = sessionFor({ shielded });
@@ -167,14 +167,14 @@ describe("ActivitySession", () => {
     session.subscribe((state) => states.push(state));
     await session.start();
     await vi.waitFor(() =>
-      expect(session.state.rows.at(-1)?.privacy).toBe("shielded")
+      expect(session.state.rows.at(-1)?.privacy).toBe("shielded"),
     );
 
     expect(
-      states.find((state) => state.loaded)?.rows.map((r) => r.blockHeight)
+      states.find((state) => state.loaded)?.rows.map((r) => r.blockHeight),
     ).toEqual([4655845]);
     expect(
-      session.state.rows.map((r) => [r.blockHeight, r.source, r.status])
+      session.state.rows.map((r) => [r.blockHeight, r.source, r.status]),
     ).toEqual([
       [4658012, "public", "executed"],
       [4658000, "public", "executed"],
@@ -183,11 +183,11 @@ describe("ActivitySession", () => {
       [3861643, "shielded", "executed"],
     ]);
     expect(
-      session.state.rows.find((r) => r.blockHeight === 4657992)
+      session.state.rows.find((r) => r.blockHeight === 4657992),
     ).toMatchObject({ counterparty: sender, counterpartyName: "faucet.dusk" });
     expect(mocks.lookupCounterpartyNames).toHaveBeenCalledWith(
       expect.arrayContaining([sender]),
-      { network: "testnet", nodeUrl: NODE }
+      { network: "testnet", nodeUrl: NODE },
     );
     expect(session.state).toMatchObject({
       complete: true,
@@ -212,7 +212,7 @@ describe("ActivitySession", () => {
     expect(
       node
         .historyQueries()
-        .filter((l) => l.query.includes("fromBlock: 4658006,"))
+        .filter((l) => l.query.includes("fromBlock: 4658006,")),
     ).not.toHaveLength(0);
     expect(session.state).toMatchObject({ error: null, syncing: false });
   });
@@ -244,7 +244,7 @@ describe("ActivitySession", () => {
     }
 
     await vi.waitFor(() =>
-      expect(session.state.rows.at(-1)?.privacy).toBe("shielded")
+      expect(session.state.rows.at(-1)?.privacy).toBe("shielded"),
     );
 
     // Had: asked again only when the notes synced again, for new ones.
@@ -266,7 +266,7 @@ describe("ActivitySession", () => {
     await store.putCounterpartyNames(
       "testnet",
       new Map([[sender, "faucet.dusk"]]),
-      { epoch: await store.getActivityEpoch() }
+      { epoch: await store.getActivityEpoch() },
     );
 
     // The lens is out of reach: the lookup leaves the account out.
@@ -277,14 +277,14 @@ describe("ActivitySession", () => {
     await session.start();
 
     expect(
-      session.state.rows.find((r) => r.blockHeight === 4657992)
+      session.state.rows.find((r) => r.blockHeight === 4657992),
     ).toMatchObject({ counterpartyName: "faucet.dusk" });
 
     const asked = () =>
       mocks.lookupCounterpartyNames.mock.calls.filter((call) =>
         /** @type {string[][]} */ (/** @type {unknown} */ (call))[0].includes(
-          sender
-        )
+          sender,
+        ),
       ).length;
 
     expect(asked()).toBe(1);
@@ -323,7 +323,7 @@ describe("ActivitySession", () => {
       status: "executed",
     });
     expect(
-      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A)),
     ).toEqual([]);
   });
 
@@ -351,7 +351,7 @@ describe("ActivitySession", () => {
 
     expect(session.state.rows.find((row) => row.hash === hash)).toBeUndefined();
     expect(
-      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A)),
     ).toEqual([]);
   });
 
@@ -360,7 +360,7 @@ describe("ActivitySession", () => {
     const hash = "c2".repeat(32);
 
     (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
-      (await import("@dusk-network/networks")).networks.devnet
+      (await import("@dusk-network/networks")).networks.devnet,
     );
     vi.stubEnv("VITE_BRIDGE_CONTRACT_ID", local);
     fakeArchive({ finalized: 4_656_000 });
@@ -404,7 +404,7 @@ describe("ActivitySession", () => {
       toName: "alice.dusk",
     });
     expect(
-      await store.listLocalTransactions(store.activityOwnerKey("testnet", A))
+      await store.listLocalTransactions(store.activityOwnerKey("testnet", A)),
     ).toEqual([expect.objectContaining({ hash, settled: true })]);
   });
 
@@ -442,9 +442,9 @@ describe("ActivitySession", () => {
       await vi.waitFor(async () =>
         expect(
           await store.listLocalTransactions(
-            store.activityOwnerKey("testnet", A)
-          )
-        ).toEqual([expect.objectContaining({ hash, settled: true })])
+            store.activityOwnerKey("testnet", A),
+          ),
+        ).toEqual([expect.objectContaining({ hash, settled: true })]),
       );
 
       // The refresh the send asked for runs, and asks for no other.
@@ -578,7 +578,7 @@ describe("ActivitySession", () => {
         status: "executed",
       });
       expect(
-        (await store.listLocalTransactions(ownerKey)).filter((r) => !r.settled)
+        (await store.listLocalTransactions(ownerKey)).filter((r) => !r.settled),
       ).toEqual([]);
     } finally {
       vi.useRealTimers();
@@ -623,7 +623,7 @@ describe("ActivitySession", () => {
 
       expect(refresh).toHaveBeenCalledOnce();
       expect(session.state.rows.map((r) => r.hash)).not.toContain(
-        arriving.origin
+        arriving.origin,
       );
 
       // Final now: the next look finds it, and it's looked for no more.
@@ -695,7 +695,7 @@ describe("ActivitySession", () => {
 
       expect(refresh).toHaveBeenCalledOnce();
       expect(session.state.rows.map((r) => r.hash)).not.toContain(
-        arriving.origin
+        arriving.origin,
       );
 
       await vi.advanceTimersByTimeAsync(sessions.SOON_AFTER_TX_MS);
@@ -786,7 +786,7 @@ describe("ActivitySession", () => {
       4658012, 4658000, 4657992, 4655845,
     ]);
     expect(
-      await store.getActivityMeta(store.activityOwnerKey("testnet", A))
+      await store.getActivityMeta(store.activityOwnerKey("testnet", A)),
     ).toMatchObject({ genesis: "ff".repeat(32) });
   });
 
@@ -883,7 +883,7 @@ describe("ActivitySession", () => {
       receiver.map(({ origin }) => [
         origin,
         /** @type {any} */ (fixture.details)[sample.origin],
-      ])
+      ]),
     );
 
     fakeArchive({ accounts: { [A]: { receiver, sender: [] } }, details });
@@ -908,7 +908,7 @@ describe("ActivitySession", () => {
 
     await vi.waitFor(
       () => expect(seen.at(-1)).toMatchObject({ reading: false, whole: true }),
-      { timeout: 50_000 }
+      { timeout: 50_000 },
     );
     stop();
 
@@ -962,7 +962,7 @@ describe("ActivitySession", () => {
 
     await vi.waitFor(() => expect(session.missingRead).not.toBe("reading"));
     expect(
-      node.log.slice(asked).filter(({ query }) => isDetails(query))
+      node.log.slice(asked).filter(({ query }) => isDetails(query)),
     ).toStrictEqual([]);
   });
 
@@ -1015,7 +1015,7 @@ describe("ActivitySession", () => {
           failed: false,
           reading: true,
           whole: false,
-        })
+        }),
       );
 
       answered.resolve(undefined);
@@ -1025,7 +1025,7 @@ describe("ActivitySession", () => {
           failed: true,
           reading: false,
           whole: false,
-        })
+        }),
       );
     } finally {
       answered.resolve(undefined);

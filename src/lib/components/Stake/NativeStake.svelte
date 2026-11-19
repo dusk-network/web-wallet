@@ -4,6 +4,7 @@
   import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
+  import { resolve } from "$app/paths";
   import {
     mdiAlertCircleOutline,
     mdiClockOutline,
@@ -29,13 +30,7 @@
   import { randomUUID } from "$lib/dusk/string";
   import { Button, Icon, Textbox } from "$lib/dusk/components";
   import { settingsStore } from "$lib/stores";
-  import {
-    addBasePath,
-    formDraft,
-    gasToKeep,
-    keptGas,
-    reviewStep,
-  } from "$lib/navigation";
+  import { formDraft, gasToKeep, keptGas, reviewStep } from "$lib/navigation";
 
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
@@ -75,7 +70,7 @@
   export let unstakeFee;
 
   /** Where liquid staking is, when this network has it. */
-  /** @type {string | undefined} */
+  /** @type {`/dashboard/stake/?${string}` | undefined} */
   export let liquidHref = undefined;
 
   const id = randomUUID();
@@ -109,7 +104,7 @@
   function fill(lux, isMax = false) {
     amountText = amountForField(
       formatDuskPlain(lux),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
     isMaxAmount = isMax;
     document.getElementById(`${id}-amount`)?.focus();
@@ -118,7 +113,7 @@
   /** @param {Event} event */
   function typeAmount(event) {
     amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
   }
@@ -190,7 +185,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
@@ -314,7 +309,7 @@
           up to {formatFee(maxGasFee, language, { max: true })} for this fee and {formatFee(
             unstakeFee,
             language,
-            { max: true }
+            { max: true },
           )} to unstake later.
         </p>
       {/if}
@@ -337,7 +332,7 @@
               {#if check.isMinimum && liquidHref}
                 <a
                   class="native-stake__link text-link"
-                  href={addBasePath(liquidHref)}>{liquidText}</a
+                  href={resolve(liquidHref)}>{liquidText}</a
                 >
               {/if}
             </div>
@@ -349,9 +344,8 @@
               fee and the fee to unstake later.
             </p>
             {#if liquidHref}
-              <a
-                class="native-stake__link text-link"
-                href={addBasePath(liquidHref)}>{liquidText}</a
+              <a class="native-stake__link text-link" href={resolve(liquidHref)}
+                >{liquidText}</a
               >
             {/if}
           </div>
@@ -368,7 +362,7 @@
             <a
               class="native-stake__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
-              rel="noopener noreferrer"
+              rel="noopener noreferrer external"
               target="_blank">Run a node <Icon path={mdiOpenInNew} /></a
             >
           </p>
@@ -437,7 +431,7 @@
           isGasValid = areValidGasSettings(
             event.detail.price,
             event.detail.limit,
-            gasLimits
+            gasLimits,
           );
 
           if (isGasValid) {
@@ -457,7 +451,7 @@
               value={formatTotal(
                 typedAmount + maxGasFee,
                 availableBalance,
-                language
+                language,
               )}
             /> DUSK
           </dd>

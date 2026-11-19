@@ -1,4 +1,5 @@
 <script>
+  import { resolve } from "$app/paths";
   import { contactNamesOf, contactsStore } from "$lib/contacts";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { mdiChevronRight } from "@mdi/js";
@@ -9,7 +10,6 @@
   import { sentAfterDontSend } from "$lib/transactions/sentAfterDontSend";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
-  import { addBasePath } from "$lib/navigation";
 
   import ActivityRowItem from "./ActivityRowItem.svelte";
 
@@ -99,8 +99,10 @@
     <SectionHead id="activity-panel-title">{title}</SectionHead>
     <a
       class="activity-panel__more text-link"
-      href={addBasePath(
-        `/dashboard/transactions${only ? `?kind=${only}` : ""}`
+      href={resolve(
+        only
+          ? `/dashboard/transactions/?kind=${only}`
+          : "/dashboard/transactions/",
       )}>History <Icon path={mdiChevronRight} /></a
     >
   </header>

@@ -52,18 +52,18 @@ describe("The error pages", () => {
     const connect = vi
       .spyOn(networkStore, "connect")
       .mockRejectedValue(
-        new Error("Timed out while connecting to the network")
+        new Error("Timed out while connecting to the network"),
       );
     const init = vi
       .spyOn(networkStore, "init")
       .mockRejectedValue(
-        new Error("Timed out while connecting to the network")
+        new Error("Timed out while connecting to the network"),
       );
     const { container, findByText } = render(WelcomeLayout);
 
     expect(await findByText("Network connection issue")).toBeInTheDocument();
     expect(stripOf(container)).toHaveTextContent(
-      "Testnet · Test DUSK has no value"
+      "Testnet · Test DUSK has no value",
     );
 
     connect.mockRestore();
@@ -73,20 +73,20 @@ describe("The error pages", () => {
   it("say so when the wallet itself didn't load, as when the network changes under it, and offer to try again", () => {
     const { body } = new DOMParser().parseFromString(
       readFileSync(resolve("src/error.html"), "utf8"),
-      "text/html"
+      "text/html",
     );
     const { container } = render(ErrorPage);
 
     container.innerHTML = body.innerHTML;
 
     expect(
-      within(container).getByRole("heading", { level: 1 })
+      within(container).getByRole("heading", { level: 1 }),
     ).toHaveTextContent("The wallet didn't load");
 
     // Its own address: the browser loads the page again.
     expect(within(container).getByText("Try again")).toHaveAttribute(
       "href",
-      ""
+      "",
     );
   });
 
@@ -94,7 +94,7 @@ describe("The error pages", () => {
     const { container } = renderWithSimpleContent(MaintenanceLayout, {});
 
     expect(stripOf(container)).toHaveTextContent(
-      "Testnet · Test DUSK has no value"
+      "Testnet · Test DUSK has no value",
     );
   });
 
@@ -104,10 +104,10 @@ describe("The error pages", () => {
     expect(getByRole("heading", { level: 2 })).toHaveTextContent("Error - 404");
     expect(getByRole("link", { name: "Home" })).toHaveAttribute(
       "href",
-      "/some-base-path/"
+      "/some-base-path/",
     );
     expect(stripOf(container)).toHaveTextContent(
-      "Testnet · Test DUSK has no value"
+      "Testnet · Test DUSK has no value",
     );
   });
 });

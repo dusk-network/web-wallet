@@ -32,7 +32,7 @@ vi.mock("$app/stores", async () => {
 // A step of the history, as SvelteKit's shallow routing makes one.
 vi.mock("$app/navigation", () => ({
   pushState: vi.fn((/** @type {string} */ _url, /** @type {any} */ state) =>
-    pageStore.page?.update((page) => ({ ...page, state }))
+    pageStore.page?.update((page) => ({ ...page, state })),
   ),
 }));
 
@@ -110,7 +110,7 @@ describe("AddressPicker", () => {
       const back = vi
         .spyOn(history, "back")
         .mockImplementation(() =>
-          pageStore.page?.update((page) => ({ ...page, state: {} }))
+          pageStore.page?.update((page) => ({ ...page, state: {} })),
         );
       const { container } = render(AddressPicker, {
         compact: true,
@@ -126,7 +126,7 @@ describe("AddressPicker", () => {
 
       // Back: the list closes, and the page stays where it was.
       await act(() =>
-        pageStore.page?.update((page) => ({ ...page, state: {} }))
+        pageStore.page?.update((page) => ({ ...page, state: {} })),
       );
 
       expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
@@ -180,7 +180,7 @@ describe("AddressPicker", () => {
       expect(trigger(container)).toHaveAttribute("aria-expanded", "true");
 
       await act(() =>
-        pageStore.page?.set({ url: new URL("http://localhost/another-page") })
+        pageStore.page?.set({ url: new URL("http://localhost/another-page") }),
       );
 
       expect(trigger(container)).toHaveAttribute("aria-expanded", "false");
@@ -222,7 +222,7 @@ describe("AddressPicker", () => {
 
       // Dropdown should now be visible
       expect(
-        container.querySelector(".address-picker__drop-down")
+        container.querySelector(".address-picker__drop-down"),
       ).toBeTruthy();
     });
 
@@ -242,7 +242,7 @@ describe("AddressPicker", () => {
 
       // Click on a profile option
       const profileOptions = container.querySelectorAll(
-        ".address-picker__profile-button"
+        ".address-picker__profile-button",
       );
       expect(profileOptions.length).toBeGreaterThan(0);
 
@@ -256,7 +256,7 @@ describe("AddressPicker", () => {
           detail: expect.objectContaining({
             profile: expect.any(Object),
           }),
-        })
+        }),
       );
     });
 
@@ -272,12 +272,12 @@ describe("AddressPicker", () => {
 
       // Verify dropdown is open
       expect(
-        container.querySelector(".address-picker__drop-down")
+        container.querySelector(".address-picker__drop-down"),
       ).toBeTruthy();
 
       // Click on a profile option
       const profileOptions = container.querySelectorAll(
-        ".address-picker__profile-button"
+        ".address-picker__profile-button",
       );
       if (profileOptions.length > 0) {
         await fireEvent.click(profileOptions[0]);
@@ -298,7 +298,7 @@ describe("AddressPicker", () => {
         await fireEvent.keyDown(trigger, { key: "Enter" });
       }
       expect(
-        container.querySelector(".address-picker__drop-down")
+        container.querySelector(".address-picker__drop-down"),
       ).toBeTruthy();
 
       // Test Escape key to close dropdown
@@ -312,7 +312,7 @@ describe("AddressPicker", () => {
         await fireEvent.keyDown(trigger, { key: " " });
       }
       expect(
-        container.querySelector(".address-picker__drop-down")
+        container.querySelector(".address-picker__drop-down"),
       ).toBeTruthy();
 
       // Test ArrowDown key when closed
@@ -321,7 +321,7 @@ describe("AddressPicker", () => {
         await fireEvent.keyDown(trigger, { key: "ArrowDown" });
       }
       expect(
-        container.querySelector(".address-picker__drop-down")
+        container.querySelector(".address-picker__drop-down"),
       ).toBeTruthy();
     });
 
@@ -344,13 +344,13 @@ describe("AddressPicker", () => {
 
       // Check that all profiles are listed
       const profileOptions = container.querySelectorAll(
-        ".address-picker__profile-button"
+        ".address-picker__profile-button",
       );
       expect(profileOptions).toHaveLength(testProfiles.length);
 
       // Check that current profile is marked as selected
       const selectedProfile = container.querySelector(
-        ".address-picker__profile--selected"
+        ".address-picker__profile--selected",
       );
       expect(selectedProfile).toBeTruthy();
     });
@@ -373,7 +373,7 @@ describe("AddressPicker", () => {
 
       // Should show one profile option
       const profileOptions = container.querySelectorAll(
-        ".address-picker__profile-button"
+        ".address-picker__profile-button",
       );
       expect(profileOptions).toHaveLength(1);
     });
@@ -401,14 +401,14 @@ describe("AddressPicker", () => {
 
       // Should have copy button containers for each profile
       const copyButtonContainers = container.querySelectorAll(
-        ".address-picker__copy-buttons"
+        ".address-picker__copy-buttons",
       );
       expect(copyButtonContainers).toHaveLength(profiles.length);
 
       // Each container should have 2 copy buttons (public and shielded)
       copyButtonContainers.forEach((buttonContainer) => {
         const copyButtons = buttonContainer.querySelectorAll(
-          ".address-picker__copy-button"
+          ".address-picker__copy-button",
         );
         expect(copyButtons).toHaveLength(2);
         expect(copyButtons[0]).toHaveAccessibleName("Copy public address");
@@ -430,7 +430,7 @@ describe("AddressPicker", () => {
 
       // Get the first profile's first copy button (public address)
       const firstCopyButton = container.querySelector(
-        ".address-picker__copy-button"
+        ".address-picker__copy-button",
       );
       expect(firstCopyButton).toBeTruthy();
 
@@ -440,7 +440,7 @@ describe("AddressPicker", () => {
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        profiles[0].account.toString()
+        profiles[0].account.toString(),
       );
     });
 
@@ -456,7 +456,7 @@ describe("AddressPicker", () => {
 
       // Get the first profile's second copy button (shielded address)
       const copyButtons = container.querySelectorAll(
-        ".address-picker__copy-button"
+        ".address-picker__copy-button",
       );
       expect(copyButtons.length).toBeGreaterThan(1);
 
@@ -467,7 +467,7 @@ describe("AddressPicker", () => {
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        profiles[0].address.toString()
+        profiles[0].address.toString(),
       );
     });
 
@@ -493,7 +493,7 @@ describe("AddressPicker", () => {
 
       // Click first copy button
       const firstCopyButton = container.querySelector(
-        ".address-picker__copy-button"
+        ".address-picker__copy-button",
       );
       expect(firstCopyButton).toBeTruthy();
 
@@ -505,7 +505,7 @@ describe("AddressPicker", () => {
       expect(mockToast).toHaveBeenCalledWith(
         "error",
         "Clipboard access denied",
-        expect.any(String)
+        expect.any(String),
       );
     });
 
@@ -523,7 +523,7 @@ describe("AddressPicker", () => {
 
       // Click first copy button
       const firstCopyButton = container.querySelector(
-        ".address-picker__copy-button"
+        ".address-picker__copy-button",
       );
       expect(firstCopyButton).toBeTruthy();
 
@@ -533,7 +533,7 @@ describe("AddressPicker", () => {
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1);
       await vi.waitFor(() =>
-        expect(firstCopyButton).toHaveAccessibleName("Copied")
+        expect(firstCopyButton).toHaveAccessibleName("Copied"),
       );
       expect(firstCopyButton).toHaveTextContent("Copied");
       expect(mockToast).not.toHaveBeenCalled();
@@ -551,7 +551,7 @@ describe("AddressPicker", () => {
 
       // Check profile headers
       const profileHeaders = container.querySelectorAll(
-        ".address-picker__profile-header"
+        ".address-picker__profile-header",
       );
 
       expect(currentProfile).toBe(profiles[0]);
@@ -563,11 +563,11 @@ describe("AddressPicker", () => {
     it("should list each profile on two lines, its label and its account shortened, with the account in full on hover and for screen readers", async () => {
       const { container, getAllByRole, queryByText } = render(
         AddressPicker,
-        props
+        props,
       );
 
       await fireEvent.click(
-        getAsHTMLElement(container, ".address-picker__trigger")
+        getAsHTMLElement(container, ".address-picker__trigger"),
       );
 
       const items = getAllByRole("menuitem");
@@ -579,7 +579,7 @@ describe("AddressPicker", () => {
         const label = `Profile ${index + 1}${index === 0 ? " (Current)" : ""}`;
         const accountLine = getAsHTMLElement(
           item,
-          ".address-picker__address-value"
+          ".address-picker__address-value",
         );
 
         expect(Array.from(item.children, getShownText)).toStrictEqual([
@@ -594,7 +594,7 @@ describe("AddressPicker", () => {
       expect(queryByText("Public Account")).not.toBeInTheDocument();
       expect(queryByText("Shielded Account")).not.toBeInTheDocument();
       expect(
-        queryByText(profiles[0].address.toString(), { exact: false })
+        queryByText(profiles[0].address.toString(), { exact: false }),
       ).not.toBeInTheDocument();
     });
 
@@ -602,18 +602,18 @@ describe("AddressPicker", () => {
       const { container } = render(AddressPicker, props);
 
       const currentProfileDisplay = container.querySelector(
-        ".address-picker__current-profile"
+        ".address-picker__current-profile",
       );
       expect(currentProfileDisplay).toBeTruthy();
       expect(
-        getAsHTMLElement(container, ".address-picker__account")
+        getAsHTMLElement(container, ".address-picker__account"),
       ).toHaveAttribute("title", currentProfile.account.toString());
 
       // "Profile X" for every profile, as the list names them.
       const profileIndex = profiles.indexOf(currentProfile) + 1;
 
       expect(
-        getAsHTMLElement(container, ".address-picker__title")
+        getAsHTMLElement(container, ".address-picker__title"),
       ).toHaveTextContent(new RegExp(`^Profile ${profileIndex}$`));
       expect(currentProfileDisplay).not.toHaveTextContent("(Default)");
     });
@@ -625,7 +625,7 @@ describe("AddressPicker", () => {
       });
 
       const currentProfileDisplay = container.querySelector(
-        ".address-picker__current-profile"
+        ".address-picker__current-profile",
       );
       expect(currentProfileDisplay).toBeTruthy();
       expect(currentProfileDisplay).toHaveTextContent("No profile selected");
@@ -637,10 +637,10 @@ describe("AddressPicker", () => {
   describe("Dusk Domains names", () => {
     // The mocked profiles share one account: these two don't.
     const namedProfiles = [1, 2].map(
-      (byte) => new Profile(new Uint8Array(64 + 96).fill(byte))
+      (byte) => new Profile(new Uint8Array(64 + 96).fill(byte)),
     );
     const [firstAccount, secondAccount] = namedProfiles.map((profile) =>
-      profile.account.toString()
+      profile.account.toString(),
     );
     const namedProps = {
       currentProfile: namedProfiles[0],
@@ -664,7 +664,7 @@ describe("AddressPicker", () => {
     const getTriggerLines = (container) =>
       Array.from(
         container.querySelectorAll(".address-picker__current-profile > span"),
-        getShownText
+        getShownText,
       );
 
     /** Lets pending lookups settle. */
@@ -694,10 +694,10 @@ describe("AddressPicker", () => {
       expect(getTriggerName(container)).toHaveAttribute("title", "alice.dusk");
       // What the button is, then the profile chosen.
       expect(getTrigger(container)).toHaveAccessibleName(
-        "Profile: alice.dusk (Profile 1)"
+        "Profile: alice.dusk (Profile 1)",
       );
       expect(getTrigger(container)).toHaveAccessibleDescription(
-        "Profile 1 alice.dusk"
+        "Profile 1 alice.dusk",
       );
       expect(queryByText(firstAccount, { exact: false })).toBeNull();
       expect(container.querySelector(".address-picker__account")).toBeNull();
@@ -725,12 +725,12 @@ describe("AddressPicker", () => {
           shortenAddress(firstAccount),
         ]);
         expect(
-          getAsHTMLElement(container, ".address-picker__account")
+          getAsHTMLElement(container, ".address-picker__account"),
         ).toHaveAttribute("title", firstAccount);
         expect(getTrigger(container)).toHaveAccessibleDescription(
-          `Profile 1 ${firstAccount}`
+          `Profile 1 ${firstAccount}`,
         );
-      }
+      },
     );
 
     it.each([
@@ -741,7 +741,7 @@ describe("AddressPicker", () => {
       async (_, lookUp) => {
         const getName = vi.fn(lookUp);
         const getKnownName = vi.fn((account) =>
-          account === firstAccount ? "alice.dusk" : ""
+          account === firstAccount ? "alice.dusk" : "",
         );
         const { container } = render(AddressPicker, {
           ...namedProps,
@@ -758,9 +758,9 @@ describe("AddressPicker", () => {
           "alice.dusk",
         ]);
         expect(getTrigger(container)).toHaveAccessibleDescription(
-          "Profile 1 alice.dusk"
+          "Profile 1 alice.dusk",
         );
-      }
+      },
     );
 
     it("should show what a lookup finds over the name last verified", async () => {
@@ -788,7 +788,7 @@ describe("AddressPicker", () => {
           ? Promise.resolve("alice.dusk")
           : new Promise((resolve) => {
               finishLookup = resolve;
-            })
+            }),
       );
       const { container, findByText, rerender } = render(AddressPicker, {
         ...namedProps,
@@ -821,7 +821,7 @@ describe("AddressPicker", () => {
         {
           ...namedProps,
           getName: vi.fn().mockResolvedValue("alice.dusk"),
-        }
+        },
       );
 
       expect(await findByText("alice.dusk")).toBeInTheDocument();
@@ -856,7 +856,7 @@ describe("AddressPicker", () => {
       expect(name.firstChild?.textContent).toBe("wallet-both");
       expect(trigger).toHaveClass("address-picker__trigger--named");
       expect(trigger).toHaveAccessibleName(
-        "Profile: wallet-both.dusk (Profile 1)"
+        "Profile: wallet-both.dusk (Profile 1)",
       );
     });
 
@@ -877,18 +877,18 @@ describe("AddressPicker", () => {
         await settle();
 
         expect(
-          container.querySelector(".address-picker__compact-name")
+          container.querySelector(".address-picker__compact-name"),
         ).toHaveClass("address-picker__compact-name--label");
         expect(
-          container.querySelector(".address-picker__compact-name")
+          container.querySelector(".address-picker__compact-name"),
         ).toHaveTextContent("Profile 1");
         expect(getTrigger(container)).not.toHaveClass(
-          "address-picker__trigger--named"
+          "address-picker__trigger--named",
         );
         expect(getTrigger(container)).toHaveAccessibleName(
-          "Profile: Profile 1"
+          "Profile: Profile 1",
         );
-      }
+      },
     );
 
     it("should say the profile switched to in the top bar's pill, never the previous one's name", async () => {
@@ -900,7 +900,7 @@ describe("AddressPicker", () => {
           ? Promise.resolve("alice.dusk")
           : new Promise((resolve) => {
               finishLookup = resolve;
-            })
+            }),
       );
       const { container, findByText, rerender } = render(AddressPicker, {
         ...namedProps,
@@ -918,13 +918,13 @@ describe("AddressPicker", () => {
 
       expect(await findByText("bob")).toBeInTheDocument();
       expect(getTrigger(container)).toHaveAccessibleName(
-        "Profile: bob.dusk (Profile 2)"
+        "Profile: bob.dusk (Profile 2)",
       );
     });
 
     it("should list each profile with its name under its label, or its account shortened while it has none, looked up when the list opens", async () => {
       const getName = vi.fn((account) =>
-        Promise.resolve(account === secondAccount ? "bob.dusk" : "")
+        Promise.resolve(account === secondAccount ? "bob.dusk" : ""),
       );
       const { container, findByText, getAllByRole } = render(AddressPicker, {
         ...namedProps,
@@ -953,10 +953,10 @@ describe("AddressPicker", () => {
         shortenAddress(firstAccount),
       ]);
       expect(firstItem).toHaveAccessibleName(
-        `Profile 1 (Current) ${firstAccount}`
+        `Profile 1 (Current) ${firstAccount}`,
       );
       expect(
-        container.querySelectorAll(".address-picker__address-name")
+        container.querySelectorAll(".address-picker__address-name"),
       ).toHaveLength(1);
       expect(getTriggerName(container)).toBeNull();
     });
@@ -980,13 +980,13 @@ describe("AddressPicker", () => {
 
         expect(getName).toHaveBeenCalledTimes(3);
         expect(
-          container.querySelector(".address-picker__address-name")
+          container.querySelector(".address-picker__address-name"),
         ).toBeNull();
         expect(items.map((item) => getShownText(item.children[1]))).toEqual([
           shortenAddress(firstAccount),
           shortenAddress(secondAccount),
         ]);
-      }
+      },
     );
 
     it("should list a profile with the name last verified for it while its name can't be looked up", async () => {
@@ -1031,11 +1031,11 @@ describe("AddressPicker", () => {
 
       expect(navigator.clipboard.writeText).toHaveBeenNthCalledWith(
         1,
-        firstAccount
+        firstAccount,
       );
       expect(navigator.clipboard.writeText).toHaveBeenNthCalledWith(
         2,
-        namedProfiles[0].address.toString()
+        namedProfiles[0].address.toString(),
       );
     });
   });
@@ -1076,7 +1076,7 @@ describe("AddressPicker", () => {
 
       expect(items).toHaveLength(profiles.length);
       items.forEach((item, i) =>
-        expect(item).toHaveTextContent(`Profile ${i + 1}`)
+        expect(item).toHaveTextContent(`Profile ${i + 1}`),
       );
     });
 
@@ -1092,7 +1092,7 @@ describe("AddressPicker", () => {
 
       const other = getByRole("group", { name: "Savings" });
       const [first, second] = other.querySelectorAll(
-        ".address-picker__profile"
+        ".address-picker__profile",
       );
 
       expect(other).toHaveTextContent(shortenAddress(OTHER_ACCOUNTS[1]));
@@ -1101,35 +1101,35 @@ describe("AddressPicker", () => {
       expect(
         Array.from(
           first.querySelectorAll(".address-picker__copy-button"),
-          (button) => button.getAttribute("aria-label")
-        )
+          (button) => button.getAttribute("aria-label"),
+        ),
       ).toEqual(["Copy public address", "Copy shielded address"]);
       expect(
         Array.from(
           second.querySelectorAll(".address-picker__copy-button"),
-          (button) => button.getAttribute("aria-label")
-        )
+          (button) => button.getAttribute("aria-label"),
+        ),
       ).toEqual(["Copy public address"]);
 
       await fireEvent.click(
         getAsHTMLElement(
           /** @type {HTMLElement} */ (first),
-          "[aria-label='Copy shielded address']"
-        )
+          "[aria-label='Copy shielded address']",
+        ),
       );
 
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-        OTHER_ADDRESSES[0]
+        OTHER_ADDRESSES[0],
       );
 
       await fireEvent.click(
         /** @type {HTMLElement} */ (
           other.querySelectorAll("[role=menuitem]")[1]
-        )
+        ),
       );
 
       expect(switchWallet).toHaveBeenCalledWith(
-        expect.objectContaining({ detail: { index: 1, key: "k2" } })
+        expect.objectContaining({ detail: { index: 1, key: "k2" } }),
       );
       expect(setCurrentProfile).not.toHaveBeenCalled();
       expect(container.querySelector(".address-picker__drop-down")).toBeNull();
@@ -1158,7 +1158,7 @@ describe("AddressPicker", () => {
 
       expect(queryByRole("menuitem", { name: "Add wallet" })).toBeNull();
       expect(
-        without.queryByRole("menuitem", { name: "Add wallet" })
+        without.queryByRole("menuitem", { name: "Add wallet" }),
       ).toBeNull();
     });
 
@@ -1173,27 +1173,27 @@ describe("AddressPicker", () => {
       // Below 420 px, where the pill shows no number (TopBar.spec.js).
       const narrow = readStyleRules(
         "../AddressPicker/AddressPicker.css",
-        import.meta.url
+        import.meta.url,
       ).filter(
         (rule) =>
           Number(/max-width: ([\d.]+)rem/.exec(rule.media)?.[1] ?? 0) * 16 >=
-          419.8
+          419.8,
       );
       const ruleOf = (/** @type {string} */ part) =>
         narrow.find(
           (rule) =>
             rule.selector.includes(".address-picker__trigger--wallet") &&
-            rule.selector.endsWith(part)
+            rule.selector.endsWith(part),
         )?.declarations;
 
       expect(
-        getAsHTMLElement(container, ".address-picker__compact-wallet")
+        getAsHTMLElement(container, ".address-picker__compact-wallet"),
       ).toHaveTextContent(`${name} · Profile 1`);
       expect(
-        getAsHTMLElement(container, ".address-picker__pill-wallet")
+        getAsHTMLElement(container, ".address-picker__pill-wallet"),
       ).toHaveTextContent(new RegExp(`^${name}$`));
       expect(
-        getAsHTMLElement(container, ".address-picker__pill-profile")
+        getAsHTMLElement(container, ".address-picker__pill-profile"),
       ).toHaveTextContent(/^· Profile 1$/);
       // The line in a row: the name gives way, with an ellipsis; the profile
       // keeps its width.
@@ -1209,7 +1209,7 @@ describe("AddressPicker", () => {
     it("shows a profile's and a wallet's names whole in the menu, a tap from the pill that cuts them", () => {
       const rules = readStyleRules(
         "../AddressPicker/AddressPicker.css",
-        import.meta.url
+        import.meta.url,
       ).filter((rule) => !rule.media);
 
       for (const part of [
@@ -1219,12 +1219,12 @@ describe("AddressPicker", () => {
       ]) {
         const declared = rules
           .filter((rule) =>
-            rule.selector.split(",").some((one) => one.trim() === part)
+            rule.selector.split(",").some((one) => one.trim() === part),
           )
           .map((rule) => rule.declarations);
 
         expect(declared).toContainEqual(
-          expect.objectContaining({ "overflow-wrap": "anywhere" })
+          expect.objectContaining({ "overflow-wrap": "anywhere" }),
         );
 
         for (const declarations of declared) {
@@ -1242,13 +1242,13 @@ describe("AddressPicker", () => {
       });
 
       expect(
-        container.querySelector(".address-picker__compact-wallet")
+        container.querySelector(".address-picker__compact-wallet"),
       ).toBeNull();
       expect(
-        getAsHTMLElement(container, ".address-picker__trigger")
+        getAsHTMLElement(container, ".address-picker__trigger"),
       ).toHaveAccessibleName("Profile: Profile 1");
       expect(
-        getAsHTMLElement(container, ".address-picker__trigger")
+        getAsHTMLElement(container, ".address-picker__trigger"),
       ).not.toHaveClass("address-picker__trigger--wallet");
 
       await rerender({ ...props, compact: true, wallets: walletsOf(2) });
@@ -1256,13 +1256,13 @@ describe("AddressPicker", () => {
       // The small line says which profile the number is, as phones show
       // no other, and on a narrow phone it's alone (TopBar.spec.js).
       expect(
-        getAsHTMLElement(container, ".address-picker__compact-wallet")
+        getAsHTMLElement(container, ".address-picker__compact-wallet"),
       ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
       expect(
-        getAsHTMLElement(container, ".address-picker__trigger")
+        getAsHTMLElement(container, ".address-picker__trigger"),
       ).toHaveClass("address-picker__trigger--wallet");
       expect(
-        getAsHTMLElement(container, ".address-picker__trigger")
+        getAsHTMLElement(container, ".address-picker__trigger"),
       ).toHaveAccessibleName("Profile: Profile 1, Wallet 1");
 
       await rerender({
@@ -1274,11 +1274,11 @@ describe("AddressPicker", () => {
 
       await waitFor(() =>
         expect(
-          getAsHTMLElement(container, ".address-picker__trigger")
-        ).toHaveAccessibleName("Profile: alice.dusk (Profile 1), Wallet 1")
+          getAsHTMLElement(container, ".address-picker__trigger"),
+        ).toHaveAccessibleName("Profile: alice.dusk (Profile 1), Wallet 1"),
       );
       expect(
-        getAsHTMLElement(container, ".address-picker__compact-wallet")
+        getAsHTMLElement(container, ".address-picker__compact-wallet"),
       ).toHaveTextContent(/^Wallet 1 · Profile 1$/);
     });
   });

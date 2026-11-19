@@ -52,7 +52,7 @@ describe("How a route is doing", () => {
         {
           text: "Payouts are running late. Last payout 12 minutes ago.",
           warn: true,
-        }
+        },
       );
       expect(statusLine(status({ paying: "on-claim" }), at)).toStrictEqual({
         text: "It pays when you claim it.",
@@ -62,16 +62,16 @@ describe("How a route is doing", () => {
 
     it("says a quiet route's last payout, or how far it looked", () => {
       expect(statusLine(status({ ...paid, paying: "quiet" }), at)?.text).toBe(
-        "Last payout 12 minutes ago."
+        "Last payout 12 minutes ago.",
       );
       expect(
         statusLine(
           status({ paying: "quiet", readSince: Date.UTC(2026, 9, 6, 12) }),
-          at
-        )?.text
+          at,
+        )?.text,
       ).toBe("No payouts since 6 Oct.");
       expect(statusLine(status({ paying: "quiet" }), at)?.text).toBe(
-        "No recent payouts."
+        "No recent payouts.",
       );
     });
 
@@ -91,21 +91,21 @@ describe("How a route is doing", () => {
       const balance = status({ canPay: 5n * LUX, limit: "balance" });
 
       expect(statusLine(balance, at)?.text).toBe(
-        "Paying out. It can pay up to 5 DUSK."
+        "Paying out. It can pay up to 5 DUSK.",
       );
       expect(statusLine(balance, { ...at, amountLux: 5n * LUX })?.warn).toBe(
-        false
+        false,
       );
       expect(statusLine(balance, { ...at, amountLux: 6n * LUX })).toStrictEqual(
         {
           text: "Paying out. It can pay up to 5 DUSK now, less than you're sending, so yours may wait.",
           warn: true,
-        }
+        },
       );
       // What's minted as it's paid has no such limit.
       expect(
         statusLine(status({ canPay: 5n * LUX }), { ...at, amountLux: 6n * LUX })
-          ?.text
+          ?.text,
       ).toBe("Paying out.");
     });
   });
@@ -124,7 +124,7 @@ describe("How a route is doing", () => {
       openRouteStatus(route, NOW + 1000);
 
       await vi.waitFor(() =>
-        expect(get(routeStatuses).get(route.id)?.paying).toBe("late")
+        expect(get(routeStatuses).get(route.id)?.paying).toBe("late"),
       );
       expect(bridgeStatus).toHaveBeenCalledOnce();
       expect(bridgeStatus.mock.lastCall?.[0]).toMatchObject({
@@ -145,7 +145,7 @@ describe("How a route is doing", () => {
       openRouteStatus(failing, NOW);
 
       await vi.waitFor(() =>
-        expect(get(routeStatuses).get(failing.id)?.paying).toBe("unknown")
+        expect(get(routeStatuses).get(failing.id)?.paying).toBe("unknown"),
       );
     });
   });

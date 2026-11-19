@@ -53,7 +53,7 @@ describe("chain times", () => {
         blockTime: async () => 1,
         l1Block: "0x4200000000000000000000000000000000000015",
         l2Batch: async () => [{ timestamp: "0x1" }, "0x"],
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -122,7 +122,7 @@ describe("chain times", () => {
         now: () => now,
         read,
         storage,
-      }).get()
+      }).get(),
     ).toBeNull();
     now += 86_400_000;
     expect(again.get()).toBeNull();

@@ -36,7 +36,7 @@ let current = null;
 async function l2Batch(calls) {
   const res = await fetch(duskEvm.rpcUrls.default.http[0], {
     body: JSON.stringify(
-      calls.map((call, id) => ({ id, jsonrpc: "2.0", ...call }))
+      calls.map((call, id) => ({ id, jsonrpc: "2.0", ...call })),
     ),
     headers: { "Content-Type": "application/json" },
     method: "POST",
@@ -48,7 +48,7 @@ async function l2Batch(calls) {
 
   const body = await res.json();
   const byId = new Map(
-    (Array.isArray(body) ? body : [body]).map((item) => [item?.id, item])
+    (Array.isArray(body) ? body : [body]).map((item) => [item?.id, item]),
   );
 
   return calls.map((_, id) => byId.get(id)?.result);
@@ -59,7 +59,7 @@ const blockTime = (height) =>
   networkStore
     .connect()
     .then((network) =>
-      network.query(`block(height: ${height}) { header { timestamp } }`)
+      network.query(`block(height: ${height}) { header { timestamp } }`),
     )
     .then((data) => data?.block?.header?.timestamp);
 
@@ -120,7 +120,7 @@ function load() {
         store.set({ chain: times.get(), net, network });
       }
     },
-    () => {}
+    () => {},
   );
 }
 

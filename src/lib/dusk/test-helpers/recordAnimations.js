@@ -33,7 +33,7 @@ export default function recordAnimations() {
     let onfinish = null;
     let isFinished = false;
     const duration = Number(
-      typeof options === "number" ? options : (options?.duration ?? 0)
+      typeof options === "number" ? options : (options?.duration ?? 0),
     );
 
     /** @type {AnimationRun} */

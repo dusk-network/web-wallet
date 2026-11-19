@@ -122,7 +122,7 @@ export function priceQuote(currency, network) {
         isShown = false;
         clearTimeout(next);
       };
-    }
+    },
   );
 
   followed.set(key, price);

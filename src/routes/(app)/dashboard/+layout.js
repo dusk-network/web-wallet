@@ -27,7 +27,7 @@ export async function load({ fetch }) {
   return {
     /** @type {Promise<Record<string, number>>} */
     currentPrice: fetch(
-      `https://api.coingecko.com/api/v3/coins/dusk-network?${coinGeckoParams}`
+      `https://api.coingecko.com/api/v3/coins/dusk-network?${coinGeckoParams}`,
     )
       .then(failureToRejection)
       .then((res) => res.json())

@@ -11,7 +11,7 @@ const initial = mockedWalletStore.getMockedStoreValue();
 
 function showFailure() {
   vi.spyOn(walletStore, "subscribe").mockImplementation(
-    mockedWalletStore.subscribe
+    mockedWalletStore.subscribe,
   );
   mockedWalletStore.setMockedStoreValue({
     ...initial,
@@ -38,7 +38,7 @@ describe("Restore sync recovery", () => {
       fromBlock: 123n,
     });
     await fireEvent.click(
-      getByRole("button", { name: "Retry synchronization" })
+      getByRole("button", { name: "Retry synchronization" }),
     );
     expect(sync).toHaveBeenCalledWith(123n);
     expect(getByText("Syncing...")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("Restore sync recovery", () => {
 
   it("should say which blocks it syncs under its bar, not bare numbers", async () => {
     vi.spyOn(walletStore, "subscribe").mockImplementation(
-      mockedWalletStore.subscribe
+      mockedWalletStore.subscribe,
     );
     mockedWalletStore.setMockedStoreValue({
       ...initial,
@@ -77,7 +77,7 @@ describe("Restore sync recovery", () => {
     expect(
       container
         .querySelector(".sync-bar__blocks")
-        ?.textContent?.replace(/\s+/g, " ")
+        ?.textContent?.replace(/\s+/g, " "),
     ).toBe("From block 0 to 4,783,684");
   });
 
@@ -86,7 +86,7 @@ describe("Restore sync recovery", () => {
     const logout = vi.spyOn(navigation, "logout").mockResolvedValue();
     const { getByRole } = render(NetworkSyncProgress);
     await fireEvent.click(
-      getByRole("button", { name: "Lock wallet and exit" })
+      getByRole("button", { name: "Lock wallet and exit" }),
     );
     expect(logout).toHaveBeenCalledWith(false);
   });

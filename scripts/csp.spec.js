@@ -11,7 +11,7 @@ const settingsOf = (/** @type {string} */ site) =>
 describe("The wallet's Content-Security-Policy", () => {
   it("should run only the wallet's own scripts, SvelteKit's inline ones by their hashes, with WebAssembly, and never be framed", () => {
     const directives = cspDirectives(
-      settingsOf("https://apps.testnet.dusk.network/wallet/")
+      settingsOf("https://apps.testnet.dusk.network/wallet/"),
     );
 
     // The build's, with SvelteKit's hashes.
@@ -67,7 +67,7 @@ describe("The wallet's Content-Security-Policy", () => {
 
     writeFileSync(
       file,
-      "VITE_NODE_URL=https://nodes.staging.example.org:8443/\n"
+      "VITE_NODE_URL=https://nodes.staging.example.org:8443/\n",
     );
     // Run with none: the mode's file names it.
     delete process.env.VITE_NODE_URL;
@@ -77,7 +77,7 @@ describe("The wallet's Content-Security-Policy", () => {
         expect.arrayContaining([
           "https://nodes.staging.example.org:8443",
           "wss://nodes.staging.example.org:8443",
-        ])
+        ]),
       );
 
       // Run with one, as the Deploy workflow and scripts/verify-build.js run
@@ -90,7 +90,7 @@ describe("The wallet's Content-Security-Policy", () => {
         expect.arrayContaining([
           "https://nodes.deploy.example.org",
           "wss://nodes.deploy.example.org",
-        ])
+        ]),
       );
       expect(connect).not.toContain("https://nodes.staging.example.org:8443");
     } finally {
@@ -102,7 +102,7 @@ describe("The wallet's Content-Security-Policy", () => {
 
   it("should let a testnet build read from testnet's node, archive, prover, names, DuskEVM and the chains its routes reach, prices and WalletConnect, and nothing of mainnet's", () => {
     const connect = cspDirectives(
-      settingsOf("https://apps.testnet.dusk.network/wallet/")
+      settingsOf("https://apps.testnet.dusk.network/wallet/"),
     )["connect-src"];
 
     expect(connect).toEqual(
@@ -119,7 +119,7 @@ describe("The wallet's Content-Security-Policy", () => {
         "https://api.coingecko.com",
         "https://api.web3modal.org",
         "wss://relay.walletconnect.org",
-      ])
+      ]),
     );
     expect(connect).not.toContain("https://nodes.dusk.network");
     expect(connect).not.toContain("https://bsc-rpc.publicnode.com");
@@ -129,7 +129,7 @@ describe("The wallet's Content-Security-Policy", () => {
 
   it("should let a mainnet build read from mainnet's, BNB Smart Chain's and Ethereum's RPCs, and nothing of testnet's", () => {
     const connect = cspDirectives(
-      settingsOf("https://apps.dusk.network/wallet/")
+      settingsOf("https://apps.dusk.network/wallet/"),
     )["connect-src"];
 
     expect(connect).toEqual(
@@ -139,7 +139,7 @@ describe("The wallet's Content-Security-Policy", () => {
         "https://provers.dusk.network",
         "https://bsc-rpc.publicnode.com",
         "https://ethereum-rpc.publicnode.com",
-      ])
+      ]),
     );
     expect(connect).not.toContain("https://testnet.nodes.dusk.network");
   });
@@ -155,10 +155,10 @@ describe("The wallet's Content-Security-Policy", () => {
         "ws://localhost:8080",
         "https://nodes.dusk.network",
         "https://testnet.nodes.dusk.network",
-      ])
+      ]),
     );
     expect(cspDirectives({ VITE_NODE_URL: "" })["connect-src"]).not.toContain(
-      "http://localhost:8080"
+      "http://localhost:8080",
     );
   });
 });

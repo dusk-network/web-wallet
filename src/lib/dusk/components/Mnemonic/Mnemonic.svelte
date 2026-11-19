@@ -39,7 +39,7 @@
   if (type === "authenticate" || enteredMnemonicPhrase.length === 0) {
     enteredMnemonicPhrase = Array.from(
       { length: wordLimit },
-      (_, index) => enteredMnemonicPhrase[index] ?? ""
+      (_, index) => enteredMnemonicPhrase[index] ?? "",
     );
   }
 
@@ -47,7 +47,7 @@
     currentIndex = enteredMnemonicPhrase.indexOf("");
     if (currentIndex === -1) currentIndex = wordLimit;
     enteredWordIndex = enteredMnemonicPhrase.map((word, index) =>
-      word ? String(index) : ""
+      word ? String(index) : "",
     );
   }
 
@@ -84,7 +84,7 @@
       toast(
         "error",
         "Only alphabetical characters are allowed",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
       return;
     }

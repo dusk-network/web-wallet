@@ -24,10 +24,10 @@ describe("RewardsByYear", () => {
     Array.from(
       /** @type {HTMLTableRowElement | undefined} */ (
         Array.from(container.querySelectorAll("tbody tr")).find(
-          (row) => row.querySelector("th")?.textContent === String(year)
+          (row) => row.querySelector("th")?.textContent === String(year),
         )
       )?.cells ?? [],
-      (cell) => cell.textContent?.replace(/\s+/g, " ").trim()
+      (cell) => cell.textContent?.replace(/\s+/g, " ").trim(),
     );
 
   it("counts what unstaking took out at average cost with the deposit fees, as said under the years, and shows a loss as one, in DUSK and in money", () => {
@@ -60,8 +60,8 @@ describe("RewardsByYear", () => {
 
     expect(
       getByText(
-        "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included."
-      )
+        "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included.",
+      ),
     ).toBeInTheDocument();
 
     // Less than a cent either way: under it, a loss said as one.

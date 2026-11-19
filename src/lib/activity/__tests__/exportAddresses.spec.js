@@ -44,7 +44,7 @@ describe("The EVM addresses added to a profile's export", () => {
     addExportAddress("", ONE);
     localStorage.setItem(
       KEY,
-      JSON.stringify({ "profile-1": ["not one", 7], "profile-2": "0x1" })
+      JSON.stringify({ "profile-1": ["not one", 7], "profile-2": "0x1" }),
     );
 
     expect(hydrateExportAddresses()).toStrictEqual({});

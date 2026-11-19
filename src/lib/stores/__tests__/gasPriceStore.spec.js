@@ -19,7 +19,7 @@ describe("gasPriceStore", () => {
       query: vi.fn(async (/** @type {string} */ gql) =>
         gql === "mempoolTxs { gasPrice gasLimit }"
           ? { mempoolTxs }
-          : Promise.reject(new Error(`Not asked here: ${gql}`))
+          : Promise.reject(new Error(`Not asked here: ${gql}`)),
       ),
     });
 
@@ -81,7 +81,7 @@ describe("gasPriceStore", () => {
 
     expect(get(gasPriceStore)).toBe(GAS_PRICE_CEILING_TIMES);
     expect(get(gasPriceStore.rule)).toStrictEqual(
-      defaultGasPrice({ mempool: blockFull(900), minimum: 1n })
+      defaultGasPrice({ mempool: blockFull(900), minimum: 1n }),
     );
     expect(get(gasPriceStore.rule)).toMatchObject({
       busy: true,
@@ -158,7 +158,7 @@ describe("gasPriceStore", () => {
         signals.push(o.signal);
 
         return new Promise(() => {});
-      }
+      },
     );
 
     connect.mockResolvedValue({ query: held });

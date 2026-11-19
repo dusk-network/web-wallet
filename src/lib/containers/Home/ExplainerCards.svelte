@@ -5,11 +5,11 @@
     mdiEyeOutline,
     mdiLayersOutline,
   } from "@mdi/js";
+  import { resolve } from "$app/paths";
   import { Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
   import { lastReadText } from "$lib/activity/present";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
-  import { addBasePath } from "$lib/navigation";
 
   /** @type {bigint} */
   export let shielded;
@@ -109,7 +109,7 @@
       <p class="explainer-card__text">
         It couldn't be read just now. This may be out of date. {lastReadText(
           balanceReadAt,
-          locale
+          locale,
         )}
       </p>
     {/if}
@@ -132,7 +132,7 @@
       <p class="explainer-card__text">
         It couldn't be read just now. This may be out of date. {lastReadText(
           balanceReadAt,
-          locale
+          locale,
         )}
       </p>
     {/if}
@@ -196,7 +196,7 @@
         {#if hasPastStaking}
           <a
             class="explainer-card__link explainer-card__link--secondary text-link"
-            href={addBasePath("/dashboard/transactions?kind=staking")}
+            href={resolve("/dashboard/transactions/?kind=staking")}
             >Past staking</a
           >
         {/if}
@@ -206,7 +206,7 @@
           <p class="explainer-card__text">
             Your stake couldn't be read just now. This may be out of date. {lastReadText(
               stakeReadAt,
-              locale
+              locale,
             )}
           </p>
         {/if}
@@ -221,7 +221,7 @@
       {/if}
       <a
         class="explainer-card__link text-link"
-        href={addBasePath("/dashboard/stake")}
+        href={resolve("/dashboard/stake/")}
         >Open staking <Icon path={mdiChevronRight} /></a
       >
     </li>

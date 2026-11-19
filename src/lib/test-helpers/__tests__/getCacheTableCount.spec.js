@@ -19,7 +19,7 @@ describe("getCacheTableCount", () => {
 
     for (const tableName of tableNames) {
       await expect(getCacheTableCount(tableName)).resolves.toBe(
-        await db.table(tableName).count()
+        await db.table(tableName).count(),
       );
     }
 

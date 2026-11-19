@@ -95,7 +95,7 @@ export function createChainTimes({
    */
   function get() {
     const parts = Object.entries(kept).filter(([, part]) =>
-      fresh(part, MAX_AGE_MS)
+      fresh(part, MAX_AGE_MS),
     );
 
     return parts.length ? Object.fromEntries(parts) : null;

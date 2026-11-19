@@ -24,7 +24,7 @@ export default function getLensReader(network, nodeUrl) {
         createLensReader(release, {
           artifactBaseUrl: release.artifactBaseUrl,
           nodeUrl,
-        })
+        }),
     );
     readers.set(network, reader);
     reader.catch(() => readers.delete(network));

@@ -29,7 +29,7 @@ import { toast, toastList } from "../Toast/store";
  */
 const placeOf = (frame) => ({
   below: Number(
-    /translate\(0px, ([\d.-]+)px\)/.exec(String(frame.transform))?.[1] ?? 0
+    /translate\(0px, ([\d.-]+)px\)/.exec(String(frame.transform))?.[1] ?? 0,
   ),
   opacity: Number(frame.opacity),
 });
@@ -108,8 +108,8 @@ describe("Toast", () => {
     expect(
       styleRules(
         "../../../../style/dusk-components/toast.css",
-        import.meta.url
-      ).find(({ selector }) => selector === ".dusk-toast")?.declarations
+        import.meta.url,
+      ).find(({ selector }) => selector === ".dusk-toast")?.declarations,
     ).toMatchObject({ "pointer-events": "none", position: "fixed" });
   });
 
@@ -140,7 +140,7 @@ describe("Toast", () => {
     // Svelte's cubicIn: slow to start leaving.
     expect(frames[Math.round((frames.length - 1) / 2)].opacity).toBeCloseTo(
       0.875,
-      2
+      2,
     );
 
     leaving.finish();
@@ -173,10 +173,10 @@ describe("Toast", () => {
       },
     ]);
     expect(
-      Array.from(getToastItems(list), (item) => item.textContent?.trim())
+      Array.from(getToastItems(list), (item) => item.textContent?.trim()),
     ).toStrictEqual(["Name saved.", "Couldn't copy the address"]);
     expect(
-      list.querySelector(".dusk-toast__item-icon-wrapper--error")
+      list.querySelector(".dusk-toast__item-icon-wrapper--error"),
     ).toBeInTheDocument();
 
     await vi.advanceTimersByTimeAsync(1550);
@@ -184,7 +184,7 @@ describe("Toast", () => {
     await tick();
 
     expect(
-      Array.from(getToastItems(list), (item) => item.textContent?.trim())
+      Array.from(getToastItems(list), (item) => item.textContent?.trim()),
     ).toStrictEqual(["Couldn't copy the address"]);
   });
 

@@ -27,14 +27,14 @@ describe("the Bridge card's routes", () => {
         origin,
         destination,
         running,
-      ])
+      ]),
     ).toStrictEqual([
       ["bsc-to-dusk", "bsc", "duskDs", true],
       ["ethereum-to-dusk", "ethereum", "duskDs", true],
       ["dusk-to-bsc", "duskDs", "bsc", true],
     ]);
     expect(
-      ["ethereum", "bsc", "duskDs"].map((id) => networkName(list, id))
+      ["ethereum", "bsc", "duskDs"].map((id) => networkName(list, id)),
     ).toStrictEqual(["Ethereum", "BNB Smart Chain", "Dusk"]);
     // No DuskEVM yet: it opens on the route from Dusk.
     expect(ids(openingRoute(list))).toBe("dusk-to-bsc");
@@ -45,11 +45,11 @@ describe("the Bridge card's routes", () => {
     ]);
     // Testnet's is from its BSC test chain.
     expect(
-      migrationRoutes(cardRoutes(networks.testnet)).map(ids)
+      migrationRoutes(cardRoutes(networks.testnet)).map(ids),
     ).toStrictEqual(["bsc-to-dusk"]);
     // One that isn't running is none.
     expect(
-      migrationRoutes(cardRoutes(routesStopped(networks.testnet)))
+      migrationRoutes(cardRoutes(routesStopped(networks.testnet))),
     ).toStrictEqual([]);
   });
 
@@ -62,7 +62,7 @@ describe("the Bridge card's routes", () => {
       { id: "duskDs", name: "Dusk" },
     ]);
     expect(
-      toChoices(list, "duskDs", "bsc", networks.mainnet, (route) => route.id)
+      toChoices(list, "duskDs", "bsc", networks.mainnet, (route) => route.id),
     ).toStrictEqual([
       { disabled: "No route from Dusk", id: "ethereum", name: "Ethereum" },
       { id: "bsc", name: "BNB Smart Chain", note: "dusk-to-bsc" },
@@ -76,7 +76,7 @@ describe("the Bridge card's routes", () => {
     expect(flipRoute(list, ethereum)).toBeNull();
     // A pick keeps the other side where it can, else takes a route that runs.
     expect(ids(choosePair(list, "ethereum", "duskDs"))).toBe(
-      "ethereum-to-dusk"
+      "ethereum-to-dusk",
     );
     expect(ids(choosePair(list, "duskDs", "ethereum"))).toBe("dusk-to-bsc");
   });
@@ -92,8 +92,8 @@ describe("the Bridge card's routes", () => {
     ]);
     expect(
       toChoices(list, "duskDs", "duskEvm", networks.testnet).map(
-        ({ disabled = "", id }) => [id, disabled]
-      )
+        ({ disabled = "", id }) => [id, disabled],
+      ),
     ).toStrictEqual([
       ["bsc", ""],
       ["duskDs", "It's where it comes from"],
@@ -102,7 +102,7 @@ describe("the Bridge card's routes", () => {
     expect(ids(openingRoute(list, "bsc-to-dusk"))).toBe("bsc-to-dusk");
     // A link to a route retired, as Sepolia's, opens on DuskEVM.
     expect(ids(openingRoute(list, "ethereum-to-dusk"))).toBe(
-      "dusk-to-dusk-evm"
+      "dusk-to-dusk-evm",
     );
     expect(ids(flipRoute(list, openingRoute(list)))).toBe("dusk-evm-to-dusk");
   });
@@ -125,7 +125,7 @@ describe("the Bridge card's routes", () => {
       toChoices(list, "duskDs", "duskEvm", net).map(({ disabled = "", id }) => [
         id,
         disabled,
-      ])
+      ]),
     ).toStrictEqual([
       ["bsc", "Not running on testnet right now"],
       ["duskDs", "It's where it comes from"],

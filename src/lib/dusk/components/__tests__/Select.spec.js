@@ -68,7 +68,7 @@ describe("Select", () => {
 
     expect(optionsOf({ options: ["one"] })).toEqual([["one", "one"]]);
     expect(
-      optionsOf({ options: [{ label: "one", value: "1" }, { value: "2" }] })
+      optionsOf({ options: [{ label: "one", value: "1" }, { value: "2" }] }),
     ).toEqual([
       ["one", "1"],
       ["2", "2"],
@@ -86,7 +86,7 @@ describe("Select", () => {
       Array.from(container.querySelectorAll("optgroup"), (group) => [
         group.label,
         group.querySelectorAll("option").length,
-      ])
+      ]),
     ).toEqual([
       ["Group one", 3],
       ["Group two", 2],

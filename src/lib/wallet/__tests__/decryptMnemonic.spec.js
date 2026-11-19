@@ -22,7 +22,7 @@ describe("decryptMnemonic", () => {
     const mnemonicEncryptInfo = await encryptBuffer(
       new TextEncoder().encode(mnemonic),
       pwd,
-      10_000
+      10_000,
     );
     const decrypted = await decryptMnemonic(mnemonicEncryptInfo, pwd);
 
@@ -33,7 +33,7 @@ describe("decryptMnemonic", () => {
     const mnemonicEncryptInfo = await encryptMnemonic(mnemonic, pwd);
 
     await expect(
-      decryptMnemonic({ ...mnemonicEncryptInfo, version: 2 }, pwd)
+      decryptMnemonic({ ...mnemonicEncryptInfo, version: 2 }, pwd),
     ).rejects.toThrow("Unsupported wallet encryption version");
   });
 });

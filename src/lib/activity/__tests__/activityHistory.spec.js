@@ -92,7 +92,7 @@ describe("a .dusk name's reservation and registration", () => {
   /** @param {string} account */
   async function titles(account) {
     return (await rowsOf(account)).map(
-      (row) => describeRow(row, { locale: "en" }).title
+      (row) => describeRow(row, { locale: "en" }).title,
     );
   }
 
@@ -129,8 +129,8 @@ describe("a .dusk name's reservation and registration", () => {
         REGISTRATIONS.map(({ hash }) => [
           hash,
           /** @type {any} */ ({ nameCommit: null, registeredName: undefined }),
-        ])
-      )
+        ]),
+      ),
     );
 
     const asked = node.detailQueries().length;
@@ -156,7 +156,7 @@ describe("a deposit to the bridge set for a local deployment", () => {
     // Derived from A's registration: the same deposit, to that bridge.
     const register = REGISTRATIONS[1].hash;
     const entry = structuredClone(
-      accounts[A].sender.find((e) => e.origin === register)
+      accounts[A].sender.find((e) => e.origin === register),
     );
     /** @type {Record<string, any>} */
     const details = fixture.details;
@@ -174,7 +174,7 @@ describe("a deposit to the bridge set for a local deployment", () => {
             callData: {
               contractId: local,
               data: Array.from(call.fnArgs, (b) =>
-                b.toString(16).padStart(2, "0")
+                b.toString(16).padStart(2, "0"),
               ).join(""),
               fnName: call.fnName,
             },
@@ -229,12 +229,12 @@ describe("another chain under the node", () => {
     expect((await kept(A)).map((r) => r.blockHeight)).toEqual([4655845]);
     expect(await kept(B)).toEqual([]);
     expect(
-      await store.getActivityMeta(store.activityOwnerKey("testnet", B))
+      await store.getActivityMeta(store.activityOwnerKey("testnet", B)),
     ).toBeNull();
     expect(await store.listLocalTransactions(ownerKey)).toEqual([]);
     expect(await store.listLocalTransactions(elsewhere)).toHaveLength(1);
     expect(
-      await store.getShieldedHistoryRecord("testnet::the-address")
+      await store.getShieldedHistoryRecord("testnet::the-address"),
     ).toBeNull();
     expect(await store.getNoteHeightPool("testnet")).toBeNull();
   });
@@ -307,13 +307,13 @@ describe("another chain under the node, found by two tabs at once", () => {
         }
 
         return patch(...args);
-      }
+      },
     );
 
     await expect(sync(A)).rejects.toBeInstanceOf(StaleHistoryError);
     expect(await kept(A)).toHaveLength(4);
     expect((await kept(A)).every((row) => row.detailsAt === undefined)).toBe(
-      true
+      true,
     );
   });
 });
@@ -340,7 +340,7 @@ describe("a wallet reset during a sync", () => {
     await expect(run).rejects.toBeInstanceOf(store.StaleActivityError);
     expect(await kept(A)).toEqual([]);
     expect(
-      await store.getActivityMeta(store.activityOwnerKey("testnet", A))
+      await store.getActivityMeta(store.activityOwnerKey("testnet", A)),
     ).toBeNull();
   });
 });
@@ -382,7 +382,7 @@ describe("noteActivityUnavailable", () => {
 describe("a node under a base path", () => {
   it("asks the archive under the node's base path, and keeps its history apart from other paths", async () => {
     const fetch = vi.fn(
-      async () => new Response(JSON.stringify({ data: { ok: true } }))
+      async () => new Response(JSON.stringify({ data: { ok: true } })),
     );
 
     vi.stubGlobal("fetch", fetch);
@@ -390,20 +390,20 @@ describe("a node under a base path", () => {
     await history.archiveAt("https://node.example/rusk/").query("query { ok }");
 
     expect(String(/** @type {any[]} */ (fetch.mock.calls[0])[0])).toBe(
-      "https://node.example/rusk/on/graphql/query"
+      "https://node.example/rusk/on/graphql/query",
     );
 
     // A node of a network without a file, as a local one.
     (await import("$lib/stores/nodeNetwork")).setNodeNetwork(null);
 
     expect(history.activityNetworkKey("https://node.example/rusk")).toBe(
-      "https://node.example/rusk"
+      "https://node.example/rusk",
     );
     expect(history.activityNetworkKey("https://node.example/rusk/")).toBe(
-      history.activityNetworkKey("https://node.example/rusk")
+      history.activityNetworkKey("https://node.example/rusk"),
     );
     expect(history.activityNetworkKey("https://node.example/other")).not.toBe(
-      history.activityNetworkKey("https://node.example/rusk")
+      history.activityNetworkKey("https://node.example/rusk"),
     );
   });
 });

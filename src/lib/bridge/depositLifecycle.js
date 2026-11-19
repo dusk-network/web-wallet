@@ -1,14 +1,14 @@
 import { routeTimeText } from "./routeTimes";
 
 const configuredDelayThreshold = Number(
-  import.meta.env.VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS
+  import.meta.env.VITE_EVM_DEPOSIT_DELAY_THRESHOLD_MS,
 );
 const DELAY_THRESHOLD_MS =
   Number.isFinite(configuredDelayThreshold) && configuredDelayThreshold > 0
     ? configuredDelayThreshold
     : 300_000;
 const configuredStallThreshold = Number(
-  import.meta.env.VITE_EVM_DEPOSIT_STALL_THRESHOLD_MS
+  import.meta.env.VITE_EVM_DEPOSIT_STALL_THRESHOLD_MS,
 );
 const STALL_THRESHOLD_MS =
   Number.isFinite(configuredStallThreshold) && configuredStallThreshold > 0

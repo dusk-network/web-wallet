@@ -33,7 +33,7 @@ const send = () =>
     56,
     "account",
     /** @type {`0x${string}`} */ (CONTRACT),
-    /** @type {`0x${string}`} */ (OWNER)
+    /** @type {`0x${string}`} */ (OWNER),
   );
 
 /** @param {() => Promise<unknown>} doing */
@@ -42,7 +42,7 @@ const failureOf = (doing) =>
     () => {
       throw new Error("It didn't fail.");
     },
-    (error) => describeFailure(error)
+    (error) => describeFailure(error),
   );
 
 describe("migrate", () => {
@@ -52,7 +52,7 @@ describe("migrate", () => {
 
   it("treats what the wallet answers once it was asked to send as of unknown outcome", async () => {
     vi.mocked(simulateContract).mockResolvedValue(
-      /** @type {any} */ ({ request: {} })
+      /** @type {any} */ ({ request: {} }),
     );
     vi.mocked(writeContract).mockRejectedValue(new Error("Timed out."));
 
@@ -61,10 +61,10 @@ describe("migrate", () => {
 
   it("says nothing went out when the wallet declined, or the simulation failed", async () => {
     vi.mocked(simulateContract).mockResolvedValue(
-      /** @type {any} */ ({ request: {} })
+      /** @type {any} */ ({ request: {} }),
     );
     vi.mocked(writeContract).mockRejectedValue(
-      new Error("User rejected the request.")
+      new Error("User rejected the request."),
     );
 
     expect(await failureOf(send)).toStrictEqual({
@@ -98,7 +98,7 @@ describe("what an EVM wallet's error proves", () => {
         args: [1n, "account"],
         functionName: "migrate",
         sender: /** @type {`0x${string}`} */ (OWNER),
-      }
+      },
     );
 
   /**
@@ -120,7 +120,7 @@ describe("what an EVM wallet's error proves", () => {
   /** @param {Error} error */
   const failureFrom = async (error) => {
     vi.mocked(simulateContract).mockResolvedValue(
-      /** @type {any} */ ({ request: {} })
+      /** @type {any} */ ({ request: {} }),
     );
     vi.mocked(writeContract).mockRejectedValue(error);
 
@@ -137,8 +137,8 @@ describe("what an EVM wallet's error proves", () => {
       new InternalRpcError(
         raw(
           -32603,
-          "execution reverted: BEP20: transfer amount exceeds allowance"
-        )
+          "execution reverted: BEP20: transfer amount exceeds allowance",
+        ),
       ),
     ],
     [
@@ -148,13 +148,13 @@ describe("what an EVM wallet's error proves", () => {
           code: 3,
           data: revertData,
           message: "execution reverted: BEP20",
-        })
+        }),
       ),
     ],
     [
       "the revert's data alone",
       new InternalRpcError(
-        raw(-32603, "Internal JSON-RPC error.", { data: revertData })
+        raw(-32603, "Internal JSON-RPC error.", { data: revertData }),
       ),
     ],
     [
@@ -177,7 +177,7 @@ describe("what an EVM wallet's error proves", () => {
         new ChainMismatchError({
           chain: /** @type {any} */ ({ id: 56, name: "BNB Smart Chain" }),
           currentChainId: 1,
-        })
+        }),
       ),
     ],
   ])(
@@ -188,14 +188,14 @@ describe("what an EVM wallet's error proves", () => {
         sentence:
           "Your EVM wallet isn't on this account or network, so nothing was sent. Check it and try again.",
       });
-    }
+    },
   );
 
   it("says nothing went out when the wallet won't, or was declined", async () => {
     expect(
       await failureFrom(
-        wrapped(new UnauthorizedProviderError(new Error("Not authorized.")))
-      )
+        wrapped(new UnauthorizedProviderError(new Error("Not authorized."))),
+      ),
     ).toStrictEqual({
       canRetry: true,
       sentence:
@@ -203,8 +203,8 @@ describe("what an EVM wallet's error proves", () => {
     });
     expect(
       await failureFrom(
-        wrapped(new UserRejectedRequestError(new Error("Denied.")))
-      )
+        wrapped(new UserRejectedRequestError(new Error("Denied."))),
+      ),
     ).toStrictEqual({
       canRetry: true,
       sentence: "It was declined in your EVM wallet, so nothing was sent.",
@@ -214,8 +214,8 @@ describe("what an EVM wallet's error proves", () => {
   it("says nothing went out when the node finds too little to pay", async () => {
     expect(
       await failureFrom(
-        wrapped(raw(-32000, "insufficient funds for gas * price + value"))
-      )
+        wrapped(raw(-32000, "insufficient funds for gas * price + value")),
+      ),
     ).toMatchObject({ canRetry: true });
   });
 
@@ -247,7 +247,7 @@ describe("what an EVM wallet's error proves", () => {
         outcomeUnknown: true,
       });
       expect(failure).not.toHaveProperty("canRetry");
-    }
+    },
   );
 });
 
@@ -267,17 +267,17 @@ describe("getMigrationFee", () => {
       /** @type {any} */ ({
         estimateContractGas: estimate,
         getGasPrice: async () => 10n,
-      })
+      }),
     );
 
   it("adds the approval to a migration that can't be estimated before it", async () => {
     onChain(async ({ functionName }) =>
-      functionName === "approve" ? 50_000n : 1n
+      functionName === "approve" ? 50_000n : 1n,
     );
 
     // What a migration takes when it can't be asked yet.
     expect(await getMigrationFee({ ...facts, approved: false })).toBe(
-      10n * (50_000n + 70_000n)
+      10n * (50_000n + 70_000n),
     );
   });
 

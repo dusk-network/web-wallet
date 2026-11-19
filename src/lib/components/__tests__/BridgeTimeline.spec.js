@@ -15,10 +15,10 @@ describe("BridgeTimeline", () => {
     });
 
     expect(
-      container.querySelectorAll(".bridge-timeline__step--complete")
+      container.querySelectorAll(".bridge-timeline__step--complete"),
     ).toHaveLength(1);
     expect(container.querySelector("[aria-current='step']")).toHaveTextContent(
-      "Finalized"
+      "Finalized",
     );
 
     await rerender({ currentMessage: "", progress: 2, steps });
@@ -32,7 +32,7 @@ describe("BridgeTimeline", () => {
     });
 
     expect(
-      container.querySelectorAll(".bridge-timeline__step--complete")
+      container.querySelectorAll(".bridge-timeline__step--complete"),
     ).toHaveLength(steps.length);
     expect(container.querySelector("[aria-current='step']")).toBeNull();
   });

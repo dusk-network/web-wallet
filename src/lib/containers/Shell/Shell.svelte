@@ -103,7 +103,7 @@
     Boolean(
       /** @type {HTMLElement | undefined} */ (
         event.composedPath()[0]
-      )?.matches?.(TYPING_FIELDS)
+      )?.matches?.(TYPING_FIELDS),
     );
 
   /**

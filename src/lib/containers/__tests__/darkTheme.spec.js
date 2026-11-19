@@ -11,8 +11,8 @@ import styleRules from "$lib/dusk/test-helpers/styleRules";
 const tokens = (file, selector) =>
   Object.keys(
     styleRules(file, import.meta.url).find(
-      (rule) => rule.selector === selector && rule.media === ""
-    )?.declarations ?? {}
+      (rule) => rule.selector === selector && rule.media === "",
+    )?.declarations ?? {},
   ).filter((name) => name.startsWith("--"));
 
 const BRIDGE = "../../../style/duskit-bridge.css";
@@ -27,7 +27,7 @@ describe("The dark theme", () => {
     const overridden = mapped.filter((name) => darkOnDuskit.includes(name));
 
     expect(overridden).toEqual(
-      expect.arrayContaining(["--page-background-color", "--surface-color"])
+      expect.arrayContaining(["--page-background-color", "--surface-color"]),
     );
 
     for (const name of overridden) {
@@ -38,7 +38,7 @@ describe("The dark theme", () => {
   it("puts the page, cards and text on the calm surfaces and text", () => {
     const dark =
       styleRules(BRIDGE, import.meta.url).find(
-        (rule) => rule.selector === ":root.dark"
+        (rule) => rule.selector === ":root.dark",
       )?.declarations ?? {};
 
     expect({

@@ -83,7 +83,7 @@ vi.useFakeTimers();
 
 describe("Settings", () => {
   const initialWalletStoreState = structuredClone(
-    mockedWalletStore.getMockedStoreValue()
+    mockedWalletStore.getMockedStoreValue(),
   );
   const logoutSpy = vi.spyOn(navigation, "logout");
 
@@ -114,7 +114,7 @@ describe("Settings", () => {
     expect(getByText("Currency")).toBeInTheDocument();
     expect(getByRole("link", { name: "GitHub" })).toHaveAttribute(
       "href",
-      "https://github.com/dusk-network/web-wallet/issues"
+      "https://github.com/dusk-network/web-wallet/issues",
     );
   });
 
@@ -122,7 +122,7 @@ describe("Settings", () => {
     const { container } = render(Settings, {});
     const offered = Array.from(
       container.querySelectorAll("select option"),
-      (option) => /** @type {HTMLOptionElement} */ (option).value
+      (option) => /** @type {HTMLOptionElement} */ (option).value,
     ).filter((value) => /^[A-Z]{3}$/.test(value));
 
     expect(offered).toStrictEqual([...PRICE_CURRENCIES]);
@@ -156,13 +156,13 @@ describe("Settings", () => {
     // The page's title its one heading with its name; under it, the
     // sections' heads between brackets; Advanced a plain button.
     expect(
-      getAllByRole("heading", { level: 1 }).map((h) => h.textContent?.trim())
+      getAllByRole("heading", { level: 1 }).map((h) => h.textContent?.trim()),
     ).toStrictEqual(["Settings"]);
     expect(
       getAllByRole("heading", { level: 2 }).map((heading) => [
         heading.textContent?.trim(),
         heading.classList.contains("section-head"),
-      ])
+      ]),
     ).toStrictEqual([
       ["[Wallets]", true],
       ["[Profiles]", true],
@@ -272,8 +272,8 @@ describe("Settings", () => {
     expect(queryByLabelText(limitLabel)).toBeNull();
     expect(
       getByText(
-        "The wallet uses the network's gas price, and a gas limit that suits each transaction."
-      )
+        "The wallet uses the network's gas price, and a gas limit that suits each transaction.",
+      ),
     ).toBeInTheDocument();
     expect(get(settingsStore).customGasLimit).toBeNull();
     expect(get(settingsStore).customGasPrice).toBeNull();
@@ -310,7 +310,7 @@ describe("Settings", () => {
     const limitInput = asInput(getByLabelText(/^gas limit$/i));
 
     expect(
-      getByText("Each transaction costs at most 0.05 DUSK.")
+      getByText("Each transaction costs at most 0.05 DUSK."),
     ).toBeInTheDocument();
 
     await fireInput(limitInput, "1500000");
@@ -323,7 +323,7 @@ describe("Settings", () => {
 
     expect(queryByText("The minimum is 2,000,000.")).toBeNull();
     expect(
-      getByText("Each transaction costs at most 0.003 DUSK.")
+      getByText("Each transaction costs at most 0.003 DUSK."),
     ).toBeInTheDocument();
   });
 
@@ -342,7 +342,7 @@ describe("Settings", () => {
 
     expect(getByRole("switch", { name: "Custom gas" })).toHaveAttribute(
       "aria-checked",
-      "true"
+      "true",
     );
     expect(asInput(getByLabelText(limitLabel)).value).toBe("70000000");
     expect(asInput(getByLabelText("Gas price (LUX)")).value).toBe("2");
@@ -381,7 +381,7 @@ describe("Settings", () => {
       );
 
       expect(Array.from(select.options, (option) => option.text)).toStrictEqual(
-        ["After 5 minutes", "After 15 minutes", "Off"]
+        ["After 5 minutes", "After 15 minutes", "Off"],
       );
       expect(select.value).toBe("15");
 
@@ -492,7 +492,7 @@ describe("Settings", () => {
       navigation.keepProfile("", 1);
       sessionStorage.setItem(
         `${CONFIG.LOCAL_STORAGE_APP_KEY}-draft-send`,
-        JSON.stringify({ owner: "someone", values: { amount: "1" } })
+        JSON.stringify({ owner: "someone", values: { amount: "1" } }),
       );
 
       const { getByRole } = render(Settings);
@@ -510,7 +510,7 @@ describe("Settings", () => {
       await contactsWritten();
       localStorage.setItem(
         `${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`,
-        JSON.stringify({ old: { address: "a", id: "old", name: "Old" } })
+        JSON.stringify({ old: { address: "a", id: "old", name: "Old" } }),
       );
 
       const { getByRole } = render(Settings);
@@ -521,14 +521,14 @@ describe("Settings", () => {
       expect(listContacts()).toStrictEqual([]);
       expect(
         localStorage.getItem(
-          `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`
-        )
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-encrypted-contacts`,
+        ),
       ).toBeNull();
       expect(
-        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`)
+        localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-contacts`),
       ).toBeNull();
       expect(
-        Object.values(localStorage).filter((value) => value.includes("Old"))
+        Object.values(localStorage).filter((value) => value.includes("Old")),
       ).toStrictEqual([]);
     });
 
@@ -540,8 +540,8 @@ describe("Settings", () => {
 
       expect(
         getByText(
-          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./
-        )
+          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./,
+        ),
       ).toBeInTheDocument();
 
       await fireEvent.click(getByRole("button", { name: /reset wallet/i }));

@@ -8,7 +8,7 @@ export async function load() {
     currentBlockHeight: await networkStore.getCurrentBlockHeight().catch(() => {
       error(
         500,
-        "Unable to retrieve current block height: the network may be down."
+        "Unable to retrieve current block height: the network may be down.",
       );
     }),
   };

@@ -99,7 +99,7 @@
     isTapped = false;
     await tick();
     await new Promise((shown) =>
-      (globalThis.requestAnimationFrame ?? setTimeout)(shown)
+      (globalThis.requestAnimationFrame ?? setTimeout)(shown),
     );
 
     const amountBox = document.getElementById(`${id}-amount`);
@@ -119,8 +119,8 @@
     amountBox.focus({ preventScroll: true });
     await Promise.all(
       (form.getAnimations?.({ subtree: true }) ?? []).map((opening) =>
-        opening.finished.catch(() => {})
-      )
+        opening.finished.catch(() => {}),
+      ),
     );
 
     if (isShown()) {
@@ -183,7 +183,7 @@
   $: ({ language } = $settingsStore);
   $: made = makeRequestLink(
     { amount, language, memo, to: address },
-    $nodeNetwork
+    $nodeNetwork,
   );
   $: memoAsked = memo.trim();
   $: request =

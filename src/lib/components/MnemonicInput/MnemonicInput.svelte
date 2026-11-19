@@ -88,7 +88,7 @@
   let values = Array.from({ length: MAX }, (_, i) =>
     String(initialWords[i] ?? "")
       .trim()
-      .toLowerCase()
+      .toLowerCase(),
   );
 
   /** The boxes marked: their word isn't a recovery word. */
@@ -135,7 +135,7 @@
       },
       () => {
         isLeftCopied = true;
-      }
+      },
     );
   }
 
@@ -391,7 +391,7 @@
         refusal instanceof Error && refusal.name === "NotAllowedError"
           ? "Clipboard access denied"
           : String(refusal instanceof Error ? refusal.message : refusal),
-        mdiAlertOutline
+        mdiAlertOutline,
       );
     }
   }
@@ -426,7 +426,7 @@
       if (values.some(Boolean) && !$touchOnly) {
         isHidden = true;
       }
-    })
+    }),
   );
 
   $: shown = values.slice(0, count);

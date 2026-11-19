@@ -111,7 +111,7 @@ describe("A passkey, as far as the browser goes", () => {
       expect(first).toHaveLength(32);
       expect(await askPasskey(one)).toStrictEqual(first);
       expect(
-        await askPasskey({ ...one, prfSalt: btoa("x".repeat(32)) })
+        await askPasskey({ ...one, prfSalt: btoa("x".repeat(32)) }),
       ).not.toStrictEqual(first);
       expect(await askPasskey(await createPasskey())).not.toStrictEqual(first);
 

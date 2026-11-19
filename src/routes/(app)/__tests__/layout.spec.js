@@ -54,7 +54,7 @@ describe("App layout.js", () => {
 
   it("should keep the page asked for, with its target, for the unlock to return to", async () => {
     await expect(
-      load(asked("/some-base-path/dashboard/send/?to=alice.dusk"))
+      load(asked("/some-base-path/dashboard/send/?to=alice.dusk")),
     ).rejects.toThrow();
 
     expect(navigation.takePlace()).toBe("/dashboard/send/?to=alice.dusk");
@@ -89,7 +89,7 @@ describe("App layout.svelte, on a wallet open", () => {
     const asking = sendPasswordFor(1n, "");
 
     expect(
-      await findByRole("dialog", { name: "Enter your password" })
+      await findByRole("dialog", { name: "Enter your password" }),
     ).toBeInTheDocument();
 
     cleanup();
@@ -191,7 +191,7 @@ describe("App layout.svelte", () => {
     // A lock of its own, after that long.
     expect(logoutSpy).toHaveBeenCalledWith(
       false,
-      navigation.INACTIVITY_TIMEOUT
+      navigation.INACTIVITY_TIMEOUT,
     );
   });
 
@@ -236,7 +236,7 @@ describe("App layout.svelte", () => {
 
     await vi.advanceTimersByTimeAsync(10 * minute);
     await act(() =>
-      settingsStore.update((settings) => ({ ...settings, hideBalances: true }))
+      settingsStore.update((settings) => ({ ...settings, hideBalances: true })),
     );
     await vi.advanceTimersByTimeAsync(5 * minute);
 

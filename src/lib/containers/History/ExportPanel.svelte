@@ -122,7 +122,7 @@
    */
   function saveFile(text, name) {
     const url = URL.createObjectURL(
-      new Blob([text], { type: "text/csv;charset=utf-8" })
+      new Blob([text], { type: "text/csv;charset=utf-8" }),
     );
     const link = document.createElement("a");
 
@@ -211,7 +211,7 @@
         if (reading === feesRead) {
           fees = { key, made: null };
         }
-      }
+      },
     );
   }
 
@@ -329,7 +329,7 @@
             rewards = { ...read, of };
           }
         },
-      }
+      },
     );
   }
 
@@ -349,7 +349,7 @@
   // is the person's from their EVM addresses: which, said.
   $: hasMigrations = Boolean(
     $nodeNetwork &&
-    routes($nodeNetwork).some(({ kind }) => kind === "migration")
+    routes($nodeNetwork).some(({ kind }) => kind === "migration"),
   );
   // The EVM addresses added for this profile's files, kept for it.
   $: added = (account && $exportAddresses[account.address]) || [];

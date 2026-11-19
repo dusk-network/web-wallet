@@ -21,7 +21,7 @@ vi.mock("$lib/activity/activityHistory", () => ({
     query: async (query) => {
       const listed =
         /moonlightHistory\(receiver: "([^"]+)", fromBlock: (\d+)(?:, toBlock: (\d+))?/.exec(
-          query
+          query,
         );
 
       if (listed) {
@@ -59,7 +59,7 @@ vi.mock("$lib/activity/activityHistory", () => ({
                       },
                     ]
                   : [];
-              }
+              },
             );
 
         return { in: json.length ? { json } : null };
@@ -68,9 +68,9 @@ vi.mock("$lib/activity/activityHistory", () => ({
       return Object.fromEntries(
         [
           ...query.matchAll(
-            /(x\d+): tx\(hash: "([0-9a-f]{64})"\) \{ blockHeight/g
+            /(x\d+): tx\(hash: "([0-9a-f]{64})"\) \{ blockHeight/g,
           ),
-        ].map(([, key, hash]) => [key, archive.transactions[hash] ?? null])
+        ].map(([, key, hash]) => [key, archive.transactions[hash] ?? null]),
       );
     },
   }),
@@ -152,7 +152,7 @@ const migrations = (rows) =>
     rows,
     get(activity.keptMigrations),
     networks.mainnet,
-    ACCOUNT
+    ACCOUNT,
   );
 
 beforeEach(async () => {
@@ -227,7 +227,7 @@ describe("migrations into Dusk", () => {
     });
 
     expect(
-      (await migrations([])).map(({ hash, route }) => [hash, route?.id])
+      (await migrations([])).map(({ hash, route }) => [hash, route?.id]),
     ).toStrictEqual([[paid.hash, "bsc-to-dusk"]]);
   });
 
@@ -243,8 +243,8 @@ describe("migrations into Dusk", () => {
         [],
         get(activity.keptMigrations),
         networks.mainnet,
-        other
-      )
+        other,
+      ),
     ).resolves.toHaveLength(1);
 
     // Settings › Reset: nothing of it stays in this browser.
@@ -290,15 +290,15 @@ describe("migrations into Dusk", () => {
     const [transfer] = await migrations([]);
 
     await expect(
-      tracking.checkMigration(transfer, async () => null)
+      tracking.checkMigration(transfer, async () => null),
     ).resolves.toBeNull();
     await expect(
-      tracking.checkMigration(transfer, async () => ({ status: "0x1" }))
+      tracking.checkMigration(transfer, async () => ({ status: "0x1" })),
     ).resolves.toBe(true);
     // In a block, it's sent, and waits for its payout.
     await expect(migrations([])).resolves.toMatchObject([{ stage: "sent" }]);
     await expect(
-      tracking.checkMigration(transfer, async () => ({ status: "0x0" }))
+      tracking.checkMigration(transfer, async () => ({ status: "0x0" })),
     ).resolves.toBe(false);
     expect(get(activity.keptMigrations)[0].failed).toBe(true);
   });
@@ -326,12 +326,12 @@ describe("where storage is full", () => {
         if (key.startsWith(name)) {
           throw new DOMException(
             "The quota has been exceeded.",
-            "QuotaExceededError"
+            "QuotaExceededError",
           );
         }
 
         return setItem.call(this, key, value);
-      }
+      },
     );
   }
 
@@ -408,14 +408,14 @@ describe("following transfers to and from other chains", () => {
       ...(await activity.serviceTransfers(
         [out, row({ ...out, hash: "ee".repeat(32), memo: "alice" })],
         get(activity.transferArrivals),
-        networks.mainnet
+        networks.mainnet,
       )),
     ];
     const follow = async () =>
       tracking.followTransfers(
         await transfers(),
         get(activity.transferArrivals),
-        rpcFor
+        rpcFor,
       );
 
     vi.spyOn(globalThis, "fetch").mockImplementation(bsc.answer);
@@ -470,7 +470,7 @@ describe("following transfers to and from other chains", () => {
     await follow();
 
     expect(
-      bsc.asked.find(({ method }) => method === "eth_getLogs")?.params[0]
+      bsc.asked.find(({ method }) => method === "eth_getLogs")?.params[0],
     ).toMatchObject({
       fromBlock: `0x${(130_199_201).toString(16)}`,
       toBlock: `0x${(130_200_200).toString(16)}`,
@@ -548,7 +548,7 @@ describe("a transfer out sent more than a week ago", () => {
 
     await tracking.followTransfers(
       await activity.serviceTransfers([out], {}, networks.mainnet),
-      {}
+      {},
     );
 
     expect(get(activity.transferArrivals)[out.hash]).toMatchObject({
@@ -570,7 +570,7 @@ describe("transfers out to BNB Smart Chain", () => {
 
   it("are sent until they arrive, and pay nothing out at or under the bridge fee, or without an address as the memo", async () => {
     await expect(
-      activity.serviceTransfers([sent], {}, networks.mainnet)
+      activity.serviceTransfers([sent], {}, networks.mainnet),
     ).resolves.toMatchObject([
       {
         amountLux: 200_001n * DUSK,
@@ -584,8 +584,8 @@ describe("transfers out to BNB Smart Chain", () => {
       activity.serviceTransfers(
         [sent],
         { [sent.hash]: { arrivedAt: 2, payout: "0x1f77" } },
-        networks.mainnet
-      )
+        networks.mainnet,
+      ),
     ).resolves.toMatchObject([
       { arrivedAt: 2, payout: "0x1f77", stage: "arrived" },
     ]);
@@ -607,9 +607,9 @@ describe("transfers out to BNB Smart Chain", () => {
             }),
           ],
           {},
-          networks.mainnet
+          networks.mainnet,
         )
-      ).map(({ failure }) => failure)
+      ).map(({ failure }) => failure),
     ).toStrictEqual([
       "It was no more than the bridge fee: nothing is paid out",
       "The memo isn't an address: the bridge can't pay it out",
@@ -621,8 +621,8 @@ describe("transfers out to BNB Smart Chain", () => {
       activity.serviceTransfers(
         [row({ ...out, direction: "in" })],
         {},
-        networks.mainnet
-      )
+        networks.mainnet,
+      ),
     ).resolves.toStrictEqual([]);
   });
 });

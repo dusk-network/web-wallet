@@ -45,7 +45,7 @@ describe("Wallet cache", () => {
   describe("Reading and clearing the cache", async () => {
     const addresses = [...new Set(pluckFrom(cacheSpentNotes, "address"))].slice(
       0,
-      2
+      2,
     );
     const addressA = addresses[0];
 
@@ -84,14 +84,14 @@ describe("Wallet cache", () => {
     it("should expose a method to retrieve the cached balance for a given address", async () => {
       for (const balanceInfo of cacheBalances) {
         await expect(
-          walletCache.getBalanceInfo(balanceInfo.address)
+          walletCache.getBalanceInfo(balanceInfo.address),
         ).resolves.toStrictEqual(balanceInfo.balance);
       }
     });
 
     it("should return an empty balance if none is stored in the cache for the supplied address", async () => {
       await expect(
-        walletCache.getBalanceInfo("fake-address")
+        walletCache.getBalanceInfo("fake-address"),
       ).resolves.toStrictEqual({
         shielded: { spendable: 0n, value: 0n },
         unshielded: { nonce: 0n, value: 0n },
@@ -100,21 +100,21 @@ describe("Wallet cache", () => {
 
     it("should expose a method to retrieve the pending notes info and optionally filter them by their nullifiers", async () => {
       const pendingDbNotesInfo = sortByNullifier(
-        await walletCache.getPendingNotesInfo()
+        await walletCache.getPendingNotesInfo(),
       );
       const nullifiers = pluckFrom(pendingDbNotesInfo, "nullifier").slice(0, 2);
       const pendingNotesInfo = sortByNullifier(cachePendingNotesInfo);
       const pendingDbNotesInfoByNullifiers = sortByNullifier(
-        await walletCache.getPendingNotesInfo(nullifiers)
+        await walletCache.getPendingNotesInfo(nullifiers),
       );
       const pendingNotesInfoByNullifiers = pendingNotesInfo.slice(0, 2);
 
       expect(pendingDbNotesInfo).toStrictEqual(pendingNotesInfo);
       expect(pendingDbNotesInfoByNullifiers).toStrictEqual(
-        pendingNotesInfoByNullifiers
+        pendingNotesInfoByNullifiers,
       );
       await expect(
-        walletCache.getPendingNotesInfo([Uint8Array.of(1, 2, 3)])
+        walletCache.getPendingNotesInfo([Uint8Array.of(1, 2, 3)]),
       ).resolves.toStrictEqual([]);
     });
 
@@ -122,10 +122,10 @@ describe("Wallet cache", () => {
       const spentDbNotes = sortByNullifier(await walletCache.getSpentNotes());
       const spentNotes = sortByNullifier(cacheSpentNotes);
       const spentDbNotesByAddressA = sortByNullifier(
-        await walletCache.getSpentNotes([addressA])
+        await walletCache.getSpentNotes([addressA]),
       );
       const spentDbNotesByAddresses = sortByNullifier(
-        await walletCache.getSpentNotes(addresses)
+        await walletCache.getSpentNotes(addresses),
       );
       const spentNotesByAddressA = filterByAddressA(spentNotes);
       const spentNotesByAddresses = filterByAddresses(spentNotes);
@@ -133,62 +133,62 @@ describe("Wallet cache", () => {
       expect(spentDbNotes).toStrictEqual(spentNotes);
       expect(spentDbNotesByAddresses).toStrictEqual(spentNotesByAddresses);
       expect(
-        sortByNullifier(await walletCache.getSpentNotes([]))
+        sortByNullifier(await walletCache.getSpentNotes([])),
       ).toStrictEqual(spentNotes);
       expect(spentDbNotesByAddressA).toStrictEqual(spentNotesByAddressA);
       await expect(walletCache.getSpentNotes(["foo"])).resolves.toStrictEqual(
-        []
+        [],
       );
     });
 
     it("should expose a method to retrieve the spent notes nullifiers and optionally filter them by their address", async () => {
       const spentDbNullifiers = sortNullifiers(
-        await walletCache.getSpentNotesNullifiers()
+        await walletCache.getSpentNotesNullifiers(),
       );
       const spentNullifiers = sortNullifiers(
-        pluckFrom(cacheSpentNotes, "nullifier")
+        pluckFrom(cacheSpentNotes, "nullifier"),
       );
       const spentDbNullifiersByAddressA = sortNullifiers(
-        await walletCache.getSpentNotesNullifiers([addressA])
+        await walletCache.getSpentNotesNullifiers([addressA]),
       );
       const spentDbNullifiersByAddresses = sortNullifiers(
-        await walletCache.getSpentNotesNullifiers(addresses)
+        await walletCache.getSpentNotesNullifiers(addresses),
       );
       const spentNullifiersByAddressA = pluckFrom(
         sortByNullifier(filterByAddressA(cacheSpentNotes)),
-        "nullifier"
+        "nullifier",
       );
       const spentNullifiersByAddresses = pluckFrom(
         sortByNullifier(filterByAddresses(cacheSpentNotes)),
-        "nullifier"
+        "nullifier",
       );
 
       expect(spentDbNullifiers).toStrictEqual(spentNullifiers);
       expect(spentDbNullifiersByAddresses).toStrictEqual(
-        spentNullifiersByAddresses
+        spentNullifiersByAddresses,
       );
       expect(
-        sortNullifiers(await walletCache.getSpentNotesNullifiers([]))
+        sortNullifiers(await walletCache.getSpentNotesNullifiers([])),
       ).toStrictEqual(spentNullifiers);
       expect(spentDbNullifiersByAddressA).toStrictEqual(
-        spentNullifiersByAddressA
+        spentNullifiersByAddressA,
       );
       await expect(
-        walletCache.getSpentNotesNullifiers(["foo"])
+        walletCache.getSpentNotesNullifiers(["foo"]),
       ).resolves.toStrictEqual([]);
     });
 
     it("should expose a method to retrieve the cached stake info for a given account", async () => {
       for (const stakeInfo of cacheStakeInfo) {
         await expect(
-          walletCache.getStakeInfo(stakeInfo.account)
+          walletCache.getStakeInfo(stakeInfo.account),
         ).resolves.toStrictEqual(stakeInfo.stakeInfo);
       }
     });
 
     it('should return "empty" stake info if none is stored in the cache for the given account', async () => {
       await expect(
-        walletCache.getStakeInfo("fake-account")
+        walletCache.getStakeInfo("fake-account"),
       ).resolves.toStrictEqual({
         amount: null,
         faults: 0,
@@ -199,16 +199,16 @@ describe("Wallet cache", () => {
 
     it("should give what an account held with Sozu as read last, and nothing for one never read", async () => {
       await expect(
-        walletCache.getSozuPosition(cacheSozuPositions[0].account)
+        walletCache.getSozuPosition(cacheSozuPositions[0].account),
       ).resolves.toStrictEqual(cacheSozuPositions[0].position);
       await expect(
-        walletCache.getSozuPosition("fake-account")
+        walletCache.getSozuPosition("fake-account"),
       ).resolves.toBeNull();
     });
 
     it("should expose a method to retrieve the sync info, which returns empty info if there is no info stored", async () => {
       await expect(walletCache.getSyncInfo()).resolves.toStrictEqual(
-        cacheSyncInfo[0]
+        cacheSyncInfo[0],
       );
 
       await walletCache.clear();
@@ -225,14 +225,14 @@ describe("Wallet cache", () => {
 
     it("should expose a method to retrieve the unspent notes and optionally filter them by their address", async () => {
       const unspentDbNotes = sortByNullifier(
-        await walletCache.getUnspentNotes()
+        await walletCache.getUnspentNotes(),
       );
       const unspentNotes = sortByNullifier(cacheUnspentNotes);
       const unspentDbNotesByAddressA = sortByNullifier(
-        await walletCache.getUnspentNotes([addressA])
+        await walletCache.getUnspentNotes([addressA]),
       );
       const unspentDbNotesByAddresses = sortByNullifier(
-        await walletCache.getUnspentNotes(addresses)
+        await walletCache.getUnspentNotes(addresses),
       );
       const unspentNotesByAddressA = filterByAddressA(unspentNotes);
       const unspentNotesByAddresses = filterByAddresses(unspentNotes);
@@ -240,48 +240,48 @@ describe("Wallet cache", () => {
       expect(unspentDbNotes).toStrictEqual(unspentNotes);
       expect(unspentDbNotesByAddresses).toStrictEqual(unspentNotesByAddresses);
       expect(
-        sortByNullifier(await walletCache.getUnspentNotes([]))
+        sortByNullifier(await walletCache.getUnspentNotes([])),
       ).toStrictEqual(unspentNotes);
       expect(unspentDbNotesByAddressA).toStrictEqual(unspentNotesByAddressA);
       await expect(walletCache.getUnspentNotes(["foo"])).resolves.toStrictEqual(
-        []
+        [],
       );
     });
 
     it("should expose a method to retrieve the unspent notes nullifiers and optionally filter them by their address", async () => {
       const unspentDbNullifiers = sortNullifiers(
-        await walletCache.getUnspentNotesNullifiers()
+        await walletCache.getUnspentNotesNullifiers(),
       );
       const unspentNullifiers = sortNullifiers(
-        pluckFrom(cacheUnspentNotes, "nullifier")
+        pluckFrom(cacheUnspentNotes, "nullifier"),
       );
       const unspentDbNullifiersByAddressA = sortNullifiers(
-        await walletCache.getUnspentNotesNullifiers([addressA])
+        await walletCache.getUnspentNotesNullifiers([addressA]),
       );
       const unspentDbNullifiersByAddresses = sortNullifiers(
-        await walletCache.getUnspentNotesNullifiers(addresses)
+        await walletCache.getUnspentNotesNullifiers(addresses),
       );
       const unspentNullifiersByAddressA = pluckFrom(
         sortByNullifier(filterByAddressA(cacheUnspentNotes)),
-        "nullifier"
+        "nullifier",
       );
       const unspentNullifiersByAddresses = pluckFrom(
         sortByNullifier(filterByAddresses(cacheUnspentNotes)),
-        "nullifier"
+        "nullifier",
       );
 
       expect(unspentDbNullifiers).toStrictEqual(unspentNullifiers);
       expect(unspentDbNullifiersByAddresses).toStrictEqual(
-        unspentNullifiersByAddresses
+        unspentNullifiersByAddresses,
       );
       expect(
-        sortNullifiers(await walletCache.getUnspentNotesNullifiers([]))
+        sortNullifiers(await walletCache.getUnspentNotesNullifiers([])),
       ).toStrictEqual(unspentNullifiers);
       expect(unspentDbNullifiersByAddressA).toStrictEqual(
-        unspentNullifiersByAddressA
+        unspentNullifiersByAddressA,
       );
       await expect(
-        walletCache.getUnspentNotesNullifiers(["foo"])
+        walletCache.getUnspentNotesNullifiers(["foo"]),
       ).resolves.toStrictEqual([]);
     });
   });
@@ -343,7 +343,7 @@ describe("Wallet cache", () => {
 
       if (!unspentNoteDuplicate) {
         throw new Error(
-          "No suitable unspent note found to setup the duplicate test"
+          "No suitable unspent note found to setup the duplicate test",
         );
       }
 
@@ -353,20 +353,20 @@ describe("Wallet cache", () => {
        */
       const newNotes = unspentNotesToAdd.concat(
         newNote,
-        structuredClone(unspentNoteDuplicate)
+        structuredClone(unspentNoteDuplicate),
       );
       const expectedUnspentNotes = cacheUnspentNotes.concat(
         newNote,
-        unspentNotesToAdd
+        unspentNotesToAdd,
       );
 
       await walletCache.addUnspentNotes(newNotes, newNotesSyncInfo);
 
       await expect(
-        walletCache.getUnspentNotes().then(sortByNullifier)
+        walletCache.getUnspentNotes().then(sortByNullifier),
       ).resolves.toStrictEqual(sortByNullifier(expectedUnspentNotes));
       await expect(walletCache.getSyncInfo()).resolves.toStrictEqual(
-        newSyncInfo
+        newSyncInfo,
       );
     });
 
@@ -375,14 +375,14 @@ describe("Wallet cache", () => {
       const newNotes = cacheSpentNotes.concat({});
 
       await expect(
-        walletCache.addUnspentNotes(newNotes, newNotesSyncInfo)
+        walletCache.addUnspentNotes(newNotes, newNotesSyncInfo),
       ).rejects.toBeInstanceOf(Error);
 
       expect(sortByNullifier(cacheUnspentNotes)).toStrictEqual(
-        sortByNullifier(await walletCache.getUnspentNotes())
+        sortByNullifier(await walletCache.getUnspentNotes()),
       );
       await expect(walletCache.getSyncInfo()).resolves.toStrictEqual(
-        currentSyncInfo
+        currentSyncInfo,
       );
     });
   });
@@ -401,7 +401,7 @@ describe("Wallet cache", () => {
       expect(expectedPending.length).toBeGreaterThan(0);
 
       const pendingNullifiersLookup = new Set(
-        pendingToSpend.map((entry) => String(getNullifier(entry)))
+        pendingToSpend.map((entry) => String(getNullifier(entry))),
       );
 
       const [expectedNotesToBeSpent, expectedUnspentNotes] = await walletCache
@@ -409,10 +409,10 @@ describe("Wallet cache", () => {
         .then(sortByNullifier)
         .then((notes) => [
           notes.filter((note) =>
-            pendingNullifiersLookup.has(note.nullifier.toString())
+            pendingNullifiersLookup.has(note.nullifier.toString()),
           ),
           notes.filter(
-            (note) => !pendingNullifiersLookup.has(note.nullifier.toString())
+            (note) => !pendingNullifiersLookup.has(note.nullifier.toString()),
           ),
         ]);
 
@@ -433,13 +433,13 @@ describe("Wallet cache", () => {
       await walletCache.spendNotes(nullifiersToSpend);
 
       await expect(
-        walletCache.getUnspentNotes().then(sortByNullifier)
+        walletCache.getUnspentNotes().then(sortByNullifier),
       ).resolves.toStrictEqual(expectedUnspentNotes);
       await expect(
-        walletCache.getPendingNotesInfo().then(sortByNullifier)
+        walletCache.getPendingNotesInfo().then(sortByNullifier),
       ).resolves.toStrictEqual(expectedPending);
       await expect(
-        walletCache.getSpentNotes().then(sortByNullifier)
+        walletCache.getSpentNotes().then(sortByNullifier),
       ).resolves.toStrictEqual(expectedSpentNotes);
     });
 
@@ -451,13 +451,13 @@ describe("Wallet cache", () => {
       await walletCache.spendNotes([]);
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
 
@@ -470,13 +470,13 @@ describe("Wallet cache", () => {
       await walletCache.spendNotes(nonExistingNullifiers);
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
 
@@ -489,13 +489,13 @@ describe("Wallet cache", () => {
       await walletCache.spendNotes(() => {});
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
   });
@@ -519,13 +519,13 @@ describe("Wallet cache", () => {
       await walletCache.unspendNotes(pluckFrom(notesToUnspend, "nullifier"));
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(
-        walletCache.getUnspentNotes().then(sortByNullifier)
+        walletCache.getUnspentNotes().then(sortByNullifier),
       ).resolves.toStrictEqual(expectedUnspentNotes);
       await expect(
-        walletCache.getSpentNotes().then(sortByNullifier)
+        walletCache.getSpentNotes().then(sortByNullifier),
       ).resolves.toStrictEqual(expectedSpentNotes);
     });
 
@@ -537,13 +537,13 @@ describe("Wallet cache", () => {
       await walletCache.unspendNotes([]);
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
 
@@ -556,13 +556,13 @@ describe("Wallet cache", () => {
       await walletCache.unspendNotes(nonExistingNullifiers);
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
 
@@ -575,13 +575,13 @@ describe("Wallet cache", () => {
       await walletCache.unspendNotes(() => {});
 
       await expect(walletCache.getPendingNotesInfo()).resolves.toStrictEqual(
-        currentPendingInfo
+        currentPendingInfo,
       );
       await expect(walletCache.getSpentNotes()).resolves.toStrictEqual(
-        currentSpentNotes
+        currentSpentNotes,
       );
       await expect(walletCache.getUnspentNotes()).resolves.toStrictEqual(
-        currentUnspentNotes
+        currentUnspentNotes,
       );
     });
   });
@@ -606,7 +606,7 @@ describe("Wallet cache", () => {
 
       for (const balanceInfo of cacheBalances.concat(newBalance)) {
         await expect(
-          walletCache.getBalanceInfo(balanceInfo.address)
+          walletCache.getBalanceInfo(balanceInfo.address),
         ).resolves.toStrictEqual(balanceInfo.balance);
       }
 
@@ -621,11 +621,11 @@ describe("Wallet cache", () => {
 
       await walletCache.setBalanceInfo(
         cacheBalances[0].address,
-        modifiedBalance
+        modifiedBalance,
       );
 
       await expect(
-        walletCache.getBalanceInfo(cacheBalances[0].address)
+        walletCache.getBalanceInfo(cacheBalances[0].address),
       ).resolves.toStrictEqual(modifiedBalance);
     });
 
@@ -640,8 +640,8 @@ describe("Wallet cache", () => {
           .filter(
             (note) =>
               !existingPendingNullifiersAsStrings.includes(
-                note.nullifier.toString()
-              )
+                note.nullifier.toString(),
+              ),
           )
           .slice(0, 2);
       const spendableNotes = getTwoSpendableNotes(cacheUnspentNotes);
@@ -654,7 +654,7 @@ describe("Wallet cache", () => {
         spendableNullifiers.map((nullifier) => ({
           nullifier,
           txId: "some-tx-id",
-        }))
+        })),
       );
 
       await walletCache.setPendingNotesInfo(spendableNullifiers, "some-tx-id");
@@ -662,7 +662,7 @@ describe("Wallet cache", () => {
       await expect(
         walletCache
           .getPendingNotesInfo(spendableNullifiers)
-          .then(sortByNullifier)
+          .then(sortByNullifier),
       ).resolves.toStrictEqual(expectedInfo);
     });
 
@@ -687,12 +687,12 @@ describe("Wallet cache", () => {
 
       await walletCache.setStakeInfo(
         newStakeInfo.account,
-        newStakeInfo.stakeInfo
+        newStakeInfo.stakeInfo,
       );
 
       for (const stakeInfo of cacheStakeInfo.concat(newStakeInfo)) {
         await expect(
-          walletCache.getStakeInfo(stakeInfo.account)
+          walletCache.getStakeInfo(stakeInfo.account),
         ).resolves.toStrictEqual(stakeInfo.stakeInfo);
       }
 
@@ -707,11 +707,11 @@ describe("Wallet cache", () => {
 
       await walletCache.setStakeInfo(
         cacheStakeInfo[0].account,
-        modifiedStakeInfo
+        modifiedStakeInfo,
       );
 
       await expect(
-        walletCache.getStakeInfo(cacheStakeInfo[0].account)
+        walletCache.getStakeInfo(cacheStakeInfo[0].account),
       ).resolves.toStrictEqual(modifiedStakeInfo);
     });
 
@@ -725,10 +725,10 @@ describe("Wallet cache", () => {
       });
 
       await expect(
-        walletCache.getSozuPosition("fake-account")
+        walletCache.getSozuPosition("fake-account"),
       ).resolves.toStrictEqual(position);
       await expect(
-        walletCache.getSozuPosition(cacheSozuPositions[0].account)
+        walletCache.getSozuPosition(cacheSozuPositions[0].account),
       ).resolves.toStrictEqual({ ...position, balance: 12n });
     });
 
@@ -764,7 +764,7 @@ describe("Wallet cache", () => {
         stDusk: 1n,
       });
       await expect(
-        cache.getSozuPosition("kept-account")
+        cache.getSozuPosition("kept-account"),
       ).resolves.toStrictEqual({ at: 1, balance: 2n, stDusk: 1n });
       await cache.destroy();
     });
@@ -784,7 +784,7 @@ describe("Wallet cache", () => {
       await walletCache.setSyncInfo(newSyncInfo);
 
       await expect(walletCache.getSyncInfo()).resolves.toStrictEqual(
-        newSyncInfo
+        newSyncInfo,
       );
     });
 
@@ -805,7 +805,7 @@ describe("Wallet cache", () => {
 
       expect(
         // @ts-expect-error we are passing fake profiles
-        sortByNullifier(walletCache.toCacheNotes(notesArray, fakeProfiles))
+        sortByNullifier(walletCache.toCacheNotes(notesArray, fakeProfiles)),
       ).toStrictEqual(sortByNullifier(cacheUnspentNotes));
       expect(walletCache.toCacheNotes([], [])).toStrictEqual([]);
     });

@@ -345,7 +345,7 @@
     contactName,
     $profilesHere,
     undefined,
-    String(p?.counterparty ?? "")
+    String(p?.counterparty ?? ""),
   );
   $: if (contactAskedOf && contactAskedOf !== contactName) {
     contactAskedOf = "";
@@ -396,7 +396,7 @@
   $: deposit = isDeposit
     ? ($depositActivityStore.find(
         (item) =>
-          item.transactionHash === row.hash.replace(/^0x/, "").toLowerCase()
+          item.transactionHash === row.hash.replace(/^0x/, "").toLowerCase(),
       ) ?? null)
     : null;
   $: arrived = deposit?.stage === "completed" ? deposit : null;
@@ -601,7 +601,7 @@
               <a
                 class="tx-detail__block text-link"
                 href={duskEvmExplorerTx(arrival)}
-                rel="noopener noreferrer"
+                rel="noopener noreferrer external"
                 target="_blank"
                 >{shortenAddress(arrival)}
                 <span class="sr-only"
@@ -752,7 +752,7 @@
               <a
                 class="tx-detail__block text-link"
                 href={`/explorer/blocks/block?id=${row.blockHash}`}
-                rel="noopener noreferrer"
+                rel="noopener noreferrer external"
                 target="_blank"
                 >{row.blockHeight.toLocaleString(locale)}<span class="sr-only">
                   (opens the block in the Dusk explorer)</span
@@ -818,7 +818,7 @@
       {#if canSendAgain}
         <AnchorButton
           href={addBasePath(
-            `/dashboard/send?to=${encodeURIComponent(String(p.counterparty))}`
+            `/dashboard/send?to=${encodeURIComponent(String(p.counterparty))}`,
           )}
           icon={{ path: mdiSendOutline }}
           text="Send again"

@@ -124,7 +124,7 @@
   const describe = (error) =>
     describeFailure(
       error,
-      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
+      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST },
     );
 
   /**
@@ -146,7 +146,7 @@
         }
 
         return { hash, unconfirmed: true };
-      }
+      },
     );
 
   $: shown = outcomeOf(operation);
@@ -175,12 +175,12 @@
     {
       checking: Boolean(
         held?.meanwhile &&
-        $sentMeanwhileChecking.has(meanwhileKey(held.meanwhile))
+        $sentMeanwhileChecking.has(meanwhileKey(held.meanwhile)),
       ),
       hidden: $settingsStore.hideBalances,
       locale: $settingsStore.language,
       nameOf: $accountNamer,
-    }
+    },
   );
 </script>
 

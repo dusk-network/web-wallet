@@ -47,12 +47,12 @@
     claim: forThisWallet((amount, gasPrice, gasLimit) =>
       walletStore
         .claimRewards(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(({ hash }) => hash)
+        .then(({ hash }) => hash),
     ),
     unstake: forThisWallet((amount, gasPrice, gasLimit) =>
       walletStore
         .unstake(amount, new Gas({ limit: gasLimit, price: gasPrice }))
-        .then(({ hash }) => hash)
+        .then(({ hash }) => hash),
     ),
   };
 
@@ -65,8 +65,8 @@
     (amount, gasPrice, gasLimit) =>
       walletStore[hasStake ? "topUpStake" : "stake"](
         amount,
-        new Gas({ limit: gasLimit, price: gasPrice })
-      ).then(({ hash }) => hash)
+        new Gas({ limit: gasLimit, price: gasPrice }),
+      ).then(({ hash }) => hash),
   );
 
   /**
@@ -89,14 +89,14 @@
       walletStore[action === "stake" ? "stakeWithSozu" : "unstakeFromSozu"](
         poolId,
         amount,
-        new Gas({ limit: gasLimit, price: gasPrice })
+        new Gas({ limit: gasLimit, price: gasPrice }),
       ).then(({ hash }) => {
         // Its Sent screen follows it from here.
         followed[hash] = true;
         void sozuStore.readAfter(hash);
 
         return hash;
-      })
+      }),
   );
 
   /**
@@ -118,7 +118,7 @@
             if (final) {
               void walletStore.refreshBalance();
               await Promise.resolve(currentActivity()?.refresh()).catch(
-                () => {}
+                () => {},
               );
 
               if (sozuFormFor) {
@@ -227,7 +227,7 @@
             rewards = { ...read, of };
           }
         },
-      }
+      },
     );
   }
 
@@ -353,7 +353,7 @@
   // buttons wait with it, or, once the wallet stopped waiting, its amounts
   // may be out of date.
   $: ownStakes = pendingStakes.filter(
-    ({ account }) => account === String(currentProfile?.account)
+    ({ account }) => account === String(currentProfile?.account),
   );
   $: isStakePending = ownStakes.some(({ stale }) => !stale);
   $: isStakeStale = ownStakes.some(({ stale }) => stale);
@@ -364,13 +364,13 @@
   // (Nandini's: "No staking yet." for a profile that staked with Sozu, as
   // its stakes were further back than that page).
   $: hasPastStaking = $wholeActivity.rows.some(
-    (row) => row.category === "staking"
+    (row) => row.category === "staking",
   );
 
   // In the wallet's currency, as Export values them.
   $: rewardsCurrency = exportCurrency(
     $settingsStore.currency,
-    navigator.language
+    navigator.language,
   );
   // Another profile's aren't this one's.
   $: if (rewards && rewards.of !== String(currentProfile?.account ?? "")) {
@@ -385,11 +385,11 @@
       ? [currentProfile.account, networkName, rewardsCurrency, rewardsValued]
           .map(String)
           .join("|")
-      : ""
+      : "",
   );
   // What the profile sent to Sozu that isn't in a block yet.
   $: sozuUnderWay = $activityState.rows.filter(
-    (row) => row.sozu && row.source === "sent" && row.status === "pending"
+    (row) => row.sozu && row.source === "sent" && row.status === "pending",
   );
   $: followUnderWay(sozuUnderWay);
 
@@ -412,7 +412,7 @@
     flow === "claim" ? "claim-rewards" : "unstake",
     custom,
     $gasStore,
-    $gasPriceStore
+    $gasPriceStore,
   );
   $: stakeGas = gasFor("stake", custom, $gasStore, $gasPriceStore);
   // A stake with Sozu and an unstake from it each have their own gas.
@@ -431,7 +431,7 @@
       gasLimits={stakeGas.limits}
       gasSettings={stakeGas.settings}
       {hasStake}
-      liquidHref={isSozuAvailable ? "/dashboard/stake?flow=liquid" : undefined}
+      liquidHref={isSozuAvailable ? "/dashboard/stake/?flow=liquid" : undefined}
       {minimumStake}
       unstakeFee={unstakeGas.settings.gasLimit * unstakeGas.settings.gasPrice}
     />

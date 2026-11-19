@@ -11,7 +11,7 @@
  */
 export default function englishWords(locale) {
   const { locale: resolved, numberingSystem } = new Intl.NumberFormat(
-    locale || undefined
+    locale || undefined,
   ).resolvedOptions();
 
   if (/^en(-|$)/i.test(resolved)) {
@@ -25,7 +25,7 @@ export default function englishWords(locale) {
   }).format(56_900_000);
   const isLatin =
     [...short.matchAll(/\p{L}/gu)].every(([letter]) =>
-      /\p{Script=Latin}/u.test(letter)
+      /\p{Script=Latin}/u.test(letter),
     ) && !/\p{Cf}/u.test(short);
 
   if (isLatin) {

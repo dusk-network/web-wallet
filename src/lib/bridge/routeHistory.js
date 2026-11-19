@@ -44,20 +44,20 @@ export const FOLLOW_FOR_MS = 86_400_000;
  */
 export function waitsOnHistory({ now = Date.now(), rows, transfers }) {
   const pending = new Set(
-    rows.filter(({ status }) => status === "pending").map(({ hash }) => hash)
+    rows.filter(({ status }) => status === "pending").map(({ hash }) => hash),
   );
 
   return transfers.some(({ at, hash, kind, stage }) =>
     kind === "migration"
       ? (stage === "sending" || stage === "sent") &&
         now - (at ?? 0) < FOLLOW_FOR_MS
-      : pending.has(hash)
+      : pending.has(hash),
   );
 }
 
 /** The public account the wallet shows: a sync's progress doesn't change it. */
 const shownAccount = derived(walletStore, ({ currentProfile }) =>
-  String(currentProfile?.account ?? "")
+  String(currentProfile?.account ?? ""),
 );
 
 /**
@@ -88,13 +88,13 @@ export const routeTransfers = derived(
       current = false;
     };
   },
-  /** @type {import("./migrationActivity").RouteTransfer[]} */ ([])
+  /** @type {import("./migrationActivity").RouteTransfer[]} */ ([]),
 );
 
 const waiting = derived(
   [routeTransfers, activityState],
   ([$transfers, $activity]) =>
-    waitsOnHistory({ rows: $activity.rows, transfers: $transfers })
+    waitsOnHistory({ rows: $activity.rows, transfers: $transfers }),
 );
 
 /**
@@ -142,7 +142,7 @@ function onNewTransactions(refresh) {
       0,
       ...rows
         .filter((row) => row.privacy !== "shielded" && row.source !== "sent")
-        .map((row) => row.blockHeight ?? 0)
+        .map((row) => row.blockHeight ?? 0),
     );
 
     if (newest !== null && top > newest) {

@@ -79,7 +79,7 @@ export const notRunning = (net) =>
 /** @param {CardRoute[]} list */
 const networksOf = (list) =>
   ORDER.filter((id) =>
-    list.some(({ destination, origin }) => origin === id || destination === id)
+    list.some(({ destination, origin }) => origin === id || destination === id),
   );
 
 /**

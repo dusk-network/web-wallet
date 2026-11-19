@@ -65,7 +65,7 @@ export function evmChains() {
         explorerUrl: String(duskEvm.blockExplorers.default.url ?? ""),
         name: duskEvm.name,
         rpcUrl: duskEvm.rpcUrls.default.http[0],
-      })
+      }),
     );
   }
 
@@ -293,14 +293,14 @@ async function start(reset) {
     chains.map((chain) => [
       `eip155:${chain.id}`,
       [{ url: chain.rpcUrls.default.http[0] }],
-    ])
+    ]),
   );
   const wagmiAdapter = new WagmiAdapter({
     customRpcUrls,
     networks,
     projectId: VITE_REOWN_PROJECT_ID,
     transports: Object.fromEntries(
-      chains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])
+      chains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])]),
     ),
   });
 
@@ -495,7 +495,7 @@ function deleteConnectionDatabases() {
       await emptyDatabase(name);
 
       return deleteDatabase(name, onBlocked);
-    })
+    }),
   )
     .then((deleted) => {
       if (deleted.every(Boolean)) {

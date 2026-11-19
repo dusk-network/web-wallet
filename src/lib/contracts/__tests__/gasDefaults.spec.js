@@ -41,8 +41,8 @@ describe("gas defaults", () => {
         areValidGasSettings(
           bounds.gasPriceLower,
           limit,
-          getGasLimits(/** @type {GasOperation} */ (operation), bounds)
-        )
+          getGasLimits(/** @type {GasOperation} */ (operation), bounds),
+        ),
       ).toBe(true);
     }
   });
@@ -84,8 +84,8 @@ describe("gas defaults", () => {
       getGasSettings(
         "stake",
         { customGasLimit: 70_000_000n, customGasPrice: 2n },
-        1n
-      )
+        1n,
+      ),
     ).toStrictEqual({ gasLimit: 70_000_000n, gasPrice: 2n });
   });
 
@@ -94,7 +94,7 @@ describe("gas defaults", () => {
     const next = { gasLimit: 50_000_000n, gasPrice: 3n };
 
     expect(followDefaultGas({ ...previous }, previous, next)).toStrictEqual(
-      next
+      next,
     );
 
     const edited = { gasLimit: 50_000_000n, gasPrice: 2n };

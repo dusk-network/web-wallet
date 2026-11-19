@@ -166,7 +166,7 @@ type WalletStoreServices = {
   clearLocalDataAndInit: (
     profileGenerator: ProfileGenerator,
     syncFromBlock?: bigint,
-    wallet?: WalletToOpen
+    wallet?: WalletToOpen,
   ) => Promise<void>;
 
   depositEvmFunctionCall: (
@@ -176,12 +176,12 @@ type WalletStoreServices = {
     options?: {
       extraData?: Uint8Array | number[];
       minGasLimit?: number;
-    }
+    },
   ) => Promise<TransactionInfo>;
 
   /** Binds a screen's actions to the wallet open as it's drawn. */
   forThisWallet: () => <A extends unknown[], R>(
-    task: (...args: A) => Promise<R>
+    task: (...args: A) => Promise<R>,
   ) => (...args: A) => Promise<R>;
 
   getDuskEvmProofSubmitter: () => `0x${string}`;
@@ -201,12 +201,12 @@ type WalletStoreServices = {
   init: (
     profileGenerator: ProfileGenerator,
     syncFromBlock?: bigint,
-    wallet?: WalletToOpen
+    wallet?: WalletToOpen,
   ) => Promise<void>;
 
   open: (
     wallets: Array<HeldWallet & { key: string }>,
-    options?: { active?: string; profile?: number }
+    options?: { active?: string; profile?: number },
   ) => Promise<void>;
 
   /**
@@ -215,7 +215,7 @@ type WalletStoreServices = {
    * balances show, or null for nothing to read. Gives what stops it.
    */
   readWithBalances: (
-    read: (profile: Profile) => Promise<(() => void) | null>
+    read: (profile: Profile) => Promise<(() => void) | null>,
   ) => () => void;
 
   /** The balances and the stake read again, as after a send. */
@@ -256,7 +256,7 @@ type WalletStoreServices = {
       fnArgs: Uint8Array;
       fnName: string;
     }>,
-    gas: Gas
+    gas: Gas,
   ) => Promise<TransactionInfo>;
 
   setCurrentProfile: (profile: Profile) => Promise<void>;
@@ -269,7 +269,7 @@ type WalletStoreServices = {
   stakeWithSozu: (
     poolId: string,
     amount: bigint,
-    gas: Gas
+    gas: Gas,
   ) => Promise<TransactionInfo>;
 
   /** The current profile's history, started on first use; none while it is turned off. */
@@ -278,7 +278,7 @@ type WalletStoreServices = {
   switchWallet: (
     key: string,
     profile?: number,
-    options?: { syncFromBlock?: bigint }
+    options?: { syncFromBlock?: bigint },
   ) => Promise<void>;
 
   /**
@@ -299,7 +299,7 @@ type WalletStoreServices = {
     options?: {
       gate?: import("$lib/transactions/sendGate").SendGate;
       toName?: string;
-    }
+    },
   ) => Promise<TransactionInfo>;
 
   unshield: (amount: bigint, gas: Gas) => Promise<TransactionInfo>;
@@ -313,7 +313,7 @@ type WalletStoreServices = {
   unstakeFromSozu: (
     poolId: string,
     amount: bigint,
-    gas: Gas
+    gas: Gas,
   ) => Promise<TransactionInfo>;
 };
 

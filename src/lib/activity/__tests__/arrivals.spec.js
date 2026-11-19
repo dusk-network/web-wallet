@@ -42,16 +42,16 @@ describe("Payments to another profile here, looked for", () => {
     // By the profile's addresses, until a row has it.
     expect(arrivalsNotIn(awaited, ["account-2"], [], at)).toHaveLength(1);
     expect(
-      arrivalsNotIn(awaited, ["account-2", "address-2"], [], at)
+      arrivalsNotIn(awaited, ["account-2", "address-2"], [], at),
     ).toHaveLength(2);
     expect(arrivalsNotIn(awaited, ["account-1"], [], at)).toHaveLength(0);
     expect(
-      arrivalsNotIn(awaited, ["account-2"], [{ hash: "ab".repeat(32) }], at)
+      arrivalsNotIn(awaited, ["account-2"], [{ hash: "ab".repeat(32) }], at),
     ).toHaveLength(0);
 
     // Two minutes on, looked for no more.
     expect(
-      arrivalsNotIn(awaited, ["account-2"], [], at + LOOK_FOR_MS)
+      arrivalsNotIn(awaited, ["account-2"], [], at + LOOK_FOR_MS),
     ).toHaveLength(0);
 
     // The same one again is looked for once, from then.

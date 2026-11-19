@@ -19,10 +19,10 @@ describe("Switch", () => {
     const knob = (/** @type {string} */ state) =>
       styleRules(
         "../../../../style/dusk-components/switch.css",
-        import.meta.url
+        import.meta.url,
       ).find(
         (rule) =>
-          rule.selector === `.dusk-switch[aria-checked="${state}"]::after`
+          rule.selector === `.dusk-switch[aria-checked="${state}"]::after`,
       )?.declarations ?? {};
 
     expect(knob("false")).toMatchObject({
@@ -50,11 +50,11 @@ describe("Switch", () => {
       expect(handler).toHaveBeenCalledTimes(2);
       expect(handler).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ detail: true })
+        expect.objectContaining({ detail: true }),
       );
       expect(handler).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ detail: false })
+        expect.objectContaining({ detail: false }),
       );
     });
 
@@ -72,11 +72,11 @@ describe("Switch", () => {
       expect(handler).toHaveBeenCalledTimes(2);
       expect(handler).toHaveBeenNthCalledWith(
         1,
-        expect.objectContaining({ detail: true })
+        expect.objectContaining({ detail: true }),
       );
       expect(handler).toHaveBeenNthCalledWith(
         2,
-        expect.objectContaining({ detail: false })
+        expect.objectContaining({ detail: false }),
       );
     });
 
@@ -92,7 +92,7 @@ describe("Switch", () => {
         });
         await fireEvent(getByRole("switch"), event);
         expect(event.defaultPrevented).toBe(false);
-      }
+      },
     );
 
     it("should not dispatch an event if the user presses another key", async () => {

@@ -20,12 +20,13 @@
     currentActivity,
     wholeActivity,
   } from "$lib/activity";
+  import { resolve } from "$app/paths";
   import { LOOK_FOR_MS } from "$lib/activity/arrivals";
   import { paidInSentence } from "$lib/activity/present";
   import { claimDay } from "$lib/bridge/claimDate";
   import { Button, CopyButton } from "$lib/dusk/components";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
-  import { addBasePath, goto } from "$lib/navigation";
+  import { goto } from "$lib/navigation";
   import {
     forgetRequest,
     keepRequestMatches,
@@ -125,7 +126,7 @@
         () => {
           checkedAt = Date.now();
         },
-        Math.max(0, first + LOOK_FOR_MS - Date.now())
+        Math.max(0, first + LOOK_FOR_MS - Date.now()),
       );
     }
   }
@@ -292,6 +293,18 @@
         : (refund.time ?? 0) > (payment?.time ?? 0);
 
   /**
+   * Send, filled in as a request's link asks: where a payment is sent back.
+   *
+   * @param {string} link
+   * @returns {"/dashboard/send/" | `/dashboard/send/?${string}`}
+   */
+  function sendBackPath(link) {
+    const { search } = new URL(link);
+
+    return search ? `/dashboard/send/?${search.slice(1)}` : "/dashboard/send/";
+  }
+
+  /**
    * The payments that paid a request again, of all the requests shown, by
    * their hash: each with Send filled in to pay it back, as app-core's
    * `refundOf` says, and the refund sent already, as Send would say it's
@@ -304,7 +317,7 @@
    * @param {Map<string, import("$lib/payment-requests/requests").RequestMatch>} matched
    * @param {ActivityRow[]} rows
    * @param {Parameters<typeof makeRequestLink>[1]} net
-   * @returns {Map<string, { back: string | null, sent: ActivityRow | null }>}
+   * @returns {Map<string, { back: ReturnType<typeof sendBackPath> | null, sent: ActivityRow | null }>}
    */
   function refundsOf(requests, matched, rows, net) {
     /** @type {string[]} */
@@ -312,8 +325,8 @@
     const owed = requests
       .flatMap((request) =>
         paidAgain(matched.get(request.id) ?? { state: "waiting" }).map(
-          (payment) => ({ payment, request })
-        )
+          (payment) => ({ payment, request }),
+        ),
       )
       .sort((x, y) => (y.payment.at ?? 0) - (x.payment.at ?? 0));
 
@@ -324,15 +337,15 @@
         const sent = refund
           ? sentAlready(
               rows.filter(
-                (row) => !taken.includes(row.hash) && isSentAfter(row, paidIn)
+                (row) => !taken.includes(row.hash) && isSentAfter(row, paidIn),
               ),
-              refund
+              refund,
             )
           : null;
         const made = refund
           ? makeRequestLink(
               { amountLux: refund.lux, memo: refund.memo, to: refund.to },
-              net
+              net,
             )
           : null;
 
@@ -343,13 +356,11 @@
         return [
           payment.hash,
           {
-            back: made?.https
-              ? `/dashboard/send${new URL(made.https).search}`
-              : null,
+            back: made?.https ? sendBackPath(made.https) : null,
             sent,
           },
         ];
-      })
+      }),
     );
   }
 
@@ -437,7 +448,7 @@
         lux: request.lux === null ? null : BigInt(request.lux),
         memo: request.memo,
       },
-      said
+      said,
     );
 
   /**
@@ -521,7 +532,7 @@
   $: saidBy = { language, name: requestName, net: $nodeNetwork };
   $: network = $nodeNetwork?.name ?? "";
   $: shown = $requestsStore.filter(
-    ({ network: asked, to }) => asked === network && addresses.includes(to)
+    ({ network: asked, to }) => asked === network && addresses.includes(to),
   );
   // All of the history, not the page History has shown so far: a request
   // paid days ago is paid all the same.
@@ -538,21 +549,21 @@
     $awaitedArrivals,
     addresses,
     historyRows,
-    Math.max(Date.now(), checkedAt)
+    Math.max(Date.now(), checkedAt),
   );
   $: checkUntil(awaited);
   // A payment may be further back than the history read so far: checked
   // for while the rest is read, and said so where it couldn't be.
   $: oldestRead = historyRows.reduce(
     (oldest, { time }) => Math.min(oldest, time ?? Infinity),
-    Infinity
+    Infinity,
   );
   $: olderThanRead = new Set(
     shown
       .filter(
-        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead
+        ({ at, id }) => matches.get(id)?.state === "waiting" && at < oldestRead,
       )
-      .map(({ id }) => id)
+      .map(({ id }) => id),
   );
   $: isShort = $wholeActivity.failed && olderThanRead.size > 0;
 </script>
@@ -571,7 +582,7 @@
           match,
           language,
           awaited.some(({ to }) => to === request.to) ||
-            ($wholeActivity.reading && olderThanRead.has(request.id))
+            ($wholeActivity.reading && olderThanRead.has(request.id)),
         )}
         <li class="requests__item">
           <p class="requests__head">
@@ -640,7 +651,7 @@
                 <li class="requests__payment">
                   <span
                     >{day.charAt(0).toUpperCase()}{day.slice(
-                      1
+                      1,
                     )}{#if payment.lux !== undefined}, <BalanceValue
                         value={formatDuskExact(payment.lux, language)}
                       /> DUSK{/if}</span
@@ -650,8 +661,8 @@
                     <a
                       aria-label={`See in History: the payment of ${day}`}
                       class="text-link tap-link"
-                      href={addBasePath(
-                        `/dashboard/transactions?tx=${payment.hash}`
+                      href={resolve(
+                        `/dashboard/transactions/?tx=${payment.hash}`,
                       )}>See in History</a
                     >
                     {#if refund?.back && !refund.sent}
@@ -659,7 +670,7 @@
                       <a
                         aria-label={`Send back the payment of ${day}`}
                         class="text-link tap-link"
-                        href={addBasePath(back)}
+                        href={resolve(back)}
                         on:click={(event) => sendBack(event, back)}>Send back</a
                       >
                     {/if}
@@ -683,8 +694,8 @@
                       <a
                         aria-label={`See in History: what was sent back for the payment of ${day}`}
                         class="text-link tap-link"
-                        href={addBasePath(
-                          `/dashboard/transactions?tx=${sent.hash}`
+                        href={resolve(
+                          `/dashboard/transactions/?tx=${sent.hash}`,
                         )}>See in History</a
                       ></span
                     >
@@ -697,7 +708,7 @@
             {#if match.hash && !again.length}
               <a
                 class="text-link tap-link"
-                href={addBasePath(`/dashboard/transactions?tx=${match.hash}`)}
+                href={resolve(`/dashboard/transactions/?tx=${match.hash}`)}
                 >See in History</a
               >
             {/if}

@@ -127,7 +127,7 @@ describe("the password on big sends", () => {
 
       // With the most its fee can be, what's taken is above the amount.
       expect(await asks(() => send(DUSK))).toBe(true);
-    }
+    },
   );
 
   it.each(movingOut)("asks nothing below the amount: %s", async (_, send) => {
@@ -152,10 +152,10 @@ describe("the password on big sends", () => {
               fnArgs: new Uint8Array(),
               fnName: "prove",
             },
-            gas
+            gas,
           ),
       ],
-    ])
+    ]),
   )(
     "asks nothing for what comes back, as only its fee goes out, unless that's above the amount: %s",
     async (_, send) => {
@@ -164,18 +164,18 @@ describe("the password on big sends", () => {
       setSendPasswordLimit(gas.total - 1n);
 
       expect(await asks(send)).toBe(true);
-    }
+    },
   );
 
   it("goes on with the right password only, checked against the vault", async () => {
     executeSpy.mockResolvedValue(
-      /** @type {any} */ ({ hash: "ab".repeat(32), nonce: 1n })
+      /** @type {any} */ ({ hash: "ab".repeat(32), nonce: 1n }),
     );
 
     const sending = walletStore.transfer(ACCOUNT, 2n * DUSK, "", gas);
 
     await expect(asked()?.answer("not the password")).rejects.toBeInstanceOf(
-      InvalidPasswordError
+      InvalidPasswordError,
     );
 
     // Still asking, with nothing sent.
@@ -196,7 +196,7 @@ describe("the password on big sends", () => {
     const asking = sendPasswordFor(2n * DUSK, wallet.id);
 
     await expect(asked()?.answer("another password")).rejects.toBeInstanceOf(
-      InvalidPasswordError
+      InvalidPasswordError,
     );
 
     await asked()?.answer(PASSWORD);
@@ -205,7 +205,7 @@ describe("the password on big sends", () => {
     const elsewhere = sendPasswordFor(2n * DUSK, "not a wallet here");
 
     await expect(asked()?.answer(PASSWORD)).rejects.toBeInstanceOf(
-      InvalidPasswordError
+      InvalidPasswordError,
     );
 
     cancelSendPassword();
@@ -290,7 +290,7 @@ describe("the password on big sends", () => {
 
     localStorage.setItem(
       `${CONFIG.LOCAL_STORAGE_APP_KEY}-send-password`,
-      String(DUSK / 4n)
+      String(DUSK / 4n),
     );
 
     const asking = sendPasswordFor(DUSK / 2n, "");
@@ -304,7 +304,7 @@ describe("the password on big sends", () => {
   it("stops asking once the wallet locks or another opens, with nothing sent", async () => {
     const seed = getSeedFromMnemonic(generateMnemonic());
     const stopped = expect(
-      walletStore.transfer(ACCOUNT, 2n * DUSK, "", gas)
+      walletStore.transfer(ACCOUNT, 2n * DUSK, "", gas),
     ).rejects.toBeInstanceOf(WalletChangedError);
 
     expect(asked()).not.toBeNull();
@@ -335,10 +335,10 @@ describe("the password on big sends", () => {
       const { getByLabelText, getByRole, sending } = openDialog();
 
       expect(
-        getByRole("dialog", { name: "Enter your password" })
+        getByRole("dialog", { name: "Enter your password" }),
       ).toHaveTextContent("This is above the 1 DUSK you set in Settings.");
       await vi.waitFor(() =>
-        expect(getByLabelText("Password you unlock with")).toHaveFocus()
+        expect(getByLabelText("Password you unlock with")).toHaveFocus(),
       );
 
       cancelSendPassword();
@@ -371,7 +371,7 @@ describe("the password on big sends", () => {
       await fireEvent.submit(form(container));
 
       expect(await findByRole("alert")).toHaveTextContent(
-        "Enter your password."
+        "Enter your password.",
       );
       expect(check).not.toHaveBeenCalled();
 
@@ -397,7 +397,7 @@ describe("the password on big sends", () => {
       await press(view);
 
       await expect(view.sending).rejects.toBeInstanceOf(
-        SendPasswordDeclinedError
+        SendPasswordDeclinedError,
       );
       expect(asked()).toBeNull();
     });
@@ -430,7 +430,7 @@ describe("the password on big sends", () => {
 
     expect(await findByText("Not sent")).toBeInTheDocument();
     expect(
-      await findByText("It waits for your password, so nothing was sent.")
+      await findByText("It waits for your password, so nothing was sent."),
     ).toBeInTheDocument();
     expect(queryByText("Transaction failed")).toBeNull();
     expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();

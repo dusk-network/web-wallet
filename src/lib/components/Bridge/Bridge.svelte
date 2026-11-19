@@ -4,6 +4,7 @@
   import { amountForField, readAmount } from "@dusk-network/app-core/amounts";
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import { browser } from "$app/environment";
+  import { resolve } from "$app/paths";
   import { onMount } from "svelte";
   import {
     mdiArrowDown,
@@ -95,7 +96,7 @@
   import { getDecimalSeparator } from "$lib/dusk/number";
   import { shortenAddress } from "$lib/dusk/string";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
-  import { addBasePath, formDraft, gasToKeep, keptGas } from "$lib/navigation";
+  import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { sendPasswordFor } from "$lib/security/sendPassword";
   import { settingsStore, walletStore } from "$lib/stores";
   import {
@@ -178,7 +179,7 @@
    */
   const typedBefore = ((before) =>
     before && (!linkedRoute || before.link === linkedRoute) ? before : null)(
-    draft.read()
+    draft.read(),
   );
 
   /** @type {string} */
@@ -281,7 +282,7 @@
   const toAmountText = (lux) =>
     amountForField(
       formatUnits(lux > 0n ? lux : 0n, 9),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
 
   /**
@@ -294,7 +295,7 @@
       const all = unshieldedBalance - fee;
 
       amount = toAmountText(
-        all > keepForLater.lux ? all - keepForLater.lux : all
+        all > keepForLater.lux ? all - keepForLater.lux : all,
       );
       return;
     }
@@ -309,7 +310,7 @@
     const scope = maxScope;
     // A lux's withdrawal takes the gas any other amount does.
     const feeWei = await estimateWithdrawalFee(EVM_TO_LUX_SCALE_FACTOR).catch(
-      () => null
+      () => null,
     );
 
     // The amount, the direction or a wallet changed while the fee was
@@ -321,7 +322,7 @@
     const reserveWei = feeWei ? feeWei * 2n : WITHDRAWAL_FEE_RESERVE_WEI;
 
     amount = toAmountText(
-      (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR
+      (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR,
     );
   }
 
@@ -366,7 +367,7 @@
     // first.
     await sendPasswordFor(
       amountLux + withdrawalFeeBound(),
-      $walletStore.walletKey
+      $walletStore.walletKey,
     );
     stillOpen();
 
@@ -412,7 +413,7 @@
     const response = await forThisWallet(walletStore.depositEvmFunctionCall)(
       $account.address,
       amountLux,
-      new Gas({ limit: gasLimit, price: gasPrice })
+      new Gas({ limit: gasLimit, price: gasPrice }),
     ).catch((error) => {
       const lost = unconfirmedHash(error);
 
@@ -425,7 +426,7 @@
     // Sent: what's wrong with it from here doesn't say it wasn't.
     if (typeof hash !== "string") {
       throw outcomeUnknown(
-        new Error("The DuskDS transaction did not return a hash.")
+        new Error("The DuskDS transaction did not return a hash."),
       );
     }
 
@@ -433,12 +434,12 @@
     const remembered = rememberDepositTransaction(
       hash,
       { account: $account.address, amountLux, amountWei },
-      records
+      records,
     );
 
     if (!remembered) {
       throw outcomeUnknown(
-        new Error("The DuskDS transaction returned an invalid hash.")
+        new Error("The DuskDS transaction returned an invalid hash."),
       );
     }
 
@@ -461,7 +462,7 @@
     const remembered = rememberDepositTransaction(
       hash,
       { account: from, amountLux: lux, amountWei: wei },
-      records
+      records,
     );
 
     lostDeposit = null;
@@ -491,11 +492,12 @@
 
   /**
    * @param {string | undefined} hash
+   * @returns {"/dashboard/bridge/transactions/" | `/dashboard/bridge/transactions/?tx=${string}`}
    */
   function withdrawalStatusHref(hash = lastWithdrawalTxHash) {
     return WITHDRAWAL_TX_HASH_PATTERN.test(hash)
-      ? `/dashboard/bridge/transactions?tx=${hash}`
-      : "/dashboard/bridge/transactions";
+      ? `/dashboard/bridge/transactions/?tx=${hash}`
+      : "/dashboard/bridge/transactions/";
   }
 
   /**
@@ -513,7 +515,7 @@
     const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
       { account: $account.address, amountWei, recipient: unshieldedAddress },
-      records
+      records,
     );
 
     if (remembered) {
@@ -674,7 +676,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
   }
@@ -691,7 +693,7 @@
   $: maxScope = { amount, evmAddress, isWithdrawing, unshieldedAccount };
   $: incomingDepositLux = pendingDepositAmountLux(
     $account.address,
-    $depositActivityStore
+    $depositActivityStore,
   );
   $: amountLux = readDuskInput(amount, language) ?? 0n;
   // Lux (1e9) in EVM base units (1e18).
@@ -760,7 +762,7 @@
           ? withdrawalLine
           : each.running
             ? routeTimeText(routeTime(each, { net: $nodeNetwork }))
-            : notRunning($nodeNetwork)
+            : notRunning($nodeNetwork),
   );
   $: canFlip = Boolean(flipRoute(list, route));
 
@@ -795,13 +797,12 @@
       <a
         aria-current="page"
         class="swap-tab"
-        href={addBasePath("/dashboard/bridge")}
+        href={resolve("/dashboard/bridge/")}
         on:click={() => {
           restarts += 1;
         }}>Bridge</a
       >
-      <a class="swap-tab" href={addBasePath(withdrawalStatusHref())}>Activity</a
-      >
+      <a class="swap-tab" href={resolve(withdrawalStatusHref())}>Activity</a>
     </nav>
   </div>
 
@@ -1130,7 +1131,7 @@
             label="Network fee (about)"
             value={formatFee(
               withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
-              language
+              language,
             )}
           />
         {/if}

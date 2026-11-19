@@ -17,10 +17,10 @@ import fixture from "./activity-testnet.json";
  */
 export function page(
   list,
-  { fromBlock = 0, maxCount, pageCount = 1, toBlock }
+  { fromBlock = 0, maxCount, pageCount = 1, toBlock },
 ) {
   let items = list.filter(
-    (e) => toBlock === undefined || e.block_height <= toBlock
+    (e) => toBlock === undefined || e.block_height <= toBlock,
   );
   const lower = items.findIndex((e) => e.block_height >= fromBlock);
 
@@ -59,15 +59,15 @@ function answer(node, query, accounts, details) {
   }
 
   for (const m of query.matchAll(
-    /(\w+): moonlightHistory\((sender|receiver): "([^"]+)"((?:, \w+: \d+)*)\) \{ json \}/g
+    /(\w+): moonlightHistory\((sender|receiver): "([^"]+)"((?:, \w+: \d+)*)\) \{ json \}/g,
   )) {
     const args = Object.fromEntries(
-      [...m[4].matchAll(/(\w+): (\d+)/g)].map(([, k, v]) => [k, Number(v)])
+      [...m[4].matchAll(/(\w+): (\d+)/g)].map(([, k, v]) => [k, Number(v)]),
     );
 
     // The archive has finalized blocks only.
     const list = (accounts[m[3]]?.[m[2]] ?? []).filter(
-      (/** @type {any} */ e) => e.block_height <= node.finalized
+      (/** @type {any} */ e) => e.block_height <= node.finalized,
     );
 
     data[m[1]] = page(list, args);

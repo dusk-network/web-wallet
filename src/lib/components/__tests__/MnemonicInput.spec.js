@@ -53,7 +53,7 @@ describe("MnemonicInput", () => {
 
     expect(getAllByRole("combobox")).toHaveLength(12);
     expect(
-      getByRole("group", { name: "Recovery phrase" })
+      getByRole("group", { name: "Recovery phrase" }),
     ).toHaveAccessibleDescription("Paste the whole phrase into any box.");
 
     await pasteInto(getByLabelText("Word 5"), `  ${TWELVE.toUpperCase()}\n`);
@@ -63,11 +63,11 @@ describe("MnemonicInput", () => {
     await pasteInto(getByLabelText("Word 3"), TWENTY_FOUR);
 
     expect(getAllByRole("combobox").map(valueOf)).toEqual(
-      TWENTY_FOUR.split(" ")
+      TWENTY_FOUR.split(" "),
     );
     expect(getByRole("button", { name: "24 words" })).toHaveAttribute(
       "aria-pressed",
-      "true"
+      "true",
     );
   });
 
@@ -77,7 +77,7 @@ describe("MnemonicInput", () => {
     await pasteInto(getByLabelText("Word 1"), TWELVE.replace("worth", "wurth"));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "Word 7 isn't a recovery word. Check its spelling."
+      "Word 7 isn't a recovery word. Check its spelling.",
     );
     expect(getByLabelText("Word 7")).toHaveAttribute("aria-invalid", "true");
 
@@ -92,16 +92,16 @@ describe("MnemonicInput", () => {
     await pasteInto(getByLabelText("Word 1"), `${TWELVE} legal`);
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That's 13 words. A recovery phrase has 12 or 24."
+      "That's 13 words. A recovery phrase has 12 or 24.",
     );
 
     await pasteInto(
       getByLabelText("Word 1"),
-      TWELVE.replace("yellow", "winner")
+      TWELVE.replace("yellow", "winner"),
     );
 
     expect(getByRole("alert")).toHaveTextContent(
-      "These words aren't a valid recovery phrase. Check each word."
+      "These words aren't a valid recovery phrase. Check each word.",
     );
   });
 
@@ -138,14 +138,14 @@ describe("MnemonicInput", () => {
 
     await fireEvent.click(paste);
     await vi.waitFor(() =>
-      expect(getAllByRole("combobox").map(valueOf)).toEqual(TWELVE.split(" "))
+      expect(getAllByRole("combobox").map(valueOf)).toEqual(TWELVE.split(" ")),
     );
 
     await fireEvent.click(paste);
     await vi.waitFor(() =>
       expect(getByRole("alert")).toHaveTextContent(
-        "That's 25 words. A recovery phrase has 12 or 24."
-      )
+        "That's 25 words. A recovery phrase has 12 or 24.",
+      ),
     );
 
     cleanup();
@@ -154,7 +154,7 @@ describe("MnemonicInput", () => {
     expect(
       render(MnemonicInput).queryByRole("button", {
         name: "Paste recovery phrase",
-      })
+      }),
     ).toBeNull();
   });
 
@@ -179,7 +179,7 @@ describe("MnemonicInput", () => {
 
       // With Paste too.
       await fireEvent.click(
-        getByRole("button", { name: "Paste recovery phrase" })
+        getByRole("button", { name: "Paste recovery phrase" }),
       );
       await vi.waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
 
@@ -187,7 +187,7 @@ describe("MnemonicInput", () => {
 
       // The browser won't let a page write it: said, once however often.
       writeText.mockImplementation(() =>
-        Promise.reject(new DOMException("Denied", "NotAllowedError"))
+        Promise.reject(new DOMException("Denied", "NotAllowedError")),
       );
       await pasteInto(getByLabelText("Word 3"), TWELVE);
       await pasteInto(getByLabelText("Word 5"), TWELVE);
@@ -244,11 +244,11 @@ describe("MnemonicInput", () => {
     expect(first).toHaveAttribute("aria-activedescendant", abandon.id);
     // Right under its box, before the next.
     expect(
-      first.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING
+      first.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       list.compareDocumentPosition(getByLabelText("Word 2")) &
-        Node.DOCUMENT_POSITION_FOLLOWING
+        Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
 
     const able = getByRole("option", { name: "able" });
@@ -275,15 +275,15 @@ describe("MnemonicInput", () => {
 
     expect(getByRole("option", { name: "zoo" })).toHaveAttribute(
       "aria-selected",
-      "true"
+      "true",
     );
     expect(getByRole("option", { name: "zone" })).toHaveAttribute(
       "aria-selected",
-      "false"
+      "false",
     );
     expect(box(1)).toHaveAttribute(
       "aria-activedescendant",
-      getByRole("option", { name: "zoo" }).id
+      getByRole("option", { name: "zoo" }).id,
     );
 
     // Round from the last to the first, and back.
@@ -291,7 +291,7 @@ describe("MnemonicInput", () => {
 
     expect(getByRole("option", { name: "zone" })).toHaveAttribute(
       "aria-selected",
-      "true"
+      "true",
     );
 
     await fireEvent.keyDown(box(1), { key: "ArrowUp" });
@@ -372,8 +372,8 @@ describe("MnemonicInput", () => {
     // And said to screen readers as it comes.
     await vi.waitFor(() =>
       expect(document.querySelector("[aria-live='polite']")).toHaveTextContent(
-        "Not a recovery word"
-      )
+        "Not a recovery word",
+      ),
     );
 
     // Letters a recovery word starts with: the mark goes as they're typed.
@@ -382,8 +382,8 @@ describe("MnemonicInput", () => {
     expect(first).not.toHaveAttribute("aria-invalid");
     expect(
       within(getByRole("group", { name: "Recovery phrase" })).queryByText(
-        "Not a recovery word"
-      )
+        "Not a recovery word",
+      ),
     ).toBeNull();
   });
 
@@ -437,7 +437,7 @@ describe("MnemonicInput", () => {
       expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
       expect(queryByRole("button", { name: "Show words" })).toBeNull();
       expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
-    }
+    },
   );
 
   // Decided after round 39: on a phone, the words typed show only while
@@ -465,7 +465,7 @@ describe("MnemonicInput", () => {
             button: 0,
             pointerId: 1,
             pointerType: "touch",
-          })
+          }),
         );
 
       await pasteInto(getByLabelText("Word 1"), TWELVE);
@@ -488,8 +488,8 @@ describe("MnemonicInput", () => {
       expect(grid).not.toHaveClass("mnemonic-input__grid--hidden");
       expect(
         getAllByRole("combobox").every(
-          (box) => /** @type {HTMLInputElement} */ (box).readOnly
-        )
+          (box) => /** @type {HTMLInputElement} */ (box).readOnly,
+        ),
       ).toBe(true);
 
       // A second finger on the page ends the hold.
@@ -498,15 +498,15 @@ describe("MnemonicInput", () => {
           button: 0,
           pointerId: 2,
           pointerType: "touch",
-        })
+        }),
       );
       await tick();
 
       expect(grid).toHaveClass("mnemonic-input__grid--hidden");
       expect(
         getAllByRole("combobox").some(
-          (box) => /** @type {HTMLInputElement} */ (box).readOnly
-        )
+          (box) => /** @type {HTMLInputElement} */ (box).readOnly,
+        ),
       ).toBe(false);
       expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
     } finally {
@@ -537,10 +537,10 @@ describe("MnemonicInput", () => {
                       "(any-pointer: fine)",
                       "(any-hover: none)",
                       "(any-hover: hover)",
-                    ].includes(query)
+                    ].includes(query),
                   )
                 )
-              )
+              ),
           ),
     ],
   ])(
@@ -558,16 +558,16 @@ describe("MnemonicInput", () => {
         await pasteInto(getByLabelText("Word 1"), TWELVE);
 
         expect(grid.classList.contains("mnemonic-input__grid--hidden")).toBe(
-          isPhone
+          isPhone,
         );
         expect(
-          queryByRole("button", { name: "Hold to show words" }) !== null
+          queryByRole("button", { name: "Hold to show words" }) !== null,
         ).toBe(isPhone);
         expect(valueOf(getByLabelText("Word 1"))).toBe("legal");
       } finally {
         spy.mockRestore();
       }
-    }
+    },
   );
 
   // Codex's, round 40: on a phone, a page left with a box's suggestions
@@ -602,7 +602,7 @@ describe("MnemonicInput", () => {
   it("keeps Hold to show words in reach at the foot of the screen wherever the words are scrolled to, above a flow's own buttons stuck there", () => {
     const rule = styleRules(
       "../HoldToShow/HoldToShow.svelte",
-      import.meta.url
+      import.meta.url,
     ).find(({ selector }) => selector.trim() === ".hold-to-show");
 
     expect(rule?.declarations).toMatchObject({
@@ -629,7 +629,7 @@ describe("MnemonicInput", () => {
       const { getByRole } = render(MnemonicInput, { target: place });
 
       expect(
-        getByRole("button", { name: "Hold to show words" }).style.bottom
+        getByRole("button", { name: "Hold to show words" }).style.bottom,
       ).toBe("calc(68px + var(--small-gap))");
     } finally {
       phone.mockRestore();
@@ -670,7 +670,7 @@ describe("MnemonicInput", () => {
     });
 
     expect(getByRole("alert")).toHaveTextContent(
-      "This recovery phrase is already in your wallet."
+      "This recovery phrase is already in your wallet.",
     );
   });
 });

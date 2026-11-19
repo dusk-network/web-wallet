@@ -33,9 +33,9 @@ export default function styleRules(file, base) {
           declarations: Object.fromEntries(
             node.block.children
               .filter(
-                (/** @type {any} */ child) => child.type === "Declaration"
+                (/** @type {any} */ child) => child.type === "Declaration",
               )
-              .map((/** @type {any} */ child) => [child.property, child.value])
+              .map((/** @type {any} */ child) => [child.property, child.value]),
           ),
           media,
           selector: source.slice(node.prelude.start, node.prelude.end),

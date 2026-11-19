@@ -78,8 +78,8 @@ function textOfHex(hex) {
   try {
     return new TextDecoder().decode(
       Uint8Array.from(String(hex).match(/../g) ?? [], (byte) =>
-        parseInt(byte, 16)
-      )
+        parseInt(byte, 16),
+      ),
     );
   } catch {
     return "";
@@ -108,10 +108,10 @@ async function readListed(network, listed, account, signal) {
       found
         .map(
           ({ origin }, i) =>
-            `t${i}: tx(hash: "${String(origin)}") { blockTimestamp tx { json } }`
+            `t${i}: tx(hash: "${String(origin)}") { blockTimestamp tx { json } }`,
         )
         .join(" "),
-      { signal }
+      { signal },
     )) ?? {};
 
   /** @type {SentMeanwhile[]} */
@@ -139,7 +139,7 @@ async function readListed(network, listed, account, signal) {
         event?.reverted !== true &&
         String(event?.target ?? "").toLowerCase() === TRANSFER_CONTRACT &&
         event?.topic === "moonlight" &&
-        event?.data?.sender === account
+        event?.data?.sender === account,
     )?.data;
     const seconds = Number(its?.blockTimestamp);
 
@@ -175,7 +175,7 @@ export async function readSentMeanwhile(network, meanwhile, signal) {
     })) ?? {};
   const tip = Number(block?.header?.height ?? 0);
   const blocksSince = Math.ceil(
-    Math.max(0, Date.now() - since) / (BLOCK_SECONDS * 1000)
+    Math.max(0, Date.now() - since) / (BLOCK_SECONDS * 1000),
   );
   const fromBlock = Math.max(0, tip - blocksSince - BLOCKS_BEFORE);
 
@@ -186,7 +186,7 @@ export async function readSentMeanwhile(network, meanwhile, signal) {
     const { out } =
       (await network.query(
         `out: moonlightHistory(sender: ${JSON.stringify(account)}, fromBlock: ${fromBlock}, maxCount: ${PAGE}${page > 1 ? `, pageCount: ${page}` : ""}) { json }`,
-        { signal }
+        { signal },
       )) ?? {};
     /** @type {Array<{ events?: unknown, origin?: unknown }>} */
     const listed = Array.isArray(out?.json) ? out.json : [];
@@ -208,7 +208,7 @@ export async function readSentMeanwhile(network, meanwhile, signal) {
   }
 
   const sends = [...found.values()].sort((a, b) =>
-    a.nonce < b.nonce ? -1 : 1
+    a.nonce < b.nonce ? -1 : 1,
   );
 
   return { sends, whole: BigInt(sends.length) === to - from || to <= from };
@@ -295,8 +295,8 @@ export function followSentMeanwhile(meanwhile) {
           readSentMeanwhile(
             network,
             meanwhile,
-            AbortSignal.timeout(ANSWER_WITHIN)
-          )
+            AbortSignal.timeout(ANSWER_WITHIN),
+          ),
         )
         .catch(() => null);
 
@@ -352,7 +352,7 @@ export const isSamePayment = (sent, payment) =>
 export function sayMeanwhile(
   sends,
   payment,
-  { checking: isChecking = false, hidden, locale, nameOf }
+  { checking: isChecking = false, hidden, locale, nameOf },
 ) {
   const described =
     sends?.length && sends.every(({ to }) => to)
@@ -362,7 +362,7 @@ export function sayMeanwhile(
         }))
       : [];
   const isSame = Boolean(
-    described.length && sends?.some((sent) => isSamePayment(sent, payment))
+    described.length && sends?.some((sent) => isSamePayment(sent, payment)),
   );
 
   if (!described.length) {

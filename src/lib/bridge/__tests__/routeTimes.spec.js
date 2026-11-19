@@ -35,7 +35,7 @@ describe("route times", () => {
     expect(text(migrationRoute("ethereum"), { net: mainnet })).toBe("~70 min");
     expect(text(migrationRoute("bsc"), { net: mainnet })).toBe("~1 hour");
     expect(
-      routes(mainnet).map((route) => [route.id, text(route, { net: mainnet })])
+      routes(mainnet).map((route) => [route.id, text(route, { net: mainnet })]),
     ).toStrictEqual([
       ["bsc-to-dusk", "~1 hour"],
       ["ethereum-to-dusk", "~70 min"],
@@ -57,10 +57,10 @@ describe("route times", () => {
       routeTime(DEPOSIT, {
         chain: { deposit: { at: 1, lagSeconds: 290 } },
         net: networks.testnet,
-      })
+      }),
     ).toStrictEqual({ seconds: 300, source: "chain" });
     expect(text(DEPOSIT, { chain: CHAIN, net: networks.mainnet })).toBe(
-      "~1 min"
+      "~1 min",
     );
     // The Portal's wait after a proof, and about when it can be proved: an
     // output after it's sent, for "Claim 7 days after you prove. You can
@@ -79,7 +79,7 @@ describe("route times", () => {
         chain: {
           withdrawal: { ...CHAIN.withdrawal, finalitySeconds: 1_209_600 },
         },
-      })?.wait
+      })?.wait,
     ).toBe(1_209_600);
   });
 
@@ -89,12 +89,12 @@ describe("route times", () => {
     expect(
       depositStageMessage(deposit, {
         time: routeTime(DEPOSIT, { net: networks.testnet }),
-      })
+      }),
     ).toBe(
-      "Finalized on Dusk. Arrives on DuskEVM in ~1 min. Don't send it again."
+      "Finalized on Dusk. Arrives on DuskEVM in ~1 min. Don't send it again.",
     );
     expect(depositStageMessage(deposit)).toBe(
-      "Finalized on Dusk, on its way to DuskEVM. Don't send it again."
+      "Finalized on Dusk, on its way to DuskEVM. Don't send it again.",
     );
   });
 });

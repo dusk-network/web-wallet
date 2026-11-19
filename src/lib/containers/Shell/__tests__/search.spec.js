@@ -130,7 +130,7 @@ describe("searchLocally", () => {
         label,
         sub,
         detail,
-      ])
+      ]),
     ).toEqual([
       [
         "To DuskEVM",
@@ -235,7 +235,7 @@ describe("searchLocally for what was paid", () => {
   it("looks for both amounts that a text can mean", () => {
     expect(paymentsFor("1.000").map(([hash]) => hash)).toEqual(["a4", "a5"]);
     expect(
-      paymentsFor("1 000", { ...paid, locale: "fr-FR" }).map(([hash]) => hash)
+      paymentsFor("1 000", { ...paid, locale: "fr-FR" }).map(([hash]) => hash),
     ).toEqual(["a4"]);
   });
 
@@ -265,7 +265,7 @@ describe("searchLocally for what was paid", () => {
       searchLocally("Estudio", paid).map(({ group, value }) => [
         group,
         value?.slice(0, 2),
-      ])
+      ]),
     ).toEqual([
       ["Contacts", undefined],
       ["Transactions", "a1"],
@@ -292,8 +292,8 @@ describe("searchLocally for what was paid", () => {
     ]);
     expect(
       searchLocally("Estudio", paid).some(({ sub }) =>
-        sub?.includes("looks like")
-      )
+        sub?.includes("looks like"),
+      ),
     ).toBe(false);
   });
 
@@ -352,8 +352,8 @@ describe("searchLocally for a block, a memo or a label", () => {
     ]);
     expect(
       searchLocally("4704959x", withMore).filter(
-        ({ group }) => group === "Blocks"
-      )
+        ({ group }) => group === "Blocks",
+      ),
     ).toEqual([]);
   });
 
@@ -368,11 +368,11 @@ describe("searchLocally for a block, a memo or a label", () => {
           hash: `b${n}`.repeat(32),
           memo: `Factura 2026-05${n}`,
           status: "executed",
-        })
+        }),
       ),
     };
     const found = searchLocally("Factura 2026-05", invoices).filter(
-      ({ group }) => group === "Transactions"
+      ({ group }) => group === "Transactions",
     );
 
     expect(found).toHaveLength(6);
@@ -383,23 +383,26 @@ describe("searchLocally for a block, a memo or a label", () => {
       label: "See all 7 in History",
     });
     expect(
-      transactionsFound("Factura 2026-05", invoices).map(({ row }) => row.hash)
+      transactionsFound("Factura 2026-05", invoices).map(({ row }) => row.hash),
     ).toStrictEqual(invoices.history.map(({ hash }) => hash));
 
     // Five or fewer: nothing more to see.
     expect(
-      searchLocally("Factura 2026-051", invoices).map(({ id }) => id)
+      searchLocally("Factura 2026-051", invoices).map(({ id }) => id),
     ).toStrictEqual([`tx:${"b1".repeat(32)}`]);
   });
 
   it("finds the history's transactions by memo, and by the label of their contract or account", () => {
     expect(
-      searchLocally("sozu", withMore).map(({ group, href }) => [group, href])
+      searchLocally("sozu", withMore).map(({ group, href }) => [group, href]),
     ).toEqual([
       ["Transactions", `/dashboard/transactions?tx=${"5d".repeat(32)}`],
     ]);
     expect(
-      searchLocally("october", withMore).map(({ group, href }) => [group, href])
+      searchLocally("october", withMore).map(({ group, href }) => [
+        group,
+        href,
+      ]),
     ).toEqual([
       ["Transactions", `/dashboard/transactions?tx=${"e1".repeat(32)}`],
     ]);
@@ -414,15 +417,15 @@ describe("searchLocally for a block, a memo or a label", () => {
     });
     expect(
       searchLocally("sozu", withMore).find(
-        ({ group }) => group === "Transactions"
-      )?.memo
+        ({ group }) => group === "Transactions",
+      )?.memo,
     ).toBeUndefined();
   });
 
   it("finds a memo whatever its accents and case", () => {
     for (const query of ["ilustracion", "ILUSTRACIÓN", "Ilustración"]) {
       expect(
-        searchLocally(query, withMore).map(({ group, href }) => [group, href])
+        searchLocally(query, withMore).map(({ group, href }) => [group, href]),
       ).toEqual([
         ["Transactions", `/dashboard/transactions?tx=${"e2".repeat(32)}`],
       ]);
@@ -545,7 +548,7 @@ describe("searchLocally with contacts whose names look alike", () => {
     expect(
       found
         .filter(({ group }) => group === "Transactions")
-        .map(({ detail }) => detail)
+        .map(({ detail }) => detail),
     ).toEqual(expect.arrayContaining(["+0.5 DUSK", "+12 DUSK"]));
   });
 });

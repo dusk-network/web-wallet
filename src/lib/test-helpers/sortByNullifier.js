@@ -7,7 +7,7 @@
  */
 const sortByNullifier = (entries) =>
   entries.toSorted((a, b) =>
-    a.nullifier.toString().localeCompare(b.nullifier.toString())
+    a.nullifier.toString().localeCompare(b.nullifier.toString()),
   );
 
 export default sortByNullifier;

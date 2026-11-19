@@ -117,7 +117,7 @@ vi.mock("@wagmi/core", async (importOriginal) => {
         formatted: "1",
         symbol: "DUSK",
         value: 1n,
-      })
+      }),
     ),
     getGasPrice: vi.fn(() => Promise.resolve(1n)),
     switchChain: vi.fn(() => Promise.resolve()),
@@ -246,7 +246,7 @@ describe("BridgeContract", () => {
       }
 
       expect(evm.asking()).toEqual([]);
-    }
+    },
   );
 
   it("should ask the wallet once to move to the route's chain as it connects, known to the page or not", async () => {

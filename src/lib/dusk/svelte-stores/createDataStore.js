@@ -54,7 +54,7 @@ function createDataStore(dataRetriever) {
           } else {
             return get(dataStore);
           }
-        }
+        },
       );
   };
 

@@ -72,7 +72,7 @@ describe("sheetStep", () => {
 
     expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
       "/list?open=1",
-      expect.objectContaining({ keepFocus: true, noScroll: true })
+      expect.objectContaining({ keepFocus: true, noScroll: true }),
     );
     expect(mocks.goto.mock.lastCall?.[1]).not.toHaveProperty("replaceState");
     expect(back).not.toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe("sheetStep", () => {
 
     expect(mocks.goto).toHaveBeenLastCalledWith(
       "/list?open=1&edit=1",
-      expect.objectContaining({ keepFocus: true, noScroll: true })
+      expect.objectContaining({ keepFocus: true, noScroll: true }),
     );
     expect(mocks.goto.mock.lastCall?.[1]).not.toHaveProperty("replaceState");
   });
@@ -115,7 +115,7 @@ describe("sheetStep", () => {
         keepFocus: true,
         noScroll: true,
         replaceState: true,
-      })
+      }),
     );
 
     // Closing what it went to still goes back to the list.
@@ -140,7 +140,7 @@ describe("sheetStep", () => {
     expect(back).not.toHaveBeenCalled();
     expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
       "/list?kind=received",
-      expect.objectContaining({ replaceState: true })
+      expect.objectContaining({ replaceState: true }),
     );
   });
 
@@ -155,7 +155,7 @@ describe("sheetStep", () => {
         keepFocus: true,
         noScroll: true,
         replaceState: true,
-      })
+      }),
     );
   });
 
@@ -170,7 +170,7 @@ describe("sheetStep", () => {
         keepFocus: true,
         noScroll: true,
         replaceState: true,
-      })
+      }),
     );
   });
 });

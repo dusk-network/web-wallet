@@ -45,7 +45,7 @@ vi.mock("$lib/stores", async (importOriginal) => {
       ...original.walletStore,
       subscribe: (/** @type {(value: any) => void} */ run) =>
         original.walletStore.subscribe((store) =>
-          run({ ...store, initialized: wallet.isOpen })
+          run({ ...store, initialized: wallet.isOpen }),
         ),
     },
   };
@@ -74,7 +74,7 @@ describe("The welcome screens' layout", () => {
     wallet.isOpen = true;
 
     await expect(
-      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") }))
+      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") })),
     ).rejects.toMatchObject({
       location: "/some-base-path/dashboard",
       status: 307,
@@ -83,7 +83,7 @@ describe("The welcome screens' layout", () => {
     wallet.isOpen = false;
 
     await expect(
-      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") }))
+      load(/** @type {any} */ ({ url: new URL("http://localhost/setup") })),
     ).resolves.toBeUndefined();
   });
 
@@ -95,7 +95,7 @@ describe("The welcome screens' layout", () => {
     expect(getByRole("note")).toHaveTextContent("Testnet");
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector(".welcome-shell__content")).toContainElement(
-      getByText("Connecting to the network…")
+      getByText("Connecting to the network…"),
     );
   });
 
@@ -229,7 +229,7 @@ describe("The welcome screens' layout", () => {
     reconnect.mockReturnValueOnce(
       new Promise((_resolve, reject) => {
         fail = reject;
-      })
+      }),
     );
     renderWithSimpleContent(WelcomeLayout, {});
     await act(() => vi.advanceTimersByTime(0));

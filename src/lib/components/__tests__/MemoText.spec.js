@@ -18,7 +18,7 @@ describe("MemoText", () => {
     });
 
     expect(container.querySelector(".memo-text")?.textContent).toBe(
-      "Factura 33\nabril"
+      "Factura 33\nabril",
     );
     expect(queryByText(NOTE)).toBeNull();
   });
@@ -42,7 +42,7 @@ describe("MemoText", () => {
       expect(memo.dir).toBe("ltr");
       expect(withoutIsolates(shown)).toBe(text);
       expect(queryByText(NOTE)).toBeNull();
-    }
+    },
   );
 
   it.each([
@@ -86,11 +86,11 @@ describe("MemoText", () => {
       const { container, getByText, queryByText } = render(MemoText, { text });
 
       expect(
-        withoutIsolates(container.querySelector(".memo-text")?.textContent)
+        withoutIsolates(container.querySelector(".memo-text")?.textContent),
       ).toBe(text);
       expect(getByText(note)).toBeInTheDocument();
       expect(queryByText(NOTE)).toBeNull();
-    }
+    },
   );
 
   it("says nothing of Arabic-Indic digits alone, which read as they look", () => {

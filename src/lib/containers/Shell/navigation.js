@@ -8,7 +8,7 @@ import {
 } from "@mdi/js";
 
 /**
- * @typedef {{ href: string, icon: string, id: string, label: string }} ShellTab
+ * @typedef {{ href: "/dashboard" | "/dashboard/contacts" | "/dashboard/stake" | "/dashboard/transactions", icon: string, id: string, label: string }} ShellTab
  */
 
 /**
@@ -22,24 +22,24 @@ export function shellTabs({ history = true, stake }) {
   return [
     { href: "/dashboard", icon: mdiHomeOutline, id: "home", label: "Home" },
     ...(history
-      ? [
+      ? /** @type {ShellTab[]} */ ([
           {
             href: "/dashboard/transactions",
             icon: mdiHistory,
             id: "history",
             label: "History",
           },
-        ]
+        ])
       : []),
     ...(stake
-      ? [
+      ? /** @type {ShellTab[]} */ ([
           {
             href: "/dashboard/stake",
             icon: mdiLayersOutline,
             id: "staking",
             label: "Staking",
           },
-        ]
+        ])
       : []),
     {
       href: "/dashboard/contacts",

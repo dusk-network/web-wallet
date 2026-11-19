@@ -72,7 +72,7 @@ describe("Change password", () => {
     await fireEvent.click(getByRole("button", { name: "Change password" }));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That's the password you have. Choose a new one."
+      "That's the password you have. Choose a new one.",
     );
     expect(gotoSpy).not.toHaveBeenCalled();
   });
@@ -103,7 +103,7 @@ describe("Change password", () => {
     await fireEvent.input(again, { target: { value: "a new password" } });
     await change();
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
     );
 
     await fireEvent.input(current, { target: { value: PASSWORD } });

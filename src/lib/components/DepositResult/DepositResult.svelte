@@ -45,7 +45,7 @@
   const describe = (error) =>
     describeFailure(
       error,
-      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST }
+      hasHistory ? {} : { checkFirst: CHECK_BALANCE_FIRST },
     );
 
   /**
@@ -67,7 +67,7 @@
         }
 
         return { hash, unconfirmed: true };
-      }
+      },
     );
 
   // Each deposit sent is followed on its own.

@@ -68,7 +68,7 @@
   export let minStakeRequirement;
 
   const draft = formDraft(
-    minStakeRequirement === undefined ? "stake-claim" : "stake-unstake"
+    minStakeRequirement === undefined ? "stake-claim" : "stake-unstake",
   );
 
   /** What was typed before a lock, a reload or a failed send. */
@@ -139,7 +139,7 @@
     isGasValid = areValidGasSettings(
       event.detail.price,
       event.detail.limit,
-      gasLimits
+      gasLimits,
     );
 
     if (isGasValid) {
@@ -158,7 +158,7 @@
   /** @param {Event} event */
   function setWithdrawAmount(event) {
     amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isAmountChosen = true;
   }
@@ -222,7 +222,7 @@
     ({ gasLimit, gasPrice } = followDefaultGas(
       { gasLimit, gasPrice },
       defaultGas,
-      gasSettings
+      gasSettings,
     ));
     defaultGas = gasSettings;
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);

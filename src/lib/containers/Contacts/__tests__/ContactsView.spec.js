@@ -103,12 +103,12 @@ describe("ContactsView", () => {
       container.querySelectorAll(".contacts__row"),
       (row) =>
         Array.from(row.querySelectorAll("td"), (cell) =>
-          cell.textContent?.replace(/\s+/g, " ").trim()
-        )
+          cell.textContent?.replace(/\s+/g, " ").trim(),
+        ),
     );
 
     expect(
-      getByText("Saved only in this wallet, on this device.")
+      getByText("Saved only in this wallet, on this device."),
     ).toBeInTheDocument();
     expect(cells).toEqual([
       [
@@ -130,7 +130,7 @@ describe("ContactsView", () => {
     ]);
     expect(getByRole("link", { name: "Send to Alice's shop" })).toHaveAttribute(
       "href",
-      `/some-base-path/dashboard/send?to=${ACCOUNT}`
+      `/some-base-path/dashboard/send?to=${ACCOUNT}`,
     );
   });
 
@@ -142,7 +142,7 @@ describe("ContactsView", () => {
       container.querySelector(".contacts__row .contacts__col-dusk");
 
     expect(container.querySelector("th.contacts__col-last")).toHaveTextContent(
-      "Last activity"
+      "Last activity",
     );
     expect(dusk()?.querySelector(".contacts__checked")).not.toBeNull();
 
@@ -153,7 +153,7 @@ describe("ContactsView", () => {
     expect(dusk()).toHaveTextContent("alice-shop.dusk moved");
     expect(dusk()?.querySelector(".contacts__moved")).toHaveAttribute(
       "title",
-      "Points to another address now"
+      "Points to another address now",
     );
   });
 
@@ -181,13 +181,13 @@ describe("ContactsView", () => {
 
     expect(
       Array.from(activity.querySelectorAll(".contact-detail__day"), (day) =>
-        day.textContent?.trim()
-      )
+        day.textContent?.trim(),
+      ),
     ).toStrictEqual(["Today", "Yesterday"]);
     expect(
       Array.from(activity.querySelectorAll(".activity-row__title"), (title) =>
-        title.textContent?.trim()
-      )
+        title.textContent?.trim(),
+      ),
     ).toStrictEqual(["Sent", "Received"]);
     expect(activity).not.toHaveTextContent("Alice's shop ·");
   });
@@ -207,8 +207,8 @@ describe("ContactsView", () => {
     expect(getByText("Paid before")).toBeInTheDocument();
     expect(
       Array.from(container.querySelectorAll(".contacts__person"), (item) =>
-        item.textContent?.replace(/\s+/g, " ").trim()
-      )
+        item.textContent?.replace(/\s+/g, " ").trim(),
+      ),
     ).toStrictEqual([
       `${ACCOUNT.slice(0, 1).toUpperCase()} ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} Sent 40 DUSK · Today Save`,
     ]);
@@ -217,13 +217,13 @@ describe("ContactsView", () => {
     await fireEvent.click(
       getByRole("button", {
         name: `Save ${ACCOUNT.slice(0, 6)}…${ACCOUNT.slice(-6)} to contacts`,
-      })
+      }),
     );
     // The page opens the new contact's form.
     await rerender({ contacts: [], selected: "new" });
 
     expect(
-      getByRole("textbox", { name: /address or \.dusk name/i })
+      getByRole("textbox", { name: /address or \.dusk name/i }),
     ).toHaveValue(ACCOUNT);
   });
 
@@ -232,7 +232,7 @@ describe("ContactsView", () => {
     const names = () =>
       Array.from(
         container.querySelectorAll(".contacts__name"),
-        (name) => name.textContent
+        (name) => name.textContent,
       );
 
     await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
@@ -278,11 +278,11 @@ describe("ContactsView", () => {
     });
     const row = () =>
       Array.from(container.querySelectorAll(".contacts__row")).find((each) =>
-        each.textContent?.includes("Estudio")
+        each.textContent?.includes("Estudio"),
       );
 
     expect(row()?.querySelector(".contacts__col-dusk")).toHaveTextContent(
-      /^alice\.dusk$/
+      /^alice\.dusk$/,
     );
 
     await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
@@ -292,8 +292,8 @@ describe("ContactsView", () => {
     expect(
       Array.from(
         container.querySelectorAll(".contacts__name"),
-        (name) => name.textContent
-      )
+        (name) => name.textContent,
+      ),
     ).toEqual(["Estudio Mаrta"]);
   });
 
@@ -309,11 +309,11 @@ describe("ContactsView", () => {
     });
     const row = () =>
       Array.from(container.querySelectorAll(".contacts__row")).find((each) =>
-        each.textContent?.includes("Estudio")
+        each.textContent?.includes("Estudio"),
       );
 
     expect(row()?.querySelector(".contacts__col-dusk")).toHaveTextContent(
-      /^alice\.dusk$/
+      /^alice\.dusk$/,
     );
 
     await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
@@ -323,8 +323,8 @@ describe("ContactsView", () => {
     expect(
       Array.from(
         container.querySelectorAll(".contacts__name"),
-        (name) => name.textContent
-      )
+        (name) => name.textContent,
+      ),
     ).toEqual(["Estudio Mаrta"]);
   });
 
@@ -336,14 +336,14 @@ describe("ContactsView", () => {
     const marks = () =>
       Array.from(
         container.querySelectorAll(".contacts__alike"),
-        (mark) => mark.textContent
+        (mark) => mark.textContent,
       );
 
     expect(marks()).toEqual(
       expect.arrayContaining([
         `${shortAddress(ACCOUNT)} · name looks like another`,
         `${shortAddress(OTHER)} · name looks like another`,
-      ])
+      ]),
     );
 
     await fireEvent.input(getByRole("searchbox", { name: "Search contacts" }), {
@@ -353,8 +353,8 @@ describe("ContactsView", () => {
     expect(
       Array.from(
         container.querySelectorAll(".contacts__name"),
-        (name) => name.textContent
-      )
+        (name) => name.textContent,
+      ),
     ).toEqual(["Alice's shop", "Alice's sh\u043Ep"]);
   });
 
@@ -396,21 +396,21 @@ describe("ContactsView", () => {
 
     expect(getByRole("heading", { name: "Alice's shop" })).toBeInTheDocument();
     expect(
-      container.querySelector(".contact-detail .full-address")
+      container.querySelector(".contact-detail .full-address"),
     ).toHaveTextContent(ACCOUNT);
     expect(
       await findByText(
-        /alice-shop\.dusk still points to this address\. Checked just now\./
-      )
+        /alice-shop\.dusk still points to this address\. Checked just now\./,
+      ),
     ).toBeInTheDocument();
     expect(resolveName).toHaveBeenCalledExactlyOnceWith("alice-shop.dusk");
     expect(getContact(shop.id)?.checkedAt).toBeGreaterThanOrEqual(
-      shop.checkedAt ?? 0
+      shop.checkedAt ?? 0,
     );
 
     // Its payments, from the history, by what happened.
     expect(
-      container.querySelector(".contact-detail__activity .activity-row")
+      container.querySelector(".contact-detail__activity .activity-row"),
     ).toHaveTextContent(/^Sent .* Public/);
   });
 
@@ -424,7 +424,7 @@ describe("ContactsView", () => {
     const { container } = show({ selected: shop.id });
 
     await vi.waitFor(() =>
-      expect(resolveName).toHaveBeenCalledWith("alice-shop.dusk")
+      expect(resolveName).toHaveBeenCalledWith("alice-shop.dusk"),
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -441,7 +441,7 @@ describe("ContactsView", () => {
     const { findByRole, getByRole, rerender } = show({ selected: shop.id });
 
     expect(await findByRole("alert")).toHaveTextContent(
-      "alice-shop.dusk now points to another address. This contact keeps the address saved here, and Send uses it."
+      "alice-shop.dusk now points to another address. This contact keeps the address saved here, and Send uses it.",
     );
     expect(getContact(shop.id)?.address).toBe(ACCOUNT);
 
@@ -471,7 +471,7 @@ describe("ContactsView", () => {
     await fireEvent.click(getByRole("button", { name: "Use the new address" }));
 
     expect(
-      getByText("This address is already saved as Bob.")
+      getByText("This address is already saved as Bob."),
     ).toBeInTheDocument();
     expect(getContact(shop.id)?.address).toBe(ACCOUNT);
     expect(getContact(bob.id)?.address).toBe(OTHER);
@@ -495,7 +495,7 @@ describe("ContactsView", () => {
     });
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: "Bram.dusk" } }
+      { target: { value: "Bram.dusk" } },
     );
 
     expect(await findByText(/points to a public account/)).toBeInTheDocument();
@@ -504,7 +504,7 @@ describe("ContactsView", () => {
     resolveName.mockResolvedValueOnce({ account: OTHER, name: "bram.dusk" });
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: "bram.dusk" } }
+      { target: { value: "bram.dusk" } },
     );
     await act(() => {});
     await fireEvent.click(getByRole("button", { name: "Save contact" }));
@@ -518,7 +518,7 @@ describe("ContactsView", () => {
       type: "account",
     });
     expect(select).toHaveBeenCalledWith(
-      expect.objectContaining({ detail: { edit: false, id: bram.id } })
+      expect.objectContaining({ detail: { edit: false, id: bram.id } }),
     );
   });
 
@@ -531,7 +531,7 @@ describe("ContactsView", () => {
 
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: "not-an-address" } }
+      { target: { value: "not-an-address" } },
     );
 
     expect(getByText("Not a valid address.")).toBeInTheDocument();
@@ -561,7 +561,7 @@ describe("ContactsView", () => {
       const saved = vi.fn();
       const { getByRole, getByText, queryByRole, queryByText } = render(
         ContactForm,
-        { events: { saved }, props: { own: [OWN], resolveName } }
+        { events: { saved }, props: { own: [OWN], resolveName } },
       );
       const save = () => getByRole("button", { name: "Save contact" });
       /** @param {string} value */
@@ -572,7 +572,7 @@ describe("ContactsView", () => {
 
       await fireEvent.input(
         getByRole("textbox", { name: "Address or .dusk name" }),
-        { target: { value: NEW } }
+        { target: { value: NEW } },
       );
 
       // Whatever its capitals, spaces and punctuation.
@@ -586,8 +586,8 @@ describe("ContactsView", () => {
 
         expect(
           getByText(
-            `You have a contact called Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
-          )
+            `You have a contact called Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`,
+          ),
         ).toBeInTheDocument();
       }
 
@@ -603,8 +603,8 @@ describe("ContactsView", () => {
 
         expect(
           getByText(
-            `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`
-          )
+            `That looks like your contact Estudio Marta, at ${shortenAddress(OTHER)}. Is this someone else?`,
+          ),
         ).toBeInTheDocument();
       }
 
@@ -614,8 +614,8 @@ describe("ContactsView", () => {
 
       expect(
         getByText(
-          `You have a contact called Lucas (petit-fils), at ${shortenAddress(HIS)}. Is this someone else?`
-        )
+          `You have a contact called Lucas (petit-fils), at ${shortenAddress(HIS)}. Is this someone else?`,
+        ),
       ).toBeInTheDocument();
       expect(queryByRole("button", { name: "Yes, save it" })).toBeNull();
 
@@ -647,7 +647,7 @@ describe("ContactsView", () => {
 
       expect(saved).toHaveBeenCalledOnce();
       expect(
-        listContacts().filter(({ name: n }) => /^Lucas/.test(n))
+        listContacts().filter(({ name: n }) => /^Lucas/.test(n)),
       ).toHaveLength(2);
 
       cleanup();
@@ -663,7 +663,7 @@ describe("ContactsView", () => {
 
       await fireEvent.input(
         other.getByRole("textbox", { name: "Address or .dusk name" }),
-        { target: { value: OWN } }
+        { target: { value: OWN } },
       );
 
       expect(other.getByText("This is your own address.")).toBeInTheDocument();
@@ -694,14 +694,14 @@ describe("ContactsView", () => {
 
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: OTHER } }
+      { target: { value: OTHER } },
     );
     await name("profile 2");
 
     expect(
       getByText(
-        "One of your profiles is called Profile 2. Choose another name."
-      )
+        "One of your profiles is called Profile 2. Choose another name.",
+      ),
     ).toBeInTheDocument();
     expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
 
@@ -710,8 +710,8 @@ describe("ContactsView", () => {
 
     expect(
       getByText(
-        "That looks like Profile 2, one of your profiles. Choose another name."
-      )
+        "That looks like Profile 2, one of your profiles. Choose another name.",
+      ),
     ).toBeInTheDocument();
     expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
 
@@ -735,12 +735,12 @@ describe("ContactsView", () => {
 
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: OTHER } }
+      { target: { value: OTHER } },
     );
     await name("Lucas (petit-fils)");
 
     expect(
-      getByText("One of your profiles is called Lucas. Is this someone else?")
+      getByText("One of your profiles is called Lucas. Is this someone else?"),
     ).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Save contact" }));
@@ -774,7 +774,7 @@ describe("ContactsView", () => {
 
       await fireEvent.input(
         getByRole("textbox", { name: "Address or .dusk name" }),
-        { target: { value: OTHER } }
+        { target: { value: OTHER } },
       );
 
       // A right-to-left override reads "2 eliforP" as "Profile 2", and
@@ -791,8 +791,8 @@ describe("ContactsView", () => {
 
         expect(
           getByText(
-            "This name has hidden characters. Type it again without them."
-          )
+            "This name has hidden characters. Type it again without them.",
+          ),
         ).toBeInTheDocument();
         expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
       }
@@ -822,10 +822,10 @@ describe("ContactsView", () => {
     expect(row).toHaveTextContent("Its name has hidden characters");
     expect(row.textContent).not.toContain("\u202E");
     expect(
-      getByRole("heading", { name: "\\u202eecilA", level: 2 })
+      getByRole("heading", { name: "\\u202eecilA", level: 2 }),
     ).toBeInTheDocument();
     expect(
-      getByText(/^This name has hidden characters, shown here as codes\./)
+      getByText(/^This name has hidden characters, shown here as codes\./),
     ).toBeInTheDocument();
 
     cleanup();
@@ -839,7 +839,7 @@ describe("ContactsView", () => {
 
     await fireEvent.click(form.getByRole("button", { name: "Delete contact" }));
     await fireEvent.click(
-      form.getByRole("button", { name: "Delete \\u202eecilA" })
+      form.getByRole("button", { name: "Delete \\u202eecilA" }),
     );
 
     expect(getContact(hiding.id)).toBeNull();
@@ -883,7 +883,7 @@ describe("ContactsView", () => {
     });
     const { findByText, getByRole, getByText, queryByText } = render(
       ContactForm,
-      { resolveName }
+      { resolveName },
     );
     const save = () => getByRole("button", { name: "Save contact" });
     /** @param {string} value */
@@ -894,7 +894,7 @@ describe("ContactsView", () => {
 
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: OTHER } }
+      { target: { value: OTHER } },
     );
 
     // In small capitals and after a fullwidth point too: Marek's. And after
@@ -918,8 +918,8 @@ describe("ContactsView", () => {
       await name(value);
       expect(
         getByText(
-          "That looks like alice.dusk. Enter it as the address below, or choose another name."
-        )
+          "That looks like alice.dusk. Enter it as the address below, or choose another name.",
+        ),
       ).toBeInTheDocument();
       expect(save()).toBeDisabled();
     }
@@ -932,7 +932,7 @@ describe("ContactsView", () => {
     await name("alice.dusk");
     await fireEvent.input(
       getByRole("textbox", { name: "Address or .dusk name" }),
-      { target: { value: "alice.dusk" } }
+      { target: { value: "alice.dusk" } },
     );
     await findByText(/points to a public account/);
     expect(queryByText(/^That looks like/)).toBeNull();

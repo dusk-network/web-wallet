@@ -62,7 +62,7 @@ const headers = () =>
       headers:
         "# Cloudflare's: the policy in place of PAGE_POLICY.\n/*\n  X-Frame-Options: DENY\n  Content-Security-Policy: PAGE_POLICY\n",
     }),
-    "headers"
+    "headers",
   );
 
 afterEach(() => {
@@ -85,7 +85,7 @@ describe("Placing the build where Cloudflare serves it", () => {
       ...filesIn(built).map((path) => join("wallet", path)),
     ]);
     expect(readFileSync(join(site, "wallet/index.html"), "utf8")).toBe(
-      head("a1")
+      head("a1"),
     );
   });
 
@@ -95,7 +95,7 @@ describe("Placing the build where Cloudflare serves it", () => {
     stage(build(), site, headers());
 
     expect(readFileSync(join(site, "_headers"), "utf8")).toBe(
-      "# Cloudflare's: the policy in place of PAGE_POLICY.\n/*\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; default-src 'self'; connect-src 'self' https://testnet.nodes.dusk.network; script-src 'self' 'wasm-unsafe-eval' 'sha256-a1' 'sha256-b2'; style-src 'self' 'unsafe-inline'\n"
+      "# Cloudflare's: the policy in place of PAGE_POLICY.\n/*\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; default-src 'self'; connect-src 'self' https://testnet.nodes.dusk.network; script-src 'self' 'wasm-unsafe-eval' 'sha256-a1' 'sha256-b2'; style-src 'self' 'unsafe-inline'\n",
     );
   });
 
@@ -110,7 +110,7 @@ describe("Placing the build where Cloudflare serves it", () => {
     const site = folder({ "wallet/index.html": "kept" });
 
     expect(() => stage(built, site, headers())).toThrow(
-      `${join("setup", "index.html")} carries no Content-Security-Policy`
+      `${join("setup", "index.html")} carries no Content-Security-Policy`,
     );
     expect(filesIn(site)).toEqual([join("wallet", "index.html")]);
   });
@@ -119,13 +119,13 @@ describe("Placing the build where Cloudflare serves it", () => {
     const site = folder({ "wallet/index.html": "kept" });
 
     expect(() => stage(folder({ "index.html": "" }), site, headers())).toThrow(
-      "has no build-manifest.json"
+      "has no build-manifest.json",
     );
     expect(() => stage(build(""), site, headers())).toThrow(
-      "is built for /, not for /wallet/"
+      "is built for /, not for /wallet/",
     );
     expect(() => stage(build("/wallet/app"), site, headers())).toThrow(
-      "is built for /wallet/app/, not for /wallet/"
+      "is built for /wallet/app/, not for /wallet/",
     );
     expect(filesIn(site)).toEqual([join("wallet", "index.html")]);
   });

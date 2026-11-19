@@ -92,7 +92,7 @@ describe("the EVM wallet connection, on Connect", () => {
     // page waits for: the test does, so that delete doesn't go on into the
     // next test, or past the end of the file.
     await Promise.all(
-      pages.splice(0).map((connection) => connection.settledDeletes())
+      pages.splice(0).map((connection) => connection.settledDeletes()),
     );
     localStorage.clear();
   });
@@ -108,7 +108,7 @@ describe("the EVM wallet connection, on Connect", () => {
       id: 745745,
     });
     expect(appKit.switchNetwork.mock.invocationCallOrder[0]).toBeLessThan(
-      appKit.open.mock.invocationCallOrder[0]
+      appKit.open.mock.invocationCallOrder[0],
     );
   });
 
@@ -180,7 +180,7 @@ describe("the EVM wallet connection, on Connect", () => {
     const keep = (/** @type {unknown} */ state) =>
       localStorage.setItem(
         "wagmi.store",
-        JSON.stringify({ state, version: 3 })
+        JSON.stringify({ state, version: 3 }),
       );
 
     expect(wasConnectedBefore()).toBe(false);
@@ -243,7 +243,7 @@ describe("the EVM wallet connection, on Connect", () => {
       request.onsuccess = () => {
         const transaction = request.result.transaction(
           "keyvaluestorage",
-          "readwrite"
+          "readwrite",
         );
 
         transaction
@@ -305,12 +305,12 @@ describe("the EVM wallet connection, on Connect", () => {
     expect(appKit.open).toHaveBeenCalledOnce();
     expect(get(next.connectionBlocked)).toBe(false);
     expect((await indexedDB.databases()).map(({ name }) => name)).not.toContain(
-      "WALLET_CONNECT_V2_INDEXED_DB"
+      "WALLET_CONNECT_V2_INDEXED_DB",
     );
     await vi.waitFor(() =>
       expect(
-        localStorage.getItem("web-wallet-evm-wallets-forgotten")
-      ).toBeNull()
+        localStorage.getItem("web-wallet-evm-wallets-forgotten"),
+      ).toBeNull(),
     );
   });
 
@@ -342,7 +342,7 @@ describe("the EVM wallet connection, on Connect", () => {
     await vi.waitFor(async () => {
       expect(await databases()).not.toContain("WALLET_CONNECT_V2_INDEXED_DB");
       expect(
-        localStorage.getItem("web-wallet-evm-wallets-forgotten")
+        localStorage.getItem("web-wallet-evm-wallets-forgotten"),
       ).toBeNull();
     });
   });
@@ -443,7 +443,7 @@ describe("the EVM wallet connection, on Connect", () => {
 
     await vi.waitFor(() => expect(back.disconnect).toHaveBeenCalledOnce());
     await vi.waitFor(() =>
-      expect(localStorage.getItem("wagmi.store")).toBeNull()
+      expect(localStorage.getItem("wagmi.store")).toBeNull(),
     );
     expect(get(connection.account).isConnected).toBe(false);
     expect(appKit.disconnect).toHaveBeenCalledTimes(2);
@@ -463,7 +463,7 @@ describe("the EVM wallet connection, on Connect", () => {
     await connection.startWalletConnection();
 
     const stuck = connectWallet(connection.wagmiConfig, () =>
-      Promise.reject(new Error("The wallet didn't answer"))
+      Promise.reject(new Error("The wallet didn't answer")),
     );
 
     await connection.forgetEvmWallets();
@@ -473,7 +473,7 @@ describe("the EVM wallet connection, on Connect", () => {
 
     // The failure is still said, once both were tried.
     await expect(connection.walletDisconnect()).rejects.toThrow(
-      "The wallet didn't answer"
+      "The wallet didn't answer",
     );
     expect(appKit.disconnect).toHaveBeenCalledTimes(2);
   });

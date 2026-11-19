@@ -64,13 +64,13 @@ describe("keyboardInset", () => {
 
     expect(node.style.getPropertyValue("--keyboard-inset")).toBe("300px");
     expect(
-      document.documentElement.style.getPropertyValue("--keyboard-inset")
+      document.documentElement.style.getPropertyValue("--keyboard-inset"),
     ).toBe("300px");
 
     action.destroy?.();
 
     expect(
-      document.documentElement.style.getPropertyValue("--keyboard-inset")
+      document.documentElement.style.getPropertyValue("--keyboard-inset"),
     ).toBe("");
   });
 

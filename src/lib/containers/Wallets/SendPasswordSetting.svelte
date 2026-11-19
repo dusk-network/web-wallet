@@ -202,7 +202,7 @@
       <p class="settings-group__note">
         Sends, stakes, shielding and the bridge above {formatDuskExact(
           limit,
-          language
+          language,
         )} DUSK, network fee included.
       </p>
       <Button

@@ -64,12 +64,12 @@ function withDirty(records, stored) {
   const fresh = [...dirty].filter(([key]) => !keys.has(key));
   const over = entries.map(
     /** @returns {[string, any]} */
-    ([key, record]) => [key, dirty.has(key) ? dirty.get(key) : record]
+    ([key, record]) => [key, dirty.has(key) ? dirty.get(key) : record],
   );
 
   return valueOf(
     records,
-    [...fresh, ...over].filter(([, record]) => record !== null)
+    [...fresh, ...over].filter(([, record]) => record !== null),
   );
 }
 

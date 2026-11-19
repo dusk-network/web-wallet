@@ -20,7 +20,7 @@ describe("stakeActions", () => {
       reasons: [],
     });
     expect(
-      stakeActions({ ...base, hasLiquid: true, hasPastStaking: true }).reasons
+      stakeActions({ ...base, hasLiquid: true, hasPastStaking: true }).reasons,
     ).toStrictEqual([]);
   });
 
@@ -31,7 +31,7 @@ describe("stakeActions", () => {
         hasLiquid: true,
         hasPastStaking: true,
         reward: DUSK,
-      }).reasons
+      }).reasons,
     ).toStrictEqual([
       "Nothing staked natively, so there's nothing to unstake.",
     ]);
@@ -39,7 +39,7 @@ describe("stakeActions", () => {
 
   it("lets rewards be claimed after unstaking, and a stake be unstaked before it earns", () => {
     expect(
-      stakeActions({ ...base, hasPastStaking: true, reward: 5n * DUSK })
+      stakeActions({ ...base, hasPastStaking: true, reward: 5n * DUSK }),
     ).toStrictEqual({
       canClaim: true,
       canUnstake: false,
@@ -59,7 +59,7 @@ describe("stakeActions", () => {
         pending: true,
         reward: 5n * DUSK,
         staked: 1_000n * DUSK,
-      })
+      }),
     ).toStrictEqual({ canClaim: false, canUnstake: false, reasons: [] });
   });
 
@@ -72,10 +72,10 @@ describe("stakeActions", () => {
     };
 
     expect(
-      stakeActions({ ...short, publicBalance: 40_000_000n })
+      stakeActions({ ...short, publicBalance: 40_000_000n }),
     ).toStrictEqual({ canClaim: true, canUnstake: true, reasons: [] });
     expect(
-      stakeActions({ ...short, publicBalance: 30_000_000n })
+      stakeActions({ ...short, publicBalance: 30_000_000n }),
     ).toMatchObject({ canClaim: false, canUnstake: false });
   });
 
@@ -86,7 +86,7 @@ describe("stakeActions", () => {
         publicBalance: 0n,
         reward: DUSK,
         staked: 1_000n * DUSK,
-      })
+      }),
     ).toStrictEqual({
       canClaim: false,
       canUnstake: false,
@@ -100,7 +100,7 @@ describe("stakeActions", () => {
         publicBalance: 40_000_000n,
         reward: DUSK,
         staked: 1_000n * DUSK,
-      }).reasons
+      }).reasons,
     ).toStrictEqual([
       "The public balance doesn't cover the network fee: 0.01 DUSK short. Add that much to it first.",
     ]);
@@ -111,7 +111,7 @@ describe("stakeActions", () => {
         publicBalance: 40_000_000n,
         reward: DUSK,
         staked: 1_000n * DUSK,
-      }).reasons
+      }).reasons,
     ).toStrictEqual([
       "The public balance doesn't cover the network fee: •••• DUSK short.",
     ]);

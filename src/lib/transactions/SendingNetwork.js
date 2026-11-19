@@ -22,7 +22,7 @@ const ABANDON_TIMEOUT = 3000;
  */
 export const hexOfBytes = (bytes) =>
   Array.from(new Uint8Array(/** @type {ArrayBufferLike} */ (bytes)), (byte) =>
-    byte.toString(16).padStart(2, "0")
+    byte.toString(16).padStart(2, "0"),
   ).join("");
 
 /**
@@ -193,7 +193,7 @@ export default class SendingNetwork extends Network {
               try {
                 onHandOver?.(
                   hash,
-                  typeof made.nonce === "bigint" ? made.nonce : undefined
+                  typeof made.nonce === "bigint" ? made.nonce : undefined,
                 );
               } catch {
                 // Nothing to do: it goes out all the same.

@@ -171,7 +171,7 @@ describe("contacts", () => {
     expect(get(contactsStore)).toStrictEqual([]);
     expect(findContact(ACCOUNT)).toBeNull();
     expect(() => saveContact({ address: ADDRESS, name: "Savings" })).toThrow(
-      "unlock it first"
+      "unlock it first",
     );
   });
 
@@ -192,7 +192,7 @@ describe("contacts", () => {
       expect.arrayContaining([
         await contactsNamespace(WALLET.account),
         await contactsNamespace(OTHER.account),
-      ])
+      ]),
     );
 
     await openContacts(WALLET);
@@ -239,7 +239,7 @@ describe("contacts", () => {
 
     // A wallet without a usable seed opens none.
     expect(
-      await openContacts({ account: WALLET.account, seed: new Uint8Array() })
+      await openContacts({ account: WALLET.account, seed: new Uint8Array() }),
     ).toBe(false);
   });
 
@@ -384,7 +384,7 @@ describe("contacts", () => {
 
     expect(getContact(shop.id)?.movedTo).toBe("");
     expect(
-      saveContact({ ...shop, name: "Alice's other shop" })
+      saveContact({ ...shop, name: "Alice's other shop" }),
     ).not.toHaveProperty("movedTo");
     expect(markContactNameMoved(shop, "elsewhere")).toBeNull();
   });
@@ -421,7 +421,7 @@ describe("contacts", () => {
     const record = await sealContacts(
       await deriveContactsKey(WALLET.seed),
       namespace,
-      JSON.stringify({ broken: { name: 1 }, savings: plainSavings })
+      JSON.stringify({ broken: { name: 1 }, savings: plainSavings }),
     );
 
     localStorage.setItem(KEY, JSON.stringify({ [namespace]: record }));
@@ -440,7 +440,7 @@ describe("contacts", () => {
 
     expect(listContacts()).toStrictEqual([]);
     expect(localStorage.getItem(KEY)).toBe(
-      JSON.stringify({ [namespace]: { v: 1 } })
+      JSON.stringify({ [namespace]: { v: 1 } }),
     );
 
     unsubscribe();
@@ -450,7 +450,7 @@ describe("contacts", () => {
     /** @type {string[][]} */
     const shown = [];
     const unsubscribe = contactsStore.subscribe((contacts) =>
-      shown.push(contacts.map((contact) => contact.name))
+      shown.push(contacts.map((contact) => contact.name)),
     );
 
     saveContact({ address: ACCOUNT, name: "Shop" });
@@ -460,7 +460,7 @@ describe("contacts", () => {
 
     // Once both are saved, both show, as each is written.
     expect(shown.slice(shown.findIndex((names) => names.length === 2))).toEqual(
-      expect.not.arrayContaining([["Shop"]])
+      expect.not.arrayContaining([["Shop"]]),
     );
     expect(shown.at(-1)).toStrictEqual(["Savings", "Shop"]);
   });

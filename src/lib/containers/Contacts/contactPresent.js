@@ -53,7 +53,7 @@ export function lastPayments(rows, context) {
 
   // Of all of the history: only transfers are described.
   for (const row of rows.filter(
-    ({ category }) => category === "sent" || category === "received"
+    ({ category }) => category === "sent" || category === "received",
   )) {
     const p = describeRow(row, context);
     const { time } = row;

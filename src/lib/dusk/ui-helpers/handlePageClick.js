@@ -9,7 +9,7 @@
  */
 export function handlePageClick(
   node,
-  { enabled: initialEnabled, callback, swallow = false }
+  { enabled: initialEnabled, callback, swallow = false },
 ) {
   // @ts-ignore
   const handleClick = (event) => {

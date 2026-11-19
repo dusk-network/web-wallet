@@ -16,7 +16,7 @@ const hashOf = (n) => n.toString(16).padStart(64, "0");
 /** @param {string} text */
 const hexOf = (text) =>
   Array.from(new TextEncoder().encode(text), (byte) =>
-    byte.toString(16).padStart(2, "0")
+    byte.toString(16).padStart(2, "0"),
   ).join("");
 
 /** When the blocks below were made: 10:02 and 10:05. */
@@ -74,7 +74,7 @@ function chainOf(sent) {
                     },
                   ],
                   origin: hash,
-                })
+                }),
               ),
           },
         };
@@ -98,8 +98,8 @@ function chainOf(sent) {
                 },
               },
             ];
-          }
-        )
+          },
+        ),
       );
     }),
   };
@@ -231,7 +231,7 @@ describe("What an account sent while a send waited", () => {
     ]);
 
     expect(
-      await readSentMeanwhile(network, { ...meanwhile, from: 198n })
+      await readSentMeanwhile(network, { ...meanwhile, from: 198n }),
     ).toMatchObject({ whole: false });
   });
 
@@ -268,7 +268,7 @@ describe("What an account sent while a send waited", () => {
 
     // Another memo: not the same, its memo said.
     expect(
-      sayMeanwhile([{ ...sent, memo: "kopi" }], payment, shown)
+      sayMeanwhile([{ ...sent, memo: "kopi" }], payment, shown),
     ).toStrictEqual({
       checking: false,
       items: [],
@@ -279,9 +279,9 @@ describe("What an account sent while a send waited", () => {
 
     // Hidden balances: no amount.
     expect(
-      sayMeanwhile([sent], payment, { ...shown, hidden: true }).title
+      sayMeanwhile([sent], payment, { ...shown, hidden: true }).title,
     ).toBe(
-      `Your account sent ${BALANCE_MASK} DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`
+      `Your account sent ${BALANCE_MASK} DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
     );
   });
 
@@ -317,11 +317,14 @@ describe("What an account sent while a send waited", () => {
 
     expect(sayMeanwhile(null, payment, shown)).toStrictEqual(generic);
     expect(sayMeanwhile([{ ...sent, to: "" }], payment, shown)).toStrictEqual(
-      generic
+      generic,
     );
     // Found, it's never checking.
     expect(
-      sayMeanwhile([{ ...sent, to: "" }], payment, { ...shown, checking: true })
+      sayMeanwhile([{ ...sent, to: "" }], payment, {
+        ...shown,
+        checking: true,
+      }),
     ).toStrictEqual(generic);
   });
 
@@ -329,7 +332,7 @@ describe("What an account sent while a send waited", () => {
   // seconds, Send it too live, of what was the very same payment.
   it("says it's checking what the account sent while that's read, its answers off", () => {
     expect(
-      sayMeanwhile(null, payment, { ...shown, checking: true })
+      sayMeanwhile(null, payment, { ...shown, checking: true }),
     ).toStrictEqual({
       checking: true,
       items: [],

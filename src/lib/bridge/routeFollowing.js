@@ -33,7 +33,7 @@ export function followRouteTransfers({ recentOnly = false } = {}) {
     if (
       recentOnly &&
       !toFollow(transfers).some(
-        ({ at }) => Date.now() - (at ?? 0) < FOLLOW_FOR_MS
+        ({ at }) => Date.now() - (at ?? 0) < FOLLOW_FOR_MS,
       )
     ) {
       return;

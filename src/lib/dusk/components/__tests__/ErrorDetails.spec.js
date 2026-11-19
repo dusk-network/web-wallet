@@ -29,7 +29,7 @@ describe("ErrorDetails", () => {
     });
 
     expect(container.querySelector("pre")?.textContent).toContain(
-      "refused \\u202e0001\\u202c"
+      "refused \\u202e0001\\u202c",
     );
   });
 });

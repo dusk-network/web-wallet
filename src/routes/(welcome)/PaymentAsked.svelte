@@ -154,7 +154,7 @@
     ? resolveDuskName(
         duskName,
         String($networkStore.networkName),
-        nodeBaseUrl()
+        nodeBaseUrl(),
       ).catch(() => null)
     : Promise.resolve(null);
   // The name the account it pays goes by, as the chain says: none for a
@@ -164,7 +164,7 @@
       ? getPrimaryName(
           asked.to,
           String($networkStore.networkName),
-          nodeBaseUrl()
+          nodeBaseUrl(),
         ).catch(() => "")
       : Promise.resolve("");
   // Another network's request, on the web wallet of its network.
@@ -181,7 +181,7 @@
     handed !== "refused" &&
     read?.reason !== "unreadable" &&
     read?.reason !== "two-amounts" &&
-    problem !== LINK_BAD_ADDRESS
+    problem !== LINK_BAD_ADDRESS,
   );
   $: extensionFirst = offersExtension && !hasWallet && handed !== "no-wallet";
   $: offersElsewhere = extensionFirst;
@@ -231,7 +231,7 @@
                 {#if found?.account || found?.address}
                   <span class="payment-asked__code"
                     >Points to {shortenAddress(
-                      found.account ?? found.address ?? ""
+                      found.account ?? found.address ?? "",
                     )}</span
                   >
                 {:else if found?.error}

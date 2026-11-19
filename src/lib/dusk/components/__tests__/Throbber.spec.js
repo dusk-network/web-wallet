@@ -8,7 +8,7 @@ import { Throbber } from "..";
 /** The throbber's rules, and those for less motion. */
 const rules = styleRules(
   "../../../../style/dusk-components/throbber.css",
-  import.meta.url
+  import.meta.url,
 ).filter(({ selector }) => selector === ".dusk-throbber");
 
 describe("Throbber", () => {
@@ -26,11 +26,11 @@ describe("Throbber", () => {
     // Not in SVG's own animation, which no media query can stop.
     expect(container.querySelector("animateTransform, animate")).toBeNull();
     expect(
-      rules.find(({ media }) => media === "")?.declarations.animation
+      rules.find(({ media }) => media === "")?.declarations.animation,
     ).toMatch(/linear\s+infinite$/);
     expect(
       rules.find(({ media }) => media === "(prefers-reduced-motion: reduce)")
-        ?.declarations
+        ?.declarations,
     ).toStrictEqual({ animation: "none" });
   });
 });

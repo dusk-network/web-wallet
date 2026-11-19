@@ -156,7 +156,7 @@ describe("contacts across tabs", () => {
         localStorage.setItem(KEY, others);
 
         return encrypt(...args);
-      }
+      },
     );
 
     saveContact({ address: ACCOUNT, name: "Alice" });

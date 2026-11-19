@@ -3,8 +3,8 @@
 <script>
   import { mdiArrowLeft } from "@mdi/js";
 
+  import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
-  import { addBasePath } from "$lib/navigation";
 
   /**
    * The card the Bridge and Migrate pages move DUSK with: From and To
@@ -20,15 +20,19 @@
   /** @type {string} */
   export let label;
 
-  /** Where the back link goes, and what it says. */
-  export let back = { href: "/dashboard", text: "Home" };
+  /**
+   * Where the back link goes, and what it says.
+   *
+   * @type {{ href: "/dashboard/", text: string }}
+   */
+  export let back = { href: "/dashboard/", text: "Home" };
 
   /** Wider, for a list, as the bridge's activity. */
   export let wide = false;
 </script>
 
 <div class="swap-page" class:swap-page--wide={wide}>
-  <a class="swap-page__back" href={addBasePath(back.href)}
+  <a class="swap-page__back" href={resolve(back.href)}
     ><Icon path={mdiArrowLeft} />{back.text}</a
   >
   <section aria-label={label} class="swap-card">

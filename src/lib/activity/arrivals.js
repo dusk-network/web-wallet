@@ -53,7 +53,7 @@ export const isToAnotherProfile = (to, from, profiles) =>
   to !== String(from.account) &&
   to !== String(from.address) &&
   profiles.some(
-    ({ account, address }) => to === String(account) || to === String(address)
+    ({ account, address }) => to === String(account) || to === String(address),
   );
 
 /**
@@ -70,7 +70,7 @@ export const arrivalsNotIn = (arrivals, addresses, rows, now = Date.now()) =>
     ({ at, hash, to }) =>
       now - at < LOOK_FOR_MS &&
       addresses.includes(to) &&
-      !rows.some((row) => row.hash.toLowerCase() === hash)
+      !rows.some((row) => row.hash.toLowerCase() === hash),
   );
 
 /** Looks for none, as another wallet opens or every one locks. */

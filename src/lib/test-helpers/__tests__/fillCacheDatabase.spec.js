@@ -21,7 +21,7 @@ const sortByDbNullifier = (entries) =>
   entries.toSorted((a, b) =>
     new Uint8Array(a.nullifier)
       .toString()
-      .localeCompare(new Uint8Array(b.nullifier).toString())
+      .localeCompare(new Uint8Array(b.nullifier).toString()),
   );
 
 /**
@@ -54,7 +54,7 @@ describe("fillCacheDatabase", () => {
 
   it("should fill the database tables with mock data", async () => {
     const expectedPendingNotesInfo = sortByNullifier(cachePendingNotesInfo).map(
-      (v) => ({ ...v, nullifier: v.nullifier.buffer })
+      (v) => ({ ...v, nullifier: v.nullifier.buffer }),
     );
     const expectedSpentNotes = sortByNullifier(cacheSpentNotes).map(toDbNote);
     const expectedUnspentNotes =
@@ -67,16 +67,16 @@ describe("fillCacheDatabase", () => {
     await db.open();
 
     await expect(
-      db.table("balancesInfo").toArray().then(sortByAddress)
+      db.table("balancesInfo").toArray().then(sortByAddress),
     ).resolves.toStrictEqual(sortByAddress(cacheBalances));
     await expect(
-      db.table("pendingNotesInfo").toArray().then(sortByDbNullifier)
+      db.table("pendingNotesInfo").toArray().then(sortByDbNullifier),
     ).resolves.toStrictEqual(expectedPendingNotesInfo);
     await expect(
-      db.table("spentNotes").toArray().then(sortByDbNullifier)
+      db.table("spentNotes").toArray().then(sortByDbNullifier),
     ).resolves.toStrictEqual(expectedSpentNotes);
     await expect(
-      db.table("stakeInfo").toArray().then(sortByAccount)
+      db.table("stakeInfo").toArray().then(sortByAccount),
     ).resolves.toStrictEqual(
       sortByAccount(cacheStakeInfo).map((entry) => ({
         ...entry,
@@ -88,13 +88,13 @@ describe("fillCacheDatabase", () => {
             value: entry.stakeInfo.amount.value,
           },
         },
-      }))
+      })),
     );
     await expect(db.table("syncInfo").toArray()).resolves.toStrictEqual(
-      cacheSyncInfo
+      cacheSyncInfo,
     );
     await expect(
-      db.table("unspentNotes").toArray().then(sortByDbNullifier)
+      db.table("unspentNotes").toArray().then(sortByDbNullifier),
     ).resolves.toStrictEqual(expectedUnspentNotes);
 
     db.close();

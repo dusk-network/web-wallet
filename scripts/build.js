@@ -31,7 +31,7 @@ export const modeOf = (args) => {
 
     if (option !== "--mode" && option !== "-m") {
       throw new Error(
-        `${args[at]}: only --mode can be given, since other options change the build in ways its manifest can't say`
+        `${args[at]}: only --mode can be given, since other options change the build in ways its manifest can't say`,
       );
     }
 
@@ -57,7 +57,7 @@ export const hashFiles = (root) =>
     readdirSync(root, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile())
       .map((entry) =>
-        relative(root, join(entry.parentPath, entry.name)).split(sep).join("/")
+        relative(root, join(entry.parentPath, entry.name)).split(sep).join("/"),
       )
       .filter((path) => path !== MANIFEST)
       .sort()
@@ -66,7 +66,7 @@ export const hashFiles = (root) =>
         createHash("sha256")
           .update(readFileSync(join(root, path)))
           .digest("hex"),
-      ])
+      ]),
   );
 
 // Run, not imported by scripts/verify-build.js.
@@ -83,7 +83,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const vite = join(
     dirname(createRequire(import.meta.url).resolve("vite/package.json")),
-    "bin/vite.js"
+    "bin/vite.js",
   );
   const { status } = spawnSync(process.execPath, [vite, "build", ...args], {
     stdio: "inherit",
@@ -95,11 +95,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   const { loadEnv } = await import("vite");
   const { homepage, version } = JSON.parse(
-    readFileSync("package.json", "utf8")
+    readFileSync("package.json", "utf8"),
   );
   // SvelteKit's version is the commit built (svelte.config.js).
   const { version: commit } = JSON.parse(
-    readFileSync("build/_app/version.json", "utf8")
+    readFileSync("build/_app/version.json", "utf8"),
   );
   // Vite puts every VITE_ setting in the code it builds: none is a secret.
   const settings = loadEnv(mode, process.cwd(), "VITE_");
@@ -116,6 +116,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   writeFileSync(
     join("build", MANIFEST),
-    `${JSON.stringify(manifest, null, 2)}\n`
+    `${JSON.stringify(manifest, null, 2)}\n`,
   );
 }

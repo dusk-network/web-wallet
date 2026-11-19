@@ -73,7 +73,7 @@ describe("DepositLifecycle", () => {
     expect(getByRole("heading", { name: "0.25 DUSK" })).toBeInTheDocument();
     expect(getByText("Bridging")).toBeInTheDocument();
     expect(
-      getByRole("list", { name: "Bridge transaction progress" })
+      getByRole("list", { name: "Bridge transaction progress" }),
     ).toBeInTheDocument();
   });
 
@@ -89,14 +89,16 @@ describe("DepositLifecycle", () => {
 
     expect(dusk).toHaveAttribute(
       "href",
-      `https://explorer.testnet.dusk.network/transactions/transaction?id=${"ab".repeat(32)}`
+      `https://explorer.testnet.dusk.network/transactions/transaction?id=${"ab".repeat(32)}`,
     );
     expect(dusk).toHaveAttribute("target", "_blank");
     expect(
-      getByRole("link", { name: "View duskevm transaction hash in Blockscout" })
+      getByRole("link", {
+        name: "View duskevm transaction hash in Blockscout",
+      }),
     ).toHaveAttribute(
       "href",
-      `https://explorer.example.test/tx/0x${"e2".repeat(32)}`
+      `https://explorer.example.test/tx/0x${"e2".repeat(32)}`,
     );
     setNodeNetwork(null);
   });
@@ -114,11 +116,11 @@ describe("DepositLifecycle", () => {
     await act(() =>
       history.state?.set({
         rows: [{ fee: 1_987_516n, hash: "ab".repeat(32) }],
-      })
+      }),
     );
 
     expect(getByText("Network fee").nextElementSibling).toHaveTextContent(
-      "0.001987516 DUSK"
+      "0.001987516 DUSK",
     );
   });
 
@@ -131,7 +133,7 @@ describe("DepositLifecycle", () => {
     expect(queryByRole("heading")).toBeNull();
     expect(queryByText("Bridging")).toBeNull();
     expect(
-      getByRole("list", { name: "Bridge transaction progress" })
+      getByRole("list", { name: "Bridge transaction progress" }),
     ).toBeInTheDocument();
   });
 });

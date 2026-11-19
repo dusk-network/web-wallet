@@ -80,7 +80,7 @@ export const approvedWei = async (route, owner) =>
     owner,
     /** @type {`0x${string}`} */ (route.chain.token),
     route.contract,
-    route.chain.chainId
+    route.chain.chainId,
   );
 
 /**
@@ -131,7 +131,7 @@ export async function revokeApproval({
     /** @type {`0x${string}`} */ (token),
     0n,
     chainId,
-    owner
+    owner,
   );
 
   onInBlock();
@@ -174,7 +174,7 @@ async function approveIfShort(route, owner, amountLux, onApproving, stillOpen) {
     /** @type {`0x${string}`} */ (token),
     amountLux * WEI_PER_LUX,
     chainId,
-    owner
+    owner,
   );
   const approved = await waitForTransactionReceipt(wagmiConfig, {
     chainId,
@@ -231,7 +231,7 @@ export async function sendMigration({
     owner,
     amountLux,
     () => onStep("approving"),
-    stillOpen
+    stillOpen,
   );
   stillOpen();
   stillOnAccount(owner);
@@ -242,7 +242,7 @@ export async function sendMigration({
     chainId,
     recipient,
     route.contract,
-    owner
+    owner,
   );
 
   // Sent: kept for its wallet, whichever is open now.
@@ -256,7 +256,7 @@ export async function sendMigration({
       routeId: route.id,
       sender: owner,
     },
-    scope
+    scope,
   );
   onStep("confirming");
 

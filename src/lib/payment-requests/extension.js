@@ -45,7 +45,7 @@ export function findLinkTaker(wait = ANNOUNCE_MS) {
             finish(provider);
           }
         },
-        () => {}
+        () => {},
       );
     };
 

@@ -104,15 +104,15 @@ describe("TransactionResult", () => {
     gate
       .untilHandedOver(
         () => Promise.reject(new TypeError("Failed to fetch")),
-        () => new Promise(() => {})
+        () => new Promise(() => {}),
       )
       .catch(() => {});
 
     try {
       await vi.waitFor(() =>
         expect(getByRole("status")).toHaveTextContent(
-          /^Nothing has left your wallet yet\. It goes out once the network answers\.$/
-        )
+          /^Nothing has left your wallet yet\. It goes out once the network answers\.$/,
+        ),
       );
       expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
       expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("TransactionResult", () => {
       await act(() => gate.checking());
 
       expect(getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers."
+        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers.",
       );
       expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
       expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
@@ -168,7 +168,7 @@ describe("TransactionResult", () => {
 
       expect(get(gate)).toBe("cancelled");
       expect(() => gate.handOver()).toThrow(
-        "The send was cancelled before it went out."
+        "The send was cancelled before it went out.",
       );
     } finally {
       setNetworkReach("answering");
@@ -189,7 +189,7 @@ describe("TransactionResult", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again."
+        "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again.",
       );
       expect(queryByRole("button", { name: "Cancel" })).toBeNull();
 
@@ -311,27 +311,27 @@ describe("TransactionResult", () => {
     async (_, error) => {
       const { container, findByText, getByText, queryByText } = render(
         TransactionResult,
-        { ...baseProps, operation: Promise.reject(error) }
+        { ...baseProps, operation: Promise.reject(error) },
       );
 
       expect(
         await findByText(
-          "Couldn't reach the network. Nothing was sent and no fee was charged."
-        )
+          "Couldn't reach the network. Nothing was sent and no fee was charged.",
+        ),
       ).toBeInTheDocument();
       expect(getByText("Not sent")).toBeInTheDocument();
       expect(queryByText("Transaction failed")).toBeNull();
       expect(container.querySelector("details")).toHaveTextContent(
-        error.message
+        error.message,
       );
-    }
+    },
   );
 
   it.each([
     [
       "a refusal for the balance",
       refusal(
-        "this transaction is invalid Value spent larger than account holds"
+        "this transaction is invalid Value spent larger than account holds",
       ),
       "The network refused it: the balance doesn't cover it and its fee. Lower the amount and try again.",
     ],
@@ -387,7 +387,7 @@ describe("TransactionResult", () => {
 
       expect(details.querySelector("summary")).toHaveTextContent(/^Details$/);
       expect(details).toHaveTextContent(error.message);
-    }
+    },
   );
 
   describe("Try again", () => {
@@ -423,8 +423,8 @@ describe("TransactionResult", () => {
         "a refusal as it was asked to broadcast it",
         outcomeUnknown(
           refusal(
-            "this transaction is invalid Value spent larger than account holds"
-          )
+            "this transaction is invalid Value spent larger than account holds",
+          ),
         ),
       ],
       [
@@ -458,15 +458,15 @@ describe("TransactionResult", () => {
         expect(getByText("Not confirmed")).toBeInTheDocument();
         expect(
           getByText(
-            "It may have reached the network. Check History before you send it again."
-          )
+            "It may have reached the network. Check History before you send it again.",
+          ),
         ).toBeInTheDocument();
         expect(container).not.toHaveTextContent(/try again/i);
         expect(getByRole("link", { name: "Open History" })).toHaveAttribute(
           "href",
-          "/some-base-path/dashboard/transactions"
+          "/some-base-path/dashboard/transactions",
         );
-      }
+      },
     );
 
     it.each([
@@ -504,11 +504,11 @@ describe("TransactionResult", () => {
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
         expect(getByText("Transaction failed")).toBeInTheDocument();
         expect(
-          getByText(`${said} Check History before you send it again.`)
+          getByText(`${said} Check History before you send it again.`),
         ).toBeInTheDocument();
         expect(container).not.toHaveTextContent(/try again/i);
         expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
-      }
+      },
     );
 
     it("should say what to check where there's no History, and not offer it", async () => {
@@ -522,9 +522,9 @@ describe("TransactionResult", () => {
       await vi.waitFor(() =>
         expect(
           getByText(
-            "The network refused it: another transaction from this account came first. Wait a few minutes and check your balance before you send it again."
-          )
-        ).toBeInTheDocument()
+            "The network refused it: another transaction from this account came first. Wait a few minutes and check your balance before you send it again.",
+          ),
+        ).toBeInTheDocument(),
       );
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
@@ -548,7 +548,7 @@ describe("TransactionResult", () => {
     });
 
     expect(
-      await findByText("Something went wrong before it was sent. Try again.")
+      await findByText("Something went wrong before it was sent. Try again."),
     ).toBeInTheDocument();
 
     const details = /** @type {HTMLDetailsElement} */ (

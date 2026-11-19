@@ -31,7 +31,7 @@ export const FOLLOW_TIMEOUT = 180_000;
 async function getFinalTransaction(network, hash, signal, onBlock) {
   const { tx } = await network.query(
     `tx(hash: "${hash}") { blockHash blockHeight blockTimestamp err gasSpent tx { gasPrice } }`,
-    { signal }
+    { signal },
   );
 
   if (!tx) {
@@ -40,7 +40,7 @@ async function getFinalTransaction(network, hash, signal, onBlock) {
 
   const { block } = await network.query(
     `block(hash: "${tx.blockHash}") { status }`,
-    { signal }
+    { signal },
   );
   const seconds = Number(tx.blockTimestamp);
   /** @type {FinalTransaction} */
@@ -86,7 +86,7 @@ function checkBefore(network, hash, { deadline, onBlock, signal }) {
     });
     getFinalTransaction(network, hash, check.signal, onBlock).then(
       resolve,
-      () => resolve(null)
+      () => resolve(null),
     );
   });
 
@@ -168,7 +168,7 @@ function listenForExecution(network, hash, signal, onExecuted) {
 async function checkUntilFinal(
   network,
   hash,
-  { deadline, interval, onBlock, pauses, signal }
+  { deadline, interval, onBlock, pauses, signal },
 ) {
   while (!signal.aborted && Date.now() < deadline) {
     await pauses.pause(Math.min(interval, deadline - Date.now()));
@@ -214,7 +214,7 @@ export default async function followTransaction(
     onBlock = () => {},
     signal,
     timeout = FOLLOW_TIMEOUT,
-  } = {}
+  } = {},
 ) {
   if (!/^[0-9a-f]{64}$/i.test(hash)) {
     throw new Error("Invalid transaction hash");

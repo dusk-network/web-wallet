@@ -41,7 +41,7 @@ class FakeRuesScope {
 
         deferredRemove.resolve(undefined);
       },
-      { signal: abortController.signal }
+      { signal: abortController.signal },
     );
   }
 

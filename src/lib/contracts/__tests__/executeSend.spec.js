@@ -37,7 +37,7 @@ describe("executeSend", () => {
       luxAmount,
       "test memo",
       1n,
-      500n
+      500n,
     );
 
     expect(walletStore.transfer).toHaveBeenCalledTimes(1);
@@ -49,7 +49,7 @@ describe("executeSend", () => {
         limit: 500n,
         price: 1n,
       }),
-      { toName: undefined }
+      { toName: undefined },
     );
     expect(result).toBe("some-tx-id");
   });
@@ -62,7 +62,7 @@ describe("executeSend", () => {
       1n,
       "",
       expect.objectContaining({ limit: 500n, price: 1n }),
-      { toName: "alice.dusk" }
+      { toName: "alice.dusk" },
     );
   });
 });

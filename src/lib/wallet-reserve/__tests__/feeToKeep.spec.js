@@ -139,20 +139,20 @@ describe("feeToKeep", () => {
 
   it("keeps a withdrawal's proof and claim, or its claim once it's proved, whatever it pays this account", () => {
     expect(
-      keptFor({ stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }] })
+      keptFor({ stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }] }),
     ).toStrictEqual({
       lux: 120_000_000n,
       why: "to prove and claim your withdrawal",
     });
     expect(
-      keptFor({ stages: [{ recipient: null, stage: "ready_to_finalize" }] })
+      keptFor({ stages: [{ recipient: null, stage: "ready_to_finalize" }] }),
     ).toStrictEqual({ lux: 60_000_000n, why: "to claim your withdrawal" });
     expect(
-      keptFor({ stages: [{ recipient: ACCOUNT, stage: "finalized" }] }).lux
+      keptFor({ stages: [{ recipient: ACCOUNT, stage: "finalized" }] }).lux,
     ).toBe(0n);
     expect(
       keptFor({ stages: [{ recipient: "someone", stage: "ready_to_prove" }] })
-        .lux
+        .lux,
     ).toBe(0n);
   });
 
@@ -161,7 +161,7 @@ describe("feeToKeep", () => {
       keptFor({
         amount: { total: 1n },
         stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }],
-      })
+      }),
     ).toMatchObject({ lux: 120_000_000n });
     expect(keptFor({ amount: { total: 1n }, stDusk: 1n })).toMatchObject({
       lux: 50_000_000n,

@@ -57,7 +57,7 @@ function ownFields(file) {
       ["input", "select", "textarea"].includes(node.name)
     ) {
       const type = node.attributes.find(
-        (/** @type {any} */ a) => a.type === "Attribute" && a.name === "type"
+        (/** @type {any} */ a) => a.type === "Attribute" && a.name === "type",
       );
       const kind =
         type === undefined
@@ -93,7 +93,7 @@ function ownFields(file) {
  */
 const ruleOf = (file, selector) =>
   styleRules(file, import.meta.url).find(
-    (rule) => rule.selector === selector && rule.media === ""
+    (rule) => rule.selector === selector && rule.media === "",
   )?.declarations ?? {};
 
 /** @param {string} color A hex colour: #rgb or #rrggbb */
@@ -126,7 +126,7 @@ describe("Fields", () => {
         const fields = ownFields(file);
 
         return fields.length ? [[file, fields]] : [];
-      })
+      }),
     );
 
     expect(drawn).toStrictEqual({
@@ -173,7 +173,7 @@ describe("Fields", () => {
       ]) {
         expect(
           contrast(edge, theme[surface]),
-          `${edge} on ${surface}`
+          `${edge} on ${surface}`,
         ).toBeGreaterThanOrEqual(3);
       }
     }
@@ -194,11 +194,11 @@ describe("Fields", () => {
       ruleOf("../Send/Send.svelte", ".send__contacts").border,
       ruleOf(
         "../../containers/History/HistoryView.svelte",
-        "& :global(.history__select)"
+        "& :global(.history__select)",
       ).border,
       ruleOf(
         "../../containers/Contacts/ContactsView.svelte",
-        ".contacts__search"
+        ".contacts__search",
       ).border,
     ];
 
@@ -211,7 +211,7 @@ describe("Fields", () => {
     expect(
       ruleOf("../../../style/dusk-components/textbox.css", ".dusk-textbox")[
         "min-height"
-      ]
+      ],
     ).toBe("3.25rem");
   });
 });

@@ -73,7 +73,7 @@ vi.mock(
   async (importOriginal) => ({
     .../** @type {object} */ (await importOriginal()),
     createWithdrawals: () => pkg,
-  })
+  }),
 );
 
 vi.mock("$lib/web3/walletConnection", async () => {
@@ -114,7 +114,7 @@ const OWNER = /** @type {`0x${string}`} */ (
   "0x2222222222222222222222222222222222222222"
 );
 const PORTAL = String(
-  networks.testnet.duskEvm?.contracts.optimism_portal.contractId
+  networks.testnet.duskEvm?.contracts.optimism_portal.contractId,
 );
 
 // Public BIP39 test phrases, never a real wallet's.
@@ -147,8 +147,8 @@ const BSC = /** @type {any} */ (
 const migrationsOf = (key) =>
   JSON.parse(
     localStorage.getItem(
-      `${APP}-migrations${suffixOf(key, readDirectory().legacy)}`
-    ) ?? "[]"
+      `${APP}-migrations${suffixOf(key, readDirectory().legacy)}`,
+    ) ?? "[]",
   );
 
 /**
@@ -163,7 +163,7 @@ async function twoWallets() {
   const second = await addWallet(B, PASSWORD, { syncFrom: 0n });
 
   await vi.waitFor(() =>
-    expect(get(walletStore).syncStatus.isInProgress).toBe(false)
+    expect(get(walletStore).syncStatus.isInProgress).toBe(false),
   );
 
   return { first, second };
@@ -177,7 +177,7 @@ describe("Work begun on one wallet", () => {
   // The test profiles' accounts aren't real ones a DuskEVM address is
   // made from.
   vi.spyOn(walletStore, "getDuskEvmProofSubmitter").mockReturnValue(
-    `0x${"97".repeat(20)}`
+    `0x${"97".repeat(20)}`,
   );
 
   beforeEach(() => {
@@ -191,7 +191,7 @@ describe("Work begun on one wallet", () => {
     explorer.findWithdrawalsByNonce.mockReset();
     execute.mockReset();
     execute.mockResolvedValue(
-      /** @type {any} */ ({ hash: "aa".repeat(32), nonce: 1n })
+      /** @type {any} */ ({ hash: "aa".repeat(32), nonce: 1n }),
     );
   });
 
@@ -359,7 +359,7 @@ describe("Work begun on one wallet", () => {
             transactionHash: TX,
           },
         ],
-      ])
+      ]),
     );
     await finding;
 
@@ -412,15 +412,17 @@ describe("Work begun on one wallet", () => {
               transactionHash: TX,
             },
           ],
-        ])
+        ]),
       );
       await finding;
 
       expect(
-        Object.keys(localStorage).filter((name) => name.startsWith("dusk-evm:"))
+        Object.keys(localStorage).filter((name) =>
+          name.startsWith("dusk-evm:"),
+        ),
       ).toEqual([]);
       expect(get(withdrawalActivityStore)).toEqual([]);
-    }
+    },
   );
 
   /**
@@ -442,19 +444,19 @@ describe("Work begun on one wallet", () => {
         if (refuses(name)) {
           throw new DOMException(
             "The quota has been exceeded.",
-            "QuotaExceededError"
+            "QuotaExceededError",
           );
         }
 
         return setItem.call(this, name, value);
-      }
+      },
     );
   }
 
   /** The withdrawals kept under every name, for any wallet. */
   const withdrawalsKept = () =>
     Object.keys(localStorage).filter((name) =>
-      name.startsWith("dusk-evm:withdrawal-activity:v1")
+      name.startsWith("dusk-evm:withdrawal-activity:v1"),
     );
 
   it("keeps on screen a submission storage refused for a withdrawal it kept before, as it's read again", async () => {
@@ -505,7 +507,7 @@ describe("Work begun on one wallet", () => {
           "7",
           { account: OWNER, amountWei: 1n, createdAt: 1, transactionHash: TX },
         ],
-      ])
+      ]),
     );
     await finding;
 
@@ -557,7 +559,7 @@ describe("Work begun on one wallet", () => {
         resetFirst(name);
 
         return setItem.call(this, name, value);
-      }
+      },
     );
     vi.spyOn(Storage.prototype, "removeItem").mockImplementation(
       /**
@@ -568,7 +570,7 @@ describe("Work begun on one wallet", () => {
         resetFirst(name);
 
         return removeItem.call(this, name);
-      }
+      },
     );
 
     await forgetWalletData(first.id, { accounts: [], addresses: [] });

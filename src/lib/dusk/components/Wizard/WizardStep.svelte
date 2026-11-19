@@ -120,7 +120,7 @@
     wizardButtonProps,
     defaultLabel,
     defaultIconPath,
-    isNextButton = false
+    isNextButton = false,
   ) {
     const stepCondition = isNextButton
       ? currentStep + 1 === stepsCount

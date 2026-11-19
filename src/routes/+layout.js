@@ -28,7 +28,7 @@ export async function load() {
     await import("web-streams-polyfill/polyfill");
 
     console.info(
-      "Web Streams polyfilled with `web-streams-polyfill` via layout load"
+      "Web Streams polyfilled with `web-streams-polyfill` via layout load",
     );
   }
 

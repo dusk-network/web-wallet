@@ -112,7 +112,7 @@ const isUnsent = (kept) =>
   Boolean(kept) &&
   typeof kept === "object" &&
   ["account", "id", "label", "memo", "network", "to"].every(
-    (field) => typeof kept[field] === "string"
+    (field) => typeof kept[field] === "string",
   ) &&
   typeof kept.at === "number" &&
   typeof kept.lux === "string" &&
@@ -342,7 +342,7 @@ async function readAgain(scope) {
 
   // This tab's changes storage hasn't taken yet, over what it read.
   const changes = [...unwritten].filter(
-    ([, { wallet }]) => wallet === scope.name(KEY)
+    ([, { wallet }]) => wallet === scope.name(KEY),
   );
   let list = read.filter(({ id }) => !changes.some(([key]) => key === id));
 
@@ -498,7 +498,7 @@ if (typeof window !== "undefined") {
 export const unsentSends = derived([kept, over], ([list, ids]) =>
   list
     .filter(({ id }) => ids.has(id) && !sending.has(id))
-    .sort((a, b) => a.at - b.at)
+    .sort((a, b) => a.at - b.at),
 );
 
 /**
@@ -520,7 +520,7 @@ function keptOf(send) {
       Object.entries(send.typed).map(([name, value]) => [
         name,
         isPhrase(value) ? "" : value,
-      ])
+      ]),
     ),
   };
 }
@@ -586,7 +586,7 @@ export function keepUnsent(send) {
   const write = () => {
     const value = current;
     const written = writes.then(() =>
-      value && scope.keeps() ? putKept(scope, value) : undefined
+      value && scope.keeps() ? putKept(scope, value) : undefined,
     );
 
     writes = written.catch(() => {});
@@ -713,7 +713,7 @@ export function forgetSameUnsent({ account, lux, memo, network, to }) {
       kept.lux === lux &&
       kept.memo === memo &&
       kept.network === network &&
-      kept.to === to
+      kept.to === to,
   )) {
     dropUnsent(same.id);
   }
@@ -789,7 +789,7 @@ async function changeHandedOver(id, hash, change) {
   const { next } = changed;
 
   show(scope, (list) =>
-    next ? withSend(list, next) : list.filter((kept) => kept.id !== id)
+    next ? withSend(list, next) : list.filter((kept) => kept.id !== id),
   );
   tellOtherTabs();
 
@@ -865,7 +865,7 @@ export function actOnHandedOver(id, hash, act) {
       isUnsent(send) &&
         send.handedOver?.hash.toLowerCase() === hash.toLowerCase()
         ? send
-        : null
+        : null,
     );
   };
   const { locks } = navigator;

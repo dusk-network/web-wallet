@@ -73,8 +73,8 @@ describe("routeTransferRow", () => {
           route,
           stage: "paid",
         },
-        options
-      )
+        options,
+      ),
     ).toMatchObject({
       group: "done",
       line: `Arrived ${claimDay(CLAIM_AT, "en")}`,
@@ -110,7 +110,7 @@ describe("routeTransferRow, on a transfer out", () => {
 
   it("shows what arrived once it has, and what was sent until then", () => {
     expect(routeTransferRow(transfer({ stage: "sent" }), options).amount).toBe(
-      "5 DUSK"
+      "5 DUSK",
     );
     expect(
       routeTransferRow(
@@ -119,8 +119,8 @@ describe("routeTransferRow, on a transfer out", () => {
           payout: `0x${"bb".repeat(32)}`,
           stage: "arrived",
         }),
-        options
-      ).amount
+        options,
+      ).amount,
     ).toBe("4 DUSK");
   });
 
@@ -132,11 +132,11 @@ describe("routeTransferRow, on a transfer out", () => {
 
     expect(
       routeTransferRow(transfer({ at: at(3_600_000) }), { ...options, time })
-        .line
+        .line,
     ).toBe(`Sent ${claimDay(at(3_600_000), "en")} · takes ~1 hour`);
     expect(
       routeTransferRow(transfer({ at: at(7_300_000) }), { ...options, time })
-        .line
+        .line,
     ).toBe(`Sent ${claimDay(at(7_300_000), "en")} · taking longer than usual`);
   });
 });
@@ -154,14 +154,14 @@ describe("withdrawalRow", () => {
         title: "DuskEVM to Dusk",
         to: "duskDs",
         when: SENT,
-      })
+      }),
     );
     expect(withdrawalRow(withdrawal("ready_to_prove"), options)).toEqual(
       expect.objectContaining({
         action: "prove",
         group: "needs",
         line: "Ready to prove on Dusk",
-      })
+      }),
     );
   });
 
@@ -177,44 +177,44 @@ describe("withdrawalRow", () => {
         group: "progress",
         line: `Claim from about ${claimDay(CLAIM_AT, "en")}`,
         state: "Pending",
-      })
+      }),
     );
     expect(
-      withdrawalRow({ ...waiting, readyAtExact: true }, options).line
+      withdrawalRow({ ...waiting, readyAtExact: true }, options).line,
     ).toBe(`Claim from ${claimDay(CLAIM_AT, "en")}`);
     expect(
-      withdrawalRow({ ...waiting, proofRejected: true }, options).line
+      withdrawalRow({ ...waiting, proofRejected: true }, options).line,
     ).toBe("Proof rejected · prove it again once DuskEVM reports a new output");
     // No date made up before the chain gives one.
     expect(withdrawalRow(withdrawal("proven_waiting"), options).line).toBe(
-      "Proved, not claimable yet"
+      "Proved, not claimable yet",
     );
   });
 
   it("should say what a withdrawal waits for before its proof, and after a step was sent", () => {
     expect(withdrawalRow(withdrawal("submitted"), options).line).toBe(
-      `Sent ${claimDay(SENT, "en")}`
+      `Sent ${claimDay(SENT, "en")}`,
     );
     expect(
       withdrawalRow(
         withdrawal("submitted", { sentAt: null, timestamp: null }),
-        options
-      ).line
+        options,
+      ).line,
     ).toBe("Sent");
     expect(withdrawalRow(withdrawal("waiting_for_output"), options).line).toBe(
-      "Not on Dusk yet · usually within an hour"
+      "Not on Dusk yet · usually within an hour",
     );
     expect(
       withdrawalRow(withdrawal("waiting_for_output"), {
         ...options,
         time: { prove: 3_600, seconds: 0, source: "chain" },
-      }).line
+      }).line,
     ).toBe(`Prove from about ${claimDay(SENT + 3_600_000, "en")}`);
     expect(withdrawalRow(withdrawal("prove_submitted"), options).line).toBe(
-      "Proof sent, waiting for Dusk"
+      "Proof sent, waiting for Dusk",
     );
     expect(withdrawalRow(withdrawal("finalize_submitted"), options).line).toBe(
-      "Claim sent, waiting for Dusk"
+      "Claim sent, waiting for Dusk",
     );
   });
 
@@ -224,14 +224,14 @@ describe("withdrawalRow", () => {
         group: "done",
         line: "Claimed on Dusk",
         state: "",
-      })
+      }),
     );
     expect(withdrawalRow(withdrawal("failed"), options)).toEqual(
       expect.objectContaining({
         group: "failed",
         line: "The DUSK is still on DuskEVM",
         state: "Failed",
-      })
+      }),
     );
   });
 
@@ -241,7 +241,7 @@ describe("withdrawalRow", () => {
       {
         ...options,
         account: OWN,
-      }
+      },
     );
 
     expect(theirs).toEqual(
@@ -251,13 +251,13 @@ describe("withdrawalRow", () => {
         group: "other",
         line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
         state: "",
-      })
+      }),
     );
     expect(
       withdrawalRow(withdrawal("proven_waiting", { recipient: OTHER }), {
         ...options,
         account: OWN,
-      })
+      }),
     ).toEqual(expect.objectContaining({ group: "other", state: "Pending" }));
 
     // Done or failed, it goes where all of those go, still saying whom.
@@ -265,20 +265,20 @@ describe("withdrawalRow", () => {
       withdrawalRow(withdrawal("finalized", { recipient: OTHER }), {
         ...options,
         account: OWN,
-      })
+      }),
     ).toEqual(
       expect.objectContaining({
         group: "done",
         line: "Pays 213qXN…V5JJ9Y · claimed on Dusk",
-      })
+      }),
     );
 
     // A contract it pays is said to be one.
     expect(
       withdrawalRow(
         withdrawal("ready_to_prove", { recipient: "21a5cb".padEnd(64, "0") }),
-        { ...options, account: OWN }
-      ).line
+        { ...options, account: OWN },
+      ).line,
     ).toBe("Pays contract 21a5cb…000000 · ready to prove on Dusk");
 
     // One that pays the account, or whose recipient isn't known: as ever.
@@ -287,13 +287,13 @@ describe("withdrawalRow", () => {
         withdrawalRow(withdrawal("ready_to_prove", { recipient }), {
           ...options,
           account: OWN,
-        })
+        }),
       ).toEqual(
         expect.objectContaining({
           forOther: false,
           group: "needs",
           line: "Ready to prove on Dusk",
-        })
+        }),
       );
     }
   });
@@ -312,7 +312,7 @@ describe("withdrawalRow", () => {
           withdrawalHash: hash,
           ...fields,
         }),
-        { ...options, account: OWN, steps }
+        { ...options, account: OWN, steps },
       );
 
     // Its reads, which are this account's, say it proved it: the claim is
@@ -323,49 +323,49 @@ describe("withdrawalRow", () => {
         forOther: false,
         group: "needs",
         line: "Pays 213qXN…V5JJ9Y · ready to claim on Dusk",
-      })
+      }),
     );
     expect(row("proven_waiting")).toEqual(
       expect.objectContaining({
         forOther: false,
         group: "progress",
         state: "Pending",
-      })
+      }),
     );
 
     // Or they found this account's proof, refused and to be proved again,
     // whether or not the history loaded has it.
     expect(
-      row("ready_to_prove", { proofGame: `0x${"1e".repeat(20)}` })
+      row("ready_to_prove", { proofGame: `0x${"1e".repeat(20)}` }),
     ).toEqual(
       expect.objectContaining({
         action: "prove",
         forOther: false,
         group: "needs",
         line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
-      })
+      }),
     );
 
     // Or the account's history has its proof, before any read.
     expect(
-      row("submitted", {}, new Map([[hash, { prove: "ab".repeat(32) }]]))
+      row("submitted", {}, new Map([[hash, { prove: "ab".repeat(32) }]])),
     ).toEqual(expect.objectContaining({ forOther: false, group: "progress" }));
 
     // Not proved here: by nobody yet, or by another account, which leaves
     // this account's reads short of a proof; or at a stage only the explorer
     // gave, which could be anyone's proof.
     expect(row("ready_to_prove", { proofSubmitterCount: 1n })).toEqual(
-      expect.objectContaining({ forOther: true, group: "other" })
+      expect.objectContaining({ forOther: true, group: "other" }),
     );
     expect(row("proven_waiting", { withdrawalHash: null })).toEqual(
-      expect.objectContaining({ forOther: true, group: "other" })
+      expect.objectContaining({ forOther: true, group: "other" }),
     );
   });
 
   it("should leave out an amount it doesn't know", () => {
     expect(
       withdrawalRow(withdrawal("submitted", { amountWei: null }), options)
-        .amount
+        .amount,
     ).toBe("");
   });
 });
@@ -382,13 +382,13 @@ describe("depositRow", () => {
         state: "Pending",
         title: "Dusk to DuskEVM",
         to: "duskEvm",
-      })
+      }),
     );
     expect(
       depositRow(deposit("l2_pending", { l1ConfirmedAt: Date.now() }), {
         ...options,
         time: { seconds: 60, source: "chain" },
-      }).line
+      }).line,
     ).toBe(`Sent ${claimDay(SENT, "en")} · takes ~1 min`);
     // Arrived, when DuskEVM's explorer says, and where.
     expect(depositRow(deposit("completed"), options)).toEqual(
@@ -396,7 +396,7 @@ describe("depositRow", () => {
         group: "done",
         line: "Arrived on DuskEVM",
         state: "",
-      })
+      }),
     );
     expect(
       depositRow(
@@ -404,34 +404,34 @@ describe("depositRow", () => {
           account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
           arrivedAt: SENT + 60_000,
         }),
-        options
-      ).line
+        options,
+      ).line,
     ).toBe(`Arrived ${claimDay(SENT + 60_000, "en")} · to 0xAB84…C86F`);
     expect(
       depositRow(
         deposit("l1_pending", {
           account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
         }),
-        options
-      ).line
+        options,
+      ).line,
     ).toBe(`Sent ${claimDay(SENT, "en")} · to 0xAB84…C86F`);
   });
 
   it("should say a deposit takes longer than usual, or why it didn't go through", () => {
     expect(
-      depositRow(deposit("l2_pending", { l1ConfirmedAt: SENT }), options).line
+      depositRow(deposit("l2_pending", { l1ConfirmedAt: SENT }), options).line,
     ).toBe(`Sent ${claimDay(SENT, "en")} · taking longer than usual`);
     expect(
-      depositRow(deposit("failed", { failureLayer: "l1" }), options)
+      depositRow(deposit("failed", { failureLayer: "l1" }), options),
     ).toEqual(
       expect.objectContaining({
         group: "failed",
         line: "The DUSK didn't leave Dusk",
         state: "Failed",
-      })
+      }),
     );
     expect(
-      depositRow(deposit("failed", { failureLayer: "l2" }), options).line
+      depositRow(deposit("failed", { failureLayer: "l2" }), options).line,
     ).toBe("Delivery failed on DuskEVM · don't send it again");
   });
 });
@@ -444,14 +444,14 @@ describe("groupBridgeActivity", () => {
         withdrawal("proven_waiting", {
           transactionHash: `0x${"01".repeat(32)}`,
         }),
-        options
+        options,
       ),
       depositRow(
         deposit("completed", {
           createdAt: SENT,
           transactionHash: "cd".repeat(32),
         }),
-        options
+        options,
       ),
       withdrawalRow(withdrawal("ready_to_finalize"), options),
     ];
@@ -460,7 +460,7 @@ describe("groupBridgeActivity", () => {
       groupBridgeActivity(rows).map(({ head, rows: grouped }) => [
         head,
         grouped.map((row) => row.id),
-      ])
+      ]),
     ).toStrictEqual([
       ["Needs you", [`withdrawal:0x${"5a".repeat(32)}`]],
       ["In progress", [`withdrawal:0x${"01".repeat(32)}`]],
@@ -497,7 +497,7 @@ describe("a withdrawal's proof and claim on Dusk", () => {
         row("c2".repeat(32), "claim"),
         row("b2".repeat(32), "prove"),
         row("b1".repeat(32), "prove"),
-      ]).get(proved)
+      ]).get(proved),
     ).toStrictEqual({ claim: "c2".repeat(32), prove: "b2".repeat(32) });
     // A claim that pays the account shown is the claim all the same.
     expect(
@@ -506,7 +506,7 @@ describe("a withdrawal's proof and claim on Dusk", () => {
           amount: "1000000000",
           direction: "in",
         }),
-      ]).get(proved)
+      ]).get(proved),
     ).toStrictEqual({ claim: "c3".repeat(32) });
   });
 });
@@ -550,7 +550,7 @@ describe("an approval no migration spent", () => {
    */
   const titles = (approvals) =>
     approvals.map(
-      (each) => approvalRow(each, { approvals, locale: "en", route })?.title
+      (each) => approvalRow(each, { approvals, locale: "en", route })?.title,
     );
 
   it("should say what it let the migration contract take, and what came of it", () => {
@@ -559,7 +559,7 @@ describe("an approval no migration spent", () => {
         approval("0x1", "unused", (ONE * 4n) / 1000n),
         approval("0x2", "uncertain", ONE),
         approval("0x3", "open", 2n ** 256n - 1n),
-      ])
+      ]),
     ).toStrictEqual([
       "Approved 0.004 BEP20 DUSK, never used",
       "Approved 1 BEP20 DUSK for a migration",
@@ -579,8 +579,8 @@ describe("an approval no migration spent", () => {
       approvals.map(
         (each) =>
           approvalRow(each, { approvals, locale: "en", masked: true, route })
-            ?.title
-      )
+            ?.title,
+      ),
     ).toStrictEqual([
       "Approved •••• BEP20 DUSK, never used",
       "Revoked the •••• BEP20 DUSK approved, never used",
@@ -600,7 +600,7 @@ describe("an approval no migration spent", () => {
         // Another owner's approval before it is no part of it.
         approval("0x5", "unused", ONE, { owner: `0x${"55".repeat(20)}` }),
         approval("0x6", "revoke", 0n, { owner: `0x${"66".repeat(20)}` }),
-      ])
+      ]),
     ).toStrictEqual([
       "Approved 0.004 BEP20 DUSK, never used",
       "Revoked the 0.004 BEP20 DUSK approved, never used",

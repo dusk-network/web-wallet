@@ -159,7 +159,7 @@ function sameWallet(a, b) {
 const isEmpty = (values) =>
   Object.values(values).every(
     (value) =>
-      !value || (typeof value === "object" && !Object.keys(value).length)
+      !value || (typeof value === "object" && !Object.keys(value).length),
   );
 
 /**
@@ -173,7 +173,7 @@ const withoutPhrases = (values) =>
     Object.entries(values).map(([name, value]) => [
       name,
       typeof value === "string" && validateMnemonic(value.trim()) ? "" : value,
-    ])
+    ]),
   );
 
 /**
@@ -236,7 +236,7 @@ export function formDraft(name, { keepsLeft = true } = {}) {
       held = values;
       kept.write(
         key,
-        JSON.stringify({ owner, values: withoutPhrases(values) })
+        JSON.stringify({ owner, values: withoutPhrases(values) }),
       );
     }
   };
@@ -276,7 +276,7 @@ export function formDraft(name, { keepsLeft = true } = {}) {
         // Home's: kept for the form's next opening, as a lock keeps it.
         kept.write(
           key,
-          JSON.stringify({ owner, values: withoutPhrases(held) })
+          JSON.stringify({ owner, values: withoutPhrases(held) }),
         );
       } else {
         kept.remove(key);

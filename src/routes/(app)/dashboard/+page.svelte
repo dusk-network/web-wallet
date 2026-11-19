@@ -12,6 +12,7 @@
     isHistoryEnabled,
     wholeActivity,
   } from "$lib/activity";
+  import { resolve } from "$app/paths";
   import { timeLabel } from "$lib/activity/present";
   import { contractDescriptors } from "$lib/contracts";
   import { Banner, MemoText, SectionHead, UnsentSends } from "$lib/components";
@@ -24,7 +25,6 @@
     HomeBalance,
   } from "$lib/containers/Home";
   import { cardRoutes, migrationRoutes } from "$lib/bridge/cardRoutes";
-  import { addBasePath } from "$lib/navigation";
   import { sozuContractsFor, sozuStore } from "$lib/sozu";
   import { networkStore, settingsStore, walletStore } from "$lib/stores";
   import networkReach from "$lib/stores/networkReach";
@@ -53,42 +53,43 @@
   /** @param {string} id */
   const isEnabled = (id) =>
     contractDescriptors.some(
-      (contract) => contract.id === id && contract.enabled === true
+      (contract) => contract.id === id && contract.enabled === true,
     );
 
-  const actions = [
-    {
-      href: "/dashboard/send",
-      icon: mdiSendOutline,
-      id: "send",
-      label: "Send",
-      primary: true,
-    },
-    {
-      href: "/dashboard/receive",
-      icon: mdiTrayArrowDown,
-      id: "receive",
-      label: "Receive",
-    },
-    {
-      href: "/dashboard/allocate",
-      icon: mdiEyeOffOutline,
-      id: "allocate",
-      label: "Shield",
-    },
-    {
-      href: "/dashboard/stake",
-      icon: mdiLayersOutline,
-      id: "stake",
-      label: "Stake",
-    },
-    {
-      href: "/dashboard/bridge",
-      icon: mdiSwapHorizontal,
-      id: "bridge",
-      label: "Bridge",
-    },
-  ].filter(({ id }) => isEnabled(id));
+  const actions =
+    /** @type {import("svelte").ComponentProps<typeof HomeActions>["actions"]} */ ([
+      {
+        href: "/dashboard/send/",
+        icon: mdiSendOutline,
+        id: "send",
+        label: "Send",
+        primary: true,
+      },
+      {
+        href: "/dashboard/receive/",
+        icon: mdiTrayArrowDown,
+        id: "receive",
+        label: "Receive",
+      },
+      {
+        href: "/dashboard/allocate/",
+        icon: mdiEyeOffOutline,
+        id: "allocate",
+        label: "Shield",
+      },
+      {
+        href: "/dashboard/stake/",
+        icon: mdiLayersOutline,
+        id: "stake",
+        label: "Stake",
+      },
+      {
+        href: "/dashboard/bridge/",
+        icon: mdiSwapHorizontal,
+        id: "bridge",
+        label: "Bridge",
+      },
+    ]).filter(({ id }) => isEnabled(id));
 
   $: ({
     balance,
@@ -110,7 +111,7 @@
     : null;
   // From all of the history, not the page History has shown so far.
   $: hasPastStaking = $wholeActivity.rows.some(
-    (row) => row.category === "staking"
+    (row) => row.category === "staking",
   );
 
   // What is staked with Sozu, read for the profile shown as the wallet
@@ -143,7 +144,7 @@
         ? ($sozuStore.readAt ?? sozuKept?.at ?? null)
         : null,
     ].filter((time) => time !== null),
-    Infinity
+    Infinity,
   );
   $: stakeReading = isSozuShown && sozuLoading && !sozuStatus && !sozuKept;
 
@@ -175,7 +176,7 @@
       toast(
         "info",
         `Not sent: ${waitingWhat(send, $settingsStore.hideBalances)}. Nothing left your wallet.`,
-        mdiCheck
+        mdiCheck,
       );
     }
   }
@@ -243,12 +244,12 @@
           {
             checking: Boolean(
               send.meanwhile &&
-              $sentMeanwhileChecking.has(meanwhileKey(send.meanwhile))
+              $sentMeanwhileChecking.has(meanwhileKey(send.meanwhile)),
             ),
             hidden: $settingsStore.hideBalances,
             locale: language,
             nameOf: $accountNamer,
-          }
+          },
         )}
         <Banner
           className="home__waiting"
@@ -332,7 +333,7 @@
         Have DUSK on Ethereum or BNB Smart Chain?
         <a
           class="text-link tap-link"
-          href={addBasePath(`/dashboard/bridge?route=${migration.id}`)}
+          href={resolve(`/dashboard/bridge/?route=${migration.id}`)}
           >Migrate it to Dusk</a
         >
       </p>

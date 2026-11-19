@@ -10,10 +10,10 @@ import { networkStore } from "$lib/stores";
 export default function stubWalletNetwork() {
   vi.spyOn(Bookkeeper.prototype, "minimumStake", "get").mockResolvedValue(1n);
   vi.spyOn(Bookkeeper.prototype, "balance").mockResolvedValue(
-    /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n })
+    /** @type {any} */ ({ nonce: 0n, spendable: 0n, value: 0n }),
   );
   vi.spyOn(Bookkeeper.prototype, "stakeInfo").mockResolvedValue(
-    /** @type {any} */ ({ amount: null, faults: 0, hardFaults: 0, reward: 0n })
+    /** @type {any} */ ({ amount: null, faults: 0, hardFaults: 0, reward: 0n }),
   );
   vi.spyOn(networkStore, "checkBlock").mockResolvedValue(true);
   vi.spyOn(networkStore, "getBlockHashByHeight").mockResolvedValue("hash");

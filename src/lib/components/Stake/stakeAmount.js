@@ -108,7 +108,7 @@ export function checkAmount({
 
   if (amount === null) {
     return fail(
-      amountProblem(text, locale, minimum >= 1_000_000_000n ? "1000" : "10")
+      amountProblem(text, locale, minimum >= 1_000_000_000n ? "1000" : "10"),
     );
   }
 
@@ -119,7 +119,7 @@ export function checkAmount({
   if (amount < minimum) {
     return fail(
       `The minimum ${action} is ${formatDusk(minimum, locale)} DUSK.`,
-      true
+      true,
     );
   }
 
@@ -134,7 +134,7 @@ export function checkAmount({
     return fail(
       amount > available
         ? "More than you have."
-        : `That leaves too little for ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
+        : `That leaves too little for ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`,
     );
   }
 
@@ -142,7 +142,7 @@ export function checkAmount({
     return fail(
       most
         ? feeError({ available, fee, hidden, leastFee, locale })
-        : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`
+        : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`,
     );
   }
 

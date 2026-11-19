@@ -111,13 +111,13 @@
   $: gasSettings = getGasSettings(
     "bridge",
     { customGasLimit, customGasPrice },
-    $gasPriceStore
+    $gasPriceStore,
   );
   $: gasLimits = getGasLimits("bridge", $gasStore);
   $: transferGasSettings = getGasSettings(
     "public-transfer",
     { customGasLimit, customGasPrice },
-    $gasPriceStore
+    $gasPriceStore,
   );
   $: transferGasLimits = getGasLimits("public-transfer", $gasStore);
   $: unshieldedAddress = currentProfile

@@ -70,7 +70,7 @@ describe("Add wallet", () => {
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent("Add wallet");
     expect(
-      getByText("Your password unlocks every wallet in this browser.")
+      getByText("Your password unlocks every wallet in this browser."),
     ).toBeInTheDocument();
     expect(getByRole("button", { name: /Create wallet/ })).toBeInTheDocument();
     expect(getByRole("button", { name: /Import wallet/ })).toBeInTheDocument();
@@ -88,8 +88,8 @@ describe("Add wallet", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("alert")).toHaveTextContent(
-        "This recovery phrase is already in your wallet."
-      )
+        "This recovery phrase is already in your wallet.",
+      ),
     );
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
     expect(vault.list()).toHaveLength(1);
@@ -104,7 +104,7 @@ describe("Add wallet", () => {
 
     // Where it syncs from, then the password.
     await vi.waitFor(() =>
-      expect(getByText("Block height")).toBeInTheDocument()
+      expect(getByText("Block height")).toBeInTheDocument(),
     );
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
@@ -112,14 +112,14 @@ describe("Add wallet", () => {
 
     expect(password).not.toHaveAttribute("placeholder");
     expect(password).toHaveAccessibleDescription(
-      "One password unlocks every wallet in this browser."
+      "One password unlocks every wallet in this browser.",
     );
 
     await fireEvent.input(password, { target: { value: "password12" } });
     await fireEvent.click(getByRole("button", { name: "Import wallet" }));
 
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password.")
+      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
     );
     expect(vault.list()).toHaveLength(1);
 
@@ -153,7 +153,7 @@ describe("Add wallet", () => {
       target: { value: "5" },
     });
     await vi.waitFor(() =>
-      expect(getByRole("button", { name: "Next" })).toBeEnabled()
+      expect(getByRole("button", { name: "Next" })).toBeEnabled(),
     );
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -188,7 +188,7 @@ describe("Add wallet", () => {
     // The words as the page shows them to be written down.
     const words = Array.from(
       container.querySelectorAll(".dusk-words__word"),
-      (word) => word.textContent?.trim() ?? ""
+      (word) => word.textContent?.trim() ?? "",
     );
 
     expect(words).toHaveLength(12);
@@ -200,14 +200,14 @@ describe("Add wallet", () => {
     // my recovery words goes back to them, to be checked again.
     expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
     expect(getByRole("button", { name: "Check" })).toHaveClass(
-      "dusk-button--variant--primary"
+      "dusk-button--variant--primary",
     );
     expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
-      "dusk-button--variant--secondary"
+      "dusk-button--variant--secondary",
     );
 
     for (const box of container.querySelectorAll(
-      ".recovery-check__word input"
+      ".recovery-check__word input",
     )) {
       await fireEvent.input(box, { target: { value: "zoo" } });
     }
@@ -215,26 +215,26 @@ describe("Add wallet", () => {
     await fireEvent.click(getByRole("button", { name: "Check" }));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "That doesn't match your recovery words. Check the words you wrote down."
+      "That doesn't match your recovery words. Check the words you wrote down.",
     );
     // Try again leads, Skip for now quieter.
     expect(getByRole("button", { name: "Try again" })).toHaveClass(
-      "dusk-button--variant--primary"
+      "dusk-button--variant--primary",
     );
     expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
-      "dusk-button--variant--secondary"
+      "dusk-button--variant--secondary",
     );
     expect(container.querySelector(".dusk-words")).toBeNull();
 
     await fireEvent.click(
-      getByRole("button", { name: "Show my recovery words" })
+      getByRole("button", { name: "Show my recovery words" }),
     );
 
     expect(
       Array.from(
         container.querySelectorAll(".dusk-words__word"),
-        (word) => word.textContent?.trim() ?? ""
-      )
+        (word) => word.textContent?.trim() ?? "",
+      ),
     ).toStrictEqual(words);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -244,7 +244,7 @@ describe("Add wallet", () => {
 
       await fireEvent.input(
         /** @type {HTMLInputElement} */ (label.querySelector("input")),
-        { target: { value: words[n - 1] } }
+        { target: { value: words[n - 1] } },
       );
     }
 
@@ -267,7 +267,7 @@ describe("Add wallet", () => {
       height: "123",
     });
     expect((await vault.unlock(PASSWORD)).wallets[1].mnemonic).toBe(
-      words.join(" ")
+      words.join(" "),
     );
   });
 });

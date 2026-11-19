@@ -33,7 +33,7 @@ describe("Receive", () => {
   const getButtonNames = (getAllButtons) =>
     getAllButtons().map(
       (button) =>
-        button.getAttribute("aria-label") ?? button.textContent?.trim()
+        button.getAttribute("aria-label") ?? button.textContent?.trim(),
     );
 
   /** Lets a name lookup settle. */
@@ -61,18 +61,18 @@ describe("Receive", () => {
     const { container, getByRole, getByText } = render(Receive, { address });
 
     expect(
-      getAsHTMLElement(container, ".receive__full-address").textContent
+      getAsHTMLElement(container, ".receive__full-address").textContent,
     ).toBe(address);
     expect(getByText("Copy address")).toBeVisible();
 
     await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(
-      address
+      address,
     );
     // Said on the button itself, not in a message.
     expect(
-      await findCopied(() => getByRole("button", { name: "Copied" }))
+      await findCopied(() => getByRole("button", { name: "Copied" })),
     ).toBeInTheDocument();
     expect(toast).not.toHaveBeenCalled();
   });
@@ -99,7 +99,7 @@ describe("Receive", () => {
         "Copy address",
         "Download QR",
       ]);
-    }
+    },
   );
 
   it.each([
@@ -129,18 +129,18 @@ describe("Receive", () => {
       await fireEvent.click(getByRole("button", { name: "Copy name" }));
 
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(
-        "alice.dusk"
+        "alice.dusk",
       );
       // The name's button says it, the address's stays as it was.
       expect(
-        await findCopied(() => getByRole("button", { name: "Copied" }))
+        await findCopied(() => getByRole("button", { name: "Copied" })),
       ).toHaveAttribute("title", "Copy name");
 
       await fireEvent.click(getByRole("button", { name: "Copy address" }));
 
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(address);
       expect(toast).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it.each(
@@ -150,7 +150,7 @@ describe("Receive", () => {
         "address",
         "People who pay alice.dusk choose public or shielded. Anyone can see this address belongs to alice.dusk.",
       ],
-    ])
+    ]),
   )(
     "should show what the name reaches, for an address of type %s, only once its info button is pressed",
     async (addressType, note) => {
@@ -181,7 +181,7 @@ describe("Receive", () => {
 
       expect(info).toHaveAttribute("aria-expanded", "false");
       expect(shownNote()).toBeNull();
-    }
+    },
   );
 
   it.each([
@@ -207,11 +207,11 @@ describe("Receive", () => {
         expect(toast).toHaveBeenCalledExactlyOnceWith(
           "error",
           message,
-          expect.any(String)
-        )
+          expect.any(String),
+        ),
       );
       expect(getByRole("button", { name: buttonName })).toBeInTheDocument();
-    }
+    },
   );
 
   it.each([
@@ -236,7 +236,7 @@ describe("Receive", () => {
             /** @type {ResizeObserverEntry[]} */ ([
               { contentRect: { width: room } },
             ]),
-            /** @type {ResizeObserver} */ (/** @type {unknown} */ (this))
+            /** @type {ResizeObserver} */ (/** @type {unknown} */ (this)),
           );
         }
 
@@ -248,17 +248,17 @@ describe("Receive", () => {
 
         await vi.waitFor(() =>
           expect(
-            getAsHTMLElement(container, "img.receive__qr")
-          ).toHaveAttribute("width", String(shown))
+            getAsHTMLElement(container, "img.receive__qr"),
+          ).toHaveAttribute("width", String(shown)),
         );
         expect(getAsHTMLElement(container, "img.receive__qr")).toHaveAttribute(
           "height",
-          String(shown)
+          String(shown),
         );
       } finally {
         globalThis.ResizeObserver = ResizeObserver;
       }
-    }
+    },
   );
 
   it("should have no Copy button besides the fields' own, and a Back link unless it's hidden", async () => {

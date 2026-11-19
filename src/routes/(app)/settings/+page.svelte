@@ -203,7 +203,7 @@
       },
       () => {
         networkHeightState = "failed";
-      }
+      },
     );
   }
 
@@ -220,7 +220,7 @@
         toast(
           "success",
           `Resynced from block ${numberFormatter(from)}.`,
-          mdiCheck
+          mdiCheck,
         );
       },
       (error) => {
@@ -229,9 +229,9 @@
           error instanceof WalletChangedError
             ? error.message
             : "Couldn't resync. Try again.",
-          mdiAlertOutline
+          mdiAlertOutline,
         );
-      }
+      },
     );
   }
 
@@ -260,7 +260,7 @@
       (count) => {
         walletsHere = Math.max(count, held.length);
       },
-      () => {}
+      () => {},
     );
   }
 
@@ -488,7 +488,7 @@
                 Each transaction costs at most {formatFee(
                   customGasLimit * customGasPrice,
                   language,
-                  { max: true }
+                  { max: true },
                 )} DUSK.
               </p>
             {/if}
@@ -573,7 +573,7 @@
             {:else if isConfirmingResync}
               <p>
                 Resync {$openWalletName || "this wallet"} from block {numberFormatter(
-                  resyncStart ?? 0n
+                  resyncStart ?? 0n,
                 )}? Its balances and history clear, then fill in again as it
                 syncs.
               </p>

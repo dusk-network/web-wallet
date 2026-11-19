@@ -8,6 +8,7 @@
     mdiPencilOutline,
     mdiSendOutline,
   } from "@mdi/js";
+  import { resolve } from "$app/paths";
   import { AnchorButton, Button, CopyButton, Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { FullAddress, SectionHead } from "$lib/components";
@@ -143,7 +144,7 @@
     toast(
       "success",
       `${contactNameText(contact.name)} now has the new address`,
-      mdiCheckCircleOutline
+      mdiCheckCircleOutline,
     );
   }
 
@@ -216,7 +217,7 @@
     />
     <AnchorButton
       href={addBasePath(
-        `/dashboard/send?to=${encodeURIComponent(contact.address)}`
+        `/dashboard/send?to=${encodeURIComponent(contact.address)}`,
       )}
       icon={{ path: mdiSendOutline }}
       text="Send"
@@ -238,7 +239,7 @@
           <span
             >{contact.duskName} still points to this address. Checked {checkedLabel(
               checkedAt,
-              locale
+              locale,
             )}.</span
           >
         </p>
@@ -314,7 +315,7 @@
   <section class="contact-detail__activity">
     <header class="contact-detail__activity-header">
       <SectionHead level={3}>Activity</SectionHead>
-      <a class="text-link" href={addBasePath("/dashboard/transactions")}
+      <a class="text-link" href={resolve("/dashboard/transactions/")}
         >History <Icon path={mdiChevronRight} /></a
       >
     </header>

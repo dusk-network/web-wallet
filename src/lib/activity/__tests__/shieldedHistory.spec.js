@@ -21,7 +21,7 @@ const leavesOf = (hex) => {
   const all = bytes(hex);
 
   return Array.from({ length: all.length / LEAF_BYTES }, (_, i) =>
-    all.slice(i * LEAF_BYTES, (i + 1) * LEAF_BYTES)
+    all.slice(i * LEAF_BYTES, (i + 1) * LEAF_BYTES),
   );
 };
 
@@ -43,7 +43,7 @@ const treeLeaves = ({ distinct = false } = {}) => [
     view.setBigUint64(
       LEAF_HEIGHT_OFFSET,
       BigInt(distinct ? GROWN + 6 + i : GROWN),
-      true
+      true,
     );
 
     return leaf;
@@ -98,7 +98,7 @@ const ENTRIES = ROWS.map(
     success: true,
     timestamp,
     value: amount,
-  })
+  }),
 );
 
 const profile = /** @type {Profile} */ (
@@ -125,8 +125,8 @@ function fakeNetwork(leaves = TREE) {
                 .forEach((leaf) => controller.enqueue(leaf));
               controller.close();
             },
-          })
-        )
+          }),
+        ),
     ),
     num_notes: vi.fn(async () => {
       const size = new Uint8Array(8);
@@ -162,7 +162,7 @@ function cacheNotes(walletCache) {
       address: ADDRESS,
       note: /** @type {Uint8Array<ArrayBuffer>} */ (leaf),
       nullifier: new Uint8Array(32).fill(i + 1),
-    }))
+    })),
   );
   vi.spyOn(walletCache, "getSpentNotes").mockResolvedValue([]);
 }
@@ -179,7 +179,7 @@ async function anotherTab() {
   const tab = await import("../shieldedHistory");
 
   (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
-    (await import("@dusk-network/networks")).networks.testnet
+    (await import("@dusk-network/networks")).networks.testnet,
   );
   cacheNotes((await import("$lib/wallet-cache")).default);
 
@@ -227,7 +227,7 @@ beforeEach(async () => {
   shieldedHistory = await import("../shieldedHistory");
   // On a testnet node: the recordings' network.
   (await import("$lib/stores/nodeNetwork")).setNodeNetwork(
-    (await import("@dusk-network/networks")).networks.testnet
+    (await import("@dusk-network/networks")).networks.testnet,
   );
 
   queries = [];
@@ -243,7 +243,7 @@ beforeEach(async () => {
         status: 200,
         text: async () => JSON.stringify(recorded.blocks),
       };
-    })
+    }),
   );
 
   // The modules the history uses, as it imports them.
@@ -277,8 +277,8 @@ describe("getShieldedHistory", () => {
       asked
         .filter((h) => h !== 3602438 && h !== 3861643)
         .every((h) =>
-          [184423, 226951, 234329, 234369, GROWN, 3577762].includes(h)
-        )
+          [184423, 226951, 234329, 234369, GROWN, 3577762].includes(h),
+        ),
     ).toBe(true);
 
     // Kept as the rows History shows, with the decoys and the tree's heights.
@@ -356,7 +356,7 @@ describe("getShieldedHistory", () => {
 
     await expect(read()).resolves.toEqual({ entries: ENTRIES });
     expect((await store.getShieldedHistoryRecord(KEY))?.entries ?? []).toEqual(
-      []
+      [],
     );
 
     update.mockRestore();
@@ -401,7 +401,7 @@ describe("getShieldedHistory", () => {
 
     expect(decoys).toHaveLength(8);
     expect(
-      new Set(heightsAsked().filter((h) => h !== 3602438 && h !== 3861643))
+      new Set(heightsAsked().filter((h) => h !== 3602438 && h !== 3861643)),
     ).toEqual(new Set(decoys));
   });
 
@@ -413,10 +413,10 @@ describe("getShieldedHistory", () => {
     };
 
     await expect(read({ isCurrent: () => shown === profile })).rejects.toThrow(
-      "The wallet changed while its shielded history was read"
+      "The wallet changed while its shielded history was read",
     );
     expect((await store.getShieldedHistoryRecord(KEY))?.entries ?? []).toEqual(
-      []
+      [],
     );
   });
 });

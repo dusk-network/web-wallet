@@ -63,7 +63,7 @@
 
   // A wallet may answer with any capitals: what's kept is in lower case.
   $: transfer = $routeTransfers.find(
-    (known) => known.hash.toLowerCase() === hash.toLowerCase()
+    (known) => known.hash.toLowerCase() === hash.toLowerCase(),
   );
   $: outcome = transfer
     ? transferOutcome(transfer, {

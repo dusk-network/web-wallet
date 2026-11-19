@@ -39,7 +39,7 @@ export function fakeAuthenticator({
     new Uint8Array(
       createHmac("sha256", /** @type {Uint8Array} */ (credentials.get(id)))
         .update(salt)
-        .digest()
+        .digest(),
     );
 
   const authenticatorData = () => {
@@ -59,7 +59,7 @@ export function fakeAuthenticator({
 
     credentials.set(
       toBase64Url(rawId),
-      crypto.getRandomValues(new Uint8Array(32))
+      crypto.getRandomValues(new Uint8Array(32)),
     );
 
     return {

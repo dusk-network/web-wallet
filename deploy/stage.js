@@ -63,7 +63,7 @@ export function pagePolicy(build) {
 
     if (!policy) {
       throw new Error(
-        `${relative(build, page)} carries no Content-Security-Policy: build it with kit.csp`
+        `${relative(build, page)} carries no Content-Security-Policy: build it with kit.csp`,
       );
     }
 
@@ -100,7 +100,7 @@ export const stage = (build, site, headers) => {
 
   try {
     manifest = JSON.parse(
-      readFileSync(join(build, "build-manifest.json"), "utf8")
+      readFileSync(join(build, "build-manifest.json"), "utf8"),
     );
   } catch {
     throw new Error(`${build} has no build-manifest.json: run npm run build`);
@@ -124,7 +124,7 @@ export const stage = (build, site, headers) => {
 
   const rules = lines
     .map((line) =>
-      line.startsWith("#") ? line : line.replaceAll(PAGE_POLICY, policy)
+      line.startsWith("#") ? line : line.replaceAll(PAGE_POLICY, policy),
     )
     .join("\n");
 
@@ -143,11 +143,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const to = stage(
       fileURLToPath(new URL("../build", import.meta.url)),
       fileURLToPath(new URL("site", import.meta.url)),
-      fileURLToPath(new URL("headers", import.meta.url))
+      fileURLToPath(new URL("headers", import.meta.url)),
     );
 
     console.log(
-      `Placed build/ at ${relative(process.cwd(), to)}/, with its policy in _headers`
+      `Placed build/ at ${relative(process.cwd(), to)}/, with its policy in _headers`,
     );
   } catch (error) {
     console.error(error.message);

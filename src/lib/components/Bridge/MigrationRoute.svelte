@@ -97,7 +97,7 @@
 
   const takeFocusIf = (
     /** @type {HTMLElement} */ node,
-    /** @type {boolean} */ yes
+    /** @type {boolean} */ yes,
   ) => {
     if (yes) {
       node.focus();
@@ -129,7 +129,9 @@
 
     return shown.toLocaleString(
       language,
-      shown < 1 ? { maximumSignificantDigits: 2 } : { maximumFractionDigits: 4 }
+      shown < 1
+        ? { maximumSignificantDigits: 2 }
+        : { maximumFractionDigits: 4 },
     );
   }
 
@@ -137,7 +139,7 @@
   function typeAmount(event) {
     note = "";
     amount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value
+      /** @type {HTMLInputElement} */ (event.currentTarget).value,
     );
     isMaxAmount = false;
   }
@@ -270,7 +272,7 @@
     getBalanceOfCoin(
       /** @type {`0x${string}`} */ (owner),
       /** @type {`0x${string}`} */ (route.chain.token),
-      chainId
+      chainId,
     ).then(
       (wei) => {
         if (readFor === key) {
@@ -281,7 +283,7 @@
         if (readFor === key) {
           balance = 0n;
         }
-      }
+      },
     );
   }
 
@@ -310,7 +312,7 @@
         if (read === openApprovalReads) {
           openApproval = undefined;
         }
-      }
+      },
     );
   }
 
@@ -328,7 +330,7 @@
   async function finish() {
     amount = amountForField(
       formatDuskPlain(finishLux),
-      getDecimalSeparator(language)
+      getDecimalSeparator(language),
     );
     isMaxAmount = true;
     note = "";
@@ -380,7 +382,7 @@
 
       if (!left) {
         readOpenApproval(
-          step === "form" || step === "revoke" ? address : undefined
+          step === "form" || step === "revoke" ? address : undefined,
         );
       }
     }
@@ -402,7 +404,7 @@
         if (read === revokeFeeReads) {
           revokeFees = { ...revokeFees, balance: null };
         }
-      }
+      },
     );
     getRevokeFee({
       chainId: route.chain.chainId,
@@ -415,7 +417,7 @@
           revokeFees = { ...revokeFees, fee: wei };
         }
       },
-      () => {}
+      () => {},
     );
   }
 
@@ -490,7 +492,7 @@
         if (read === feeReads) {
           feeBalance = null;
         }
-      }
+      },
     );
     approvedWei(route, owner).then(
       (wei) => {
@@ -512,12 +514,12 @@
               feeEstimate = wei;
             }
           },
-          () => {}
+          () => {},
         );
       },
       () => {
         approved = false;
-      }
+      },
     );
   }
 
@@ -714,7 +716,7 @@
       isConnected &&
       chainId === route.chain.chainId
       ? address
-      : undefined
+      : undefined,
   );
   $: hasOpenApproval = typeof openApproval === "bigint" && openApproval > 0n;
   // What Finish fills in: all the approval lets go, of what the wallet holds.
@@ -891,7 +893,7 @@
           on:click={() => {
             amount = amountForField(
               formatDuskPlain(balanceLux ?? 0n),
-              getDecimalSeparator(language)
+              getDecimalSeparator(language),
             );
             isMaxAmount = true;
           }}

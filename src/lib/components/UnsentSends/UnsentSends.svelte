@@ -75,7 +75,7 @@
       toast(
         "info",
         `Not sent yet: ${whatOf(send, hideBalances)}. If it still arrives, it will show here.`,
-        mdiCheck
+        mdiCheck,
       );
     }
   }
@@ -89,7 +89,7 @@
   function whatOf(send, hidden) {
     const what = waitingText(
       { lux: send.lux, to: send.label },
-      { hidden, locale: language }
+      { hidden, locale: language },
     );
     const from =
       send.account === String(currentProfile?.account ?? "")
@@ -161,7 +161,7 @@
   $: kept = $unsentSends.filter(
     (send) =>
       send.network === networkName &&
-      profiles.some((each) => String(each.account) === send.account)
+      profiles.some((each) => String(each.account) === send.account),
   );
   // One handed over is looked up on the chain, and said once it isn't found
   // there; for one held as its account sent something else, what that was.
@@ -180,7 +180,7 @@
   $: found = $foundSends.filter(
     ({ send }) =>
       send.network === networkName &&
-      profiles.some((each) => String(each.account) === send.account)
+      profiles.some((each) => String(each.account) === send.account),
   );
   // By its transaction: one sent again is another. One the node has in its
   // mempool is on its way, as Activity says. One the person chose not to
@@ -190,8 +190,8 @@
       !send.handedOver ||
       (!send.handedOver.dismissed &&
         ["not-sent", "sending", "unconfirmed"].includes(
-          $handedOverStates.get(send.handedOver.hash) ?? ""
-        ))
+          $handedOverStates.get(send.handedOver.hash) ?? "",
+        )),
   );
 </script>
 
@@ -307,12 +307,12 @@
       { address: send.to, lux: send.lux, memo: send.memo },
       {
         checking: Boolean(
-          meanwhile && $sentMeanwhileChecking.has(meanwhileKey(meanwhile))
+          meanwhile && $sentMeanwhileChecking.has(meanwhileKey(meanwhile)),
         ),
         hidden: hideBalances,
         locale: language,
         nameOf: $accountNamer,
-      }
+      },
     )}
     <Banner
       className="unsent-send"

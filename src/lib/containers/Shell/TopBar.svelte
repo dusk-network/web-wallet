@@ -1,11 +1,12 @@
 <script>
   import { createEventDispatcher } from "svelte";
   import { mdiAlertOutline, mdiCogOutline, mdiMagnify } from "@mdi/js";
+  import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
   import { toast } from "$lib/dusk/components/Toast/store";
   import { AddressPicker } from "$lib/components";
   import { getPrimaryName, getVerifiedName } from "$lib/dusk-domains";
-  import { addBasePath, goto } from "$lib/navigation";
+  import { goto } from "$lib/navigation";
   import { networkStore, walletStore } from "$lib/stores";
   import { nodeBaseUrl } from "$lib/url";
   import vault from "$lib/vault";
@@ -54,7 +55,7 @@
       toast(
         "error",
         error instanceof Error ? error.message : "Couldn't open the wallet",
-        mdiAlertOutline
+        mdiAlertOutline,
       );
     });
   }
@@ -89,7 +90,7 @@
     <a
       aria-label="Dusk Wallet, home"
       class="top-bar__brand"
-      href={addBasePath("/dashboard")}
+      href={resolve("/dashboard/")}
     >
       <DuskGlyph />
       <DuskWordmark />
@@ -103,7 +104,7 @@
           aria-current={tab.id === activeTab ? "page" : undefined}
           class="top-bar__tab"
           class:top-bar__tab--on={tab.id === activeTab}
-          href={addBasePath(tab.href)}>{tab.label}</a
+          href={resolve(`${tab.href}/`)}>{tab.label}</a
         >
       {/each}
     </nav>
@@ -144,7 +145,7 @@
       class:top-bar__settings--on={settingsOpen}
       data-tooltip-id="main-tooltip"
       data-tooltip-text="Settings"
-      href={addBasePath("/settings")}
+      href={resolve("/settings/")}
     >
       <Icon path={mdiCogOutline} />
     </a>

@@ -85,7 +85,7 @@ async function keepDataOf(wallet) {
   rememberMigration(migration);
   addExportAddress(
     wallet.account,
-    `0x${wallet.key === "one" ? "11" : "22"}${"ab".repeat(19)}`
+    `0x${wallet.key === "one" ? "11" : "22"}${"ab".repeat(19)}`,
   );
   keepVerifiedName("testnet", wallet.account, `${wallet.key}.dusk`);
   await openContacts({ account: wallet.account, seed: wallet.seed });
@@ -96,11 +96,11 @@ async function keepDataOf(wallet) {
   await commitActivityStep(
     `testnet::${wallet.account}`,
     [/** @type {any} */ ({ blockHeight: 1, hash: "h" })],
-    () => /** @type {any} */ ({ from: 0, to: 1 })
+    () => /** @type {any} */ ({ from: 0, to: 1 }),
   );
   await putShieldedHistoryRecord(
     `testnet::${wallet.address}`,
-    /** @type {any} */ ({ entries: [] })
+    /** @type {any} */ ({ entries: [] }),
   );
 }
 
@@ -122,7 +122,7 @@ async function dataOf(wallet) {
     contacts,
     deposits: JSON.parse(
       localStorage.getItem(walletDataName("dusk-evm:deposit-activity:v1")) ??
-        "[]"
+        "[]",
     ).length,
     entries: (await listActivityEntries(`testnet::${wallet.account}`)).length,
     exportAddresses: get(exportAddresses)[wallet.account]?.length ?? 0,
@@ -130,7 +130,7 @@ async function dataOf(wallet) {
     migrations: get(keptMigrations).length,
     name: getVerifiedName("testnet", wallet.account),
     shielded: Boolean(
-      await getShieldedHistoryRecord(`testnet::${wallet.address}`)
+      await getShieldedHistoryRecord(`testnet::${wallet.address}`),
     ),
   };
 }
@@ -182,10 +182,10 @@ describe("Each wallet's data", () => {
     expect(localStorage.getItem(`${APP}-migrations:two`)).not.toBeNull();
     expect(localStorage.getItem("dusk-evm:deposit-activity:v1")).not.toBeNull();
     expect(
-      localStorage.getItem("dusk-evm:deposit-activity:v1:two")
+      localStorage.getItem("dusk-evm:deposit-activity:v1:two"),
     ).not.toBeNull();
     expect(await databases()).toEqual(
-      expect.arrayContaining([CACHE, `${CACHE}:two`])
+      expect.arrayContaining([CACHE, `${CACHE}:two`]),
     );
 
     // Neither shows the other's.
@@ -201,7 +201,7 @@ describe("Each wallet's data", () => {
       forgetWalletData(TWO.key, {
         accounts: [TWO.account],
         addresses: [TWO.address],
-      })
+      }),
     ).resolves.toBe(true);
     expect(await databases()).not.toContain(`${CACHE}:two`);
     expect(await databases()).toContain(CACHE);
@@ -231,7 +231,7 @@ describe("Each wallet's data", () => {
 
     // The directory, once a setup took the place of the wallets, knows only the new one.
     await import("../directory").then(({ noteActiveWallet }) =>
-      noteActiveWallet(TWO.key, { accounts: [], addresses: [] })
+      noteActiveWallet(TWO.key, { accounts: [], addresses: [] }),
     );
     await forgetOtherWalletsData();
 

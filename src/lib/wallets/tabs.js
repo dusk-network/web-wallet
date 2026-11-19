@@ -26,7 +26,7 @@ export function tellOtherTabs(event) {
         ...event,
         // A new value each time, as the same event twice is two changes.
         id: crypto.randomUUID(),
-      })
+      }),
     );
   } catch {
     // The other tabs see the change as they next read it.

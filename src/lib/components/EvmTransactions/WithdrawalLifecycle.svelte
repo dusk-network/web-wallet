@@ -125,7 +125,7 @@
    */
   async function readProveNow(hash) {
     const claim = await loadProveNow(/** @type {`0x${string}`} */ (hash)).catch(
-      () => null
+      () => null,
     );
 
     if (proveNowOf !== hash) {
@@ -141,7 +141,7 @@
       }, PREPARED_PROOF_MS);
       proveNowTimer = setTimeout(
         () => readProveNow(hash),
-        PROVE_NOW_REFRESH_MS
+        PROVE_NOW_REFRESH_MS,
       );
 
       return;
@@ -150,7 +150,7 @@
     proveNowFailures += 1;
     proveNowTimer = setTimeout(
       () => readProveNow(hash),
-      Math.min(RETRY_FIRST_MS * 2 ** (proveNowFailures - 1), RETRY_MOST_MS)
+      Math.min(RETRY_FIRST_MS * 2 ** (proveNowFailures - 1), RETRY_MOST_MS),
     );
   }
 
@@ -171,7 +171,7 @@
   $: followProveNow(
     selectedWithdrawal?.stage === "ready_to_prove"
       ? (selectedWithdrawal.transactionHash ?? "")
-      : ""
+      : "",
   );
   $: selectedStageMessage = stageMessage(selectedWithdrawal, {
     proveNow:
@@ -248,7 +248,7 @@
       <dt>Sent</dt>
       <dd>
         {formatTimestamp(
-          selectedWithdrawal.sentAt ?? selectedWithdrawal.timestamp
+          selectedWithdrawal.sentAt ?? selectedWithdrawal.timestamp,
         )}
       </dd>
       {#if selectedWithdrawal.blockNumber !== null && selectedWithdrawal.blockNumber !== undefined}

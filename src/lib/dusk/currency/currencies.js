@@ -59,7 +59,7 @@ const currencies = Object.freeze(
   PRICE_CURRENCIES.map((code) => ({
     code,
     currency: NAMES[/** @type {keyof typeof NAMES} */ (code)] ?? code,
-  }))
+  })),
 );
 
 export default currencies;

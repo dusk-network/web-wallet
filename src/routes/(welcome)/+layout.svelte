@@ -94,7 +94,7 @@
           if (connecting === failed) {
             retryLater();
           }
-        }
+        },
       );
     }, RETRY_EVERY);
   }

@@ -67,7 +67,7 @@ export { default as walletAccountNames, profilesHere } from "./accountNames";
 export const openProfileNames = derived(
   [walletStore, walletDirectory],
   ([{ walletKey }, directory]) =>
-    directory.wallets[walletKey]?.profileNames ?? []
+    directory.wallets[walletKey]?.profileNames ?? [],
 );
 
 /**
@@ -85,7 +85,7 @@ export const openWalletName = derived(
     return wallets.length > 1 && open
       ? walletLabel({ n: open.n, name: directory.wallets[open.key]?.name })
       : "";
-  }
+  },
 );
 
 /** @param {string} mnemonic */
@@ -282,7 +282,7 @@ export async function unlockWithPasskey({ signal } = {}) {
   try {
     await openUnlocked(
       await vault.unlockWithPasskey(prf, passkey.credentialId, { signal }),
-      { signal }
+      { signal },
     );
   } finally {
     prf.fill(0);
@@ -521,7 +521,7 @@ export async function removeWallet(key, password) {
   await letGo(
     key,
     data,
-    isStillOpen(stillOpen) ? { walletKey, wallets } : null
+    isStillOpen(stillOpen) ? { walletKey, wallets } : null,
   );
   tellOtherTabs({ type: "wallets" });
 }

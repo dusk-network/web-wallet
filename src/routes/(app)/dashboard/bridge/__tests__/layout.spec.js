@@ -40,7 +40,7 @@ describe("Bridge", () => {
       .mockImplementation(() => {
         throw new DOMException(
           "The quota has been exceeded.",
-          "QuotaExceededError"
+          "QuotaExceededError",
         );
       });
 

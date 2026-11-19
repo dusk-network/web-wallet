@@ -77,7 +77,7 @@
           verifiedName = found || "";
         }
       },
-      () => {}
+      () => {},
     );
   }
 
@@ -97,7 +97,7 @@
           currentProfile.account.toString(),
           networkName,
           nodeBaseUrl(),
-          addressProp === "address" ? currentAddress : undefined
+          addressProp === "address" ? currentAddress : undefined,
         )
       : "";
   $: takeName(name);

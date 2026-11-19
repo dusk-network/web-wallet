@@ -95,7 +95,7 @@ function readKept(scope = walletDataScope()) {
           (item) =>
             EVM_HASH.test(String(item?.hash)) &&
             /^\d+$/.test(String(item?.amountLux)) &&
-            typeof item?.routeId === "string"
+            typeof item?.routeId === "string",
         )
       : [];
   } catch {
@@ -150,7 +150,7 @@ export function rememberMigration(migration, scope = walletDataScope()) {
       { ...migration, hash },
       ...items.filter((item) => item.hash !== hash),
     ],
-    scope
+    scope,
   );
 }
 
@@ -165,9 +165,9 @@ const markMigration = (hash, receipt, scope) =>
   changeKept(
     (items) =>
       items.map((item) =>
-        item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item
+        item.hash === hash.toLowerCase() ? { ...item, ...receipt } : item,
       ),
-    scope
+    scope,
   );
 
 /**
@@ -208,7 +208,9 @@ export async function migrationTransfers(rows, sent, net, account) {
   const mine = sent.filter(
     (item) =>
       item.recipient === account &&
-      routes.some(({ id, kind }) => id === item.routeId && kind === "migration")
+      routes.some(
+        ({ id, kind }) => id === item.routeId && kind === "migration",
+      ),
   );
   const { payouts, unlisted } = await migrationPayouts({
     entries: rows.flatMap(({ entry }) => (entry ? [entry] : [])),
@@ -231,7 +233,7 @@ export async function migrationTransfers(rows, sent, net, account) {
       const route = routeOf(payout.route);
 
       return route ? [[payout.hash, { ...payout, route }]] : [];
-    })
+    }),
   );
 
   return [
@@ -270,7 +272,7 @@ export async function migrationTransfers(rows, sent, net, account) {
           recipient: "",
           route: payout.route,
           stage: "paid",
-        })
+        }),
     ),
   ];
 }
@@ -291,7 +293,7 @@ const ARRIVALS_KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-transfer-arrivals`;
 function readArrivals(scope = walletDataScope()) {
   try {
     const stored = JSON.parse(
-      localStorage.getItem(scope.name(ARRIVALS_KEY)) ?? "{}"
+      localStorage.getItem(scope.name(ARRIVALS_KEY)) ?? "{}",
     );
 
     return stored && typeof stored === "object" ? stored : {};
@@ -441,7 +443,7 @@ const hasRouteTransfers = (rows, sent, net, account) =>
     ({ counterparty, direction }) =>
       Boolean(counterparty) &&
       (direction === "in" || direction === "out") &&
-      routeForAccount(net, String(counterparty), direction) !== null
+      routeForAccount(net, String(counterparty), direction) !== null,
   );
 
 /**

@@ -45,19 +45,19 @@ describe("formatTotal", () => {
     // 173.901884001 DUSK shows as 173.9018, rounded down as balances are:
     // a total at Max, or just under it, reads the same, not more.
     expect(formatTotal(173_901_884_001n, 173_901_884_001n, "en")).toBe(
-      "173.9018"
+      "173.9018",
     );
     expect(
-      formatTotal(173_899_384_001n + 2_500_000n, 173_901_884_001n, "en")
+      formatTotal(173_899_384_001n + 2_500_000n, 173_901_884_001n, "en"),
     ).toBe("173.9018");
     expect(formatTotal(173_901_800_001n, 173_901_884_001n, "en")).toBe(
-      "173.9018"
+      "173.9018",
     );
     expect(formatTotal(1_002_500_000n, 173_901_884_001n, "en")).toBe("1.0025");
     expect(formatTotal(1_000_000_001n, 173_901_884_001n, "en")).toBe("1.0001");
     // More than there is reads more.
     expect(formatTotal(173_901_884_002n, 173_901_884_001n, "en")).toBe(
-      "173.9019"
+      "173.9019",
     );
     expect(formatTotal(0n, 0n, "en")).toBe("0");
   });

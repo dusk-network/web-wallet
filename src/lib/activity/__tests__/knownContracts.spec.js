@@ -18,13 +18,13 @@ describe("contractLabel", () => {
     expect(contractLabel(STORE, "testnet")).toBe("Dusk Domains");
     expect(contractLabel(STORE, "mainnet")).toBe("");
     expect(contractLabel(portal?.contractId, "testnet")).toBe(
-      "DuskEVM bridge portal"
+      "DuskEVM bridge portal",
     );
     expect(contractLabel(networks.mainnet.sozu?.hub, "mainnet")).toBe(
-      "Sozu hub"
+      "Sozu hub",
     );
     expect(
-      contractLabel(networks.testnet.sozu?.fallbacks.pool, "testnet")
+      contractLabel(networks.testnet.sozu?.fallbacks.pool, "testnet"),
     ).toBe("Sozu pool");
     expect(contractLabel("ab".repeat(32))).toBe("");
     expect(contractLabel("")).toBe("");

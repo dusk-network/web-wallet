@@ -26,7 +26,7 @@ vi.mock("$app/stores", async () => {
       subscribe: (/** @type {(value: any) => void} */ run) =>
         derived(
           /** @type {import("svelte/store").Writable<any>} */ (mocks.state),
-          (state) => ({ state, url: mocks.url })
+          (state) => ({ state, url: mocks.url }),
         ).subscribe(run),
     },
   };
@@ -105,7 +105,7 @@ describe("Shell", () => {
         /** @type {HTMLElement} */ (
           container.querySelector(".command-bar__input")
         ),
-        { target: { value: "settings" } }
+        { target: { value: "settings" } },
       );
       await fireEvent.click(getByRole("option", { name: /Settings/ }));
 
@@ -113,7 +113,7 @@ describe("Shell", () => {
       expect(back).not.toHaveBeenCalled();
       expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
         expect.stringMatching(/\/settings$/),
-        { replaceState: true }
+        { replaceState: true },
       );
 
       back.mockRestore();
@@ -130,7 +130,7 @@ describe("Shell", () => {
 
     const labels = Array.from(
       container.querySelectorAll("[role=option] .command-bar__label"),
-      (label) => label.textContent?.trim()
+      (label) => label.textContent?.trim(),
     );
 
     expect(labels).toContain("Bridge");
@@ -150,7 +150,7 @@ describe("Shell", () => {
       /** @type {HTMLElement} */ (
         container.querySelector(".command-bar__input")
       ),
-      { key: "Escape" }
+      { key: "Escape" },
     );
 
     expect(queryByRole("dialog", { name: "Search" })).toBeNull();
@@ -186,7 +186,7 @@ describe("Shell", () => {
     expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
     expect(container.querySelector(".top-bar__search")).toHaveAttribute(
       "aria-keyshortcuts",
-      "Control+K Meta+K /"
+      "Control+K Meta+K /",
     );
   });
 
@@ -194,21 +194,21 @@ describe("Shell", () => {
     const { container, getByRole, queryByRole } = render(Shell);
 
     expect(getByRole("note")).toHaveTextContent(
-      "Testnet · Test DUSK has no value"
+      "Testnet · Test DUSK has no value",
     );
     // At the top, above the top bar.
     expect(
-      container.querySelector(".shell__header > .testnet-strip + .top-bar")
+      container.querySelector(".shell__header > .testnet-strip + .top-bar"),
     ).toBeInTheDocument();
 
     await act(() =>
-      mocks.network?.set({ connected: true, networkName: "mainnet" })
+      mocks.network?.set({ connected: true, networkName: "mainnet" }),
     );
 
     expect(queryByRole("note")).toBeNull();
 
     await act(() =>
-      mocks.network?.set({ connected: true, networkName: "testnet" })
+      mocks.network?.set({ connected: true, networkName: "testnet" }),
     );
   });
 
@@ -243,20 +243,20 @@ describe("Shell", () => {
       overview.getAllByRole("link", { name: /^\s*staking\s*$/i })[0];
 
     expect(overview.container.querySelector(".shell")).not.toHaveClass(
-      "shell--flow"
+      "shell--flow",
     );
     expect(staking()).toHaveAttribute("aria-current", "page");
 
     cleanup();
     mocks.url = new URL(
-      "http://localhost/some-base-path/dashboard/stake?flow=native"
+      "http://localhost/some-base-path/dashboard/stake?flow=native",
     );
 
     const flow = render(Shell);
 
     expect(flow.container.querySelector(".shell")).toHaveClass("shell--flow");
     expect(
-      flow.getAllByRole("link", { name: /^\s*staking\s*$/i })[0]
+      flow.getAllByRole("link", { name: /^\s*staking\s*$/i })[0],
     ).toHaveAttribute("aria-current", "page");
   });
 
@@ -265,7 +265,7 @@ describe("Shell", () => {
 
     expect(getByRole("link", { name: "Skip to content" })).toHaveAttribute(
       "href",
-      "#shell-main"
+      "#shell-main",
     );
   });
 
@@ -278,7 +278,7 @@ describe("Shell", () => {
     expect(main).toHaveAttribute("id", "shell-main");
     expect(main).not.toContainElement(getByRole("banner"));
     expect(main).not.toContainElement(
-      getByRole("link", { name: "Skip to content" })
+      getByRole("link", { name: "Skip to content" }),
     );
 
     for (const nav of getAllByRole("navigation", { name: "Wallet pages" })) {
@@ -292,7 +292,7 @@ describe("Shell", () => {
     const { getAllByRole, queryByRole } = render(Shell);
 
     expect(
-      getAllByRole("heading", { level: 1 }).map((h) => h.textContent)
+      getAllByRole("heading", { level: 1 }).map((h) => h.textContent),
     ).toStrictEqual(["Send"]);
     expect(getAllByRole("heading", { level: 1 })[0]).toHaveClass("sr-only");
 

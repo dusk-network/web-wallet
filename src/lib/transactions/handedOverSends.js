@@ -141,10 +141,10 @@ export async function lookUpNonceTaker(send, reading, signal) {
   if (reading.from === null) {
     const tip = await unlessAborted(
       networkStore.getCurrentBlockHeight(signal),
-      signal
+      signal,
     );
     const since = Math.ceil(
-      Math.max(0, Date.now() - send.at) / (BLOCK_SECONDS * 1000)
+      Math.max(0, Date.now() - send.at) / (BLOCK_SECONDS * 1000),
     );
 
     reading.from = Math.max(0, Number(tip) - since - BLOCKS_BEFORE);
@@ -154,9 +154,9 @@ export async function lookUpNonceTaker(send, reading, signal) {
     transactionAtNonce(
       network,
       { account: send.account, from: reading.from, nonce },
-      { known: reading.known, signal }
+      { known: reading.known, signal },
     ),
-    signal
+    signal,
   );
 }
 
@@ -173,7 +173,7 @@ export async function inMempool(hash, signal) {
   const network = await unlessAborted(networkStore.connect(), signal);
   const said = await unlessAborted(
     network.query(`queued: mempoolTx(hash: "${hash}") { id }`, { signal }),
-    signal
+    signal,
   );
 
   if (!said || typeof said !== "object" || !("queued" in said)) {
@@ -197,7 +197,7 @@ export async function inMempool(hash, signal) {
 export async function isNonceFree(send, signal) {
   const nonce = send.handedOver?.nonce ?? "";
   const profile = get(walletStore).profiles.find(
-    (each) => String(each.account) === send.account
+    (each) => String(each.account) === send.account,
   );
 
   if (!nonce || !profile) {
@@ -386,7 +386,7 @@ const within = (promise, milliseconds) => {
  */
 const keptAs = (id, hash) =>
   get(unsentSends).find(
-    (send) => send.id === id && send.handedOver?.hash === hash
+    (send) => send.id === id && send.handedOver?.hash === hash,
   );
 
 /**
@@ -510,7 +510,7 @@ export function followHandedOver(send) {
       // where that can't be said.
       const wentOut = await lookUpHandedOver(
         send,
-        AbortSignal.timeout(ANSWER_WITHIN)
+        AbortSignal.timeout(ANSWER_WITHIN),
       ).catch(() => undefined);
 
       if (!scope.isOpen()) {
@@ -523,7 +523,7 @@ export function followHandedOver(send) {
         // hangs holds the read up.
         await within(
           walletStore.refreshBalance().catch(() => {}),
-          ANSWER_WITHIN
+          ANSWER_WITHIN,
         );
 
         if (!scope.isOpen()) {
@@ -558,7 +558,7 @@ export function followHandedOver(send) {
       if (wentOut === null) {
         const queued = await inMempool(
           hash,
-          AbortSignal.timeout(ANSWER_WITHIN)
+          AbortSignal.timeout(ANSWER_WITHIN),
         ).catch(() => undefined);
 
         if (!scope.isOpen()) {
@@ -570,7 +570,7 @@ export function followHandedOver(send) {
         } else if (queued === false) {
           isFree =
             (await isNonceFree(send, AbortSignal.timeout(ANSWER_WITHIN)).catch(
-              () => undefined
+              () => undefined,
             )) ?? undefined;
 
           if (!scope.isOpen()) {
@@ -610,7 +610,7 @@ export function followHandedOver(send) {
         const taker = await lookUpNonceTaker(
           send,
           reading,
-          AbortSignal.timeout(ANSWER_WITHIN)
+          AbortSignal.timeout(ANSWER_WITHIN),
         ).catch(() => null);
 
         if (!scope.isOpen()) {
@@ -763,7 +763,7 @@ export async function dontSendHandedOver(send) {
   const isDismissed = await actOnHandedOver(send.id, hash, (kept) =>
     kept && !kept.handedOver?.dismissed
       ? dismissHandedOver(send.id, hash)
-      : Promise.resolve(false)
+      : Promise.resolve(false),
   ).catch(() => false);
 
   if (isDismissed) {

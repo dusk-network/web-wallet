@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   // its version shows in the footer, both from package.json: npm only gives
   // them to Vite when npm runs it.
   const { name: APP_NAME, version: APP_VERSION } = JSON.parse(
-    readFileSync(resolve("package.json"), "utf8")
+    readFileSync(resolve("package.json"), "utf8"),
   );
 
   // SvelteKit loads svelte.config.js here, whose policy names what the

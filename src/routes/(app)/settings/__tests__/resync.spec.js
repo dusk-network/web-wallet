@@ -90,12 +90,12 @@ async function keepDataOf({ key, profile }) {
   await commitActivityStep(
     `testnet::${account}`,
     [/** @type {any} */ ({ blockHeight: 1, hash: "h" })],
-    () => /** @type {any} */ ({ from: 0, to: 1 })
+    () => /** @type {any} */ ({ from: 0, to: 1 }),
   );
   await putLocalTransaction(`testnet::${account}`, { hash: "l" });
   await putShieldedHistoryRecord(
     `testnet::${profile.address}`,
-    /** @type {any} */ ({ decoys: [5], entries: [], fingerprint: "f" })
+    /** @type {any} */ ({ decoys: [5], entries: [], fingerprint: "f" }),
   );
 }
 
@@ -113,7 +113,7 @@ async function dataOf({ key, profile }) {
     history: (await listActivityEntries(`testnet::${account}`)).length,
     sent: (await listLocalTransactions(`testnet::${account}`)).length,
     shielded: Boolean(
-      await getShieldedHistoryRecord(`testnet::${profile.address}`)
+      await getShieldedHistoryRecord(`testnet::${profile.address}`),
     ),
   };
 }
@@ -169,30 +169,30 @@ describe("Settings › Resync", () => {
     const { group } = await openResync();
 
     expect(within(group).getByRole("combobox", { name: "From" })).toHaveValue(
-      "creation"
+      "creation",
     );
     expect(
       Array.from(
         within(group).getAllByRole("option"),
-        (option) => option.textContent
-      )
+        (option) => option.textContent,
+      ),
     ).toEqual(["Creation block, 42", "Genesis, block 0", "Another block"]);
     expect(group).toHaveTextContent(
-      "Syncs this wallet again from the block you choose, after clearing its synced balances and history on this device. It can take a while. Contacts, settings and names stay."
+      "Syncs this wallet again from the block you choose, after clearing its synced balances and history on this device. It can take a while. Contacts, settings and names stay.",
     );
 
     // Asked first, in the page.
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
 
     expect(group).toHaveTextContent(
-      "Resync Wallet 2 from block 42? Its balances and history clear, then fill in again as it syncs."
+      "Resync Wallet 2 from block 42? Its balances and history clear, then fill in again as it syncs.",
     );
     expect(notesSpy).not.toHaveBeenCalled();
 
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() => expect(toasts).toEqual(["Resynced from block 42."]));
 
@@ -217,40 +217,40 @@ describe("Settings › Resync", () => {
 
     await vi.waitFor(() =>
       expect(group).toHaveTextContent(
-        "The maximum is 123, the network's latest block."
-      )
+        "The maximum is 123, the network's latest block.",
+      ),
     );
 
     await fireEvent.input(height, { target: { value: "124" } });
     await vi.waitFor(() =>
-      expect(height).toHaveAttribute("aria-invalid", "true")
+      expect(height).toHaveAttribute("aria-invalid", "true"),
     );
 
     expect(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     ).toBeDisabled();
 
     await fireEvent.input(height, { target: { value: "123" } });
     await vi.waitFor(() =>
-      expect(height).toHaveAttribute("aria-invalid", "false")
+      expect(height).toHaveAttribute("aria-invalid", "false"),
     );
 
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() =>
-      expect(toasts).toEqual(["Resynced from block 123."])
+      expect(toasts).toEqual(["Resynced from block 123."]),
     );
 
     await fireEvent.change(from, { target: { value: "genesis" } });
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() => expect(toasts).toHaveLength(2));
 
@@ -270,7 +270,7 @@ describe("Settings › Resync", () => {
       within(group).getByRole("combobox", { name: "From" }),
       {
         target: { value: "typed" },
-      }
+      },
     );
 
     const height = within(group).getByRole("textbox", { name: "Block height" });
@@ -307,29 +307,29 @@ describe("Settings › Resync", () => {
         await held.promise;
 
         return findNotes.apply(this, args);
-      }
+      },
     );
 
     const { group } = await openResync();
 
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await fireEvent.click(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() =>
       expect(group).toHaveTextContent(
-        "Resyncing from block 42. It can take a while."
-      )
+        "Resyncing from block 42. It can take a while.",
+      ),
     );
 
     expect(within(group).queryByRole("button", { name: "Resync" })).toBeNull();
     expect(
-      within(group).getByRole("combobox", { name: "From" })
+      within(group).getByRole("combobox", { name: "From" }),
     ).toBeDisabled();
     await expect(walletStore.resync(7n)).rejects.toThrow(
-      "The wallet is syncing again already."
+      "The wallet is syncing again already.",
     );
 
     held.resolve(undefined);
@@ -337,7 +337,7 @@ describe("Settings › Resync", () => {
 
     expect(notesFrom()).toEqual([42n]);
     expect(
-      within(group).getByRole("button", { name: "Resync" })
+      within(group).getByRole("button", { name: "Resync" }),
     ).not.toBeDisabled();
   });
 });

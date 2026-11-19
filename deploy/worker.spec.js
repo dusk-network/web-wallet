@@ -21,7 +21,7 @@ const ask = async (path, init, vars = {}) => {
   const ASSETS = {
     fetch: async (
       /** @type {URL} */ url,
-      /** @type {RequestInit} */ { headers, method } = {}
+      /** @type {RequestInit} */ { headers, method } = {},
     ) => {
       asked.push({ headers: new Headers(headers), method, url: String(url) });
 
@@ -35,7 +35,7 @@ const ask = async (path, init, vars = {}) => {
   const response = await worker.fetch(
     new Request(`https://apps.testnet.dusk.network${path}`, init),
     // @ts-ignore: the binding's fetch, as far as the Worker uses it
-    { ASSETS, EXPLORER, ...vars }
+    { ASSETS, EXPLORER, ...vars },
   );
 
   return { asked, response };
@@ -129,7 +129,7 @@ describe("The wallet's Worker", () => {
     const { asked, response } = await ask(
       "/.well-known/assetlinks.json",
       undefined,
-      { ANDROID_CERTS: `${TEST_KEY}, ${RELEASE_KEY}` }
+      { ANDROID_CERTS: `${TEST_KEY}, ${RELEASE_KEY}` },
     );
 
     expect(response.status).toBe(200);
@@ -152,7 +152,7 @@ describe("The wallet's Worker", () => {
       { method: "HEAD" },
       {
         ANDROID_CERTS: TEST_KEY,
-      }
+      },
     );
 
     expect(head.response.status).toBe(200);
@@ -172,7 +172,7 @@ describe("The wallet's Worker", () => {
         await ask("/wallet/.well-known/assetlinks.json", undefined, {
           ANDROID_CERTS: TEST_KEY,
         })
-      ).asked
+      ).asked,
     ).toHaveLength(1);
   });
 
@@ -204,8 +204,8 @@ describe("The wallet's Worker", () => {
       .map((rule) => rule.trim().split("\n"));
     const every = Object.fromEntries(
       (rules.find(([path]) => path === "/*")?.slice(1) ?? []).map((line) =>
-        line.trim().split(/: (.*)/s, 2)
-      )
+        line.trim().split(/: (.*)/s, 2),
+      ),
     );
 
     expect(every["Content-Security-Policy"]).toBe("PAGE_POLICY");
@@ -214,7 +214,7 @@ describe("The wallet's Worker", () => {
       "Content-Security-Policy": HEADERS["Content-Security-Policy"],
     }).toEqual(HEADERS);
     expect(HEADERS["Content-Security-Policy"]).toBe(
-      "default-src 'none'; frame-ancestors 'none'"
+      "default-src 'none'; frame-ancestors 'none'",
     );
   });
 });

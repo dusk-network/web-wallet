@@ -242,7 +242,7 @@ const recordInHistory = (profile, details) => {
       if (record) {
         recorded.delete(hash);
         void record.written.then(() =>
-          tellTabs(() => history?.forgetSent(hash))
+          tellTabs(() => history?.forgetSent(hash)),
         );
       }
     },
@@ -251,7 +251,7 @@ const recordInHistory = (profile, details) => {
         recorded.set(hash, {
           seen: false,
           written: tellTabs(() =>
-            history?.recordSent({ ...details, hash }, { handing: true })
+            history?.recordSent({ ...details, hash }, { handing: true }),
           ),
         });
       }
@@ -268,7 +268,7 @@ const recordInHistory = (profile, details) => {
         // The node took it: it's sent, on its way.
         record.seen = true;
         record.written = record.written.then(() =>
-          noteSentAccepted(hash).catch(() => {})
+          noteSentAccepted(hash).catch(() => {}),
         );
       }
     },
@@ -302,7 +302,7 @@ const lookForArrival = (profile, { to }) => {
   const isToAnother = isToAnotherProfile(
     to,
     profile,
-    get(walletStore).profiles
+    get(walletStore).profiles,
   );
 
   return (txInfo) => {
@@ -416,8 +416,8 @@ function holdStaking(profile, hash, after, refreshed) {
     if (isCurrent()) {
       changeStakes((stakes) =>
         stakes.map((sent) =>
-          sent.hash === hash ? { ...sent, stale: true } : sent
-        )
+          sent.hash === hash ? { ...sent, stale: true } : sent,
+        ),
       );
     }
   }, 2 * AUTO_SYNC_INTERVAL);
@@ -544,12 +544,12 @@ let sendsInTurn = Promise.resolve();
  */
 function inTurn(work, gate) {
   const turn = sendsInTurn.then(() =>
-    gate ? Promise.race([work(), gate.cancelled]) : work()
+    gate ? Promise.race([work(), gate.cancelled]) : work(),
   );
 
   sendsInTurn = turn.then(
     () => {},
-    () => {}
+    () => {},
   );
 
   return turn;
@@ -586,14 +586,14 @@ const sendAs = (
   profile,
   details,
   execute,
-  { gas, gate, moves = 0n, staking = false }
+  { gas, gate, moves = 0n, staking = false },
 ) => {
   const session = walletSession;
   const stillOpen = whileOpen();
   const keepInCache = updateCacheAfterTransaction(profile);
   const { forget, handing, record, unconfirmed } = recordInHistory(
     profile,
-    details
+    details,
   );
   const lookFor = lookForArrival(profile, details);
 
@@ -650,10 +650,10 @@ const sendAs = (
           (network) =>
             Promise.all(
               own.map(({ hash }) =>
-                transactionInBlock(network, hash).then(Boolean, () => false)
-              )
+                transactionInBlock(network, hash).then(Boolean, () => false),
+              ),
             ),
-          () => []
+          () => [],
         )
       : [];
 
@@ -741,7 +741,7 @@ const sendAs = (
 
   const password = sendPasswordFor(
     moves + gas.total,
-    get(walletStore).walletKey
+    get(walletStore).walletKey,
   );
 
   /**
@@ -775,7 +775,7 @@ const sendAs = (
             await gate.ask(
               seen === undefined || told === undefined
                 ? undefined
-                : { account: String(profile.account), from: seen, to: told }
+                : { account: String(profile.account), from: seen, to: told },
             );
             seen = told ?? seen;
             await sync().catch((error) => {
@@ -795,9 +795,9 @@ const sendAs = (
             // It went out: what goes wrong from here doesn't say it didn't.
             keepInCache(txInfo).catch((error) => {
               throw outcomeUnknown(error, txInfo.hash);
-            })
+            }),
           );
-        }, gate)
+        }, gate),
       );
 
   const sent = (password ?? Promise.resolve())
@@ -808,9 +808,9 @@ const sendAs = (
       // Asked for the latest block's height, the network says it answers.
       gate
         ? gate.untilHandedOver(attempt, (signal) =>
-            networkStore.getCurrentBlockHeight(signal)
+            networkStore.getCurrentBlockHeight(signal),
           )
-        : attempt()
+        : attempt(),
     )
     .catch((error) => {
       const hash = unconfirmedHash(error);
@@ -841,7 +841,7 @@ const sendAs = (
         .then(passThruWithEffects(lookFor))
         .catch((error) => {
           throw outcomeUnknown(error, txInfo.hash);
-        })
+        }),
     );
 
   // Whether it waits is watched only while it can.
@@ -868,7 +868,7 @@ const sendAgain = ({ account, hash, nonce, tx }) => {
   const session = walletSession;
   const stillOpen = whileOpen();
   const profile = get(walletStore).profiles.find(
-    (each) => String(each.account) === account
+    (each) => String(each.account) === account,
   );
 
   if (!profile) {
@@ -899,7 +899,7 @@ const sendAgain = ({ account, hash, nonce, tx }) => {
           if (session === walletSession) {
             treasury.forgetSentNonce(profile, taken);
           }
-        }
+        },
       ).catch(() => {});
     }
   });
@@ -1006,14 +1006,14 @@ async function updateStaticInfo() {
           treasury.setCachedBalance(profile, {
             ...balance.value,
             ...(at === undefined ? {} : { readAt: at }),
-          })
+          }),
         )
         .catch(() => {}),
     stake.status === "fulfilled" &&
       keptReadAt(
         /** @type {Promise<StakeInfo & { readAt?: number }>} */ (
           treasury.getCachedStakeInfo(profile)
-        )
+        ),
       )
         .then((at) =>
           treasury.setCachedStakeInfo(
@@ -1021,8 +1021,8 @@ async function updateStaticInfo() {
             /** @type {StakeInfo} */ ({
               ...stake.value,
               ...(at === undefined ? {} : { readAt: at }),
-            })
-          )
+            }),
+          ),
         )
         .catch(() => {}),
   ]);
@@ -1127,7 +1127,7 @@ const clearLocalData = async () => {
 const clearLocalDataAndInit = async (
   profileGenerator,
   syncFromBlock,
-  wallet
+  wallet,
 ) => {
   reset();
   const session = walletSession;
@@ -1152,7 +1152,7 @@ const claimRewards = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).withdraw(amount).gas(gas)),
-    { gas, staking: true }
+    { gas, staking: true },
   );
 };
 
@@ -1189,7 +1189,7 @@ async function openContactsOf(profileGenerator, firstProfile, session) {
 async function init(
   profileGeneratorInstance,
   syncFromBlock,
-  { key = "", n = 1, profile = 0 } = {}
+  { key = "", n = 1, profile = 0 } = {},
 ) {
   resetSession();
   const session = walletSession;
@@ -1250,7 +1250,7 @@ async function init(
         settingsStore.update((settings) =>
           settings.userId
             ? settings
-            : { ...settings, userId: profiles[0].address.toString() }
+            : { ...settings, userId: profiles[0].address.toString() },
         );
       }
     })
@@ -1441,12 +1441,12 @@ async function setCurrentProfile(profile) {
           balanceReadFailed: !isAnswering,
           currentProfile: profile,
           stakeReadFailed: !isAnswering,
-        })
+        }),
       ).then(async () => {
         await updateStaticInfo();
       })
     : Promise.reject(
-        new Error("The received profile is not in the known list")
+        new Error("The received profile is not in the known list"),
       );
 }
 
@@ -1464,7 +1464,7 @@ const shield = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).shield(amount).gas(gas)),
-    { gas, moves: amount }
+    { gas, moves: amount },
   );
 };
 
@@ -1481,7 +1481,7 @@ const stake = async (amount, gas) => {
       privacy: "public",
     },
     (network) => network.execute(bookkeeper.as(profile).stake(amount).gas(gas)),
-    { gas, moves: amount, staking: true }
+    { gas, moves: amount, staking: true },
   );
 };
 
@@ -1514,21 +1514,21 @@ const callSozu = async (poolId, fnName, amount, gas) => {
         bookkeeper.as(profile).transfer(0n)
       ).payload({
         contractId: Array.from(contractId.match(/../g) ?? [], (byte) =>
-          parseInt(byte, 16)
+          parseInt(byte, 16),
         ),
         fnArgs,
         fnName,
       });
 
       return await network.execute(
-        builder.to(profile.account).deposit(deposit).gas(gas)
+        builder.to(profile.account).deposit(deposit).gas(gas),
       );
     },
     {
       gas,
       moves: fnName === SOZU_FN.STAKE ? amount : 0n,
       staking: true,
-    }
+    },
   );
 };
 
@@ -1553,7 +1553,7 @@ const topUpStake = async (amount, gas) => {
       privacy: "public",
     },
     (network) => network.execute(bookkeeper.as(profile).topup(amount).gas(gas)),
-    { gas, moves: amount, staking: true }
+    { gas, moves: amount, staking: true },
   );
 };
 
@@ -1564,7 +1564,7 @@ async function sync(fromBlock, { clear = false } = {}) {
 
   if (!store.initialized) {
     throw new Error(
-      "The wallet store needs to be initialized with a profile generator"
+      "The wallet store needs to be initialized with a profile generator",
     );
   }
 
@@ -1749,7 +1749,7 @@ async function resync(fromBlock) {
 
   if (!initialized) {
     throw new Error(
-      "The wallet store needs to be initialized with a profile generator"
+      "The wallet store needs to be initialized with a profile generator",
     );
   }
 
@@ -1778,7 +1778,7 @@ async function resync(fromBlock) {
         accounts: profiles.map((profile) => String(profile.account)),
         addresses: [],
       },
-      ["entries", "meta"]
+      ["entries", "meta"],
     );
     stillOpen();
 
@@ -1825,7 +1825,7 @@ const transfer = async (to, amount, memo, gas, { gate, toName } = {}) => {
 
       return await network.execute(tx);
     },
-    { gas, gate, moves: amount }
+    { gas, gate, moves: amount },
   );
 };
 
@@ -1834,7 +1834,7 @@ const depositEvmFunctionCall = async (
   address,
   amount,
   gas,
-  { extraData, minGasLimit } = {}
+  { extraData, minGasLimit } = {},
 ) => {
   const bridgeContractId = getBridgeContractId();
   const profile = unsafeGetCurrentProfile();
@@ -1853,7 +1853,7 @@ const depositEvmFunctionCall = async (
     async (network) => {
       const payload = {
         contractId: Array.from(bridgeContractId.match(/../g) ?? [], (byte) =>
-          parseInt(byte, 16)
+          parseInt(byte, 16),
         ),
         fnArgs: encodeDepositArgs({
           amountLux: amount,
@@ -1868,10 +1868,10 @@ const depositEvmFunctionCall = async (
       ).payload(payload);
 
       return await network.execute(
-        builder.to(profile.account).deposit(BigInt(amount)).gas(gas)
+        builder.to(profile.account).deposit(BigInt(amount)).gas(gas),
       );
     },
-    { gas, moves: BigInt(amount) }
+    { gas, moves: BigInt(amount) },
   );
 };
 
@@ -1889,7 +1889,7 @@ const unshield = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).unshield(amount).gas(gas)),
-    { gas, moves: amount }
+    { gas, moves: amount },
   );
 };
 
@@ -1907,7 +1907,7 @@ const unstake = async (amount, gas) => {
     },
     (network) =>
       network.execute(bookkeeper.as(profile).unstake(amount).gas(gas)),
-    { gas, staking: true }
+    { gas, staking: true },
   );
 };
 
@@ -1915,7 +1915,7 @@ const unstake = async (amount, gas) => {
 const useContract = async (contractId, wasmPath) =>
   networkStore.connect().then(async (network) => {
     network.dataDrivers.register(contractId, () =>
-      fetch(wasmPath).then((r) => r.arrayBuffer())
+      fetch(wasmPath).then((r) => r.arrayBuffer()),
     );
 
     const profile = unsafeGetCurrentProfile();
@@ -1934,7 +1934,7 @@ const useContract = async (contractId, wasmPath) =>
  */
 const sendDuskEvmWithdrawalCall = async (
   { contractId, deposit, fnArgs, fnName },
-  gas
+  gas,
 ) => {
   if (deposit !== 0n || !/^[0-9a-f]{64}$/.test(contractId)) {
     throw new Error("Not a DuskEVM withdrawal's proof or claim.");
@@ -1955,7 +1955,7 @@ const sendDuskEvmWithdrawalCall = async (
     async (network) => {
       const payload = {
         contractId: Array.from(contractId.match(/../g) ?? [], (byte) =>
-          parseInt(byte, 16)
+          parseInt(byte, 16),
         ),
         fnArgs,
         fnName,
@@ -1965,10 +1965,10 @@ const sendDuskEvmWithdrawalCall = async (
       ).payload(payload);
 
       return await network.execute(
-        builder.to(profile.account).deposit(deposit).gas(gas)
+        builder.to(profile.account).deposit(deposit).gas(gas),
       );
     },
-    { gas }
+    { gas },
   );
 };
 

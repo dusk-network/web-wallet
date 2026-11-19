@@ -117,7 +117,7 @@ describe("Connecting to the network", () => {
   it("gives up after ten seconds, and the next attempt doesn't wait for the socket that never answered", async () => {
     const connecting = store.connect();
     const failed = expect(connecting).rejects.toThrow(
-      "Timed out while connecting to the network"
+      "Timed out while connecting to the network",
     );
     const stuck = await toTheSocket();
 
@@ -192,11 +192,11 @@ describe("Connecting to the network", () => {
 
   it("loads no wallet core from an error page, and the next attempt gets the real one", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response("Bad gateway", { status: 502 })
+      new Response("Bad gateway", { status: 502 }),
     );
 
     await expect(store.connect()).rejects.toThrow(
-      "The wallet core couldn't be loaded"
+      "The wallet core couldn't be loaded",
     );
 
     expect(TestSocket.made).toHaveLength(0);

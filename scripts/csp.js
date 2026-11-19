@@ -71,7 +71,7 @@ const networkOrigins = (net) => [
   ...originsOf(/** @type {any} */ (net).duskEvm?.l1AdapterUrl),
   ...originsOf(/** @type {any} */ (net).duskEvm?.blockscoutApiUrl),
   ...Object.values(/** @type {any} */ (net).routes?.chains ?? {}).flatMap(
-    (chain) => originsOf(/** @type {any} */ (chain)?.rpcUrl)
+    (chain) => originsOf(/** @type {any} */ (chain)?.rpcUrl),
   ),
 ];
 
@@ -86,7 +86,7 @@ function networksOf(nodeUrl) {
   const node = URL.parse(nodeUrl ?? "")?.origin;
   const all = Object.values(networks);
   const its = all.filter(
-    (net) => node && URL.parse(net.urls.node)?.origin === node
+    (net) => node && URL.parse(net.urls.node)?.origin === node,
   );
 
   return its.length ? its : all;

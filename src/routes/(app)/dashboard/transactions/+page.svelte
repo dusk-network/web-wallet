@@ -50,7 +50,7 @@
     sheetStep(
       `${appPath(next.pathname)}${next.search}`,
       Number(url.searchParams.has("tx")),
-      Number(next.searchParams.has("tx"))
+      Number(next.searchParams.has("tx")),
     );
 
   /**
@@ -105,14 +105,14 @@
           profiles,
           currentProfile,
           networkName,
-          $openProfileNames
+          $openProfileNames,
         ),
         // The file's, as the extension names it.
         outsideName: profileOutsideName(
           profiles,
           currentProfile,
           networkName,
-          $openProfileNames
+          $openProfileNames,
         ),
       }
     : null;

@@ -32,13 +32,13 @@ describe("Mnemonic", () => {
         {
           enteredMnemonicPhrase: mnemonic.slice(0, count),
           type: "authenticate",
-        }
+        },
       );
       await fireEvent.click(getByRole("button", { name: "Undo" }));
       expect(getByPlaceholderText(`Enter word ${count}`)).toBeInTheDocument();
       expect(getAllByRole("listitem")).toHaveLength(12);
       expect(getAllByRole("listitem")[count - 1]).toHaveTextContent("_____");
-    }
+    },
   );
 
   it("should display all the words in the order they have been clicked", async () => {

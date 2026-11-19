@@ -23,7 +23,7 @@ describe("shell navigation", () => {
     expect(appPath("/some-base-path/dashboard/")).toBe("/dashboard");
     expect(tabOf(tabs, "/some-base-path/dashboard")).toBe("home");
     expect(tabOf(tabs, "/some-base-path/dashboard/transactions")).toBe(
-      "history"
+      "history",
     );
     expect(tabOf(tabs, "/some-base-path/dashboard/stake")).toBe("staking");
     expect(tabOf(tabs, "/some-base-path/dashboard/contacts")).toBe("contacts");

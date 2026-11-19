@@ -38,10 +38,10 @@ describe("DuskEVM", () => {
       rpcUrls: { default: { http: [evm.rpcUrl] } },
     });
     expect(duskEvmContractId("optimism_portal")).toBe(
-      evm.contracts.optimism_portal.contractId
+      evm.contracts.optimism_portal.contractId,
     );
     expect(duskEvmDriverUrl("optimismPortal")).toBe(
-      "/drivers/optimism_portal_dd_opt.wasm"
+      "/drivers/optimism_portal_dd_opt.wasm",
     );
     // Its adapter answers at /l1 on its RPC's host.
     expect(duskEvmAdapterUrl()).toBe(`${evm.rpcUrl}/l1`);
@@ -52,11 +52,11 @@ describe("DuskEVM", () => {
     vi.stubEnv("VITE_EVM_BRIDGE_RPC_URL", "https://rpc.evm.example.test");
     vi.stubEnv(
       "VITE_EVM_BRIDGE_BLOCK_EXPLORER_URL",
-      "https://explorer.evm.example.test"
+      "https://explorer.evm.example.test",
     );
     vi.stubEnv(
       "VITE_EVM_BRIDGE_CONTRACT_ADDRESS",
-      "0x4200000000000000000000000000000000000010"
+      "0x4200000000000000000000000000000000000010",
     );
 
     const {
@@ -118,7 +118,7 @@ describe("DuskEVM", () => {
     vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://adapter.example.test");
 
     const { duskEvm, duskEvmAdapterUrl, duskEvmContractId } = await on(
-      networks.testnet
+      networks.testnet,
     );
 
     expect(duskEvm.id).toBe(310);
@@ -127,7 +127,7 @@ describe("DuskEVM", () => {
     ]);
     expect(duskEvmAdapterUrl()).toBe("https://adapter.example.test");
     expect(duskEvmContractId("optimism_portal", `0x${"AB".repeat(32)}`)).toBe(
-      "ab".repeat(32)
+      "ab".repeat(32),
     );
   });
 
@@ -141,13 +141,13 @@ describe("DuskEVM", () => {
     };
 
     expect((await on(net)).duskEvmAdapterUrl()).toBe(
-      "https://adapter.example.test/rpc"
+      "https://adapter.example.test/rpc",
     );
 
     vi.stubEnv("VITE_EVM_L1_BRIDGE_RPC_URL", "https://local.example.test/l1");
 
     expect((await on(net)).duskEvmAdapterUrl()).toBe(
-      "https://local.example.test/l1"
+      "https://local.example.test/l1",
     );
   });
 

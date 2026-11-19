@@ -52,8 +52,8 @@ function expectLedgerLook(container) {
     expect(
       Array.from(
         head.querySelectorAll(":scope > [aria-hidden='true']"),
-        (bracket) => bracket.textContent
-      )
+        (bracket) => bracket.textContent,
+      ),
     ).toStrictEqual(["[", "]"]);
   }
 
@@ -92,13 +92,13 @@ describe("The ledger look", () => {
     const off = rules.filter(
       ({ declarations, media }) =>
         media === "" &&
-        declarations["font-variant-ligatures"] === "no-contextual"
+        declarations["font-variant-ligatures"] === "no-contextual",
     );
 
     for (const element of ["html", "input", "textarea"]) {
       expect(
         off.some(({ selector }) => selector.split(/,\s*/).includes(element)),
-        element
+        element,
       ).toBe(true);
     }
 
@@ -106,9 +106,9 @@ describe("The ledger look", () => {
     expect(
       rules.filter(({ declarations }) =>
         /contextual|calt/.test(
-          `${declarations["font-variant-ligatures"] ?? ""} ${declarations["font-feature-settings"] ?? ""}`
-        )
-      )
+          `${declarations["font-variant-ligatures"] ?? ""} ${declarations["font-feature-settings"] ?? ""}`,
+        ),
+      ),
     ).toStrictEqual(off);
   });
 
@@ -116,14 +116,14 @@ describe("The ledger look", () => {
     const panel = render(ActivityPanel, { locale: "en", state });
 
     expect(panel.getByRole("heading", { name: "Activity" })).toHaveClass(
-      "section-head"
+      "section-head",
     );
     expect(panel.getByRole("link", { name: "History" })).toHaveClass(
-      "text-link"
+      "text-link",
     );
     // A day keeps sentence case, in Söhne.
     expect(
-      classesOf(panel.getByRole("heading", { level: 3, name: "Today" }))
+      classesOf(panel.getByRole("heading", { level: 3, name: "Today" })),
     ).not.toContain("ledger-label");
     expectLedgerLook(panel.container);
     cleanup();
@@ -137,7 +137,7 @@ describe("The ledger look", () => {
 
     // Nothing held: an empty bar, not a full one.
     expect(
-      nothing.container.querySelector(".home-balance__bar--empty")
+      nothing.container.querySelector(".home-balance__bar--empty"),
     ).not.toBeNull();
     cleanup();
 
@@ -149,7 +149,7 @@ describe("The ledger look", () => {
     });
 
     expect(
-      balance.container.querySelector(".home-balance__bar--empty")
+      balance.container.querySelector(".home-balance__bar--empty"),
     ).toBeNull();
 
     const cards = render(ExplainerCards, {
@@ -164,8 +164,8 @@ describe("The ledger look", () => {
 
     expect(
       Array.from(document.body.querySelectorAll(".ledger-label"), (label) =>
-        label.textContent?.trim()
-      )
+        label.textContent?.trim(),
+      ),
     ).toStrictEqual([
       "Total balance",
       "Public",
@@ -175,7 +175,7 @@ describe("The ledger look", () => {
       "Staking",
     ]);
     expect(cards.getByRole("link", { name: "Open staking" })).toHaveClass(
-      "text-link"
+      "text-link",
     );
     expectLedgerLook(balance.container);
     expectLedgerLook(cards.container);
@@ -190,13 +190,13 @@ describe("The ledger look", () => {
 
     expectPlainTitle(container, "history-title");
     expect(getByRole("heading", { name: "Transaction" })).toHaveClass(
-      "section-head"
+      "section-head",
     );
     expect(
-      container.querySelectorAll(".history__table thead th:not(.ledger-label)")
+      container.querySelectorAll(".history__table thead th:not(.ledger-label)"),
     ).toHaveLength(0);
     expect(container.querySelector(".history__day th")).toHaveTextContent(
-      /^Today · /
+      /^Today · /,
     );
     // The block opens a page; the transaction's own ID opens nothing.
     expect(container.querySelectorAll(".text-link")).toHaveLength(1);
@@ -230,7 +230,7 @@ describe("The ledger look", () => {
     }
 
     expect(
-      container.querySelectorAll(".staking__figures dt:not(.ledger-label)")
+      container.querySelectorAll(".staking__figures dt:not(.ledger-label)"),
     ).toHaveLength(0);
     expect(getByRole("link", { name: /Run a node/ })).toHaveClass("text-link");
     expectLedgerLook(container);
@@ -250,7 +250,7 @@ describe("The ledger look", () => {
 
     expectPlainTitle(paid.container, "contacts-title");
     expect(paid.getByRole("heading", { name: "Paid before" })).toHaveClass(
-      "section-head"
+      "section-head",
     );
     expectLedgerLook(paid.container);
     cleanup();
@@ -271,15 +271,15 @@ describe("The ledger look", () => {
     expect(
       Array.from(
         container.querySelectorAll(".contacts__table thead th.ledger-label"),
-        (head) => head.textContent
-      )
+        (head) => head.textContent,
+      ),
     ).toStrictEqual(["Name", ".dusk name", "Type", "Address", "Last activity"]);
     // The contact's name heads its panel as a name, in Söhne.
     expect(getByRole("heading", { name: "Shop" })).not.toHaveClass(
-      "section-head"
+      "section-head",
     );
     expect(getByRole("heading", { name: "Activity" })).toHaveClass(
-      "section-head"
+      "section-head",
     );
     expectLedgerLook(container);
   });

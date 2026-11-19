@@ -68,7 +68,7 @@ export function openRouteStatus(route, now = Date.now()) {
         network: net,
         nodeUrl: nodeBaseUrl(),
         route: route.id,
-      })
+      }),
     )
     .catch(() => UNKNOWN)
     .then((status) => {
@@ -79,7 +79,7 @@ export function openRouteStatus(route, now = Date.now()) {
 /** @param {number} ms */
 const dayOf = (ms) =>
   new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(
-    ms
+    ms,
   );
 
 /**
@@ -106,7 +106,7 @@ const lastPayoutWords = ({ lastPayout }, now) =>
  */
 export function statusLine(
   status,
-  { amountLux = null, locale, now = Date.now() } = {}
+  { amountLux = null, locale, now = Date.now() } = {},
 ) {
   if (!status || status.paying === "stopped") {
     return null;

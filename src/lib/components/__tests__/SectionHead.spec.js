@@ -12,7 +12,7 @@ describe("SectionHead", () => {
   it("puts a section's head between brackets that are drawn, not read", () => {
     const { getByRole } = renderWithSlots({ default: "Activity" })(
       SectionHead,
-      { props: { id: "activity-title" } }
+      { props: { id: "activity-title" } },
     );
     const head = /** @type {HTMLElement} */ (
       getByRole("heading", { level: 2, name: "Activity" })
@@ -23,7 +23,7 @@ describe("SectionHead", () => {
     expect(head).toHaveAttribute("id", "activity-title");
     expect(head).toHaveTextContent(/^\[Activity\]$/);
     expect(
-      Array.from(brackets, (bracket) => bracket.textContent)
+      Array.from(brackets, (bracket) => bracket.textContent),
     ).toStrictEqual(["[", "]"]);
 
     for (const bracket of brackets) {
@@ -34,7 +34,7 @@ describe("SectionHead", () => {
   it("starts at the content's edge on a phone too, as what's under it does: its bracket hangs out of it nowhere", () => {
     const bracket = styleRules(
       "../../../style/app-components/ledger.css",
-      import.meta.url
+      import.meta.url,
     ).filter(({ selector }) => selector.includes("section-head__bracket"));
 
     expect(bracket.length).toBeGreaterThan(0);
@@ -51,7 +51,7 @@ describe("SectionHead", () => {
 
     expect(getByRole("heading", { level: 3, name: "Stake" })).toHaveClass(
       "section-head",
-      "staking__choose"
+      "staking__choose",
     );
   });
 });

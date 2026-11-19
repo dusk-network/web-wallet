@@ -77,7 +77,7 @@
         <span class="gas-settings__most"
           >{formatDuskExact(fee, language)} DUSK at most</span
         >: it pays only for the gas used, up to {formatGas(limit)} gas at {formatGas(
-          price
+          price,
         )}
         LUX each.
       </p>

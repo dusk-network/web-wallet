@@ -42,8 +42,8 @@ export const provedWithdrawals = (rows) => [
       !bridge.claimed &&
       status !== "failed"
         ? [bridge.hash]
-        : []
-    )
+        : [],
+    ),
   ),
 ];
 
@@ -117,7 +117,7 @@ async function readDue(rows) {
   const now = Date.now();
   const due = submitter
     ? provedWithdrawals(rows).filter(
-        (hash) => now - (readAt.get(hash) ?? 0) >= FRESH_MS
+        (hash) => now - (readAt.get(hash) ?? 0) >= FRESH_MS,
       )
     : [];
 

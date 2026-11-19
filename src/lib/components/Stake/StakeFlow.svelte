@@ -1,10 +1,10 @@
 <script>
   import { createEventDispatcher, tick } from "svelte";
   import { mdiArrowLeft } from "@mdi/js";
+  import { resolve } from "$app/paths";
   import { Button, Icon } from "$lib/dusk/components";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
   import SectionHead from "../SectionHead/SectionHead.svelte";
-  import { addBasePath } from "$lib/navigation";
   import { randomUUID } from "$lib/dusk/string";
 
   /**
@@ -50,7 +50,7 @@
   class:stake-flow--review={isReviewing}
 >
   <section aria-labelledby="{id}-title" class="stake-flow__form">
-    <a class="stake-flow__back" href={addBasePath("/dashboard/stake")}
+    <a class="stake-flow__back" href={resolve("/dashboard/stake/")}
       ><Icon path={mdiArrowLeft} />Staking</a
     >
     <h2 class="stake-flow__title" id="{id}-title">{title}</h2>

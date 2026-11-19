@@ -47,7 +47,7 @@ const sozuIsRead = readable(null, () =>
     if (rows.some(isSozuFunction)) {
       void sozuStore.load();
     }
-  })
+  }),
 );
 
 /**
@@ -72,14 +72,14 @@ export const feeToKeep = derived(
       const { gasLimit, gasPrice } = getGasSettings(
         operation,
         $settings,
-        $price
+        $price,
       );
 
       return gasLimit * gasPrice;
     };
     const price = $settings.customGasPrice ?? $price;
     const paysHere = $withdrawals.filter(({ recipient }) =>
-      recipient ? recipient === account : true
+      recipient ? recipient === account : true,
     );
     /** @type {FeeToKeep[]} */
     const fees = [
@@ -110,8 +110,8 @@ export const feeToKeep = derived(
 
     return fees.reduce(
       (most, fee) => (fee.lux > most.lux ? fee : most),
-      /** @type {FeeToKeep} */ ({ lux: 0n, why: "" })
+      /** @type {FeeToKeep} */ ({ lux: 0n, why: "" }),
     );
   },
-  /** @type {FeeToKeep} */ ({ lux: 0n, why: "" })
+  /** @type {FeeToKeep} */ ({ lux: 0n, why: "" }),
 );

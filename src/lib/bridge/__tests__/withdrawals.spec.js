@@ -26,7 +26,7 @@ const pkg = vi.hoisted(() => ({
 const wallet = vi.hoisted(() => ({
   forThisWallet: () => (/** @type {any} */ task) => task,
   getDuskEvmProofSubmitter: vi.fn(
-    () => /** @type {`0x${string}`} */ (`0x${"97".repeat(20)}`)
+    () => /** @type {`0x${string}`} */ (`0x${"97".repeat(20)}`),
   ),
   sendDuskEvmWithdrawalCall:
     /** @type {import("vitest").Mock<(call: any, gas: any) => Promise<{ hash: string }>>} */ (
@@ -56,7 +56,7 @@ vi.mock(
         timing: pkg.timing,
       };
     }),
-  })
+  }),
 );
 
 vi.mock("$lib/stores", async (importOriginal) => ({
@@ -176,7 +176,7 @@ describe("DuskEVM withdrawals", () => {
         optimismPortalContractId: "",
       });
       await expect(withdrawals.loadWithdrawalStatus(TX)).rejects.toThrow(
-        "DuskEVM withdrawal finalization is not configured"
+        "DuskEVM withdrawal finalization is not configured",
       );
     });
 
@@ -185,11 +185,11 @@ describe("DuskEVM withdrawals", () => {
       vi.stubEnv("VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID", "22".repeat(32));
       vi.stubEnv(
         "VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL",
-        "/drivers/portal.wasm"
+        "/drivers/portal.wasm",
       );
       vi.stubEnv(
         "VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL",
-        "https://assets.example.test/dgf.wasm"
+        "https://assets.example.test/dgf.wasm",
       );
 
       expect(withdrawals.getWithdrawalFinalizationConfig()).toMatchObject({
@@ -199,11 +199,11 @@ describe("DuskEVM withdrawals", () => {
 
       vi.stubEnv(
         "VITE_EVM_OPTIMISM_PORTAL_DATA_DRIVER_URL",
-        "file:///tmp/portal.wasm"
+        "file:///tmp/portal.wasm",
       );
       vi.stubEnv(
         "VITE_EVM_DISPUTE_GAME_FACTORY_DATA_DRIVER_URL",
-        "data:application/wasm;base64,AA=="
+        "data:application/wasm;base64,AA==",
       );
 
       expect(withdrawals.getWithdrawalFinalizationConfig()).toMatchObject({
@@ -237,7 +237,7 @@ describe("DuskEVM withdrawals", () => {
 
         expect(id.slice(0, 8)).toBe(starts);
         expect(id).toMatch(starts ? /^[0-9a-f]{64}$/u : /^$/u);
-      }
+      },
     );
   });
 
@@ -281,7 +281,7 @@ describe("DuskEVM withdrawals", () => {
           expect(url).toMatch(/^\/drivers\/[a-z_]+\.wasm$/u);
 
           return new Response(readFileSync(resolve(`static${url}`)));
-        })
+        }),
       );
 
       const [portal, factory] = await Promise.all([
@@ -305,7 +305,7 @@ describe("DuskEVM withdrawals", () => {
 
       expect(contracts.dispute_game_factory.contractId).toBe("22".repeat(32));
       expect(contracts.optimism_portal).toStrictEqual(
-        networks.testnet.duskEvm?.contracts.optimism_portal
+        networks.testnet.duskEvm?.contracts.optimism_portal,
       );
       expect(contracts).not.toHaveProperty("anchor_state_registry");
       expect(predeploys).toStrictEqual({
@@ -318,7 +318,7 @@ describe("DuskEVM withdrawals", () => {
           amountWei: 10n ** 9n,
           sender: `0x${"22".repeat(20)}`,
           to: PAID,
-        }).to
+        }).to,
       ).toBe(`0x${"42".repeat(20)}`);
     });
 
@@ -329,7 +329,7 @@ describe("DuskEVM withdrawals", () => {
       await withdrawals.loadWithdrawalStatus(TX);
 
       expect(
-        pkg.made[0].network.duskEvm.contracts.l1_standard_bridge
+        pkg.made[0].network.duskEvm.contracts.l1_standard_bridge,
       ).toStrictEqual({
         contractId: "33".repeat(32),
         evmAddress: evmAddressOf("33".repeat(32)),
@@ -388,9 +388,9 @@ describe("DuskEVM withdrawals", () => {
         pkg.status.mockResolvedValue({ ...STATUS, reason, stage });
 
         expect((await withdrawals.loadWithdrawalStatus(TX)).statusMessage).toBe(
-          words
+          words,
         );
-      }
+      },
     );
 
     it("says a read that failed while a game was looked for as it failed", async () => {
@@ -402,7 +402,7 @@ describe("DuskEVM withdrawals", () => {
       });
 
       expect((await withdrawals.loadWithdrawalStatus(TX)).statusMessage).toBe(
-        "eth_getProof failed with HTTP 503"
+        "eth_getProof failed with HTTP 503",
       );
     });
 
@@ -456,20 +456,20 @@ describe("DuskEVM withdrawals", () => {
       "says a withdrawal %s on DuskEVM as the tracking reads it",
       async (code, words) => {
         pkg.status.mockRejectedValue(
-          new WithdrawalError(/** @type {any} */ (code))
+          new WithdrawalError(/** @type {any} */ (code)),
         );
 
         await expect(withdrawals.loadWithdrawalStatus(TX)).rejects.toThrow(
-          new Error(words)
+          new Error(words),
         );
-      }
+      },
     );
 
     it("is read only for a DuskEVM transaction hash", async () => {
       await expect(
         withdrawals.loadWithdrawalStatus(
-          /** @type {`0x${string}`} */ ("0x1234")
-        )
+          /** @type {`0x${string}`} */ ("0x1234"),
+        ),
       ).rejects.toThrow("Enter a valid DuskEVM withdrawal transaction hash.");
       expect(pkg.status).not.toHaveBeenCalled();
     });
@@ -482,10 +482,10 @@ describe("DuskEVM withdrawals", () => {
       pkg.prepareProof.mockResolvedValueOnce(prepared(shown, DATE));
 
       await expect(withdrawals.loadProveNowClaim(TX)).resolves.toStrictEqual(
-        DATE
+        DATE,
       );
       await expect(withdrawals.proveWithdrawal(TX)).resolves.toBe(
-        "aa".repeat(32)
+        "aa".repeat(32),
       );
 
       expect(pkg.prepareProof).toHaveBeenCalledExactlyOnceWith(TX, {
@@ -494,11 +494,11 @@ describe("DuskEVM withdrawals", () => {
       });
       expect(wallet.sendDuskEvmWithdrawalCall).toHaveBeenCalledExactlyOnceWith(
         proofCall(shown),
-        expect.objectContaining({ limit: 51_000_000n, price: 1n })
+        expect.objectContaining({ limit: 51_000_000n, price: 1n }),
       );
       // The arguments as the package encoded and read them back.
       expect(wallet.sendDuskEvmWithdrawalCall.mock.calls[0][0].fnArgs).toBe(
-        shown
+        shown,
       );
     });
 
@@ -508,7 +508,7 @@ describe("DuskEVM withdrawals", () => {
 
       pkg.prepareProof
         .mockResolvedValueOnce(
-          prepared(old, DATE, Date.now() - withdrawals.PREPARED_PROOF_MS)
+          prepared(old, DATE, Date.now() - withdrawals.PREPARED_PROOF_MS),
         )
         .mockResolvedValueOnce(prepared(fresh, DATE))
         .mockResolvedValueOnce(prepared(old, DATE));
@@ -519,7 +519,9 @@ describe("DuskEVM withdrawals", () => {
 
       expect(pkg.prepareProof).toHaveBeenCalledTimes(3);
       expect(
-        wallet.sendDuskEvmWithdrawalCall.mock.calls.map(([call]) => call.fnArgs)
+        wallet.sendDuskEvmWithdrawalCall.mock.calls.map(
+          ([call]) => call.fnArgs,
+        ),
       ).toStrictEqual([fresh, old]);
     });
 
@@ -535,7 +537,7 @@ describe("DuskEVM withdrawals", () => {
       await withdrawals.proveWithdrawal(TX);
 
       expect(wallet.sendDuskEvmWithdrawalCall.mock.calls[0][0].fnArgs).toBe(
-        shown
+        shown,
       );
     });
 
@@ -543,15 +545,15 @@ describe("DuskEVM withdrawals", () => {
       pkg.prepareProof.mockRejectedValue(new WithdrawalError("gas"));
 
       await expect(withdrawals.proveWithdrawal(TX)).rejects.toThrow(
-        WITHDRAWAL_GAS_REFUSAL
+        WITHDRAWAL_GAS_REFUSAL,
       );
 
       pkg.prepareProof.mockRejectedValue(
-        new WithdrawalError("no-proof", undefined, { reason: "no-games" })
+        new WithdrawalError("no-proof", undefined, { reason: "no-games" }),
       );
 
       await expect(withdrawals.proveWithdrawal(TX)).rejects.toThrow(
-        "No dispute games have been proposed yet."
+        "No dispute games have been proposed yet.",
       );
       expect(wallet.sendDuskEvmWithdrawalCall).not.toHaveBeenCalled();
     });
@@ -573,7 +575,7 @@ describe("DuskEVM withdrawals", () => {
       settingsStore.update((settings) => ({ ...settings, customGasPrice: 7n }));
 
       await expect(withdrawals.finalizeWithdrawal(TX)).resolves.toBe(
-        "aa".repeat(32)
+        "aa".repeat(32),
       );
 
       expect(pkg.claimCall).toHaveBeenCalledExactlyOnceWith(TX, {
@@ -582,7 +584,7 @@ describe("DuskEVM withdrawals", () => {
       });
       expect(wallet.sendDuskEvmWithdrawalCall).toHaveBeenCalledExactlyOnceWith(
         claimCall,
-        expect.objectContaining({ limit: 51_500_000n, price: 7n })
+        expect.objectContaining({ limit: 51_500_000n, price: 7n }),
       );
     });
 
@@ -611,12 +613,12 @@ describe("DuskEVM withdrawals", () => {
         pkg.claimCall.mockRejectedValue(
           new WithdrawalError("not-ready", undefined, {
             status: /** @type {any} */ (status),
-          })
+          }),
         );
 
         await expect(withdrawals.finalizeWithdrawal(TX)).rejects.toThrow(words);
         expect(wallet.sendDuskEvmWithdrawalCall).not.toHaveBeenCalled();
-      }
+      },
     );
   });
 
@@ -651,20 +653,20 @@ describe("DuskEVM withdrawals", () => {
     });
 
     vi.mocked(networkStore.connect).mockResolvedValue(
-      /** @type {any} */ ({ query })
+      /** @type {any} */ ({ query }),
     );
 
     await expect(
-      withdrawals.loadDuskTransactionExecution(`0x${"AB".repeat(32)}`)
+      withdrawals.loadDuskTransactionExecution(`0x${"AB".repeat(32)}`),
     ).resolves.toStrictEqual({
       blockHeight: 14_002n,
       error: "contract execution failed",
     });
     expect(query).toHaveBeenCalledWith(
-      `tx(hash: "${"ab".repeat(32)}") { err blockHeight }`
+      `tx(hash: "${"ab".repeat(32)}") { err blockHeight }`,
     );
     await expect(
-      withdrawals.loadDuskTransactionExecution("not-a-hash")
+      withdrawals.loadDuskTransactionExecution("not-a-hash"),
     ).rejects.toThrow("Dusk transaction hash is invalid.");
   });
 });

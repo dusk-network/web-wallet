@@ -165,24 +165,24 @@ export function followArrivals() {
       watcher(
         ({ hash, kind }) => `${kind}:${hash}`,
         ({ hash }) => hash,
-        routeTransferNews
-      )
+        routeTransferNews,
+      ),
     ),
     depositActivityStore.subscribe(
       watcher(
         (/** @type {any} */ { transactionHash }) =>
           `deposit:${transactionHash}`,
         (/** @type {any} */ { transactionHash }) => transactionHash,
-        depositEnd
-      )
+        depositEnd,
+      ),
     ),
     withdrawalActivityStore.subscribe(
       watcher(
         (/** @type {any} */ { transactionHash }) =>
           `withdrawal:${transactionHash}`,
         (/** @type {any} */ { transactionHash }) => transactionHash,
-        withdrawalEnd
-      )
+        withdrawalEnd,
+      ),
     ),
   ];
 

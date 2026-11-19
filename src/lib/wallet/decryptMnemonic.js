@@ -11,8 +11,8 @@ const decryptMnemonic = async (encryptInfo, pwd) =>
     await decryptBuffer(
       encryptInfo,
       pwd,
-      getWalletEncryptionIterations(encryptInfo.version)
-    )
+      getWalletEncryptionIterations(encryptInfo.version),
+    ),
   );
 
 export default decryptMnemonic;

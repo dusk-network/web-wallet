@@ -119,7 +119,7 @@ describe("Allocate", () => {
   it("should offer no Try again when it may have gone out", async () => {
     vi.useFakeTimers({ toFake: ["performance"] });
     vi.spyOn(walletStore, "shield").mockRejectedValueOnce(
-      outcomeUnknown(new TypeError("Failed to fetch"))
+      outcomeUnknown(new TypeError("Failed to fetch")),
     );
 
     const { findByRole, getByRole, queryByRole } = render(Allocate, baseProps);
@@ -173,8 +173,8 @@ describe("Allocate", () => {
     expect(
       Array.from(
         container.querySelectorAll(".operation__address-wrapper"),
-        (el) => el.textContent?.trim()
-      )
+        (el) => el.textContent?.trim(),
+      ),
     ).toStrictEqual(["zTsZq8…oHybff", "47jNTg…89vnMM"]);
   });
 
@@ -232,7 +232,7 @@ describe("Allocate", () => {
     const nextButton = getByRole("button", { name: "Next" });
 
     expect(
-      container.querySelector(".operation__label small")
+      container.querySelector(".operation__label small"),
     ).toHaveTextContent("(•••• hidden spendable out of •••• hidden total)");
     expect(publicInput).toHaveValue("");
     expect(shieldedInput).toHaveValue("");
@@ -248,7 +248,7 @@ describe("Allocate", () => {
     expect(shieldedInput).toHaveValue("");
     expect(nextButton).toBeDisabled();
     expect(
-      getByText("The amount is more than your balance.")
+      getByText("The amount is more than your balance."),
     ).toBeInTheDocument();
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });

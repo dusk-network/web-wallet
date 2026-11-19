@@ -11,7 +11,7 @@ async function encryptBuffer(buffer, pwd, iterations) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const key = await getDerivedKey(pwd, salt, iterations);
   const data = new Uint8Array(
-    await crypto.subtle.encrypt({ iv, name: "AES-GCM" }, key, buffer)
+    await crypto.subtle.encrypt({ iv, name: "AES-GCM" }, key, buffer),
   );
 
   return { data, iv, salt };

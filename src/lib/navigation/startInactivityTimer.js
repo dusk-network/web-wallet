@@ -17,7 +17,7 @@ function startInactivityTimer(onInactive, timeout = INACTIVITY_TIMEOUT) {
       stopped = true;
       window.clearTimeout(timeoutId);
       activityEvents.forEach((event) =>
-        window.removeEventListener(event, handleActivity)
+        window.removeEventListener(event, handleActivity),
       );
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     }
@@ -59,7 +59,7 @@ function startInactivityTimer(onInactive, timeout = INACTIVITY_TIMEOUT) {
   }
 
   activityEvents.forEach((event) =>
-    window.addEventListener(event, handleActivity)
+    window.addEventListener(event, handleActivity),
   );
   document.addEventListener("visibilitychange", handleVisibilityChange);
   arm();

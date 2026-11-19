@@ -23,7 +23,7 @@ function wordsNamed(numbers) {
  */
 function unknownWords(typed) {
   const unknown = typed.flatMap((word, i) =>
-    word && !isWord(word) ? [i + 1] : []
+    word && !isWord(word) ? [i + 1] : [],
   );
 
   if (unknown.length > 3) {

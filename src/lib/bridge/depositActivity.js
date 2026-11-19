@@ -115,14 +115,14 @@ function trackingClients() {
 async function finalizedDuskTransaction(transactionHash) {
   const network = await networkStore.connect();
   const transactionResult = await network.query(
-    `tx(hash: "${transactionHash}") { blockHeight blockTimestamp err }`
+    `tx(hash: "${transactionHash}") { blockHeight blockTimestamp err }`,
   );
 
   if (!transactionResult?.tx) return null;
 
   const blockHeight = BigInt(transactionResult.tx.blockHeight);
   const blockResult = await network.query(
-    `block(height: ${blockHeight}) { status }`
+    `block(height: ${blockHeight}) { status }`,
   );
   const duskBlock = blockResult?.block;
 
@@ -132,7 +132,7 @@ async function finalizedDuskTransaction(transactionHash) {
 
   if (transactionResult.tx.err) {
     throw new DuskDepositExecutionError(
-      `The Dusk deposit failed: ${transactionResult.tx.err}`
+      `The Dusk deposit failed: ${transactionResult.tx.err}`,
     );
   }
 
@@ -169,7 +169,7 @@ async function resolveL1TransactionHash(remembered, scope) {
     updateDepositTransaction(
       remembered.transactionHash,
       { l1BlockTimestamp: finalized.timestamp },
-      scope
+      scope,
     );
   }
 
@@ -193,14 +193,14 @@ async function resolveL1TransactionHash(remembered, scope) {
   const hash = normalizedTxHash(resolved);
   if (!hash) {
     throw new Error(
-      "The DuskEVM adapter returned no matching transaction for the finalized DuskDS deposit."
+      "The DuskEVM adapter returned no matching transaction for the finalized DuskDS deposit.",
     );
   }
 
   updateDepositTransaction(
     remembered.transactionHash,
     { l1TransactionHash: hash },
-    scope
+    scope,
   );
   return hash;
 }
@@ -221,7 +221,7 @@ function finalizedOnL1(metadata) {
 function assertStatusProgression(remembered, metadata) {
   if (remembered.stage === "l2_pending" && metadata.stage === "l1_pending") {
     throw new Error(
-      "The deposit RPC returned an older state than the last confirmed state."
+      "The deposit RPC returned an older state than the last confirmed state.",
     );
   }
 }
@@ -257,7 +257,7 @@ function pendingObservationPatch(remembered, scope) {
   return updateDepositTransaction(
     remembered.transactionHash,
     { lastCheckedAt: updatedAt, trackingError: null, updatedAt },
-    scope
+    scope,
   );
 }
 
@@ -280,7 +280,7 @@ function failedObservationPatch(remembered, error, scope) {
       trackingError: failedOnL1 ? null : errorMessage(error),
       updatedAt,
     },
-    scope
+    scope,
   );
 }
 
@@ -368,7 +368,7 @@ function depositsOf(waiting, depositOf) {
       const deposit = row.entry && depositOf(row.entry, account);
 
       return deposit ? [[deposit.hash, deposit]] : [];
-    })
+    }),
   );
 
   return waiting.map((item) => ({
@@ -410,7 +410,7 @@ async function readDuskEvm(scope) {
     deposits: depositsOf(waiting, bridge.depositOf),
     network: net,
     taken: kept.flatMap(({ l2TransactionHash }) =>
-      l2TransactionHash ? [l2TransactionHash] : []
+      l2TransactionHash ? [l2TransactionHash] : [],
     ),
     via: "rpc",
     // This browser may see a deposit only long after it was sent.
@@ -447,7 +447,7 @@ async function readDuskEvm(scope) {
           trackingError: null,
           updatedAt,
         },
-        scope
+        scope,
       );
     } else if (arrival?.scan) {
       duskEvmScans.set(item.transactionHash, arrival.scan);
@@ -477,7 +477,7 @@ async function readOnDuskEvm(remembered, scope) {
   const said = await read.catch(() => new Set());
   const item = getRememberedDepositTransaction(
     remembered.transactionHash,
-    scope
+    scope,
   );
 
   return {
@@ -536,7 +536,7 @@ function readArrivalTime(item, scope) {
   if (!read) {
     read = arrivalTime(item)
       .then((at) =>
-        at ? updateDepositTransaction(hash, { arrivedAt: at }, scope) : item
+        at ? updateDepositTransaction(hash, { arrivedAt: at }, scope) : item,
       )
       .finally(() => arrivalReads.delete(key));
     arrivalReads.set(key, read);
@@ -564,7 +564,7 @@ const doneDeposit = (item, scope) =>
  */
 export async function refreshDepositTransaction(
   transactionHash,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const remembered = getRememberedDepositTransaction(transactionHash, scope);
 
@@ -602,7 +602,7 @@ export async function refreshDepositTransaction(
         ...patch,
         arrivedAt: remembered.arrivedAt ?? (await arrivalTime(patch)),
       },
-      scope
+      scope,
     );
   } catch (error) {
     // A deposit that failed on Dusk didn't arrive.
@@ -642,7 +642,7 @@ export function depositTrackingPollInterval(unchangedPolls, hidden) {
 /** @param {any} item */
 function progressIdentity(item) {
   return [item?.stage, item?.l1TransactionHash, item?.l2TransactionHash].join(
-    ":"
+    ":",
   );
 }
 
@@ -656,7 +656,7 @@ function progressIdentity(item) {
  */
 export function trackDepositTransaction(
   transactionHash,
-  scope = walletDataScope()
+  scope = walletDataScope(),
 ) {
   const hash = transactionHash.toLowerCase();
   const key = followKey(scope, hash);
@@ -671,7 +671,7 @@ export function trackDepositTransaction(
   const tracker = (async () => {
     let unchangedPolls = 0;
     let previousProgress = progressIdentity(
-      getRememberedDepositTransaction(hash, scope)
+      getRememberedDepositTransaction(hash, scope),
     );
 
     while (true) {
@@ -687,8 +687,8 @@ export function trackDepositTransaction(
       await delay(
         depositTrackingPollInterval(
           unchangedPolls,
-          document.visibilityState === "hidden"
-        )
+          document.visibilityState === "hidden",
+        ),
       );
 
       if (!scope.isOpen()) return item;
@@ -721,7 +721,7 @@ function followDeposit(item, scope) {
 export function resumeDepositTracking(account) {
   const scope = walletDataScope();
   const kept = rememberedDeposits().filter(
-    (item) => item.account === null || item.account === account?.toLowerCase()
+    (item) => item.account === null || item.account === account?.toLowerCase(),
   );
 
   for (const deposit of kept) {
@@ -798,7 +798,7 @@ function keepHistoryDeposit(row, kept) {
 export function followHistoryDeposits(rows) {
   const scope = walletDataScope();
   const kept = new Map(
-    rememberedDeposits().map((item) => [item.transactionHash, item])
+    rememberedDeposits().map((item) => [item.transactionHash, item]),
   );
   /** @type {Set<string>} */
   const hashes = new Set();

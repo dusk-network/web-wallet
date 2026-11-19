@@ -45,7 +45,7 @@ const copied = FILES.filter((file) => !existsSync(join(OTHER, DIR, file)));
 
 mkdirSync(join(OTHER, DIR), { recursive: true });
 copied.forEach((file) =>
-  copyFileSync(join(HERE, DIR, file), join(OTHER, DIR, file))
+  copyFileSync(join(HERE, DIR, file), join(OTHER, DIR, file)),
 );
 
 /**
@@ -59,13 +59,17 @@ const capture = (root, name) =>
     const run = spawn(
       "npx",
       ["vitest", "run", "--config", `${DIR}/vitest.config.js`],
-      { cwd: root, env: { ...process.env, CAPTURE_OUT: out }, stdio: "inherit" }
+      {
+        cwd: root,
+        env: { ...process.env, CAPTURE_OUT: out },
+        stdio: "inherit",
+      },
     );
 
     run.on("exit", (code) =>
       code === 0
         ? done(JSON.parse(readFileSync(out, "utf8")))
-        : fail(new Error(`The capture in ${root} ended with ${code}`))
+        : fail(new Error(`The capture in ${root} ended with ${code}`)),
     );
   });
 
@@ -132,20 +136,20 @@ for (const hash of Object.keys({ ...here.statuses, ...other.statuses })) {
   const a = here.statuses[hash];
   const b = other.statuses[hash];
   const status = Object.keys({ ...a, ...b }).every((key) =>
-    same(`${hash} status ${key}`, a?.[key], b?.[key])
+    same(`${hash} status ${key}`, a?.[key], b?.[key]),
   );
   const proofA = here.proofs[hash];
   const proofB = other.proofs[hash];
   const signed =
     proofA || proofB
       ? SIGNED.every((key) =>
-          same(`${hash} ${key}`, proofA?.[key], proofB?.[key])
+          same(`${hash} ${key}`, proofA?.[key], proofB?.[key]),
         )
       : null;
   const dated = same(
     `${hash} claim if proved now`,
     here.proveNow[hash],
-    other.proveNow[hash]
+    other.proveNow[hash],
   );
 
   lines.push(
@@ -157,7 +161,7 @@ for (const hash of Object.keys({ ...here.statuses, ...other.statuses })) {
         ? "-"
         : `${proofA?.fnName ?? proofB?.fnName} ${proofA?.fnArgs?.length / 2 || "?"} bytes ${signed ? "same" : "DIFFERENT"}`,
       dated ? "same" : "DIFFERENT",
-    ].join(" | ")
+    ].join(" | "),
   );
 }
 
@@ -173,8 +177,8 @@ for (const hash of Object.keys({
     same(
       `${hash} claim by ${a?.prover} ${key}`,
       a?.claim?.[key],
-      b?.claim?.[key]
-    )
+      b?.claim?.[key],
+    ),
   );
 
   same(`${hash} stage for ${a?.prover}`, a?.stage, b?.stage);
@@ -186,7 +190,7 @@ for (const hash of Object.keys({
       a?.claim?.fnName
         ? `${a.claim.fnName} ${a.claim.fnArgs.length / 2} bytes ${signed ? "same" : "DIFFERENT"}`
         : json(a?.claim),
-    ].join(" | ")
+    ].join(" | "),
   );
 }
 
@@ -211,7 +215,7 @@ if (TX) {
 }
 
 console.log(
-  `\n${basename(HERE)} (here, read ${here.at}) vs ${OTHER} (other, read ${other.at})\n`
+  `\n${basename(HERE)} (here, read ${here.at}) vs ${OTHER} (other, read ${other.at})\n`,
 );
 console.log("withdrawal | stage | status | signed | claim date if proved now");
 lines.forEach((line) => console.log(line));
@@ -220,7 +224,7 @@ console.log(`timing: ${json(here.timing)}`);
 console.log(
   differences.length
     ? `\n${differences.length} differences:\n${differences.join("\n")}`
-    : "\nNo differences."
+    : "\nNo differences.",
 );
 process.exitCode = differences.length ? 1 : 0;
 

@@ -69,7 +69,7 @@ describe("DuskEVM deposit activity", () => {
       expect.objectContaining({
         l1TransactionHash,
         transactionHash: depositHash,
-      })
+      }),
     );
   });
 
@@ -111,7 +111,7 @@ describe("DuskEVM deposit activity", () => {
         l1BlockHeight: "42",
         stage: "l2_pending",
         trackingError: "RPC unavailable",
-      })
+      }),
     );
   });
 
@@ -153,32 +153,32 @@ describe("DuskEVM deposit activity", () => {
     expect(
       isDepositStalled(
         { createdAt: 1_000, progressedAt: 1_000, stage: "l1_pending" },
-        1_801_000
-      )
+        1_801_000,
+      ),
     ).toBe(true);
     expect(
       depositStageLabel({
         createdAt: Date.now() - 1_800_000,
         progressedAt: Date.now() - 1_800_000,
         stage: "l1_pending",
-      })
+      }),
     ).toBe("Tracking delayed");
     expect(
-      isDepositDelayed({ createdAt: 1_000, stage: "l2_pending" }, 301_000)
+      isDepositDelayed({ createdAt: 1_000, stage: "l2_pending" }, 301_000),
     ).toBe(true);
     expect(
       depositStageMessage({
         failureLayer: "l1",
         stage: "failed",
         statusMessage: "Low-level SDK failure",
-      })
+      }),
     ).toContain("did not enter the bridge");
     expect(
       depositStageMessage({
         failureLayer: "l2",
         stage: "failed",
         statusMessage: "Low-level SDK failure",
-      })
+      }),
     ).toContain("bridge recovery");
   });
 });

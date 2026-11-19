@@ -113,7 +113,7 @@ class WalletCache {
               bookmark: old.bookmark,
               lastFinalizedBlockHeight: 0n,
             };
-          })
+          }),
       );
 
     // What each account held with Sozu, as read last.
@@ -170,7 +170,7 @@ class WalletCache {
       field: "address",
       values: [address],
     }).then(([entry]) =>
-      entry?.balance === undefined ? this.#emptyBalanceInfo : entry.balance
+      entry?.balance === undefined ? this.#emptyBalanceInfo : entry.balance,
     );
   }
 
@@ -251,7 +251,7 @@ class WalletCache {
   /** @returns {Promise<WalletCacheSyncInfo>} */
   getSyncInfo() {
     return this.#getEntriesFrom("syncInfo", false).then(([entry]) =>
-      entry === undefined ? this.#emptySyncInfo : entry
+      entry === undefined ? this.#emptySyncInfo : entry,
     );
   }
 
@@ -365,7 +365,7 @@ class WalletCache {
           await this.#db.table("pendingNotesInfo").bulkDelete(nullifiers);
           await this.#db.table("unspentNotes").bulkDelete(nullifiers);
           await this.#db.table("spentNotes").bulkAdd(newlySpentNotes);
-        }
+        },
       )
       .finally(() => this.#db.close({ disableAutoOpen: false }));
   }

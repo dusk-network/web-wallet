@@ -159,8 +159,8 @@ const wouldRevert = (causes) =>
       cause.data?.code === 3 ||
       (typeof cause.raw === "string" && cause.raw !== "0x") ||
       /execution reverted|gas required exceeds allowance/i.test(
-        `${cause.message} ${cause.data?.message ?? ""}`
-      )
+        `${cause.message} ${cause.data?.message ?? ""}`,
+      ),
   );
 
 /**
@@ -204,7 +204,7 @@ export const CHECK_EVM_WALLET_FIRST =
  */
 export const isDeclinedInWallet = (error) =>
   DECLINED.test(
-    `${/** @type {Error} */ (error)?.name ?? ""}: ${/** @type {Error} */ (error)?.message ?? ""}`
+    `${/** @type {Error} */ (error)?.name ?? ""}: ${/** @type {Error} */ (error)?.message ?? ""}`,
   );
 
 /**
@@ -219,7 +219,7 @@ export const isDeclinedInWallet = (error) =>
  */
 export default function describeFailure(
   error,
-  { checkFirst = "Check History before you send it again." } = {}
+  { checkFirst = "Check History before you send it again." } = {},
 ) {
   const text = `${error?.name ?? ""}: ${error?.message ?? ""}`;
   const handedOver = isOutcomeUnknown(error);
@@ -253,7 +253,7 @@ export default function describeFailure(
   }
 
   const nothingSent = (handedOver ? REFUSED : [...REFUSED, ...NOT_MADE]).find(
-    ([pattern]) => pattern.test(text)
+    ([pattern]) => pattern.test(text),
   );
 
   if (nothingSent) {

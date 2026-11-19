@@ -47,15 +47,15 @@ describe("WelcomeShell", () => {
     );
 
     expect(within(header).getByRole("note")).toHaveTextContent(
-      "Testnet · Test DUSK has no value"
+      "Testnet · Test DUSK has no value",
     );
     expect(header.querySelector(".top-bar")).toBeInTheDocument();
     expect(getByRole("img", { name: "Dusk Wallet" })).toHaveClass(
-      "top-bar__brand"
+      "top-bar__brand",
     );
     expect(container.querySelector("img")).toBeNull();
     expect(
-      container.querySelector(".welcome-shell__content")
+      container.querySelector(".welcome-shell__content"),
     ).toHaveTextContent("some text");
   });
 });

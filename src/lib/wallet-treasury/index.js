@@ -73,7 +73,7 @@ class WalletTreasury {
 
     if (!balance) {
       throw new Error(
-        "No balance found for the account with the given identifier"
+        "No balance found for the account with the given identifier",
       );
     }
 
@@ -192,7 +192,7 @@ class WalletTreasury {
    */
   async getCachedBalance(profile) {
     return await currentWalletCache().getBalanceInfo(
-      profile.address.toString()
+      profile.address.toString(),
     );
   }
 
@@ -228,7 +228,7 @@ class WalletTreasury {
   async setCachedBalance(profile, balance) {
     await currentWalletCache().setBalanceInfo(
       profile.address.toString(),
-      balance
+      balance,
     );
   }
 
@@ -240,7 +240,7 @@ class WalletTreasury {
   async setCachedStakeInfo(profile, stakeInfo) {
     await currentWalletCache().setStakeInfo(
       profile.account.toString(),
-      stakeInfo
+      stakeInfo,
     );
   }
 
@@ -265,8 +265,8 @@ class WalletTreasury {
       stakeInfo ??
       Promise.reject(
         new Error(
-          "No stake info found for the account with the given identifier"
-        )
+          "No stake info found for the account with the given identifier",
+        ),
       )
     );
   }
@@ -352,7 +352,7 @@ class WalletTreasury {
         ensureCurrent();
         await walletCache.addUnspentNotes(
           walletCache.toCacheNotes(notesInfo, profiles),
-          notesSyncInfo
+          notesSyncInfo,
         );
       }
 
@@ -384,12 +384,12 @@ class WalletTreasury {
 
       for (let i = 0; i < nullifiers.length; i += NULLIFIERS_PER_REQUEST) {
         const found = await addressSyncer.spent(
-          nullifiers.slice(i, i + NULLIFIERS_PER_REQUEST)
+          nullifiers.slice(i, i + NULLIFIERS_PER_REQUEST),
         );
 
         ensureCurrent();
         found.forEach((buffer) =>
-          spentNullifiers.add(String(new Uint8Array(buffer)))
+          spentNullifiers.add(String(new Uint8Array(buffer))),
         );
       }
 
@@ -397,7 +397,7 @@ class WalletTreasury {
       const isSpent = (nullifier) => spentNullifiers.has(String(nullifier));
       const nullifiersSpent = currentUnspentNullifiers.filter(isSpent);
       const nullifiersToUnspend = currentSpentNullifiers.filter(
-        (nullifier) => !isSpent(nullifier)
+        (nullifier) => !isSpent(nullifier),
       );
 
       // update the cache with the spent nullifiers info
@@ -421,7 +421,7 @@ class WalletTreasury {
        */
       const syncInfo = await this.#getEnrichedSyncInfo(
         lastBlockHeight,
-        walletCache
+        walletCache,
       );
       ensureCurrent();
       await walletCache.setSyncInfo(syncInfo);

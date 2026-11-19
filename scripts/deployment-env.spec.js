@@ -14,7 +14,7 @@ describe("Building a deployment", () => {
 
     expect(lines.pop()).toBe("");
     expect(
-      Object.fromEntries(lines.map((line) => line.split(/=(.*)/s, 2)))
+      Object.fromEntries(lines.map((line) => line.split(/=(.*)/s, 2))),
     ).toEqual(deployments[TESTNET]);
     expect(lines).toContain("VITE_BASE_PATH=/wallet");
     expect(lines).toContain("VITE_MIGRATE_CONTRACT=");
@@ -23,10 +23,10 @@ describe("Building a deployment", () => {
 
   it("should refuse a site deployments.json doesn't list, and a setting that isn't one line of a VITE_ one", () => {
     expect(() => envLines(deployments, TESTNET.slice(0, -1))).toThrow(
-      "deployments.json doesn't list"
+      "deployments.json doesn't list",
     );
     expect(() => envLines(deployments, "constructor")).toThrow(
-      "deployments.json doesn't list"
+      "deployments.json doesn't list",
     );
 
     for (const settings of [
@@ -35,7 +35,7 @@ describe("Building a deployment", () => {
       { "VITE_A=B": "1" },
     ]) {
       expect(() => envLines({ [TESTNET]: settings }, TESTNET)).toThrow(
-        `deployments.json gives ${TESTNET} a`
+        `deployments.json gives ${TESTNET} a`,
       );
     }
   });
@@ -43,7 +43,7 @@ describe("Building a deployment", () => {
   it("should deploy each network to a site deployments.json lists, with the build at the folder its base path names", () => {
     const { config, error } = ts.parseConfigFileTextToJson(
       "wrangler.jsonc",
-      readFileSync("wrangler.jsonc", "utf8")
+      readFileSync("wrangler.jsonc", "utf8"),
     );
 
     expect(error).toBeUndefined();
@@ -62,7 +62,7 @@ describe("Building a deployment", () => {
         ]);
 
         return [network, `https://${routes[0].pattern}${BASE_PATH}/`];
-      })
+      }),
     );
 
     expect(sites).toEqual({

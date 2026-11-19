@@ -224,7 +224,7 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         100_500_000_000n,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
     });
 
@@ -245,19 +245,19 @@ describe("Unstake", () => {
 
       expect(await errorOf("ten")).toBe("Enter an amount such as 10 or 10.5.");
       expect(await errorOf("1.0000000001")).toBe(
-        "DUSK has 9 decimals at most."
+        "DUSK has 9 decimals at most.",
       );
       expect(await errorOf("0")).toBe("Enter an amount greater than 0.");
       expect(await errorOf("278,5")).toBe("That's more than you have staked.");
       expect(await errorOf("277.5")).toBe(
-        "Leave at least 1 DUSK staked, or unstake it all."
+        "Leave at least 1 DUSK staked, or unstake it all.",
       );
       expect(await errorOf("277")).toBeNull();
 
       await rerender({ availableBalance: 0n });
 
       expect(await errorOf("278")).toBe(
-        "The network fee is paid from the public balance, and it's empty: 0.02 DUSK short. Add that much to it first."
+        "The network fee is paid from the public balance, and it's empty: 0.02 DUSK short. Add that much to it first.",
       );
     });
 
@@ -295,7 +295,7 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         unstakeProps.maxWithdrawAmount,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
 
       const explorerLink = getByRole("link", { name: /explorer/i });
@@ -326,10 +326,10 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         unstakeProps.maxWithdrawAmount,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
       expect(
-        container.querySelector(".tx-result, [role='status']")
+        container.querySelector(".tx-result, [role='status']"),
       ).toBeTruthy();
     });
 
@@ -378,7 +378,7 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         278_000_000_000n,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
     });
 
@@ -439,7 +439,7 @@ describe("Unstake", () => {
       await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(getReviewAmounts(container)[0][0]).toBe(
-        claimRewardsProps.operationOverviewLabel
+        claimRewardsProps.operationOverviewLabel,
       );
       expect(execute).toHaveBeenCalledOnce();
 
@@ -450,7 +450,7 @@ describe("Unstake", () => {
       expect(execute).toHaveBeenLastCalledWith(
         claimRewardsProps.maxWithdrawAmount,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
       expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
     });
@@ -506,7 +506,7 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         claimRewardsProps.maxWithdrawAmount,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
 
       const explorerLink = getByRole("link", { name: /explorer/i });
@@ -534,7 +534,7 @@ describe("Unstake", () => {
       expect(baseProps.execute).toHaveBeenCalledWith(
         claimRewardsProps.maxWithdrawAmount,
         baseProps.gasSettings.gasPrice,
-        baseProps.gasSettings.gasLimit
+        baseProps.gasSettings.gasLimit,
       );
     });
 
@@ -549,7 +549,7 @@ describe("Unstake", () => {
       });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "That's more than your rewards."
+        "That's more than your rewards.",
       );
       expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });

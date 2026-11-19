@@ -89,13 +89,13 @@ describe("Contacts", () => {
         ?.textContent?.trim();
 
     await vi.waitFor(() =>
-      expect(column("Estudio Marta")).toBe("shpongle.dusk")
+      expect(column("Estudio Marta")).toBe("shpongle.dusk"),
     );
     expect(column("Lucas")).toBe("—");
     // Only the public accounts saved without a name are asked about.
     expect(names.of).toHaveBeenCalledExactlyOnceWith(
       [NAMED, UNNAMED],
-      expect.objectContaining({ nodeUrl: expect.any(String) })
+      expect.objectContaining({ nodeUrl: expect.any(String) }),
     );
   });
 

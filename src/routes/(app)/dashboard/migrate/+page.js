@@ -16,6 +16,6 @@ export function load() {
 
   redirect(
     307,
-    route ? `/dashboard/bridge?route=${route.id}` : "/dashboard/bridge"
+    route ? `/dashboard/bridge?route=${route.id}` : "/dashboard/bridge",
   );
 }

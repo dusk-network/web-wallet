@@ -135,7 +135,7 @@ describe("Wallet store", async () => {
   const minimumStake = 1_000_000_000_000n;
 
   vi.spyOn(Bookkeeper.prototype, "minimumStake", "get").mockResolvedValue(
-    minimumStake
+    minimumStake,
   );
 
   /** @type {import("vitest").Mock<typeof setTimeout>} */
@@ -176,7 +176,7 @@ describe("Wallet store", async () => {
 
   vi.spyOn(networkStore, "checkBlock").mockResolvedValue(true);
   vi.spyOn(networkStore, "getBlockHashByHeight").mockResolvedValue(
-    "some-block-hash"
+    "some-block-hash",
   );
   vi.spyOn(networkStore, "getLastFinalizedBlockHeight").mockResolvedValue(121n);
 
@@ -299,7 +299,7 @@ describe("Wallet store", async () => {
       expect(setProfilesSpy.mock.calls[0][0]).toHaveLength(2);
       expect(setProfilesSpy.mock.calls[0][0][0]).toBe(defaultProfile);
       expect(setProfilesSpy.mock.invocationCallOrder[0]).toBeLessThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[0]
+        treasuryUpdateSpy.mock.invocationCallOrder[0],
       );
       expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
       expect(balanceSpy).toHaveBeenCalledTimes(2);
@@ -308,10 +308,10 @@ describe("Wallet store", async () => {
       expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
       expect(stakeInfoSpy).toHaveBeenCalledWith(defaultProfile.account);
       expect(balanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[0]
+        treasuryUpdateSpy.mock.invocationCallOrder[0],
       );
       expect(stakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[0]
+        treasuryUpdateSpy.mock.invocationCallOrder[0],
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
@@ -325,10 +325,10 @@ describe("Wallet store", async () => {
         readAt: expect.any(Number),
       });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        balanceSpy.mock.invocationCallOrder[1]
+        balanceSpy.mock.invocationCallOrder[1],
       );
       expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        stakeInfoSpy.mock.invocationCallOrder[0]
+        stakeInfoSpy.mock.invocationCallOrder[0],
       );
 
       // Connecting's own timeout, as it connected, and the wallet store's two.
@@ -341,7 +341,7 @@ describe("Wallet store", async () => {
        */
       expect(setTimeoutSpy).toHaveBeenCalledTimes(2);
       expect(clearTimeoutSpy.mock.invocationCallOrder.at(-1)).toBeLessThan(
-        setTimeoutSpy.mock.invocationCallOrder[1]
+        setTimeoutSpy.mock.invocationCallOrder[1],
       );
 
       await vi.advanceTimersByTimeAsync(1);
@@ -374,7 +374,7 @@ describe("Wallet store", async () => {
             isInProgress: false,
           });
           expect(get(settingsStore).userId).toBe(
-            defaultProfile.address.toString()
+            defaultProfile.address.toString(),
           );
         });
       } finally {
@@ -438,7 +438,10 @@ describe("Wallet store", async () => {
 
         expect(get(walletStore).initialized).toBe(false);
         expect(() =>
-          saveContact({ address: defaultProfile.account.toString(), name: "A" })
+          saveContact({
+            address: defaultProfile.account.toString(),
+            name: "A",
+          }),
         ).toThrow();
       } finally {
         seedFrom.mockRestore();
@@ -527,7 +530,7 @@ describe("Wallet store", async () => {
 
       await walletStore.init(profileGenerator);
       await vi.waitFor(() =>
-        expect(get(walletStore).syncStatus.error).toBe(offline)
+        expect(get(walletStore).syncStatus.error).toBe(offline),
       );
 
       expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
@@ -686,7 +689,7 @@ describe("Wallet store", async () => {
 
         expect(treasuryUpdateSpy).toHaveBeenCalledTimes(1);
         expect(get(walletStore).syncStatus).toStrictEqual(
-          initialState.syncStatus
+          initialState.syncStatus,
         );
 
         walletStore.abortSync();
@@ -747,7 +750,7 @@ describe("Wallet store", async () => {
       expect(treasuryUpdateSpy).toHaveBeenCalledOnce();
       expect(balanceSpy).toHaveBeenNthCalledWith(2, defaultProfile.account);
       expect(balanceSpy.mock.invocationCallOrder[1]).toBeGreaterThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[0]
+        treasuryUpdateSpy.mock.invocationCallOrder[0],
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledOnce();
     });
@@ -806,11 +809,11 @@ describe("Wallet store", async () => {
         });
         expect(setCachedBalanceSpy).toHaveBeenCalledWith(
           other,
-          expect.objectContaining({ readAt })
+          expect.objectContaining({ readAt }),
         );
         expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
           other,
-          expect.objectContaining({ readAt })
+          expect.objectContaining({ readAt }),
         );
 
         // A sync that fails at 10:10: what that sync read still, kept so for
@@ -828,11 +831,11 @@ describe("Wallet store", async () => {
         });
         expect(setCachedBalanceSpy).toHaveBeenCalledWith(
           other,
-          expect.objectContaining({ readAt })
+          expect.objectContaining({ readAt }),
         );
         expect(setCachedStakeInfoSpy).toHaveBeenCalledWith(
           other,
-          expect.objectContaining({ readAt })
+          expect.objectContaining({ readAt }),
         );
       } finally {
         get(walletStore).profiles.pop();
@@ -931,13 +934,13 @@ describe("Wallet store", async () => {
       ];
       const balanceOf = balanceSpy.getMockImplementation();
       const stopReading = walletStore.readWithBalances(() =>
-        /** @type {() => Promise<any>} */ (alongReads.shift())()
+        /** @type {() => Promise<any>} */ (alongReads.shift())(),
       );
 
       balanceSpy.mockImplementation(async (identifier) =>
         ProfileGenerator.typeOf(identifier.toString()) === "address"
           ? shielded
-          : /** @type {() => Promise<any>} */ (publicReads.shift())()
+          : /** @type {() => Promise<any>} */ (publicReads.shift())(),
       );
 
       try {
@@ -978,7 +981,7 @@ describe("Wallet store", async () => {
 
       // Before the wallet's first sync gets through, as with a silent node.
       balanceSpy.mockRejectedValueOnce(
-        new Error("No balance found for the account with the given identifier")
+        new Error("No balance found for the account with the given identifier"),
       );
 
       const failed = walletStore.refreshBalance();
@@ -1007,7 +1010,7 @@ describe("Wallet store", async () => {
       balanceSpy.mockImplementation(async (identifier) =>
         ProfileGenerator.typeOf(identifier.toString()) === "address"
           ? shielded
-          : treasury.account(identifier)
+          : treasury.account(identifier),
       );
 
       try {
@@ -1115,7 +1118,7 @@ describe("Wallet store", async () => {
           await vi.waitUntil(
             () =>
               !get(walletStore).balanceReadFailed &&
-              !get(walletStore).stakeReadFailed
+              !get(walletStore).stakeReadFailed,
           );
 
           expect(balanceSpy).toHaveBeenCalled();
@@ -1137,7 +1140,7 @@ describe("Wallet store", async () => {
       balanceSpy.mockReturnValueOnce(balanceRead.promise);
 
       const switched = walletStore.setCurrentProfile(
-        get(walletStore).profiles[1]
+        get(walletStore).profiles[1],
       );
 
       expect(get(walletStore).balanceRead).toBe(false);
@@ -1174,17 +1177,17 @@ describe("Wallet store", async () => {
 
     const updateNonceSpy = vi.spyOn(
       WalletTreasury.prototype,
-      "updateCachedNonce"
+      "updateCachedNonce",
     );
 
     const updateCachedPendingNotesSpy = vi.spyOn(
       WalletTreasury.prototype,
-      "updateCachedPendingNotes"
+      "updateCachedPendingNotes",
     );
 
     const forgetSentNonceSpy = vi.spyOn(
       WalletTreasury.prototype,
-      "forgetSentNonce"
+      "forgetSentNonce",
     );
 
     /**
@@ -1283,13 +1286,13 @@ describe("Wallet store", async () => {
           privacy:
             isPhoenixTransfer || method === "unshield" ? "shielded" : "public",
           ...(method === "transfer" ? { to: args[0] } : {}),
-        })
+        }),
       );
 
       expect(executeSpy).toHaveBeenCalledTimes(1);
       expect(executeSpy.mock.calls[0][0].attributes).toStrictEqual(expectedTx);
       expect(executeSpy.mock.calls[0][0].bookentry.profile).toStrictEqual(
-        defaultProfile
+        defaultProfile,
       );
 
       if (isPhoenixTransfer) {
@@ -1297,7 +1300,7 @@ describe("Wallet store", async () => {
         expect(updateCachedPendingNotesSpy).toHaveBeenCalledTimes(1);
         expect(updateCachedPendingNotesSpy).toHaveBeenCalledWith(
           phoenixTxResult.nullifiers,
-          phoenixTxResult.hash
+          phoenixTxResult.hash,
         );
         updateCachedPendingNotesSpy.mockClear();
       } else {
@@ -1317,7 +1320,7 @@ describe("Wallet store", async () => {
       expect(stakeInfoSpy).not.toHaveBeenCalled();
 
       expect(treasuryUpdateSpy.mock.invocationCallOrder[0]).toBeLessThan(
-        executeSpy.mock.invocationCallOrder[0]
+        executeSpy.mock.invocationCallOrder[0],
       );
 
       // hacky check that we used the correct API through our Transactions mock
@@ -1329,7 +1332,7 @@ describe("Wallet store", async () => {
 
       // this will trigger the resolve in the `removed` promise
       dispatchEvent(
-        new CustomEvent("transaction::removed", { detail: expectedScope })
+        new CustomEvent("transaction::removed", { detail: expectedScope }),
       );
 
       // check that a sync starts after the transaction is removed from the mempool
@@ -1341,7 +1344,7 @@ describe("Wallet store", async () => {
       } else {
         expect(forgetSentNonceSpy).toHaveBeenCalledExactlyOnceWith(
           defaultProfile,
-          newNonce
+          newNonce,
         );
       }
 
@@ -1358,10 +1361,10 @@ describe("Wallet store", async () => {
       expect(stakeInfoSpy).toHaveBeenCalledTimes(1);
       expect(stakeInfoSpy).toHaveBeenCalledWith(defaultProfile.account);
       expect(balanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[1]
+        treasuryUpdateSpy.mock.invocationCallOrder[1],
       );
       expect(balanceSpy.mock.invocationCallOrder[1]).toBeGreaterThan(
-        treasuryUpdateSpy.mock.invocationCallOrder[1]
+        treasuryUpdateSpy.mock.invocationCallOrder[1],
       );
       expect(setCachedBalanceSpy).toHaveBeenCalledTimes(1);
       expect(setCachedBalanceSpy).toHaveBeenCalledWith(defaultProfile, {
@@ -1375,10 +1378,10 @@ describe("Wallet store", async () => {
         readAt: expect.any(Number),
       });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        balanceSpy.mock.invocationCallOrder[1]
+        balanceSpy.mock.invocationCallOrder[1],
       );
       expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        stakeInfoSpy.mock.invocationCallOrder[0]
+        stakeInfoSpy.mock.invocationCallOrder[0],
       );
 
       vi.useFakeTimers();
@@ -1395,7 +1398,7 @@ describe("Wallet store", async () => {
       await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
 
       await vi.waitUntil(
-        () => get(walletStore).syncStatus.isInProgress === false
+        () => get(walletStore).syncStatus.isInProgress === false,
       );
 
       vi.clearAllTimers();
@@ -1448,7 +1451,7 @@ describe("Wallet store", async () => {
               status: handing ? "removed" : "submitted",
               submittedAt: Date.now(),
             })
-        )
+        ),
       );
 
     // Chen's, on hospital Wi-Fi: the node never got it, and Activity said
@@ -1475,7 +1478,7 @@ describe("Wallet store", async () => {
             memo() {
               return this;
             },
-          })
+          }),
       );
 
       history.session.recordSent.mockClear();
@@ -1493,7 +1496,7 @@ describe("Wallet store", async () => {
             await answered.promise;
 
             return transaction;
-          }
+          },
         );
 
         let isSettled = false;
@@ -1505,7 +1508,7 @@ describe("Wallet store", async () => {
           });
 
         await vi.waitUntil(
-          () => history.session.recordSent.mock.calls.length === 1
+          () => history.session.recordSent.mock.calls.length === 1,
         );
         expect(history.session.recordSent).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1514,12 +1517,12 @@ describe("Wallet store", async () => {
             hash,
             to: toMoonlight,
           }),
-          { handing: true }
+          { handing: true },
         );
         await vi.waitFor(async () =>
           expect(await listLocalTransactions(owner)).toStrictEqual([
             expect.objectContaining({ hash, status: "removed" }),
-          ])
+          ]),
         );
         expect(isSettled).toBe(false);
 
@@ -1530,7 +1533,7 @@ describe("Wallet store", async () => {
         await vi.waitFor(async () =>
           expect(await listLocalTransactions(owner)).toStrictEqual([
             expect.objectContaining({ hash, status: "submitted" }),
-          ])
+          ]),
         );
         expect(history.session.recordSent).toHaveBeenCalledOnce();
       } finally {
@@ -1568,17 +1571,17 @@ describe("Wallet store", async () => {
         expect(propagate).toHaveBeenCalledExactlyOnceWith(bytes);
         expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(
           currentProfile,
-          41n
+          41n,
         );
 
         // Refused as the node checks it: nothing is broadcast.
         preverify.mockRejectedValueOnce(
-          new Error("Tx not accepted: value spent larger than account holds")
+          new Error("Tx not accepted: value spent larger than account holds"),
         );
         propagate.mockClear();
 
         await expect(walletStore.sendAgain(sent)).rejects.toThrow(
-          "value spent larger"
+          "value spent larger",
         );
         expect(propagate).not.toHaveBeenCalled();
 
@@ -1595,7 +1598,7 @@ describe("Wallet store", async () => {
         preverify.mockClear();
 
         await expect(
-          walletStore.sendAgain({ ...sent, account: "nobody" })
+          walletStore.sendAgain({ ...sent, account: "nobody" }),
         ).rejects.toThrow();
         expect(preverify).not.toHaveBeenCalled();
       } finally {
@@ -1634,7 +1637,7 @@ describe("Wallet store", async () => {
           .mock.calls.map(([options]) => [
             options.account,
             options.profileIndex,
-          ])
+          ]),
       ).toStrictEqual([[String(payer?.account), 0]]);
 
       // The nonce it used is the paying profile's too.
@@ -1645,10 +1648,10 @@ describe("Wallet store", async () => {
         expect(
           JSON.parse(
             localStorage.getItem(
-              `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`
-            ) ?? "null"
-          )
-        ).toMatchObject({ type: "sent" })
+              `${CONFIG.LOCAL_STORAGE_APP_KEY}-wallet-event`,
+            ) ?? "null",
+          ),
+        ).toMatchObject({ type: "sent" }),
       );
 
       vi.useFakeTimers();
@@ -1680,7 +1683,7 @@ describe("Wallet store", async () => {
       expect(executeSpy.mock.calls[0][0].bookentry.profile).toBe(payer);
       expect(updateNonceSpy).toHaveBeenCalledExactlyOnceWith(payer, 7n);
       expect(
-        vi.mocked(activityFor).mock.calls.map(([options]) => options.account)
+        vi.mocked(activityFor).mock.calls.map(([options]) => options.account),
       ).toStrictEqual([String(payer?.account)]);
       expect(history.session.recordSent).toHaveBeenCalledOnce();
 
@@ -1724,7 +1727,7 @@ describe("Wallet store", async () => {
         .mockReturnValueOnce(leftBefore.promise)
         .mockReturnValueOnce(new Promise(() => {}));
       const other = new ProfileGenerator(async () =>
-        getSeedFromMnemonic(generateMnemonic())
+        getSeedFromMnemonic(generateMnemonic()),
       );
 
       try {
@@ -1766,7 +1769,7 @@ describe("Wallet store", async () => {
 
         leftBefore.resolve(undefined);
         await vi.waitUntil(
-          () => treasuryUpdateSpy.mock.calls.length > syncsBefore
+          () => treasuryUpdateSpy.mock.calls.length > syncsBefore,
         );
 
         expect(await nextTakes()).toBe(nonce);
@@ -1848,7 +1851,7 @@ describe("Wallet store", async () => {
 
           leave();
           await vi.waitUntil(
-            () => vi.mocked(noteSentOutcome).mock.calls.length
+            () => vi.mocked(noteSentOutcome).mock.calls.length,
           );
 
           expect(noteSentOutcome).toHaveBeenCalledExactlyOnceWith(
@@ -1858,7 +1861,7 @@ describe("Wallet store", async () => {
               error: null,
               fee: 1820914000n,
               timestamp: 1763080677000,
-            }
+            },
           );
           // Its block's status isn't asked: as the balances, final or not.
           expect(asked).toStrictEqual([
@@ -1881,14 +1884,14 @@ describe("Wallet store", async () => {
 
           late.leave();
           await vi.waitUntil(
-            () => vi.mocked(noteSentOutcome).mock.calls.length
+            () => vi.mocked(noteSentOutcome).mock.calls.length,
           );
 
           expect(late.asked).toHaveLength(2);
           expect(balanceSpy.mock.calls.length).toBeGreaterThan(balanceReads);
           expect(noteSentOutcome).toHaveBeenCalledExactlyOnceWith(
             "in-block-tx",
-            expect.objectContaining({ blockHeight: 4850914n })
+            expect.objectContaining({ blockHeight: 4850914n }),
           );
         } finally {
           late.restore();
@@ -1912,7 +1915,7 @@ describe("Wallet store", async () => {
     });
 
     it.each(
-      /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"])
+      /** @type {const} */ (["getCachedSyncInfo", "clearCache", "update"]),
     )(
       "should reject transfers when sync %s fails without executing a transaction",
       async (method) => {
@@ -1935,11 +1938,11 @@ describe("Wallet store", async () => {
 
         try {
           await expect(
-            walletStore.transfer(toMoonlight, amount, memo, gas)
+            walletStore.transfer(toMoonlight, amount, memo, gas),
           ).rejects.toBe(error);
           expect(executeSpy).not.toHaveBeenCalled();
           expect(treasuryUpdateSpy).toHaveBeenCalledTimes(
-            method === "update" ? 1 : 0
+            method === "update" ? 1 : 0,
           );
           expect(get(walletStore).syncStatus).toMatchObject({
             error,
@@ -1952,7 +1955,7 @@ describe("Wallet store", async () => {
             .mockResolvedValue(true);
           walletStore.reset();
         }
-      }
+      },
     );
 
     it("should not execute an abandoned transfer after a new initialization", async () => {
@@ -2014,7 +2017,7 @@ describe("Wallet store", async () => {
             }
 
             throw failure;
-          }
+          },
         );
 
       const owner = "localnet::lost";
@@ -2024,7 +2027,7 @@ describe("Wallet store", async () => {
       handedOver(new TypeError("Failed to fetch"));
 
       await expect(
-        walletStore.transfer(toMoonlight, amount, memo, gas)
+        walletStore.transfer(toMoonlight, amount, memo, gas),
       ).rejects.toThrow("Failed to fetch");
       expect(history.session.recordSent).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({
@@ -2033,13 +2036,13 @@ describe("Wallet store", async () => {
           hash: built.hash,
           to: toMoonlight,
         }),
-        { handing: true }
+        { handing: true },
       );
       // Not confirmed yet, never sent or on its way.
       await vi.waitFor(async () =>
         expect(await listLocalTransactions(owner)).toStrictEqual([
           expect.objectContaining({ hash: built.hash, status: "unknown" }),
-        ])
+        ]),
       );
       history.session.recordSent.mockReset();
       history.session.recordSent.mockImplementation(async () => {});
@@ -2047,19 +2050,19 @@ describe("Wallet store", async () => {
 
       history.session.forgetSent.mockClear();
       handedOver(
-        new Error("Tx cdcd not accepted: this transaction is invalid")
+        new Error("Tx cdcd not accepted: this transaction is invalid"),
       );
 
       await expect(
-        walletStore.transfer(toMoonlight, amount, memo, gas)
+        walletStore.transfer(toMoonlight, amount, memo, gas),
       ).rejects.toThrow("not accepted");
 
       // Kept as the node was asked to broadcast it, it's taken out again.
       await vi.waitUntil(
-        () => history.session.forgetSent.mock.calls.length === 1
+        () => history.session.forgetSent.mock.calls.length === 1,
       );
       expect(history.session.forgetSent).toHaveBeenCalledExactlyOnceWith(
-        built.hash
+        built.hash,
       );
 
       vi.useFakeTimers();
@@ -2108,7 +2111,7 @@ describe("Wallet store", async () => {
         await walletStore.transfer(to, amount, memo, gas, options);
 
         expect(history.session.recordSent).toHaveBeenCalledWith(
-          expect.objectContaining({ to, ...expected })
+          expect.objectContaining({ to, ...expected }),
         );
       }
 
@@ -2192,7 +2195,7 @@ describe("Wallet store", async () => {
         dispatchEvent(
           new CustomEvent("transaction::removed", {
             detail: { id: hash, name: "transactions", once: true },
-          })
+          }),
         );
 
       it.each(
@@ -2201,7 +2204,7 @@ describe("Wallet store", async () => {
           "topUpStake",
           "unstake",
           "claimRewards",
-        ])
+        ]),
       )(
         "should be held from a %s's send until the node took it out of its queue and the stake was read again",
         async (method) => {
@@ -2245,7 +2248,7 @@ describe("Wallet store", async () => {
             unsubscribe();
             vi.useFakeTimers();
           }
-        }
+        },
       );
 
       it("should be held by a stake with Sozu and an unstake from it", async () => {
@@ -2460,7 +2463,7 @@ describe("Wallet store", async () => {
             rows: [{ hash: "seen-tx", source: "public" }],
           });
           await vi.waitUntil(
-            () => treasuryUpdateSpy.mock.calls.length > syncsBefore
+            () => treasuryUpdateSpy.mock.calls.length > syncsBefore,
           );
           await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -2490,7 +2493,7 @@ describe("Wallet store", async () => {
         try {
           await walletStore.unstake(amount, gas);
           treasuryUpdateSpy.mockRejectedValueOnce(
-            new Error("Node unreachable")
+            new Error("Node unreachable"),
           );
           leaveQueue("unsynced-tx");
           await vi.waitUntil(() => get(walletStore).syncStatus.error !== null);
@@ -2567,7 +2570,7 @@ describe("Wallet store", async () => {
         0x01,
         ...Array.from({ length: 32 }, (_, index) => index),
         0xde,
-        0xad
+        0xad,
       );
       const minGasLimit = 150_000;
       const currentlyCachedBalance =
@@ -2607,7 +2610,7 @@ describe("Wallet store", async () => {
         gas,
         payload: {
           contractId: Array.from(bridgeContractId.match(/../g) ?? [], (byte) =>
-            parseInt(byte, 16)
+            parseInt(byte, 16),
           ),
           fnArgs: encodeDepositArgs({
             amountLux: amount,
@@ -2655,7 +2658,7 @@ describe("Wallet store", async () => {
           gas,
           payload: {
             contractId: Array.from(poolId.match(/../g) ?? [], (byte) =>
-              parseInt(byte, 16)
+              parseInt(byte, 16),
             ),
             // 150 DUSK in lux, little-endian
             fnArgs: Uint8Array.of(0, 92, 178, 236, 34, 0, 0, 0),
@@ -2673,7 +2676,7 @@ describe("Wallet store", async () => {
           kind: "contract_call",
           privacy: "public",
         });
-      }
+      },
     );
 
     it.each(["proveWithdrawalTransaction", "finalizeWithdrawalTransaction"])(
@@ -2695,7 +2698,7 @@ describe("Wallet store", async () => {
 
         await walletStore.sendDuskEvmWithdrawalCall(
           { contractId: portalId, deposit: 0n, fnArgs, fnName },
-          gas
+          gas,
         );
 
         // Its arguments as given, to the Portal, from the account to itself,
@@ -2710,7 +2713,7 @@ describe("Wallet store", async () => {
         });
         expect(
           /** @type {any} */ (executeSpy.mock.calls[0][0].attributes).payload
-            .fnArgs
+            .fnArgs,
         ).toBe(fnArgs);
         expect(history.session.recordSent).toHaveBeenCalledWith({
           amount: "0",
@@ -2721,7 +2724,7 @@ describe("Wallet store", async () => {
           kind: "contract_call",
           privacy: "public",
         });
-      }
+      },
     );
 
     it.each([
@@ -2740,11 +2743,11 @@ describe("Wallet store", async () => {
               fnArgs: Uint8Array.of(1),
               fnName: "proveWithdrawalTransaction",
             },
-            gas
-          )
+            gas,
+          ),
         ).rejects.toThrow("Not a DuskEVM withdrawal's proof or claim.");
         expect(executeSpy).not.toHaveBeenCalled();
-      }
+      },
     );
 
     it("should reject DuskEVM bridge deposits when the bridge contract is not configured", async () => {
@@ -2755,8 +2758,8 @@ describe("Wallet store", async () => {
         walletStore.depositEvmFunctionCall(
           "0x1111111111111111111111111111111111111111",
           amount,
-          gas
-        )
+          gas,
+        ),
       ).rejects.toThrow("DuskEVM bridge contract id is not configured.");
 
       expect(executeSpy).not.toHaveBeenCalled();
@@ -2776,7 +2779,7 @@ describe("Wallet store", async () => {
       await vi.advanceTimersByTimeAsync(AUTO_SYNC_INTERVAL - 1);
 
       await vi.waitUntil(
-        () => get(walletStore).syncStatus.isInProgress === false
+        () => get(walletStore).syncStatus.isInProgress === false,
       );
 
       vi.clearAllTimers();
@@ -2823,13 +2826,13 @@ describe("Wallet store", async () => {
           const normalized =
             actual instanceof Bookmark ? `bookmark:${actual.asUint()}` : actual;
           expect(normalized).toBe(
-            fromBlock === undefined ? "bookmark:9" : fromBlock
+            fromBlock === undefined ? "bookmark:9" : fromBlock,
           );
           expect(cacheClearSpy).toHaveBeenCalledTimes(fromBlock === 0n ? 1 : 0);
         } finally {
           cached.mockRestore();
         }
-      }
+      },
     );
 
     it.each([
@@ -2852,7 +2855,7 @@ describe("Wallet store", async () => {
           ? kind === "balance"
             ? shielded
             : stakeInfo
-          : undefined
+          : undefined,
       );
       await refresh;
       expect(get(walletStore)).toStrictEqual(initialState);
@@ -2877,7 +2880,7 @@ describe("Wallet store", async () => {
         pending.resolve(undefined);
         await refresh;
         expect(get(walletStore)).toStrictEqual(expected);
-      }
+      },
     );
 
     it("should cancel a pending clear-and-init on reset", async () => {
@@ -2885,7 +2888,7 @@ describe("Wallet store", async () => {
       cacheClearSpy.mockReturnValueOnce(pending.promise);
       const initialization = walletStore.clearLocalDataAndInit(
         profileGenerator,
-        99n
+        99n,
       );
       walletStore.reset();
       pending.resolve(undefined);
@@ -2965,7 +2968,7 @@ describe("Wallet store", async () => {
         expect.objectContaining({
           account: String(currentProfile?.account),
           profileIndex: 0,
-        })
+        }),
       );
     });
 
@@ -3015,7 +3018,7 @@ describe("Wallet store", async () => {
 
       await expect(
         // @ts-expect-error we don't care to set a real profile
-        walletStore.setCurrentProfile(fakeExtraProfile)
+        walletStore.setCurrentProfile(fakeExtraProfile),
       ).resolves.toBeUndefined();
 
       expect(get(walletStore).currentProfile).toBe(fakeExtraProfile);
@@ -3039,10 +3042,10 @@ describe("Wallet store", async () => {
         readAt: get(walletStore).stakeReadAt,
       });
       expect(setCachedBalanceSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        balanceSpy.mock.invocationCallOrder[1]
+        balanceSpy.mock.invocationCallOrder[1],
       );
       expect(setCachedStakeInfoSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
-        stakeInfoSpy.mock.invocationCallOrder[0]
+        stakeInfoSpy.mock.invocationCallOrder[0],
       );
     });
 

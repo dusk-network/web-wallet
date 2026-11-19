@@ -195,7 +195,7 @@ export function keepWaiting({
   const say = (change) => {
     if (isWaiting) {
       sends.update((list) =>
-        list.map((each) => (each.id === id ? { ...each, ...change } : each))
+        list.map((each) => (each.id === id ? { ...each, ...change } : each)),
       );
     }
   };
@@ -286,8 +286,8 @@ export function keepWaiting({
       done(
         isHandedOver
           ? Boolean(unconfirmedHash(error)) && "handed-over"
-          : isKeptAfter(error, () => kept?.isSaid() ?? true)
-      )
+          : isKeptAfter(error, () => kept?.isSaid() ?? true),
+      ),
   );
 
   return { review };

@@ -54,7 +54,7 @@
     sheetStep(
       `${appPath(next.pathname)}${next.search}`,
       sheetsAt(url),
-      sheetsAt(next)
+      sheetsAt(next),
     );
   }
 
@@ -75,7 +75,7 @@
     const accounts = contacts
       .filter(
         ({ address, duskName }) =>
-          !duskName && ProfileGenerator.typeOf(address) === "account"
+          !duskName && ProfileGenerator.typeOf(address) === "account",
       )
       .map(({ address }) => address);
     const key = accounts.join("\n");

@@ -27,7 +27,7 @@ const DAY = 86_400_000;
 /** @param {unknown} reply */
 const nodeAnswering = (reply, ok = true) =>
   vi.fn(
-    async () => new Response(JSON.stringify(reply), { status: ok ? 200 : 500 })
+    async () => new Response(JSON.stringify(reply), { status: ok ? 200 : 500 }),
   );
 
 describe("readNativeRewardRate", () => {
@@ -51,16 +51,16 @@ describe("readNativeRewardRate", () => {
     });
 
     await expect(readNativeRewardRate({ ...options, now: NOW })).resolves.toBe(
-      expected
+      expected,
     );
     expect(fetch).toHaveBeenCalledWith(
       "https://node.example/on/node/provisioners",
-      { method: "POST" }
+      { method: "POST" },
     );
 
     // Within the day: no read.
     await expect(
-      readNativeRewardRate({ ...options, now: NOW + DAY - 1 })
+      readNativeRewardRate({ ...options, now: NOW + DAY - 1 }),
     ).resolves.toBe(expected);
     expect(fetch).toHaveBeenCalledTimes(1);
 
@@ -88,7 +88,7 @@ describe("readNativeRewardRate", () => {
         fetch: /** @type {typeof globalThis.fetch} */ (
           /** @type {unknown} */ (failing)
         ),
-      })
+      }),
     ).resolves.toBeNull();
 
     const working = nodeAnswering(PROVISIONERS);
@@ -99,7 +99,7 @@ describe("readNativeRewardRate", () => {
         fetch: /** @type {typeof globalThis.fetch} */ (
           /** @type {unknown} */ (working)
         ),
-      })
+      }),
     ).resolves.toBeGreaterThan(0);
   });
 
@@ -113,7 +113,7 @@ describe("readNativeRewardRate", () => {
         nodeUrl: "https://node.example",
         now: NOW,
         tipHeight: async () => TIP,
-      })
+      }),
     ).resolves.toBeNull();
   });
 });
@@ -166,7 +166,7 @@ describe("readNativeRewards", () => {
         cache: expect.any(Map),
         provisioners: PROVISIONERS,
         tipHeight: TIP,
-      })
+      }),
     );
 
     // Two at once: one read.
@@ -188,7 +188,7 @@ describe("readNativeRewards", () => {
       readNativeRewards({
         ...optionsFor(nodeAnswering(PROVISIONERS), "mainnet"),
         now: NOW,
-      })
+      }),
     ).resolves.toEqual({
       days: null,
       native: null,
@@ -198,7 +198,7 @@ describe("readNativeRewards", () => {
     const failing = nodeAnswering({}, false);
 
     await expect(
-      readNativeRewards({ ...optionsFor(failing, "devnet"), now: NOW })
+      readNativeRewards({ ...optionsFor(failing, "devnet"), now: NOW }),
     ).resolves.toEqual({ days: null, native: null, rate: null });
 
     chain.nativeRewards.mockResolvedValue(MEASURED);
@@ -207,7 +207,7 @@ describe("readNativeRewards", () => {
       readNativeRewards({
         ...optionsFor(nodeAnswering(PROVISIONERS), "devnet"),
         now: NOW + 1,
-      })
+      }),
     ).resolves.toEqual({ days: 30, native: MEASURED, rate: 0.88 });
   });
 });

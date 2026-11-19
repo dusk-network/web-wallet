@@ -21,7 +21,7 @@ const accountNamer = derived(
       return contact
         ? contactNameText(contact.name)
         : (walletNames.get(account) ?? shortenAddress(account));
-    }
+    },
 );
 
 export default accountNamer;

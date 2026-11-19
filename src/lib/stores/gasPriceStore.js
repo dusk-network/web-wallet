@@ -57,7 +57,7 @@ const refresh = () =>
       .then((network) =>
         network.query("mempoolTxs { gasPrice gasLimit }", {
           signal: controller.signal,
-        })
+        }),
       )
       .then(({ mempoolTxs }) => {
         if (!controller.signal.aborted && Array.isArray(mempoolTxs)) {

@@ -36,7 +36,7 @@ describe("Migrate", () => {
     setNodeNetwork(networks.testnet);
 
     expect(sentTo()?.location).toBe(
-      `${base}/dashboard/bridge?route=bsc-to-dusk`
+      `${base}/dashboard/bridge?route=bsc-to-dusk`,
     );
   });
 

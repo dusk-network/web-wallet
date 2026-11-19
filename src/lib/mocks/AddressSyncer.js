@@ -43,7 +43,7 @@ class AddressSyncerMock extends AddressSyncer {
     const addresses = profiles.map((profile) => profile.address.toString());
     const notesAsMap = notesArrayToMap(cacheUnspentNotes);
     const notesArray = addresses.map(
-      (address) => notesAsMap.get(address) ?? new Map()
+      (address) => notesAsMap.get(address) ?? new Map(),
     );
 
     let currentChunk = 0;
@@ -78,7 +78,7 @@ class AddressSyncerMock extends AddressSyncer {
             },
             ownedCount: notesArray.length,
             progress: 0.25 * (currentChunk + 1),
-          })
+          }),
         );
 
         controller.enqueue([value, syncInfo]);

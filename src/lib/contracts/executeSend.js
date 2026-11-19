@@ -26,7 +26,7 @@ const executeSend = (...args) => {
         limit: gasLimit,
         price: gasPrice,
       }),
-      { gate, toName }
+      { gate, toName },
     )
     .then(({ hash }) => hash);
 };

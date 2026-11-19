@@ -30,7 +30,7 @@ export const NOTICE_WORDS = Object.freeze({
 const isPhone = () =>
   Boolean(
     globalThis.matchMedia?.("(pointer: coarse) and (hover: none)").matches ||
-    /Android|iPhone|iPad|Mobile/u.test(navigator.userAgent)
+    /Android|iPhone|iPad|Mobile/u.test(navigator.userAgent),
   );
 
 /** Whether the browser notifies from a service worker, as a phone's can only. */

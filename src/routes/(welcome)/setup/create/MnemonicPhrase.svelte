@@ -33,7 +33,7 @@
   onMount(() =>
     onPageHidden(() => {
       isHidden = true;
-    })
+    }),
   );
 
   $: isMasked = $touchOnly ? !isHeld : isHidden;

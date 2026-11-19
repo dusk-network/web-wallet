@@ -153,7 +153,7 @@
         ],
         placement: tooltipPlace,
         strategy: "fixed",
-      }
+      },
     );
 
     // We consider only "top", "right", "bottom" and "left" for now.

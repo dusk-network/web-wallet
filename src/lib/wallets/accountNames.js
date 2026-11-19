@@ -60,8 +60,8 @@ export const profilesHere = derived(
         address,
         duskName: getVerifiedName(networkName, address) || undefined,
         name: profileNameAt(profileNames, i),
-      }))
-    )
+      })),
+    ),
 );
 
 /** @type {import("svelte/store").Readable<Map<string, string>>} */
@@ -73,7 +73,7 @@ const walletAccountNames = derived(
 
     for (const { accounts, addresses, profileNames, wallet } of walletsHere(
       state,
-      directory
+      directory,
     )) {
       accounts.forEach((account, i) => {
         const label = [
@@ -95,7 +95,7 @@ const walletAccountNames = derived(
     }
 
     return names;
-  }
+  },
 );
 
 export default walletAccountNames;

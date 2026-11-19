@@ -58,7 +58,7 @@ describe("Settings: unlock with fingerprint or face", () => {
     const off = render(PasskeySetting);
 
     await vi.waitFor(() =>
-      expect(off.queryByRole("switch")).not.toBeInTheDocument()
+      expect(off.queryByRole("switch")).not.toBeInTheDocument(),
     );
     off.unmount();
     removeFakeAuthenticator();
@@ -78,7 +78,9 @@ describe("Settings: unlock with fingerprint or face", () => {
     await turnOnWith(view, PASSWORD);
 
     expect(
-      await view.findByText(/On this device only\. Your password keeps working/)
+      await view.findByText(
+        /On this device only\. Your password keeps working/,
+      ),
     ).toBeInTheDocument();
     expect(device.create).toHaveBeenCalledOnce();
     expect(vault.passkey()).not.toBeNull();
@@ -106,7 +108,7 @@ describe("Settings: unlock with fingerprint or face", () => {
     await turnOnWith(view, PASSWORD);
 
     expect(
-      await view.findByText("Cancelled, so it stays off.")
+      await view.findByText("Cancelled, so it stays off."),
     ).toBeInTheDocument();
     expect(vault.passkey()).toBeNull();
   });
@@ -120,8 +122,8 @@ describe("Settings: unlock with fingerprint or face", () => {
 
     expect(
       await view.findByText(
-        "This device or browser can't do fingerprint or face unlock, so it stays off."
-      )
+        "This device or browser can't do fingerprint or face unlock, so it stays off.",
+      ),
     ).toBeInTheDocument();
     expect(view.queryByRole("switch")).toBeNull();
     expect(vault.passkey()).toBeNull();
