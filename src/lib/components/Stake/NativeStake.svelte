@@ -368,7 +368,7 @@
             <a
               class="native-stake__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
-              rel="noopener noreferrer"
+              rel="noopener noreferrer external"
               target="_blank">Run a node <Icon path={mdiOpenInNew} /></a
             >
           </p>

@@ -601,7 +601,7 @@
               <a
                 class="tx-detail__block text-link"
                 href={duskEvmExplorerTx(arrival)}
-                rel="noopener noreferrer"
+                rel="noopener noreferrer external"
                 target="_blank"
                 >{shortenAddress(arrival)}
                 <span class="sr-only"
@@ -752,7 +752,7 @@
               <a
                 class="tx-detail__block text-link"
                 href={`/explorer/blocks/block?id=${row.blockHash}`}
-                rel="noopener noreferrer"
+                rel="noopener noreferrer external"
                 target="_blank"
                 >{row.blockHeight.toLocaleString(locale)}<span class="sr-only">
                   (opens the block in the Dusk explorer)</span

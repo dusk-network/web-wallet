@@ -716,7 +716,7 @@
         <a
           class="liquid-stake__link text-link"
           href={SOZU_URL}
-          rel="noopener noreferrer"
+          rel="noopener noreferrer external"
           target="_blank">sozu.fi</a
         >
       </p>

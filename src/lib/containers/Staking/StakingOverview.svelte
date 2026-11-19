@@ -402,7 +402,7 @@
             <a
               class="compare__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
-              rel="noopener noreferrer"
+              rel="noopener noreferrer external"
               target="_blank">Run a node <Icon path={mdiOpenInNew} /></a
             >
           </td>
@@ -476,7 +476,7 @@
               <a
                 class="compare__link text-link"
                 href={SOZU_URL}
-                rel="noopener noreferrer"
+                rel="noopener noreferrer external"
                 target="_blank">sozu.fi <Icon path={mdiOpenInNew} /></a
               >
             </td>
