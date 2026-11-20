@@ -122,10 +122,13 @@
   --on-secondary-color: var(--calm-on-pill);
   --on-surface-color: var(--calm-text);
   --on-danger-color: #fff;
-  --on-error-color: #fff;
-  --on-info-color: var(--calm-text);
-  --on-success-color: var(--calm-text);
-  --on-warning-color: var(--calm-text);
+  --on-error-color: var(--calm-on-pill);
+  /* Text on the info, success and warning fills (tooltips): the info fill is
+   * the text colour itself, so its text takes the pill's; success keeps dark
+   * text in both themes, warning flips with the pill. */
+  --on-info-color: var(--calm-on-pill);
+  --on-success-color: #141416;
+  --on-warning-color: var(--calm-on-pill);
 
   --main-font-family: var(--sans-font-family);
   --main-font-size: 16px;
