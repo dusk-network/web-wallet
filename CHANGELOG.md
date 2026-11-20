@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say above the recovery phrase, wherever it's shown to be written down, to make sure no one can see the screen
 - Say a fee far above the network's price in one line beside it, as the Dusk Wallet extension says a site's: "High fee. It's 50 times the network's price.", from twice that price, whether the fee editor or custom gas in Settings set it; a price raised to what a busy network asks is never one
 - Say what a pasted message gets wrong against its link, as "The message says 0.002 DUSK; its link asks 0.15 DUSK.", and keep what was pasted in To
 - Refuse a pasted request whose line names its .dusk name with a spaced or look-alike dot, says a bare "Total 0.15", or names another's address, unlike its link

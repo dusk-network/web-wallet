@@ -283,6 +283,31 @@ describe("Create", async () => {
     expect(nextButton).toBeEnabled();
   });
 
+  // Persona round 41: nothing said to check that no one sees the screen
+  // while the words show.
+  it("says to make sure no one can see the screen, in one line above the words", async () => {
+    const { container, getAllByRole, getByRole } = render(Create, baseOptions);
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+
+    const line = getByRole("heading", {
+      level: 3,
+      name: "Make sure no one can see your screen.",
+    });
+    const words = /** @type {HTMLElement} */ (
+      container.querySelector(".dusk-words")
+    );
+
+    expect(line.compareDocumentPosition(words)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it("correctly renders the Mnemonic Preview page", async () => {
     const { getByRole, getAllByRole } = render(Create, baseOptions);
 
