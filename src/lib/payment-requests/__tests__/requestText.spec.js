@@ -15,6 +15,22 @@ import {
 const LINK =
   "https://apps.testnet.dusk.network/wallet/dashboard/send?to=abc&amount=0.03&network=testnet";
 
+/**
+ * A value as a whole, never part of another: 0.03 DUSK, not 10.03 DUSK.
+ *
+ * @param {string} value
+ */
+const whole = (value) =>
+  `(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w)`;
+
+/**
+ * Text that has each of these values, as a whole.
+ *
+ * @param {string[]} values
+ */
+const having = (...values) =>
+  new RegExp(values.map((value) => `(?=.*${whole(value)})`).join(""), "s");
+
 describe("What Share and Copy give of a request", () => {
   it("says whose it is, what it asks and its memo in a line, its test network where it isn't Mainnet, then its link", () => {
     /** @param {string} text */
@@ -24,14 +40,9 @@ describe("What Share and Copy give of a request", () => {
       { language: "es-ES", name: "sofiadesign.dusk", net: networks.testnet },
     );
 
-    for (const value of [
-      "sofiadesign.dusk",
-      "0,03 DUSK",
-      "Testnet",
-      "Factura F-2026-071",
-    ]) {
-      expect(lineOf(onTestnet)).toContain(value);
-    }
+    expect(lineOf(onTestnet)).toMatch(
+      having("sofiadesign.dusk", "0,03 DUSK", "Testnet", "Factura F-2026-071"),
+    );
     expect(onTestnet.endsWith(LINK)).toBe(true);
 
     // On Mainnet, a name given here, no memo.
@@ -40,8 +51,7 @@ describe("What Share and Copy give of a request", () => {
       { language: "en-SG", name: "Chen", net: networks.mainnet },
     );
 
-    expect(lineOf(onMainnet)).toContain("Chen");
-    expect(lineOf(onMainnet)).toContain("0.02 DUSK");
+    expect(lineOf(onMainnet)).toMatch(having("Chen", "0.02 DUSK"));
     expect(lineOf(onMainnet)).not.toMatch(/testnet|mainnet/i);
     expect(onMainnet.endsWith(LINK)).toBe(true);
 
@@ -51,8 +61,7 @@ describe("What Share and Copy give of a request", () => {
       { language: "en", name: "", net: networks.testnet },
     );
 
-    expect(lineOf(anyAmount)).toContain("Testnet");
-    expect(lineOf(anyAmount)).toContain("chicken rice");
+    expect(lineOf(anyAmount)).toMatch(having("Testnet", "chicken rice"));
     expect(lineOf(anyAmount)).not.toMatch(/\d/);
     expect(anyAmount.endsWith(LINK)).toBe(true);
   });
@@ -161,14 +170,7 @@ describe("What's pasted of a request", () => {
       amount: "",
       elsewhere: null,
       memo: "",
-      problem: expect.stringMatching(
-        new RegExp(
-          values
-            .map((value) => `(?=.*${value.replaceAll(".", "\\.")})`)
-            .join(""),
-          "s",
-        ),
-      ),
+      problem: expect.stringMatching(having(...values)),
       to: "",
     });
     const said = (/** @type {string} */ link) =>
@@ -236,7 +238,7 @@ describe("What's pasted of a request", () => {
           "en",
           new Map([["sofiadesign.dusk", owner]]),
         ),
-      ).toStrictEqual(refused("sofiadesign.dusk", "25z9o6", "5Etftt"));
+      ).toStrictEqual(refused("sofiadesign.dusk", "25z9o6…5Etftt"));
     }
 
     expect(

@@ -61,19 +61,23 @@ describe("AmountInCurrency", () => {
     expect(prices).not.toHaveBeenCalled();
 
     await rerender({ lux: 2_000_000_000n });
-    await vi.waitFor(() => expect(shown(container)).toMatch(/\$1\.00/));
+    await vi.waitFor(() =>
+      expect(shown(container)).toMatch(/(^|[^\d.,])\$1\.00(?!\d)/),
+    );
 
     // As the amount is typed: what it comes to, at the same price.
     await rerender({ lux: 4_000_000_000n });
 
-    expect(shown(container)).toMatch(/\$2\.00/);
+    expect(shown(container)).toMatch(/(^|[^\d.,])\$2\.00(?!\d)/);
     expect(prices).toHaveBeenCalledOnce();
 
     // Five minutes on, while it still shows: the price now.
     prices.mockResolvedValue(answer("usd", 0.75));
     await vi.advanceTimersByTimeAsync(PRICE_MAX_AGE_MS);
 
-    await vi.waitFor(() => expect(shown(container)).toMatch(/\$3\.00/));
+    await vi.waitFor(() =>
+      expect(shown(container)).toMatch(/(^|[^\d.,])\$3\.00(?!\d)/),
+    );
     expect(prices).toHaveBeenCalledTimes(2);
   });
 
@@ -94,7 +98,9 @@ describe("AmountInCurrency", () => {
     prices.mockResolvedValue(answer("chf", 0.5));
     await vi.advanceTimersByTimeAsync(30_000);
 
-    await vi.waitFor(() => expect(shown(container)).toMatch(/CHF\s1\.00/));
+    await vi.waitFor(() =>
+      expect(shown(container)).toMatch(/CHF\s1\.00(?!\d)/),
+    );
     expect(prices).toHaveBeenCalledTimes(2);
   });
 });

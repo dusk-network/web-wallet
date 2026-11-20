@@ -7,7 +7,13 @@ import {
   it,
   vi,
 } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+} from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { PRICE_CURRENCIES } from "@dusk-network/app-core/amounts";
 import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
@@ -21,6 +27,10 @@ import {
   walletStore,
 } from "$lib/stores";
 import vault from "$lib/vault";
+import {
+  sendPasswordLimit,
+  setSendPasswordLimit,
+} from "$lib/security/sendPassword";
 import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -54,6 +64,20 @@ const setCustomGas = async (rendered) => {
   await openAdvanced(rendered);
   await fireEvent.click(rendered.getByRole("switch", { name: "Custom gas" }));
 };
+
+/**
+ * The Advanced section, as its button says which it opens.
+ *
+ * @param {import("@testing-library/svelte").RenderResult<any>} rendered
+ */
+const advancedOf = (rendered) =>
+  /** @type {HTMLElement} */ (
+    document.getElementById(
+      rendered
+        .getByRole("button", { name: "Advanced" })
+        .getAttribute("aria-controls") ?? "",
+    )
+  );
 
 vi.mock("$lib/stores", async (importOriginal) => {
   /** @type {WalletStore} */
@@ -199,26 +223,31 @@ describe("Settings", () => {
 
   it("should say what custom gas costs at most in DUSK, and warn under the minimum gas limit while it is typed", async () => {
     const rendered = render(Settings);
-    const { getByLabelText, getByText, queryByText } = rendered;
+    const { getByLabelText } = rendered;
 
     await setCustomGas(rendered);
 
     const limitInput = asInput(getByLabelText(/^gas limit$/i));
+    /** The one cost Advanced says, if it says one. */
+    const costSaid = () => within(advancedOf(rendered)).queryByText(/\d DUSK/);
 
-    expect(getByText(/0\.05 DUSK/)).toBeInTheDocument();
+    // The highest default limit at the network's price.
+    expect(costSaid()).toHaveTextContent(/(?<![\d.,])0\.05 DUSK\b/);
 
     await fireInput(limitInput, "1500000");
 
+    // The minimum said under the limit, and no cost for it.
     expect(limitInput).toHaveAttribute("aria-invalid", "true");
-    expect(limitInput).toHaveAccessibleDescription(/2,000,000/);
-    // No cost said for a limit under the minimum.
-    expect(queryByText(/\d DUSK/)).toBeNull();
+    expect(limitInput).toHaveAccessibleDescription(
+      /(?<![\d.,])2,000,000(?![\d]|[.,]\d)/,
+    );
+    expect(costSaid()).toBeNull();
 
     await fireInput(limitInput, "3000000");
 
     expect(limitInput).toHaveAttribute("aria-invalid", "false");
     expect(limitInput).not.toHaveAccessibleDescription();
-    expect(getByText(/0\.003 DUSK/)).toBeInTheDocument();
+    expect(costSaid()).toHaveTextContent(/(?<![\d.,])0\.003 DUSK\b/);
   });
 
   it("should show stored custom gas until the gas settings are reset", async () => {
@@ -334,6 +363,30 @@ describe("Settings", () => {
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
+    });
+
+    it("should offer fingerprint or face unlock again afterwards, whatever the device showed before", async () => {
+      const NO_PRF = `${CONFIG.LOCAL_STORAGE_APP_KEY}-passkey-no-prf`;
+
+      localStorage.setItem(NO_PRF, String(Date.now()));
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+
+      expect(localStorage.getItem(NO_PRF)).toBeNull();
+    });
+
+    it("should turn off the password on big sends, as the settings go", async () => {
+      setSendPasswordLimit(1n);
+
+      const { getByRole } = render(Settings);
+
+      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
+      await resetDone();
+
+      expect(sendPasswordLimit()).toBeNull();
     });
 
     it("should keep no place or anything typed for what comes after", async () => {

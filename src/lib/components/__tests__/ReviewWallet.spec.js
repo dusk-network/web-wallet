@@ -47,14 +47,15 @@ describe("ReviewWallet", () => {
 
     const { id } = await addWallet(B, PASSWORD);
     const two = render(ReviewWallet);
+    const from = () => two.container.querySelector(".review-wallet");
 
-    expect(two.container).toHaveTextContent("Wallet 2");
-    expect(two.container).toHaveTextContent("Profile 1");
+    // The wallet, then its profile.
+    expect(from()).toHaveTextContent(/\bWallet 2\W+Profile 1$/);
 
     await renameWallet(id, "Savings");
 
-    await vi.waitFor(() => expect(two.container).toHaveTextContent("Savings"));
-    expect(two.container).not.toHaveTextContent("Wallet 2");
-    expect(two.container).toHaveTextContent("Profile 1");
+    await vi.waitFor(() =>
+      expect(from()).toHaveTextContent(/\bSavings\W+Profile 1$/),
+    );
   });
 });

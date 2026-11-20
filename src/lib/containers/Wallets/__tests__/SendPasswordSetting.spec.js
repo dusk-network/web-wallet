@@ -55,6 +55,15 @@ describe("the password on big sends, in Settings", () => {
       ),
     );
 
+  /**
+   * The amount it asks above, as the line beside Change gives it: none
+   * while it's off, or being changed.
+   *
+   * @param {import("@testing-library/svelte").RenderResult<any>} view
+   */
+  const limitShown = ({ container }) =>
+    container.querySelector(".send-password-setting__on");
+
   it("turns on for the amount typed, once the password is checked against the vault", async () => {
     const view = render(SendPasswordSetting);
 
@@ -77,7 +86,9 @@ describe("the password on big sends, in Settings", () => {
       expect(sendPasswordLimit()).toBe(1_000_500_000_000n),
     );
 
-    expect(await view.findByText(/1,000\.5 DUSK/)).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])1,000\.5 DUSK\b/),
+    );
     expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     // The password goes with the form.
     expect(
@@ -151,7 +162,7 @@ describe("the password on big sends, in Settings", () => {
 
     expect(sendPasswordLimit()).toBe(DUSK);
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
-    expect(view.container).toHaveTextContent(/\b1 DUSK\b/);
+    expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])1 DUSK\b/);
   });
 
   it("goes back to off on Cancel when it was being turned on", async () => {
@@ -172,7 +183,9 @@ describe("the password on big sends, in Settings", () => {
       new StorageEvent("storage", { storageArea: localStorage }),
     );
 
-    expect(await view.findByText(/\b2 DUSK\b/)).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])2 DUSK\b/),
+    );
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
   });
 });

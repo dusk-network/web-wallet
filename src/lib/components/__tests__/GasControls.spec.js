@@ -23,6 +23,15 @@ const fireInput = (input, value) =>
 /** @param {HTMLElement} element */
 const asInput = (element) => /** @type {HTMLInputElement} */ (element);
 
+/**
+ * Matches `value` whole: not inside a longer figure, so "1 LUX" matches
+ * neither "11 LUX" nor "0.1 LUX".
+ *
+ * @param {string} value As the page writes it, as "20,000,000 gas"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
 describe("GasControls", () => {
   const baseProps = {
     limit: 20n,
@@ -83,16 +92,14 @@ describe("GasControls", () => {
     await fireInput(limitInput, 9);
 
     expect(limitInput).toHaveAttribute("aria-invalid", "true");
-    expect(limitInput).toHaveAccessibleDescription(
-      expect.stringContaining("10"),
-    );
+    expect(limitInput).toHaveAccessibleDescription(/minimum/i);
+    expect(limitInput).toHaveAccessibleDescription(wholeFigure("10"));
 
     await fireInput(limitInput, 101);
 
     expect(limitInput).toHaveAttribute("aria-invalid", "true");
-    expect(limitInput).toHaveAccessibleDescription(
-      expect.stringContaining("100"),
-    );
+    expect(limitInput).toHaveAccessibleDescription(/maximum/i);
+    expect(limitInput).toHaveAccessibleDescription(wholeFigure("100"));
 
     await fireInput(limitInput, 50);
 
@@ -107,14 +114,13 @@ describe("GasControls", () => {
     await fireInput(priceInput, 0);
 
     expect(priceInput).toHaveAttribute("aria-invalid", "true");
-    expect(priceInput).toHaveAccessibleDescription(
-      expect.stringContaining("1 LUX"),
-    );
+    expect(priceInput).toHaveAccessibleDescription(/minimum/i);
+    expect(priceInput).toHaveAccessibleDescription(wholeFigure("1 LUX"));
 
     // Over the gas limit, 20.
     await fireInput(priceInput, 21);
 
     expect(priceInput).toHaveAttribute("aria-invalid", "true");
-    expect(priceInput).toHaveAccessibleDescription(/./);
+    expect(priceInput).toHaveAccessibleDescription(/gas limit/i);
   });
 });

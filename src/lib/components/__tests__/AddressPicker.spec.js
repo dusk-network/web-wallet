@@ -29,6 +29,19 @@ vi.mock("$app/navigation", () => ({
   ),
 }));
 
+/**
+ * The text an element shows, without what only screen readers get.
+ *
+ * @param {Element} element
+ */
+const getShownText = (element) => {
+  const shown = /** @type {Element} */ (element.cloneNode(true));
+
+  shown.querySelectorAll(".sr-only").forEach((node) => node.remove());
+
+  return shown.textContent?.trim() ?? "";
+};
+
 describe("AddressPicker", () => {
   const { currentProfile, profiles } = get(mockedWalletStore);
 
@@ -105,7 +118,9 @@ describe("AddressPicker", () => {
     const namedProfiles = [1, 2].map(
       (byte) => new Profile(new Uint8Array(64 + 96).fill(byte)),
     );
-    const firstAccount = namedProfiles[0].account.toString();
+    const [firstAccount, secondAccount] = namedProfiles.map((profile) =>
+      profile.account.toString(),
+    );
     const namedProps = {
       currentProfile: namedProfiles[0],
       profiles: namedProfiles,
@@ -114,6 +129,136 @@ describe("AddressPicker", () => {
     /** @param {HTMLElement} container */
     const getTrigger = (container) =>
       getAsHTMLElement(container, ".address-picker__trigger");
+
+    /**
+     * What the trigger shows the current profile as, under its label: its
+     * name, or its account shortened while it has none.
+     *
+     * @param {HTMLElement} container
+     */
+    const getTriggerIdentity = (container) =>
+      getShownText(
+        getAsHTMLElement(
+          getTrigger(container),
+          ".address-picker__name, .address-picker__account",
+        ),
+      );
+
+    /** Lets pending lookups settle. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve));
+
+    it("should show what a lookup finds over the name last verified", async () => {
+      const { container } = render(AddressPicker, {
+        ...namedProps,
+        getKnownName: () => "alice.dusk",
+        getName: vi.fn().mockResolvedValue(""),
+      });
+
+      await settle();
+
+      // None found: the account, and nothing of the name kept from before.
+      expect(getTriggerIdentity(container)).toBe(shortenAddress(firstAccount));
+      expect(getTrigger(container)).not.toHaveAccessibleName(/alice\.dusk/);
+    });
+
+    it("should look up the name of the profile switched to, and drop the previous one's", async () => {
+      /** @type {(name: string) => void} */
+      let finishLookup = () => {};
+
+      const getName = vi.fn((account) =>
+        account === firstAccount
+          ? Promise.resolve("alice.dusk")
+          : new Promise((resolve) => {
+              finishLookup = resolve;
+            }),
+      );
+      const { container, rerender } = render(AddressPicker, {
+        ...namedProps,
+        getName,
+      });
+
+      await vi.waitFor(() =>
+        expect(getTriggerIdentity(container)).toBe("alice.dusk"),
+      );
+
+      await rerender({ currentProfile: namedProfiles[1] });
+
+      // The second profile's account while its own name is looked up, never
+      // the first one's name.
+      expect(getName).toHaveBeenLastCalledWith(secondAccount);
+      expect(getTriggerIdentity(container)).toBe(shortenAddress(secondAccount));
+      expect(getTrigger(container)).not.toHaveAccessibleName(/alice\.dusk/);
+
+      finishLookup("bob.dusk");
+
+      await vi.waitFor(() => {
+        expect(getTriggerIdentity(container)).toBe("bob.dusk");
+        expect(getTrigger(container)).toHaveAccessibleName(/(^|\s)bob\.dusk\b/);
+      });
+    });
+
+    it("should look the name up again with a new lookup, as on another network", async () => {
+      const { container, rerender } = render(AddressPicker, {
+        ...namedProps,
+        getName: vi.fn().mockResolvedValue("alice.dusk"),
+      });
+
+      await vi.waitFor(() =>
+        expect(getTriggerIdentity(container)).toBe("alice.dusk"),
+      );
+
+      const getName = vi.fn().mockResolvedValue("");
+
+      await rerender({ getName });
+      await settle();
+
+      // None on the other network: the account, never the name from before.
+      expect(getName).toHaveBeenCalledExactlyOnceWith(firstAccount);
+      expect(getTriggerIdentity(container)).toBe(shortenAddress(firstAccount));
+      expect(getTrigger(container)).not.toHaveAccessibleName(/alice\.dusk/);
+    });
+
+    // The pill is the picker the top bar shows: its name follows the
+    // profile's lookup alone.
+    it("should never show in the top bar's pill what the previous profile's lookup finds after the switch", async () => {
+      /** @type {Record<string, (name: string) => void>} */
+      const finish = {};
+
+      const getName = vi.fn(
+        (account) =>
+          new Promise((resolve) => {
+            finish[account] = resolve;
+          }),
+      );
+      const { container, rerender } = render(AddressPicker, {
+        ...namedProps,
+        compact: true,
+        getName,
+      });
+
+      await vi.waitFor(() =>
+        expect(getName).toHaveBeenCalledWith(firstAccount),
+      );
+      await rerender({ currentProfile: namedProfiles[1] });
+
+      // The first profile's answer comes once the second one shows.
+      finish[firstAccount]("alice.dusk");
+      await settle();
+
+      expect(getTrigger(container)).not.toHaveTextContent("alice");
+      expect(getTrigger(container)).not.toHaveAccessibleName(/alice/);
+
+      finish[secondAccount]("bob.dusk");
+
+      await vi.waitFor(() => {
+        expect(
+          getShownText(
+            getAsHTMLElement(container, ".address-picker__compact-name"),
+          ),
+        ).toBe("bob.dusk");
+        expect(getTrigger(container)).toHaveAccessibleName(/(^|\s)bob\.dusk\b/);
+      });
+    });
 
     it("should keep both copy buttons of a profile with a name, copying its full public and shielded addresses", async () => {
       const { container, findAllByText, getAllByRole } = render(AddressPicker, {
@@ -187,7 +332,15 @@ describe("AddressPicker", () => {
       const copyButtonsOf = (/** @type {Element} */ profile) =>
         profile.querySelectorAll(".address-picker__copy-button");
 
-      expect(other).toHaveTextContent(shortenAddress(OTHER_ACCOUNTS[1]));
+      // The row picked below shows the account it opens at.
+      expect(
+        getShownText(
+          getAsHTMLElement(
+            /** @type {HTMLElement} */ (second),
+            ".address-picker__address-value",
+          ),
+        ),
+      ).toBe(shortenAddress(OTHER_ACCOUNTS[1]));
 
       // Copied as they last showed: none where nothing was seen.
       expect(copyButtonsOf(first)).toHaveLength(2);

@@ -14,6 +14,7 @@ import {
   updateDepositTransaction,
 } from "$lib/bridge/depositActivityStorage";
 import {
+  depositStageBadge,
   depositStageLabel,
   depositStageMessage,
   depositStageProgress,
@@ -146,7 +147,8 @@ describe("DuskEVM deposit activity", () => {
       stage: "l2_pending",
     };
 
-    expect(depositStageLabel(pending)).toMatch(/\S/);
+    // On its way, at the second step.
+    expect(depositStageBadge(pending)).toBe("warning");
     expect(depositStageProgress(pending)).toBe(2);
     expect(isDepositDelayed(pendingForDelay, 599_999)).toBe(false);
     expect(isDepositDelayed(pendingForDelay, 600_000)).toBe(true);
@@ -156,33 +158,36 @@ describe("DuskEVM deposit activity", () => {
         1_801_000,
       ),
     ).toBe(true);
-    // A stalled deposit is labelled as one, not as on its way.
-    expect(
-      depositStageLabel({
-        createdAt: Date.now() - 1_800_000,
-        progressedAt: Date.now() - 1_800_000,
-        stage: "l1_pending",
-      }),
-    ).not.toBe(
-      depositStageLabel({
-        createdAt: Date.now(),
-        progressedAt: Date.now(),
-        stage: "l1_pending",
-      }),
-    );
+    // A stalled deposit is said to be delayed, at the step it stalled at.
+    const stalled = {
+      createdAt: Date.now() - 1_800_000,
+      progressedAt: Date.now() - 1_800_000,
+      stage: "l1_pending",
+    };
+
+    expect(depositStageLabel(stalled)).toMatch(/delayed/i);
+    expect(depositStageBadge(stalled)).toBe("warning");
+    expect(depositStageProgress(stalled)).toBe(1);
     expect(
       isDepositDelayed({ createdAt: 1_000, stage: "l2_pending" }, 301_000),
     ).toBe(true);
-    // Failed on Dusk or on DuskEVM: each says its own.
-    const failedOn = (/** @type {string} */ failureLayer) =>
-      depositStageMessage({
-        failureLayer,
-        stage: "failed",
-        statusMessage: "Low-level SDK failure",
-      });
+    // Failed on Dusk, it never entered the bridge. Failed on DuskEVM, it
+    // did: it's never to be sent again, and recovery is asked for.
+    const failedOn = (/** @type {string} */ failureLayer) => ({
+      failureLayer,
+      stage: "failed",
+      statusMessage: "Low-level SDK failure",
+    });
 
-    expect(failedOn("l1")).toMatch(/\S/);
-    expect(failedOn("l2")).toMatch(/\S/);
-    expect(failedOn("l1")).not.toBe(failedOn("l2"));
+    expect(depositStageBadge(failedOn("l1"))).toBe("error");
+    expect(depositStageProgress(failedOn("l1"))).toBe(1);
+    expect(depositStageMessage(failedOn("l1"))).toMatch(
+      /did not enter the bridge/i,
+    );
+    expect(depositStageMessage(failedOn("l1"))).not.toMatch(/recovery/i);
+    expect(depositStageBadge(failedOn("l2"))).toBe("error");
+    expect(depositStageProgress(failedOn("l2"))).toBe(2);
+    expect(depositStageMessage(failedOn("l2"))).toMatch(/don't send it again/i);
+    expect(depositStageMessage(failedOn("l2"))).toMatch(/recovery/i);
   });
 });

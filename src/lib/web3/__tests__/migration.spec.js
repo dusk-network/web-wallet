@@ -36,8 +36,8 @@ const send = () =>
     /** @type {`0x${string}`} */ (OWNER),
   );
 
-/** What a failure says, whatever its words. */
-const SENTENCE = expect.stringMatching(/\S/);
+/** What a failure says where nothing went out: that nothing was sent. */
+const SENTENCE = expect.stringMatching(/\bnothing was sent\b/i);
 
 /** @param {() => Promise<unknown>} doing */
 const failureOf = (doing) =>
@@ -245,7 +245,9 @@ describe("what an EVM wallet's error proves", () => {
       expect(failure).toMatchObject({
         mayHaveGoneOut: true,
         outcomeUnknown: true,
+        sentence: expect.not.stringMatching(/\bnothing was sent\b/i),
       });
+      expect(failure.sentence).toMatch(/\bmay have reached\b/i);
       expect(failure).not.toHaveProperty("canRetry");
     },
   );

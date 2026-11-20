@@ -121,6 +121,13 @@ async function dataOf({ key, profile }) {
 const ALL = { cache: true, history: 1, sent: 1, shielded: true };
 
 /**
+ * A block's number as said, whole: 42 matches neither 142, 4.2 nor 42,000.
+ *
+ * @param {number} n
+ */
+const blockSaid = (n) => new RegExp(`(?<![\\d.,])${n}(?!\\d|[.,]\\d)`);
+
+/**
  * Settings, at the Resync under Advanced.
  */
 async function openResync() {
@@ -176,21 +183,23 @@ describe("Settings › Resync", () => {
     expect(
       options.map((option) => /** @type {HTMLOptionElement} */ (option).value),
     ).toEqual(["creation", "genesis", "typed"]);
-    expect(options[0]).toHaveTextContent(/\b42\b/);
+    expect(options[0]).toHaveTextContent(blockSaid(42));
 
     // Asked first, in the page: this wallet, from block 42.
     await fireEvent.click(
       within(group).getByRole("button", { name: "Resync" }),
     );
 
-    expect(within(group).getByText(/Wallet 2/)).toHaveTextContent(/\b42\b/);
+    expect(within(group).getByText(/\bWallet 2(?!\d)/)).toHaveTextContent(
+      blockSaid(42),
+    );
     expect(notesSpy).not.toHaveBeenCalled();
 
     await fireEvent.click(
       within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() =>
-      expect(toasts).toEqual([expect.stringMatching(/\b42\b/)]),
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(42))]),
     );
 
     expect(notesFrom()).toEqual([42n]);
@@ -214,7 +223,7 @@ describe("Settings › Resync", () => {
 
     // At most the network's latest block, 123.
     await vi.waitFor(() =>
-      expect(height).toHaveAccessibleDescription(/\b123\b/),
+      expect(height).toHaveAccessibleDescription(blockSaid(123)),
     );
 
     await fireEvent.input(height, { target: { value: "124" } });
@@ -238,7 +247,7 @@ describe("Settings › Resync", () => {
       within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() =>
-      expect(toasts).toEqual([expect.stringMatching(/\b123\b/)]),
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(123))]),
     );
 
     await fireEvent.change(from, { target: { value: "genesis" } });
@@ -250,7 +259,7 @@ describe("Settings › Resync", () => {
     );
     await vi.waitFor(() => expect(toasts).toHaveLength(2));
 
-    expect(toasts.at(-1)).toMatch(/\b0\b/);
+    expect(toasts.at(-1)).toMatch(blockSaid(0));
     expect(notesFrom()).toEqual([123n, 0n]);
   });
 
@@ -315,7 +324,9 @@ describe("Settings › Resync", () => {
     );
     // Said while it runs: from block 42.
     await vi.waitFor(() =>
-      expect(within(group).getByRole("status")).toHaveTextContent(/\b42\b/),
+      expect(within(group).getByRole("status")).toHaveTextContent(
+        blockSaid(42),
+      ),
     );
 
     expect(within(group).queryByRole("button", { name: "Resync" })).toBeNull();
@@ -328,7 +339,7 @@ describe("Settings › Resync", () => {
 
     held.resolve(undefined);
     await vi.waitFor(() =>
-      expect(toasts).toEqual([expect.stringMatching(/\b42\b/)]),
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(42))]),
     );
 
     expect(notesFrom()).toEqual([42n]);

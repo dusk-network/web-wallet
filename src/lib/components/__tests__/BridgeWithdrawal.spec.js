@@ -162,6 +162,19 @@ describe("Bridge withdrawal", () => {
     );
   });
 
+  /**
+   * What the screen says to do next on Dusk once it's sent: prove, then
+   * claim.
+   *
+   * @param {import("@testing-library/svelte").RenderResult<any>} sent
+   */
+  async function nextStepOf({ container, findByRole }) {
+    // Sent: it can be tracked from here.
+    await findByRole("link", { name: "Track withdrawal" });
+
+    return container.querySelector(".operation-result p")?.textContent ?? "";
+  }
+
   /** @param {number | null} maturitySeconds */
   const timesFor = (maturitySeconds) => ({
     chain: maturitySeconds
@@ -177,30 +190,43 @@ describe("Bridge withdrawal", () => {
     network: "testnet",
   });
 
-  // When it can be claimed after it's proved, and proved after it's sent:
-  // none said where the chain doesn't say.
+  // When it can be claimed after it's proved, and proved after it's sent,
+  // each by its step: no time where the chain says none.
   it.each([
-    [604_800, ["30 minutes", "7 days"]],
-    [10_800, ["3 hours", "30 minutes"]],
-    [null, []],
+    [
+      604_800,
+      /\bclaim (?:about )?7 days\b/i,
+      /\bprove (?:about )?30 minutes\b/i,
+    ],
+    [
+      10_800,
+      /\bclaim (?:about )?3 hours\b/i,
+      /\bprove (?:about )?30 minutes\b/i,
+    ],
   ])(
     "says when to prove and claim on Dusk once sent, for a proof maturity of %s seconds",
-    async (maturitySeconds, times) => {
+    async (maturitySeconds, claim, prove) => {
       /** @type {any} */ (bridgeTimes).set(timesFor(maturitySeconds));
 
-      const { container, findByRole } = await sendWithdrawal();
+      const sent = await sendWithdrawal();
+      const next = await nextStepOf(sent);
 
-      // Sent: it can be tracked from here.
-      await findByRole("link", { name: "Track withdrawal" });
-
-      expect(
-        (
-          container.textContent?.match(/\d+ (?:days?|hours?|minutes?)\b/g) ?? []
-        ).sort(),
-      ).toStrictEqual(times);
+      expect(next).toMatch(claim);
+      expect(next).toMatch(prove);
       expect(mocks.sendTransaction).toHaveBeenCalledOnce();
     },
   );
+
+  it("says no time to prove or claim on Dusk once sent where the chain says none", async () => {
+    /** @type {any} */ (bridgeTimes).set(timesFor(null));
+
+    const next = await nextStepOf(await sendWithdrawal());
+
+    expect(next).toMatch(/\bprove\b/i);
+    expect(next).toMatch(/\bclaim\b/i);
+    expect(next).not.toMatch(/\d/);
+    expect(mocks.sendTransaction).toHaveBeenCalledOnce();
+  });
 
   it("sends the withdrawal on DuskEVM's bridge, from the connected address, paying the wallet's public account", async () => {
     /** @type {any} */ (bridgeTimes).set(timesFor(604_800));
@@ -233,24 +259,40 @@ describe("Bridge withdrawal", () => {
   });
 
   /**
-   * Waits for the failure screen, whatever it says.
+   * The failure screen's heading and sentence, once it shows.
    *
    * @param {import("@testing-library/svelte").RenderResult<any>} rendered
    */
-  const failureShown = (rendered) =>
-    vi.waitFor(() =>
+  async function failureOf(rendered) {
+    await vi.waitFor(() =>
       expect(
         rendered.container.querySelector(".dusk-error-alert"),
       ).not.toBeNull(),
     );
 
-  it("offers to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and not after, as it may have gone out", async () => {
+    const alert = /** @type {HTMLElement} */ (
+      rendered.container.querySelector(".dusk-error-alert")
+    );
+
+    return {
+      heading:
+        alert.querySelector(".dusk-error-alert__summary")?.textContent ?? "",
+      sentence:
+        alert.querySelector(".dusk-error-alert__description")?.textContent ??
+        "",
+    };
+  }
+
+  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out", async () => {
     mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     const unreached = await sendWithdrawal();
+    const notSent = await failureOf(unreached);
 
-    await failureShown(unreached);
-
+    // Nothing went out.
+    expect(notSent.heading).toMatch(/not sent/i);
+    expect(notSent.sentence).toMatch(/nothing was sent/i);
+    expect(notSent.sentence).not.toMatch(/may have/i);
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
 
     await fireEvent.click(unreached.getByRole("button", { name: "Try again" }));
@@ -263,9 +305,12 @@ describe("Bridge withdrawal", () => {
     );
 
     const rendered = await sendWithdrawal();
+    const unknown = await failureOf(rendered);
 
-    await failureShown(rendered);
-
+    // It may have gone out: not confirmed, and nothing to send it again.
+    expect(unknown.heading).toMatch(/not confirmed/i);
+    expect(unknown.sentence).toMatch(/may have reached the network/i);
+    expect(unknown.sentence).not.toMatch(/nothing was sent/i);
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
@@ -356,8 +401,11 @@ describe("Bridge withdrawal", () => {
       await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
       get(sendPasswordAsk)?.cancel();
 
-      await failureShown(rendered);
+      const notSent = await failureOf(rendered);
 
+      expect(notSent.heading).toMatch(/not sent/i);
+      expect(notSent.sentence).toMatch(/nothing was sent/i);
+      expect(notSent.sentence).not.toMatch(/may have/i);
       expect(rendered.getByRole("button", { name: "Try again" })).toBeVisible();
       expect(mocks.sendTransaction).not.toHaveBeenCalled();
     });

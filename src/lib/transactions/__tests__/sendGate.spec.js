@@ -76,6 +76,7 @@ describe("A send that can be called off", () => {
 
     expect(describeFailure(new SendCancelledError())).toMatchObject({
       canRetry: true,
+      sentence: expect.stringMatching(/nothing left/i),
     });
   });
 
@@ -316,7 +317,9 @@ describe("The sends waiting to go out", () => {
     const answered = Promise.withResolvers();
     const out = waiting(answered.promise);
 
-    expect(whats()).toStrictEqual([expect.stringContaining("0.01 DUSK")]);
+    expect(whats()).toStrictEqual([
+      expect.stringMatching(/(?<![\d.,])0\.01 DUSK(?!\w)/),
+    ]);
 
     out.handOver();
 
@@ -365,12 +368,13 @@ describe("The sends waiting to go out", () => {
     const shown = waitingText(send, { hidden: false, locale: "en" });
     const hidden = waitingText(send, { hidden: true, locale: "en" });
 
-    expect(shown).toContain("0.01 DUSK");
-    expect(shown).toContain("your Profile 2");
+    // Each whole: never 10.01 DUSK, nor Profile 22.
+    expect(shown).toMatch(/(?<![\d.,])0\.01 DUSK(?!\w)/);
+    expect(shown).toMatch(/\byour Profile 2(?!\w)/);
     expect(hidden).not.toContain("0.01");
-    expect(hidden).toContain("your Profile 2");
-    expect(waitingText(send, { hidden: false, locale: "de" })).toContain(
-      "0,01 DUSK",
+    expect(hidden).toMatch(/\byour Profile 2(?!\w)/);
+    expect(waitingText(send, { hidden: false, locale: "de" })).toMatch(
+      /(?<![\d.,])0,01 DUSK(?!\w)/,
     );
   });
 });

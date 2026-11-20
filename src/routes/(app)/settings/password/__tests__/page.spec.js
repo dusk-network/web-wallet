@@ -94,7 +94,7 @@ describe("Change password", () => {
     await change();
     // At least 8 characters.
     expect(next).toHaveAttribute("aria-invalid", "true");
-    expect(next).toHaveAccessibleDescription(/\b8\b/);
+    expect(next).toHaveAccessibleDescription(/(?<![\d.,])8(?!\d|[.,]\d)/);
 
     await fireEvent.input(next, { target: { value: "a new password" } });
     await fireEvent.input(again, { target: { value: "another one" } });

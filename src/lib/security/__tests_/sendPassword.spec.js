@@ -334,10 +334,12 @@ describe("the password on big sends", () => {
     it("says why it asks, with the amount chosen, and takes the focus", async () => {
       const { getByLabelText, getByRole, sending } = openDialog();
 
-      // The amount set: 1 DUSK, not a figure ending in it.
+      // Where it says why: the amount set, whole, 1 DUSK and never 0.1 or 11.
       expect(
-        getByRole("dialog", { name: "Enter your password" }),
-      ).toHaveTextContent(/(^|\s)1 DUSK/);
+        getByRole("dialog", { name: "Enter your password" }).querySelector(
+          ".send-password__why",
+        ),
+      ).toHaveTextContent(/(?<![\d.,])1 DUSK\b/);
       await vi.waitFor(() =>
         expect(getByLabelText("Password you unlock with")).toHaveFocus(),
       );
@@ -404,16 +406,20 @@ describe("the password on big sends", () => {
   });
 
   it("says a send it stopped wasn't sent, with Try again and no word of failure", async () => {
-    const { findByRole, queryByText } = render(TransactionResult, {
+    const { container, findByRole, queryByText } = render(TransactionResult, {
       maxFee: 1n,
       onRetry: () => {},
       operation: Promise.reject(new SendPasswordDeclinedError()),
     });
 
-    // Nothing went out: it may be tried again, and isn't said to have failed.
+    // Nothing went out, as it says: it may be tried again, and isn't said to
+    // have failed.
     expect(
       await findByRole("button", { name: "Try again" }),
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(".dusk-error-alert__text"),
+    ).toHaveTextContent(/not sent|nothing (was sent|left)/i);
     expect(queryByText("Transaction failed")).toBeNull();
   });
 

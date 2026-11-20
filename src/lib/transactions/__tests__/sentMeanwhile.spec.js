@@ -23,18 +23,28 @@ const hexOf = (text) =>
   ).join("");
 
 /**
- * A sentence that names each of `values`, in any order, whatever its words.
+ * A sentence that names each of `values`, in any order, whatever its words:
+ * each whole, so `0.001 DUSK` is never found in `10.001 DUSK`.
  *
  * @param {...string} values
  */
 const naming = (...values) =>
   expect.stringMatching(
     new RegExp(
-      values
-        .map((value) => `(?=.*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`)
-        .join(""),
+      `^${values
+        .map(
+          (value) =>
+            `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`,
+        )
+        .join("")}`,
     ),
   );
+
+/** What's said where it looks like the same payment. */
+const SAME = expect.stringMatching(/same payment/i);
+
+/** What's said of what it sent, where that isn't known. */
+const SOMETHING_ELSE = expect.stringMatching(/something else/i);
 
 /** When the blocks below were made: 10:02 and 10:05. */
 const AT_1002 = Date.UTC(2026, 10, 17, 10, 2);
@@ -232,10 +242,14 @@ describe("What an account sent while a send waited", () => {
         sends: [{ hash: hashOf(2), lux: 0n, memo: "", nonce: 200n, to: "" }],
         whole: true,
       });
-      // Said as where nothing is found: never as the same payment.
-      expect(sayMeanwhile(read.sends, payment, shown)).toStrictEqual(
-        sayMeanwhile(null, payment, shown),
-      );
+      // Something else, never the same payment.
+      expect(sayMeanwhile(read.sends, payment, shown)).toStrictEqual({
+        checking: false,
+        items: [],
+        memo: "",
+        same: "",
+        title: SOMETHING_ELSE,
+      });
     }
   });
 
@@ -276,7 +290,7 @@ describe("What an account sent while a send waited", () => {
       checking: false,
       items: [],
       memo: "",
-      same: expect.stringMatching(/\S/),
+      same: SAME,
       title: naming("0.001 DUSK", "Profile 2", timeLabel(AT_1002, "en")),
     });
 
@@ -318,20 +332,20 @@ describe("What an account sent while a send waited", () => {
         },
       ],
       memo: "",
-      same: expect.stringMatching(/\S/),
+      same: SAME,
       // How many.
-      title: expect.stringMatching(/\b2\b/),
+      title: expect.stringMatching(/(?<![\d.,])2(?![\d.,])/),
     });
   });
 
   it("says only that it sent something else until it's found, or where it called a contract", () => {
-    // Something else: no amount, nor whom.
+    // Something else, with no amount, nor whom.
     const generic = {
       checking: false,
       items: [],
       memo: "",
       same: "",
-      title: expect.not.stringMatching(/DUSK|Profile 2/),
+      title: expect.stringMatching(/^(?!.*(DUSK|Profile 2)).*something else/i),
     };
 
     expect(sayMeanwhile(null, payment, shown)).toStrictEqual(generic);

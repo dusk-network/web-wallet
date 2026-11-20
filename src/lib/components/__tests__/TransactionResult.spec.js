@@ -47,8 +47,11 @@ describe("TransactionResult", () => {
   /** A send waiting that nothing of it has left the wallet yet. */
   const NOTHING_LEFT_YET = /nothing has left/i;
 
-  /** That it may have gone out, as a send handed over without an answer. */
-  const MAY_HAVE_GONE_OUT = /may have/i;
+  /**
+   * That it may have gone out, as a send handed over without an answer: gone
+   * out or reached the network, never "may have failed".
+   */
+  const MAY_HAVE_GONE_OUT = /may have (gone out|reached)/i;
 
   // Chen's: on slow Wi-Fi, with its answer held back, the screen said only
   // "Processing transaction".
@@ -295,6 +298,15 @@ describe("TransactionResult", () => {
         'a[href="/some-base-path/dashboard/transactions"]',
       );
 
+    /** Said not sent: nothing left the wallet. */
+    const NOT_SENT = /not sent/i;
+
+    /**
+     * Said not sent, or failed before it went out: refused, or never made,
+     * with nothing sent either way.
+     */
+    const SAID_FAILED = /not sent|failed/i;
+
     /**
      * What the failure's heading and sentence say.
      *
@@ -311,21 +323,34 @@ describe("TransactionResult", () => {
 
     it.each([
       // Nothing left the wallet, and no fee was charged.
-      ["the node out of reach", new TypeError("Failed to fetch"), /no fee/i],
+      [
+        "the node out of reach",
+        new TypeError("Failed to fetch"),
+        NOT_SENT,
+        /no fee/i,
+      ],
       [
         "the node too slow",
         new Error("Timed out while connecting to the network"),
+        NOT_SENT,
         /no fee/i,
       ],
-      ["a send called off", new SendCancelledError(), /nothing left/i],
+      [
+        "a send called off",
+        new SendCancelledError(),
+        NOT_SENT,
+        /nothing left/i,
+      ],
       [
         "a send taken to its review instead",
         new SendTakenToReviewError(),
+        NOT_SENT,
         /nothing left/i,
       ],
       [
         "the password on big sends not given",
         new SendPasswordDeclinedError(),
+        NOT_SENT,
         /password/i,
       ],
       // Refused, or never made: why, by its key words.
@@ -334,47 +359,61 @@ describe("TransactionResult", () => {
         refusal(
           "this transaction is invalid Value spent larger than account holds",
         ),
+        SAID_FAILED,
         /balance/i,
       ],
-      ["too little shielded DUSK", new Error("Insufficient funds"), /balance/i],
+      [
+        "too little shielded DUSK",
+        new Error("Insufficient funds"),
+        SAID_FAILED,
+        /balance/i,
+      ],
       [
         "a refusal for the gas price",
         refusal("gas price lower than minimum 1"),
+        SAID_FAILED,
         /gas price/i,
       ],
       [
         "a refusal for the gas limit",
         refusal("gas limit lower than minimum 5000000"),
+        SAID_FAILED,
         /gas limit/i,
       ],
       [
         "a refusal for another reason",
         refusal("Maximum count of transactions exceeded 10000"),
+        SAID_FAILED,
         /refused/i,
       ],
       [
         "the wallet switched or locked meanwhile",
         new WalletChangedError(),
+        SAID_FAILED,
         /changed or locked/i,
       ],
       [
         "an address it can't read",
         named("DriverDeserializeError", "Failed to deserialize the buffer"),
+        SAID_FAILED,
         /address/i,
       ],
       [
         "a proof the network refused",
         refusal("this transaction is invalid Invalid proof"),
+        SAID_FAILED,
         /sign/i,
       ],
       [
         "a send declined in the EVM wallet",
         named("UserRejectedRequestError", "User rejected the request."),
+        SAID_FAILED,
         /declined/i,
       ],
       [
         "any other failure before it went out",
         new Error("Something no one expected"),
+        SAID_FAILED,
         /before it was sent/i,
       ],
       // A refusal holds once it was handed over too.
@@ -385,22 +424,25 @@ describe("TransactionResult", () => {
             "this transaction is invalid Value spent larger than account holds",
           ),
         ),
+        SAID_FAILED,
         /balance/i,
       ],
       [
         "a refusal for another reason as it was asked to broadcast it",
         outcomeUnknown(refusal("Maximum count of transactions exceeded 10")),
+        SAID_FAILED,
         /refused/i,
       ],
     ])(
       "should say nothing went out, and why, and offer Try again: %s",
-      async (_, error, why) => {
+      async (_, error, state, why) => {
         const { container, getByRole } = await failed(error);
         const { heading, sentence } = said(container);
 
-        expect(heading).toMatch(/not sent|failed/i);
+        expect(heading).toMatch(state);
         expect(sentence).toMatch(why);
-        expect(`${heading} ${sentence}`).not.toMatch(/not confirmed|may have/i);
+        expect(`${heading} ${sentence}`).not.toMatch(/not confirmed/i);
+        expect(`${heading} ${sentence}`).not.toMatch(MAY_HAVE_GONE_OUT);
         expect(historyLink(container)).toBeNull();
 
         await fireEvent.click(getByRole("button", { name: "Try again" }));

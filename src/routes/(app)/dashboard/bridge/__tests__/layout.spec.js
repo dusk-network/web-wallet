@@ -17,13 +17,8 @@ const migration = {
   sender: "s",
 };
 
-/**
- * What the layout says around an empty page: only ever that new activity
- * isn't kept.
- *
- * @param {HTMLElement} container
- */
-const said = (container) => container.textContent?.trim() ?? "";
+/** What the layout says while new Bridge activity isn't kept here. */
+const UNKEPT = /isn't kept/i;
 
 /** A wallet kept from before incarnations unlocks: whether it has one. */
 async function unlock() {
@@ -54,7 +49,7 @@ describe("Bridge", () => {
 
     const { container } = render(BridgeLayout);
 
-    expect(said(container)).not.toBe("");
+    expect(container).toHaveTextContent(UNKEPT);
 
     full.mockRestore();
     rememberMigration(migration);
@@ -69,7 +64,7 @@ describe("Bridge", () => {
     await tick();
     rememberMigration(migration);
 
-    expect(said(container)).toBe("");
+    expect(container).not.toHaveTextContent(UNKEPT);
     expect(JSON.parse(localStorage.getItem(MIGRATIONS) ?? "[]")).toMatchObject([
       migration,
     ]);

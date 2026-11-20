@@ -4,8 +4,18 @@ import { stakeActions } from "../stakeActions";
 
 const DUSK = 1_000_000_000n;
 
-/** A reason, whatever its words. */
-const said = expect.stringMatching(/./);
+/**
+ * Matches `value` whole: not inside a longer figure, so "1 DUSK" matches
+ * neither "11 DUSK" nor "0.1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "0.05 DUSK"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/** Why Unstake is off, and why Claim is, by their key words. */
+const noUnstake = expect.stringMatching(/unstake/);
+const noClaim = expect.stringMatching(/claim/);
 
 describe("stakeActions", () => {
   const base = {
@@ -35,7 +45,7 @@ describe("stakeActions", () => {
         hasPastStaking: true,
         reward: DUSK,
       }).reasons,
-    ).toStrictEqual([said]);
+    ).toStrictEqual([expect.stringMatching(/natively/)]);
   });
 
   it("lets rewards be claimed after unstaking, and a stake be unstaked before it earns", () => {
@@ -44,12 +54,12 @@ describe("stakeActions", () => {
     ).toStrictEqual({
       canClaim: true,
       canUnstake: false,
-      reasons: [said],
+      reasons: [noUnstake],
     });
     expect(stakeActions({ ...base, staked: 1_000n * DUSK })).toStrictEqual({
       canClaim: false,
       canUnstake: true,
-      reasons: [said],
+      reasons: [noClaim],
     });
   });
 
@@ -91,7 +101,7 @@ describe("stakeActions", () => {
     ).toStrictEqual({
       canClaim: false,
       canUnstake: false,
-      reasons: [expect.stringContaining("0.05 DUSK")],
+      reasons: [expect.stringMatching(wholeFigure("0.05 DUSK"))],
     });
     expect(
       stakeActions({
@@ -100,7 +110,7 @@ describe("stakeActions", () => {
         reward: DUSK,
         staked: 1_000n * DUSK,
       }).reasons,
-    ).toStrictEqual([expect.stringContaining("0.01 DUSK")]);
+    ).toStrictEqual([expect.stringMatching(wholeFigure("0.01 DUSK"))]);
 
     // With balances hidden, the figure, which gives the balance away, isn't.
     const hidden = stakeActions({
@@ -111,7 +121,7 @@ describe("stakeActions", () => {
       staked: 1_000n * DUSK,
     }).reasons;
 
-    expect(hidden).toStrictEqual([said]);
-    expect(hidden[0]).not.toContain("0.01");
+    expect(hidden).toStrictEqual([expect.stringMatching(/fee/)]);
+    expect(hidden[0]).not.toMatch(/[0-9]/);
   });
 });

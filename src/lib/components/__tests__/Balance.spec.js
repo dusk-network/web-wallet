@@ -31,7 +31,7 @@ describe("Balance", () => {
     const toggle = getByRole("button", { name: "Hide balances" });
     const getTotal = () => container.querySelector(".dusk-balance__dusk");
 
-    expect(getTotal()).toHaveTextContent("0.003000000");
+    expect(getTotal()).toHaveTextContent(/^0\.003000000 DUSK$/);
 
     await fireEvent.click(toggle);
 
@@ -41,7 +41,7 @@ describe("Balance", () => {
     await fireEvent.click(toggle);
 
     expect(get(settingsStore).hideBalances).toBe(false);
-    expect(getTotal()).toHaveTextContent("0.003000000");
+    expect(getTotal()).toHaveTextContent(/^0\.003000000 DUSK$/);
   });
 
   it("should show no figure while balances are hidden", () => {
@@ -54,11 +54,14 @@ describe("Balance", () => {
 
   it("should show the total of both balances, in DUSK and in money, and follow them", async () => {
     const { container, rerender } = render(Balance, baseOptions);
-    const shown = () => container.textContent?.replace(/\s+/g, " ") ?? "";
+    /** @param {string} selector */
+    const figure = (selector) => container.querySelector(selector);
 
     // 0.003 DUSK, at 10 USD each.
-    expect(shown()).toContain("0.003");
-    expect(shown()).toContain("$0.03");
+    expect(figure(".dusk-balance__dusk")).toHaveTextContent(
+      /^0\.003000000 DUSK$/,
+    );
+    expect(figure(".dusk-balance__fiat")).toHaveTextContent(/^\$0\.03$/);
 
     await rerender({
       ...baseProps,
@@ -67,7 +70,9 @@ describe("Balance", () => {
       unshieldedAmount: 4_000_000n,
     });
 
-    expect(shown()).toContain("0.005");
-    expect(shown()).toContain("$0.10");
+    expect(figure(".dusk-balance__dusk")).toHaveTextContent(
+      /^0\.005000000 DUSK$/,
+    );
+    expect(figure(".dusk-balance__fiat")).toHaveTextContent(/^\$0\.10$/);
   });
 });

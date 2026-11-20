@@ -25,6 +25,9 @@ const getReviewValues = (container) =>
     value.textContent?.trim(),
   );
 
+/** What a send that failed came to, as its heading says it. */
+const failureOf = () => document.querySelector(".dusk-error-alert__summary");
+
 describe("Allocate", () => {
   const baseProps = {
     gasLimits: {
@@ -100,7 +103,12 @@ describe("Allocate", () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
     await fireEvent.click(getByRole("button", { name: "Send" }));
-    await fireEvent.click(await findByRole("button", { name: "Try again" }));
+    const tryAgain = await findByRole("button", { name: "Try again" });
+
+    // Nothing went out.
+    expect(failureOf()).toHaveTextContent(/not sent/i);
+
+    await fireEvent.click(tryAgain);
 
     expect(getReviewValues(container)[0]).toBe("500 DUSK");
     expect(shield).toHaveBeenCalledOnce();
@@ -128,6 +136,7 @@ describe("Allocate", () => {
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
     expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+    expect(failureOf()).toHaveTextContent(/not confirmed/i);
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
@@ -212,7 +221,7 @@ describe("Allocate", () => {
     // Neither balance shows: 1,000 DUSK public, 2,000 DUSK shielded.
     expect(
       container.querySelector(".operation__label small"),
-    ).not.toHaveTextContent("2,000");
+    ).not.toHaveTextContent(/[0-9]/);
     expect(publicInput).toHaveValue("");
     expect(shieldedInput).toHaveValue("");
 
@@ -223,7 +232,9 @@ describe("Allocate", () => {
     expect(publicInput).toHaveValue("3500");
     expect(shieldedInput).toHaveValue("");
     expect(nextButton).toBeDisabled();
-    expect(container.querySelector(".banner--error")).not.toBeNull();
+    expect(container.querySelector(".banner--error")).toHaveTextContent(
+      /more than/i,
+    );
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
 

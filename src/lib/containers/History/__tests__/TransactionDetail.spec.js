@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
 import {
   forgetDepositActivity,
@@ -109,7 +109,7 @@ const show = (shown, extra = {}, props = {}) =>
   });
 
 /**
- * The text of the details' list, and of Technical details.
+ * The text of the details' list.
  *
  * @param {HTMLElement} container
  */
@@ -117,9 +117,31 @@ const mainList = (container) =>
   container.querySelector(".tx-detail__list:not(.tx-detail__list--tech)")
     ?.textContent ?? "";
 
-/** @param {HTMLElement} container */
-const techList = (container) =>
-  container.querySelector(".tx-detail__list--tech")?.textContent ?? "";
+/**
+ * A row's value, found by its label's key word, in the details' list or
+ * under Technical details: null where there's no such row.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ * @param {"main" | "tech"} [list]
+ */
+const field = (container, label, list = "main") =>
+  Array.from(
+    container.querySelectorAll(
+      list === "tech"
+        ? ".tx-detail__list--tech dt"
+        : ".tx-detail__list:not(.tx-detail__list--tech) dt",
+    ),
+  ).find((term) => label.test(term.textContent ?? ""))?.nextElementSibling ??
+  null;
+
+/**
+ * What an element says, its white space as one space: null for none.
+ *
+ * @param {Element | null | undefined} element
+ */
+const textOf = (element) =>
+  element?.textContent?.replace(/\s+/g, " ").trim() ?? null;
 
 const STORE =
   "4e2de1ed4f1fd53de83f4809a75367301c7645a546030fa199aff804e6854199";
@@ -147,13 +169,17 @@ describe("TransactionDetail", () => {
       { network: "testnet" },
     );
 
-    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "alice.dusk",
+    const contract = field(container, /contract/i, "tech");
+
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
+      /(?<![\w.-])alice\.dusk$/,
     );
     expect(mainList(container)).not.toContain(STORE);
     expect(mainList(container)).not.toContain("Dusk Domains");
-    expect(techList(container)).toContain("Dusk Domains");
-    expect(techList(container)).toContain(STORE);
+    expect(textOf(contract?.querySelector(".tx-detail__name"))).toBe(
+      "Dusk Domains",
+    );
+    expect(textOf(contract?.querySelector(".tx-detail__code"))).toBe(STORE);
   });
 
   it("should say to the lux the stDUSK a stake with Sozu got, and the rate, from the facts the export reads, with Sozu's contract under Technical details", async () => {
@@ -175,14 +201,21 @@ describe("TransactionDetail", () => {
     const { container } = show(stake, {}, { loadSozuFact, network: "testnet" });
 
     await vi.waitFor(() =>
-      expect(mainList(container)).toContain("0.162189471 stDUSK"),
+      expect(textOf(field(container, /got/i))).toBe("0.162189471 stDUSK"),
     );
     // As the export says it: what one stDUSK was worth, to the lux.
-    expect(mainList(container)).toContain("1 stDUSK = 3.075107127 DUSK");
+    expect(textOf(field(container, /rate/i))).toBe(
+      "1 stDUSK = 3.075107127 DUSK",
+    );
     expect(loadSozuFact).toHaveBeenCalledExactlyOnceWith(stake);
     expect(mainList(container)).not.toContain(SOZU_POOL);
-    expect(techList(container)).toContain("Sozu");
-    expect(techList(container)).toContain(SOZU_POOL);
+
+    const contract = field(container, /contract/i, "tech");
+
+    expect(textOf(contract?.querySelector(".tx-detail__name"))).toBe(
+      "Sozu pool",
+    );
+    expect(textOf(contract?.querySelector(".tx-detail__code"))).toBe(SOZU_POOL);
   });
 
   it("should say the stDUSK an unstake from Sozu gave back, and nothing of one that failed", async () => {
@@ -216,12 +249,16 @@ describe("TransactionDetail", () => {
     );
 
     await vi.waitFor(() =>
-      expect(mainList(container)).toContain("0.066666667 stDUSK"),
+      expect(textOf(field(container, /gave back/i))).toBe("0.066666667 stDUSK"),
     );
-    expect(mainList(container)).toContain("1 stDUSK = 3 DUSK");
+    expect(textOf(field(container, /rate/i))).toBe("1 stDUSK = 3 DUSK");
   });
 
-  it("should name the DuskEVM address a deposit went to", () => {
+  it("should name the DuskEVM address a deposit went to, and copy it in full", async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+
     const { container } = show(
       row({
         amount: "100000000",
@@ -229,14 +266,25 @@ describe("TransactionDetail", () => {
         fnName: "depositETHToWithValue",
       }),
     );
+    const to = /** @type {HTMLElement} */ (field(container, /^to$/i));
 
-    expect(container.textContent).toContain(EVM);
+    expect(textOf(to.querySelector(".tx-detail__code"))).toBe(EVM);
+
+    await fireEvent.click(within(to).getByRole("button", { name: /copy/i }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledExactlyOnceWith(EVM);
     // The bridge's contract only under Technical details.
     expect(mainList(container)).not.toContain(BRIDGE);
-    expect(techList(container)).toContain(BRIDGE);
+    expect(
+      textOf(
+        field(container, /contract/i, "tech")?.querySelector(
+          ".tx-detail__code",
+        ),
+      ),
+    ).toBe(BRIDGE);
   });
 
-  it("should show a proved withdrawal's amount and when it can be claimed, until it is claimed", () => {
+  it("should show a proved withdrawal's amount and its next step until it is claimed: when it can be claimed, ready to claim, or prove it again", () => {
     const proveCall = {
       bridge: {
         amount: "1008000000000",
@@ -248,34 +296,55 @@ describe("TransactionDetail", () => {
     };
     const proved = row(proveCall);
     /**
+     * Where it is, as its details say it.
+     *
+     * @param {HTMLElement} shown
+     */
+    const outcome = (shown) =>
+      textOf(shown.querySelector(".tx-detail__outcome"));
+    /**
      * Its next step, as offered: none once it's claimed.
      *
      * @param {HTMLElement} shown
      */
     const nextStep = (shown) =>
-      shown.querySelector(".tx-detail__next")?.closest("dd")?.textContent ??
-      null;
+      textOf(shown.querySelector(".tx-detail__next")?.closest("dd"));
     const { container } = show(proved, { claims: claims({}) });
 
-    expect(
-      container.querySelector(".tx-detail__amount")?.textContent,
-    ).toContain("1,008");
-    // When the chain says it can be claimed, in full.
+    expect(textOf(container.querySelector(".tx-detail__amount"))).toBe(
+      "1,008 DUSK",
+    );
+    // Not claimed yet: when the chain says it can be, in full.
+    expect(outcome(container)).toMatch(/not claimed/i);
     expect(nextStep(container)).toContain(fullDateTime(CLAIM_AT, "en"));
 
     cleanup();
 
-    // Its proof's game blacklisted: no date, but that it must be proved again.
-    expect(
-      nextStep(
-        show(proved, { claims: claims({ at: null, reprove: true }) }).container,
-      ),
-    ).not.toMatch(/\d{1,2}:\d{2}/);
+    // Ready: to claim now.
+    const ready = show(proved, { claims: claims({ ready: true }) }).container;
+
+    expect(outcome(ready)).toMatch(/ready to claim/i);
+    expect(nextStep(ready)).toMatch(/ready to claim/i);
 
     cleanup();
 
-    // Until the chain has been read: no date made up from a fixed wait.
-    expect(nextStep(show(proved).container)).not.toMatch(/\d{1,2}:\d{2}/);
+    // Its proof's game blacklisted: no date, but that it must be proved again.
+    const again = show(proved, {
+      claims: claims({ at: null, reprove: true }),
+    }).container;
+
+    expect(outcome(again)).toMatch(/prove it again/i);
+    expect(nextStep(again)).toMatch(/prove it again/i);
+    expect(nextStep(again)).not.toMatch(/\d{1,2}:\d{2}/);
+
+    cleanup();
+
+    // Until the chain has been read: not claimed, and no date made up from
+    // a fixed wait.
+    const unread = show(proved).container;
+
+    expect(outcome(unread)).toMatch(/not claimed/i);
+    expect(nextStep(unread)).not.toMatch(/\d{1,2}:\d{2}/);
 
     cleanup();
 
@@ -292,7 +361,13 @@ describe("TransactionDetail", () => {
       ],
       { network: withBridge(networks.testnet, BRIDGE) },
     );
-    expect(nextStep(show(claimed).container)).toBeNull();
+    const done = show(claimed).container;
+
+    expect(outcome(done)).toMatch(/claimed/i);
+    expect(outcome(done)).not.toMatch(
+      /not claimed|ready to claim|prove it again/i,
+    );
+    expect(nextStep(done)).toBeNull();
   });
 
   it("should name the contract of a call that moved no DUSK, which has no counterparty", () => {
@@ -312,8 +387,12 @@ describe("TransactionDetail", () => {
       { network: "testnet" },
     );
 
-    expect(techList(container)).toContain("Dusk Domains");
-    expect(container.textContent).toContain(store.slice(-6));
+    const contract = field(container, /contract/i, "tech");
+
+    expect(textOf(contract?.querySelector(".tx-detail__name"))).toBe(
+      "Dusk Domains",
+    );
+    expect(textOf(contract?.querySelector(".tx-detail__code"))).toBe(store);
   });
 
   it("should name a profile of another wallet here as the wallets do, in its headline and its To, and never offer to save it as a contact", () => {
@@ -324,11 +403,15 @@ describe("TransactionDetail", () => {
       to: OWN,
     });
     const { container, queryByRole } = show(sent, { walletNames });
+    const to = field(container, /^to$/i);
 
-    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
+      /(?<![\w.-])Wallet 2 · Profile 1$/,
+    );
+    expect(textOf(to?.querySelector(".tx-detail__name"))).toBe(
       "Wallet 2 · Profile 1",
     );
-    expect(mainList(container)).toMatch(/Wallet 2 · Profile 1\s*qxwSid/);
+    expect(textOf(to?.querySelector(".tx-detail__code"))).toBe(OWN);
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
 
@@ -347,8 +430,8 @@ describe("TransactionDetail", () => {
     });
     const { container } = show(unconfirmed, { walletNames });
 
-    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "Wallet 2 · Profile 1",
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
+      /(?<![\w.-])Wallet 2 · Profile 1$/,
     );
     expect(
       container.querySelector(".tx-detail__outcome--unknown"),
@@ -386,10 +469,12 @@ describe("TransactionDetail", () => {
 
     const { container } = show(payout, { net: local }, { network: "Localnet" });
 
-    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "BNB Smart Chain",
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
+      /BNB Smart Chain$/,
     );
-    expect(mainList(container)).toContain("BSC bridge");
+    expect(
+      textOf(field(container, /^from$/i)?.querySelector(".tx-detail__name")),
+    ).toBe("BSC bridge");
   });
 
   it("should keep a failed transaction's error from reordering what's read: its contract can write anything", () => {
@@ -406,8 +491,8 @@ describe("TransactionDetail", () => {
   it("should give the fee paid to the last digit, in its list and under Technical details", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(mainList(container)).toContain("0.00441901 DUSK");
-    expect(techList(container)).toContain("0.00441901 DUSK");
+    expect(textOf(field(container, /fee/i))).toBe("0.00441901 DUSK");
+    expect(textOf(field(container, /fee/i, "tech"))).toBe("0.00441901 DUSK");
   });
 
   it("should say under Technical details the gas used of its limit", () => {
@@ -415,8 +500,9 @@ describe("TransactionDetail", () => {
       row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" }),
     );
 
-    expect(techList(container)).toContain("1,853,542");
-    expect(techList(container)).toContain("2,500,000");
+    expect(textOf(field(container, /gas used/i, "tech"))).toMatch(
+      /^1,853,542\D+2,500,000$/,
+    );
   });
 
   describe("a deposit to DuskEVM", () => {
@@ -442,7 +528,7 @@ describe("TransactionDetail", () => {
       const { container } = show(deposited, {}, { followDeposit });
 
       expect(followDeposit).toHaveBeenCalledExactlyOnceWith(deposited);
-      expect(mainList(container)).not.toContain("Arrived");
+      expect(field(container, /arrived/i)).toBeNull();
 
       rememberDepositTransaction(DEPOSIT, {
         account: EVM,
@@ -455,9 +541,13 @@ describe("TransactionDetail", () => {
       });
 
       await vi.waitFor(() =>
-        expect(mainList(container)).toContain(fullDateTime(ARRIVED, "en")),
+        expect(textOf(field(container, /arrived/i))).toBe(
+          fullDateTime(ARRIVED, "en"),
+        ),
       );
-      expect(mainList(container)).toContain("0x0202…029e");
+      expect(textOf(field(container, /duskevm/i)?.querySelector("a"))).toMatch(
+        /^0x0202…029e(?![\w…])/,
+      );
     });
 
     it("should say nothing arrived while it's on its way", () => {
@@ -468,15 +558,18 @@ describe("TransactionDetail", () => {
 
       const { container } = show(deposited, {}, { followDeposit: vi.fn() });
 
-      expect(mainList(container)).not.toContain("Arrived");
-      expect(mainList(container)).not.toContain("DuskEVM transaction");
+      expect(field(container, /arrived/i)).toBeNull();
+      expect(field(container, /duskevm/i)).toBeNull();
     });
   });
 
   it("should show the fee, and hide it with the balances, here and under Technical details", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
-    expect(shown.container.textContent).toContain("0.001856398");
+    expect(textOf(field(shown.container, /fee/i))).toBe("0.001856398 DUSK");
+    expect(textOf(field(shown.container, /fee/i, "tech"))).toBe(
+      "0.001856398 DUSK",
+    );
     cleanup();
 
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
@@ -486,7 +579,9 @@ describe("TransactionDetail", () => {
         row({ amount: "1000000000", feePaid: "1856398" }),
       );
 
-      expect(mainList(container)).not.toBe("");
+      // Its rows stay, without the figure.
+      expect(field(container, /fee/i)).not.toBeNull();
+      expect(field(container, /fee/i, "tech")).not.toBeNull();
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -501,8 +596,9 @@ describe("TransactionDetail", () => {
     try {
       const { container } = show(hiding);
 
-      expect(techList(container)).not.toBe("");
-      expect(techList(container)).not.toContain("1,855,255");
+      // Its row stays, without the figure.
+      expect(field(container, /gas used/i, "tech")).not.toBeNull();
+      expect(container.textContent).not.toContain("1,855,255");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -549,8 +645,10 @@ describe("TransactionDetail", () => {
       );
 
       await vi.waitFor(() =>
-        expect(container.textContent).toContain("1 stDUSK = 3 DUSK"),
+        expect(textOf(field(container, /rate/i))).toBe("1 stDUSK = 3 DUSK"),
       );
+      // Its row stays, without the figure.
+      expect(field(container, /got/i)).not.toBeNull();
       expect(container.textContent).not.toContain("0.1621");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -560,7 +658,7 @@ describe("TransactionDetail", () => {
   it("should say which account sent it, and its gas price and nonce", async () => {
     const account = "2".repeat(60);
     const loadNonce = vi.fn(async () => "110");
-    const { container, findByText, getByText } = show(
+    const { container } = show(
       row({
         amount: "1000000000",
         blockHash: "bb".repeat(32),
@@ -577,10 +675,80 @@ describe("TransactionDetail", () => {
         loadNonce,
       },
     );
+    const from = field(container, /^from$/i);
 
-    expect(mainList(container)).toContain("Profile 1 · wallet-both.dusk");
-    expect(getByText("1 LUX")).toBeInTheDocument();
-    expect(await findByText("110")).toBeInTheDocument();
+    expect(textOf(from?.querySelector(".tx-detail__name"))).toMatch(
+      /^Profile 1 · wallet-both\.dusk\b/,
+    );
+    expect(textOf(from?.querySelector(".tx-detail__code"))).toBe(account);
+    expect(textOf(field(container, /gas price/i, "tech"))).toBe("1 LUX");
+    await vi.waitFor(() =>
+      expect(textOf(field(container, /nonce/i, "tech"))).toBe("110"),
+    );
     expect(loadNonce).toHaveBeenCalledWith("aa".repeat(32));
+  });
+
+  it("should show a nonce only for the public, final row shown, never one from before", async () => {
+    /** @type {Map<string, PromiseWithResolvers<string | null>>} */
+    const lookups = new Map();
+    const loadNonce = vi.fn((/** @type {string} */ hash) => {
+      /** @type {PromiseWithResolvers<string | null>} */
+      const lookup = Promise.withResolvers();
+
+      lookups.set(hash, lookup);
+
+      return lookup.promise;
+    });
+    const transfer = {
+      blockHash: undefined,
+      contractId: undefined,
+      kind: /** @type {const} */ ("transfer"),
+      to: "3".repeat(60),
+    };
+    const publicRow = row({ ...transfer, hash: "a1".repeat(32) });
+    const shieldedRow = row({
+      ...transfer,
+      hash: "a2".repeat(32),
+      source: "shielded",
+    });
+    const pending = row({
+      ...transfer,
+      hash: "a3".repeat(32),
+      source: "local",
+    });
+    const shown = (/** @type {ActivityRow} */ next) => ({
+      presentation: describeRow(next, context),
+      row: next,
+    });
+    const { container, rerender } = show(publicRow, {}, { loadNonce });
+    const answer = async (/** @type {string} */ hash, value = "110") => {
+      lookups.get(hash)?.resolve(value);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    };
+    /** The nonce shown, under Technical details: null for none. */
+    const nonce = () => textOf(field(container, /nonce/i, "tech"));
+
+    await answer(publicRow.hash);
+
+    expect(nonce()).toBe("110");
+
+    // A shielded row has none: the one shown before goes.
+    await rerender(shown(shieldedRow));
+
+    expect(nonce()).toBeNull();
+
+    // An answer that comes after its row was left is dropped.
+    await rerender(shown(publicRow));
+    await rerender(shown(pending));
+    await answer(publicRow.hash, "111");
+
+    expect(nonce()).toBeNull();
+    expect(loadNonce).not.toHaveBeenCalledWith(pending.hash);
+
+    // The same row, once final, is looked up.
+    await rerender(shown(row({ ...transfer, hash: pending.hash })));
+    await answer(pending.hash, "112");
+
+    expect(nonce()).toBe("112");
   });
 });

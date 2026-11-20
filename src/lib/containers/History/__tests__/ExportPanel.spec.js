@@ -130,11 +130,12 @@ describe("Export's network fees of migrations", () => {
       },
     });
 
-    const reading = said();
+    // Reading it, then that it books none, naming no address.
+    expect(said()).toMatch(/reading/i);
 
     none.resolve(fileWith({}));
 
-    await vi.waitFor(() => expect(said()).not.toBe(reading));
+    await vi.waitFor(() => expect(said()).toMatch(/\bno network fees\b/i));
     expect(said()).not.toMatch(/0x/i);
 
     // Back to all of it, whose migration's chain doesn't answer now.

@@ -388,6 +388,57 @@ const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
  */
 const inGroup = (group) => `bridge-group-${group}`;
 
+/** @param {string} text */
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * `text` as a whole value: `2 Nov` not inside `12 Nov`, `5 DUSK` not inside
+ * `0.5 DUSK` or `15 DUSK`.
+ *
+ * @param {string} text
+ */
+const whole = (text) => new RegExp(`(?<![\\w.,])${escaped(text)}(?!\\w)`);
+
+/**
+ * `text` as a whole value in the sentence that says `step`: a claim's date
+ * or wait, never a proof's.
+ *
+ * @param {string} step
+ * @param {string} text
+ */
+const inStep = (step, text) =>
+  new RegExp(`\\b${step}\\b[^.]*${whole(text).source}`, "i");
+
+/**
+ * A row's fields, as its open button shows them.
+ *
+ * @param {HTMLElement} row
+ */
+const fieldsOf = (row) => {
+  /** @param {string} name */
+  const field = (name) =>
+    row.querySelector(`.bridge-row__${name}`)?.textContent?.trim() ?? "";
+
+  return {
+    amount: field("amount"),
+    line: field("line"),
+    state: field("state"),
+    title: field("title"),
+  };
+};
+
+/**
+ * What a details list gives the line its `dt` names: the `dd` after it.
+ *
+ * @param {string} list The list's class
+ * @param {RegExp} name
+ */
+const detail = (list, name) =>
+  Array.from(document.querySelectorAll(`.${list} dt`))
+    .find((term) => name.test(term.textContent ?? ""))
+    ?.nextElementSibling?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
 /**
  * @param {string} transactionHash
  * @param {string} [stage]
@@ -594,16 +645,21 @@ describe("EvmTransactions", () => {
       ]),
     );
     const paid = await findByRole("button", {
-      name: new RegExp(
-        `^BNB Smart Chain to Dusk.*${claimDay(paidAt, "en")}.* 5 DUSK`,
-      ),
+      name: /^BNB Smart Chain to Dusk/,
     });
-    const sent = getByRole("button", {
-      name: new RegExp(
-        `^Dusk to BNB Smart Chain.*${claimDay(sentAt, "en")}.*10 hours.* 200,001 DUSK`,
-      ),
-    });
+    const sent = getByRole("button", { name: /^Dusk to BNB Smart Chain/ });
 
+    // What each came to and when: paid, and sent, in its usual time.
+    expect(fieldsOf(paid)).toMatchObject({
+      amount: "5 DUSK",
+      line: expect.stringMatching(whole(claimDay(paidAt, "en"))),
+    });
+    expect(fieldsOf(sent)).toMatchObject({
+      amount: "200,001 DUSK",
+      line: expect.stringMatching(whole(claimDay(sentAt, "en"))),
+      state: expect.stringMatching(/pending/i),
+    });
+    expect(fieldsOf(sent).line).toMatch(whole("10 hours"));
     expect(paid.closest("section")).toHaveAttribute(
       "aria-labelledby",
       inGroup("done"),
@@ -709,15 +765,20 @@ describe("EvmTransactions", () => {
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
     mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
 
-    const { findByRole, getAllByRole } = render(EvmTransactions, {
+    const { getAllByRole, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
+    // Open, as its link asks.
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: /^BNB Smart Chain to Dusk/ }),
+      ).toHaveAttribute("aria-expanded", "true"),
+    );
     expect(
-      await findByRole("button", {
-        name: /^BNB Smart Chain to Dusk.* 2\.5 DUSK/,
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
+      fieldsOf(getByRole("button", { name: /^BNB Smart Chain to Dusk/ }))
+        .amount,
+    ).toBe("2.5 DUSK");
     expect(
       getAllByRole("button", { name: /^BNB Smart Chain to Dusk/ }),
     ).toHaveLength(1);
@@ -726,7 +787,9 @@ describe("EvmTransactions", () => {
 
     // Its gas, with the approval sent for it, as its chain says.
     await vi.waitFor(() =>
-      expect(document.body).toHaveTextContent("0.000093199001491184 BNB"),
+      expect(detail("transfer-ledger", /\bapproval\b/i)).toBe(
+        "0.000093199001491184 BNB",
+      ),
     );
     expect(evmReads.readMigrationsEvm).toHaveBeenCalledWith(networks.mainnet, [
       {
@@ -742,13 +805,22 @@ describe("EvmTransactions", () => {
     await vi.waitFor(() =>
       expect(getAllByRole("button", { name: /BEP20 DUSK/ })).toHaveLength(2),
     );
-    for (const row of getAllByRole("button", { name: /BEP20 DUSK/ })) {
-      expect(row).toHaveAccessibleName(
-        new RegExp(
-          `2\\.5 BEP20 DUSK.*${claimDay(day, "en")}.* 0\\.000046 BNB$`,
-        ),
-      );
+
+    const approvals = getAllByRole("button", { name: /BEP20 DUSK/ }).map(
+      fieldsOf,
+    );
+
+    for (const { amount, line, title } of approvals) {
+      expect(title).toMatch(whole("2.5 BEP20 DUSK"));
+      expect(title).toMatch(/never used/i);
+      expect(line).toMatch(whole(claimDay(day, "en")));
+      expect(line).toMatch(/\bBNB Smart Chain\b/);
+      expect(amount).toBe("0.000046 BNB");
     }
+    // One approved it, the other revoked it.
+    expect(
+      approvals.filter(({ title }) => /\brevoked\b/i.test(title)),
+    ).toHaveLength(1);
     expect(evmReads.readMigrationApprovals).toHaveBeenCalledWith(
       networks.mainnet,
       [accountAddress],
@@ -789,7 +861,7 @@ describe("EvmTransactions", () => {
     const rows = () => queryAllByRole("button", { name: /BEP20 DUSK/ });
 
     await vi.waitFor(() => expect(rows()).toHaveLength(1));
-    expect(rows()[0]).toHaveAccessibleName(/2\.5 BEP20 DUSK/);
+    expect(fieldsOf(rows()[0]).title).toMatch(whole("2.5 BEP20 DUSK"));
 
     mocks.setAccount({ address: undefined, isConnected: false });
 
@@ -852,7 +924,7 @@ describe("EvmTransactions", () => {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
 
       await vi.waitFor(() =>
-        expect(rows()[0]).toHaveAccessibleName(/2\.5 BEP20 DUSK/),
+        expect(fieldsOf(rows()[0]).title).toMatch(whole("2.5 BEP20 DUSK")),
       );
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -951,14 +1023,18 @@ describe("EvmTransactions", () => {
       { target: document.body },
     );
     const depositButton = await findByRole("button", {
-      name: new RegExp(
-        `^Dusk to DuskEVM.*${claimDay(now - 60_000, "en")}.* 0\\.25 DUSK`,
-      ),
+      name: /^Dusk to DuskEVM/,
     });
     const withdrawalButton = getByRole("button", {
-      name: /^DuskEVM to Dusk.* 0\.1 DUSK/,
+      name: /^DuskEVM to Dusk/,
     });
 
+    expect(fieldsOf(depositButton)).toMatchObject({
+      amount: "0.25 DUSK",
+      line: expect.stringMatching(whole(claimDay(now - 60_000, "en"))),
+      state: expect.stringMatching(/pending/i),
+    });
+    expect(fieldsOf(withdrawalButton).amount).toBe("0.1 DUSK");
     expect(withdrawalButton.closest("section")).toHaveAttribute(
       "aria-labelledby",
       inGroup("needs"),
@@ -1045,12 +1121,14 @@ describe("EvmTransactions", () => {
     const { findByRole, queryByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const row = await findByRole("button", {
-      name: new RegExp(
-        `^Dusk to DuskEVM.*${claimDay(arrived, "en")}.*0xAB84…C86F.* 0\\.25 DUSK`,
-      ),
-    });
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+    const { amount, line } = fieldsOf(row);
 
+    // What arrived, when, and the DuskEVM address it went to.
+    expect(amount).toBe("0.25 DUSK");
+    expect(line).toMatch(/\barrived\b/i);
+    expect(line).toMatch(whole(claimDay(arrived, "en")));
+    expect(line).toMatch(whole("0xAB84…C86F"));
     expect(mocks.followHistoryDeposits).toHaveBeenCalledWith(rows);
     expect(row.closest("section")).toHaveAttribute(
       "aria-labelledby",
@@ -1081,12 +1159,17 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
     const row = await findByRole("button", {
-      name: /^DuskEVM to Dusk.*213qXN…V5JJ9Y.* 0\.1 DUSK/,
+      name: /^DuskEVM to Dusk.*213qXN…V5JJ9Y/,
     });
     const [ownRow] = getAllByRole("button", {
       name: /^DuskEVM to Dusk/,
     }).filter((each) => each !== row);
 
+    // Whom it pays, in its line.
+    expect(fieldsOf(row)).toMatchObject({
+      amount: "0.1 DUSK",
+      line: expect.stringMatching(whole("213qXN…V5JJ9Y")),
+    });
     expect(row.closest("section")).toHaveAttribute(
       "aria-labelledby",
       inGroup("other"),
@@ -1096,7 +1179,8 @@ describe("EvmTransactions", () => {
       "aria-labelledby",
       inGroup("needs"),
     );
-    expect(ownRow).not.toHaveAccessibleName(/213qXN…V5JJ9Y/);
+    expect(fieldsOf(ownRow)).toMatchObject({ amount: "0.1 DUSK" });
+    expect(fieldsOf(ownRow).line).not.toMatch(/213qXN…V5JJ9Y/);
   });
 
   it("opens the deposit its link names, without checking it as a withdrawal", async () => {
@@ -1111,11 +1195,10 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    expect(
-      await findByRole("button", {
-        name: /^Dusk to DuskEVM.* 0\.25 DUSK/,
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+
+    expect(row).toHaveAttribute("aria-expanded", "true");
+    expect(fieldsOf(row).amount).toBe("0.25 DUSK");
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
     expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
@@ -1140,11 +1223,13 @@ describe("EvmTransactions", () => {
 
     mocks.setAccount({ address: accountAddress, isConnected: true });
 
-    expect(
-      await findByRole("button", {
-        name: /^Dusk to DuskEVM.*0x\w{4}…\w{4}.* 0\.25 DUSK/,
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+
+    expect(row).toHaveAttribute("aria-expanded", "true");
+    expect(fieldsOf(row)).toMatchObject({
+      amount: "0.25 DUSK",
+      line: expect.stringMatching(whole("0x2222…2222")),
+    });
     expect(queryByRole("alert")).toBeNull();
     expect(input).not.toHaveAttribute("aria-invalid");
     expect(input).toHaveValue("");
@@ -1253,10 +1338,9 @@ describe("EvmTransactions", () => {
     const { findByRole, queryByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const item = await findByRole("button", {
-      name: /^DuskEVM to Dusk.* 0\.1 DUSK/,
-    });
+    const item = await findByRole("button", { name: /^DuskEVM to Dusk/ });
 
+    expect(fieldsOf(item).amount).toBe("0.1 DUSK");
     expect(item).toHaveAttribute("aria-expanded", "false");
     await fireEvent.click(item);
 
@@ -1300,24 +1384,28 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ea".repeat(32)}`,
     });
 
-    const { container, findByRole, getByRole } = render(EvmTransactions, {
+    const { findByRole, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const item = await findByRole("button", {
-      name: /^DuskEVM to Dusk.* 10 DUSK/,
-    });
+    const item = await findByRole("button", { name: /^DuskEVM to Dusk/ });
 
-    // It needs its proof: under Needs you, with Prove beside it.
+    // Its amount, from its wei; it needs its proof: under Needs you, with
+    // Prove beside it.
+    expect(fieldsOf(item).amount).toBe("10 DUSK");
     expect(item.closest("section")).toHaveAttribute(
       "aria-labelledby",
       inGroup("needs"),
     );
-    expect(getByRole("button", { name: /^Prove 10 DUSK/ })).toBeInTheDocument();
-    expect(container).not.toHaveTextContent(formatTimestamp(sentAt));
+    expect(
+      getByRole("button", { name: /^Prove 10 DUSK\b/ }),
+    ).toBeInTheDocument();
+    expect(detail("withdrawal-details", /^sent$/i)).toBeUndefined();
 
     await fireEvent.click(item);
 
-    expect(container).toHaveTextContent(formatTimestamp(sentAt));
+    expect(detail("withdrawal-details", /^sent$/i)).toBe(
+      formatTimestamp(sentAt),
+    );
     expect(getByRole("button", { name: "Prove on Dusk" })).toBeInTheDocument();
   });
 
@@ -1607,9 +1695,13 @@ describe("EvmTransactions", () => {
     });
 
     const actionButton = await findByRole("button", {
-      name: /^DuskEVM to Dusk.* 0\.1 DUSK/,
+      name: /^DuskEVM to Dusk/,
     });
 
+    expect(fieldsOf(actionButton)).toMatchObject({
+      amount: "0.1 DUSK",
+      state: expect.stringMatching(/failed/i),
+    });
     expect(actionButton.closest("section")).toHaveAttribute(
       "aria-labelledby",
       inGroup("failed"),
@@ -1650,7 +1742,8 @@ describe("EvmTransactions", () => {
         { stage: "waiting_for_output", transactionHash: selectedHash },
       ]),
     );
-    await findByRole("button", { name: /^DuskEVM to Dusk.* 0\.1 DUSK/ });
+    const row = await findByRole("button", { name: /^DuskEVM to Dusk/ });
+
     await fireEvent.input(input, { target: { value: editedHash } });
 
     const selected = mocks
@@ -1666,14 +1759,17 @@ describe("EvmTransactions", () => {
       },
     ]);
 
+    // When it can be claimed, exactly, as its row and its open steps say.
+    await vi.waitFor(() =>
+      expect(fieldsOf(row).line).toMatch(
+        inStep("claim", claimDay(CLAIM_AT, "en")),
+      ),
+    );
+    expect(fieldsOf(row).line).not.toMatch(/\babout\b/i);
+    expect(fieldsOf(row).amount).toBe("0.1 DUSK");
+    expect(row).toHaveAttribute("aria-expanded", "true");
     expect(
-      await findByRole("button", {
-        name: new RegExp(`${claimDay(CLAIM_AT, "en")}.* 0\\.1 DUSK`),
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
-    // Its steps, open, say the date too.
-    expect(
-      getByText(new RegExp(claimDay(CLAIM_AT, "en")), {
+      getByText(inStep("claim", claimDay(CLAIM_AT, "en")), {
         selector: ".bridge-timeline *",
       }),
     ).toBeInTheDocument();
@@ -1723,11 +1819,16 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    expect(
+    // The one waiting: when it can be claimed, about, as the chain said.
+    const waiting = fieldsOf(
       await findByRole("button", {
-        name: new RegExp(claimDay(CLAIM_AT, "en")),
+        name: whole(claimDay(CLAIM_AT, "en")),
       }),
-    ).toBeInTheDocument();
+    );
+
+    expect(waiting.line).toMatch(inStep("claim", claimDay(CLAIM_AT, "en")));
+    expect(waiting.line).toMatch(/\babout\b/i);
+    expect(waiting.amount).toBe("0.1 DUSK");
     expect(
       queryByRole("button", { name: new RegExp(otherHash.slice(0, 8)) }),
     ).toBeNull();
@@ -1738,7 +1839,7 @@ describe("EvmTransactions", () => {
     expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(waitingHash);
 
     // Claim opens its steps, where the claim is sent, and goes to it.
-    await fireEvent.click(getByRole("button", { name: /^Claim 0\.1 DUSK/ }));
+    await fireEvent.click(getByRole("button", { name: /^Claim 0\.1 DUSK\b/ }));
 
     const claim = await findByRole("button", { name: /^claim on dusk$/i });
 
@@ -1779,10 +1880,11 @@ describe("EvmTransactions", () => {
     const { findByRole } = render(EvmTransactions, { target: document.body });
 
     expect(
-      await findByRole("button", {
-        name: /^DuskEVM to Dusk.* 0\.1 DUSK/,
-      }),
-    ).toBeInTheDocument();
+      fieldsOf(await findByRole("button", { name: /^DuskEVM to Dusk/ })),
+    ).toMatchObject({
+      amount: "0.1 DUSK",
+      state: expect.stringMatching(/pending/i),
+    });
     expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(
       known,
       ITS_WALLET,
@@ -1821,7 +1923,7 @@ describe("EvmTransactions", () => {
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(
-      await findByText(new RegExp(claimDay(CLAIM_AT, "en"))),
+      await findByText(inStep("claim", claimDay(CLAIM_AT, "en"))),
     ).toBeInTheDocument();
     expect(mocks.loadProveNowClaim).toHaveBeenCalledWith(txHash);
   });
@@ -1844,7 +1946,7 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ed".repeat(32)}`,
     });
 
-    const { getByLabelText, getByRole } = render(EvmTransactions, {
+    const { findByText, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
@@ -1853,10 +1955,10 @@ describe("EvmTransactions", () => {
     });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
-    await vi.waitFor(() => {
-      expect(document.body).toHaveTextContent("7 days");
-      expect(document.body).toHaveTextContent("30 minutes");
-    });
+    // Each wait with its step: 7 days to claim, 30 minutes to prove.
+    expect(await findByText(inStep("claim", "7 days"))).toHaveTextContent(
+      inStep("prove", "30 minutes"),
+    );
   });
 });
 
@@ -1872,11 +1974,13 @@ describe("a withdrawal ready to prove: when it can be claimed if it's proved now
   /** @param {number} at */
   const claimAt = (at) => ({ at, exact: true, overdue: false });
 
-  /** The date the card says, of those it could: null if it says none. */
+  /** The claim date the card says, of those it could: null if it says none. */
   const said = () =>
     [CLAIM_AT, LATER]
       .map((at) => claimDay(at, "en"))
-      .find((day) => document.body.textContent?.includes(day)) ?? null;
+      .find((day) =>
+        inStep("claim", day).test(document.body.textContent ?? ""),
+      ) ?? null;
 
   const flush = async () => {
     await vi.advanceTimersByTimeAsync(0);

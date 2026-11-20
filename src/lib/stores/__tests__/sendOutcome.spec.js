@@ -137,8 +137,8 @@ describe("A send that fails", () => {
   /**
    * What the result screen says: how the transaction that may have gone out
    * is getting on, where it's followed (pending, late, completed or failed;
-   * none where it failed before it went out), and whether it offers to try
-   * again.
+   * none where it failed before it went out), what it says of it, its status
+   * or why it failed, and whether it offers to try again.
    *
    * @param {HTMLElement} container
    */
@@ -152,17 +152,49 @@ describe("A send that fails", () => {
       offersRetry: [...container.querySelectorAll("button")].some(
         (button) => button.textContent?.trim() === "Try again",
       ),
+      says: container
+        .querySelector(".transaction-status__summary, .dusk-error-alert")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
       text: container.textContent ?? "",
     };
   }
 
+  /**
+   * Text that names each of `values`, in any order, whatever its words: a
+   * string whole, so `4,321` is never found in `14,321`; a regex as the key
+   * phrase of a state; and `{ not }` as what it never says.
+   *
+   * @param {...(string | RegExp | { not: RegExp })} values
+   */
+  const naming = (...values) =>
+    new RegExp(
+      `^${values
+        .map((value) =>
+          typeof value === "string"
+            ? `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`
+            : value instanceof RegExp
+              ? `(?=.*(?${value.flags.includes("i") ? "i" : ""}:${value.source}))`
+              : `(?!.*(?${value.not.flags.includes("i") ? "i" : ""}:${value.not.source}))`,
+        )
+        .join("")}`,
+    );
+
+  /** @param {...(string | RegExp | { not: RegExp })} values */
+  const saying = (...values) => expect.stringMatching(naming(...values));
+
+  /** Nothing has left the wallet: it waits for the network to go out. */
+  const WAITS = naming(/nothing has left/i, { not: /may have/i });
+
   it("says to try again before the node was asked to broadcast it, and after, that it may have gone out and to wait for it, never to send it again", async () => {
     executeUntil("preverify", new TypeError("Failed to fetch"));
 
-    // Nothing went out: nothing to follow, and it can be tried again.
+    // Nothing went out: nothing to follow, said so, and it can be tried
+    // again.
     expect(await shieldResult()).toMatchObject({
       following: undefined,
       offersRetry: true,
+      says: saying(/nothing was sent/i),
     });
     cleanup();
 
@@ -170,9 +202,14 @@ describe("A send that fails", () => {
 
     const result = await shieldResult();
 
-    // It may have: the transaction built is followed, and nothing on the
-    // screen says it failed, or to try again.
-    expect(result).toMatchObject({ following: "pending", offersRetry: false });
+    // It may have: the transaction built is followed, said not confirmed as
+    // it may have reached the network, and nothing on the screen says it
+    // failed, or to try again.
+    expect(result).toMatchObject({
+      following: "pending",
+      offersRetry: false,
+      says: saying(/not confirmed/i, /may have reached/i),
+    });
     expect(result.text).not.toMatch(/try again|transaction failed/i);
     expect(follow.spy).toHaveBeenCalledWith(built.hash, expect.anything());
   });
@@ -234,16 +271,14 @@ describe("A send that fails", () => {
       // Said only once the network doesn't answer.
       expect(before.queryByRole("status")).toBeNull();
 
+      // Before the node was asked to broadcast it: nothing has left.
       await act(() => setNetworkReach("silent"));
 
-      // What it says then, before the node was asked to broadcast it.
-      const nothingLeft = String(
-        before.getByRole("status").textContent?.replace(/\s+/g, " ").trim(),
-      );
+      expect(before.getByRole("status")).toHaveTextContent(WAITS);
 
       await act(() => setNetworkReach("offline"));
 
-      expect(before.getByRole("status")).toBeInTheDocument();
+      expect(before.getByRole("status")).toHaveTextContent(WAITS);
       cleanup();
       // It's over before the next goes out, in its turn.
       await vi.waitFor(() => expect(executeSpy).toHaveBeenCalledOnce());
@@ -255,9 +290,11 @@ describe("A send that fails", () => {
 
       const after = waiting();
 
-      // After, on the same network: no longer that nothing left the wallet.
+      // After, on the same network: it may have reached it, to wait for.
       await vi.waitFor(() =>
-        expect(after.getByRole("status")).not.toHaveTextContent(nothingLeft),
+        expect(after.getByRole("status")).toHaveTextContent(
+          naming(/may have reached/i, { not: /nothing has left/i }),
+        ),
       );
     } finally {
       answer();
@@ -294,9 +331,10 @@ describe("A send that fails", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      expect(rendered.getByRole("status")).toBeInTheDocument();
+      expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
 
-      // Cancel: it stops at once, with nothing sent: it can be tried again.
+      // Cancel: it stops at once, with nothing sent, said so: it can be
+      // tried again.
       await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
@@ -304,6 +342,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           following: undefined,
           offersRetry: true,
+          says: saying(/nothing left/i),
         }),
       );
 
@@ -389,7 +428,7 @@ describe("A send that fails", () => {
       // Said, with Cancel; never that it wasn't sent, failed, or to try
       // again.
       const waiting = () => {
-        expect(rendered.getByRole("status")).toBeInTheDocument();
+        expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
         expect(
           rendered.getByRole("button", { name: "Cancel" }),
         ).toBeInTheDocument();
@@ -432,7 +471,10 @@ describe("A send that fails", () => {
       expect(get(broadcastsAsked)).toBe(asked + 1);
       expect(get(gate)).toBe("handed-over");
       expect(get(gate.waitsForNetwork)).toBe(false);
-      expect(shown(rendered.container).following).toBe("pending");
+      expect(shown(rendered.container)).toMatchObject({
+        following: "pending",
+        says: saying(/sending/i, { not: /not confirmed|not sent/i }),
+      });
     } finally {
       setNetworkReach("answering");
       answers.mockResolvedValue(123n);
@@ -666,7 +708,9 @@ describe("A send that fails", () => {
         from: 20_000n,
         to: 20_001n,
       });
-      expect(rendered.getByRole("status")).toBeInTheDocument();
+      expect(rendered.getByRole("status")).toHaveTextContent(
+        /your account sent/i,
+      );
       expect(
         rendered.getByRole("button", { name: "Don't send" }),
       ).toBeInTheDocument();
@@ -689,7 +733,10 @@ describe("A send that fails", () => {
       expect(executeSpy).toHaveBeenCalledOnce();
       expect(get(broadcastsAsked)).toBe(asked + 1);
       expect(get(gate.asking)).toBe(false);
-      expect(shown(rendered.container).following).toBe("pending");
+      expect(shown(rendered.container)).toMatchObject({
+        following: "pending",
+        says: saying(/sending/i, { not: /not confirmed|not sent/i }),
+      });
     } finally {
       restore();
     }
@@ -712,6 +759,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           following: undefined,
           offersRetry: true,
+          says: saying(/nothing left/i),
         }),
       );
       expect(executeSpy).not.toHaveBeenCalled();
@@ -1011,6 +1059,7 @@ describe("A send that fails", () => {
         expect(shown(rendered.container)).toMatchObject({
           following: undefined,
           offersRetry: true,
+          says: saying(/nothing left/i),
         }),
       );
 
@@ -1040,11 +1089,8 @@ describe("A send that fails", () => {
     await vi.waitFor(() =>
       expect(shown(rendered.container)).toMatchObject({
         following: "completed",
-        text: expect.stringContaining("4,321"),
+        says: saying(timeLabel(at, "en", { seconds: true }), "4,321"),
       }),
-    );
-    expect(shown(rendered.container).text).toContain(
-      timeLabel(at, "en", { seconds: true }),
     );
     cleanup();
 
@@ -1065,6 +1111,7 @@ describe("A send that fails", () => {
     await vi.waitFor(() =>
       expect(shown(second.rendered.container)).toMatchObject({
         following: "failed",
+        says: saying(/fee was charged/i),
       }),
     );
   });
@@ -1080,6 +1127,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       following: undefined,
       offersRetry: true,
+      says: saying(/refused/i),
     });
   });
 
@@ -1089,6 +1137,7 @@ describe("A send that fails", () => {
     expect(await shieldResult(false)).toMatchObject({
       following: "pending",
       offersRetry: false,
+      says: saying(/not confirmed/i, /may have reached/i),
     });
   });
 
@@ -1102,6 +1151,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       following: "pending",
       offersRetry: false,
+      says: saying(/not confirmed/i, /may have reached/i),
     });
   });
 
@@ -1131,6 +1181,7 @@ describe("A send that fails", () => {
       expect(shown(rendered.container)).toMatchObject({
         following: "late",
         offersRetry: false,
+        says: saying(/not confirmed/i, { not: /nothing (was sent|left)/i }),
       }),
     );
 

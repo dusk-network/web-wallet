@@ -95,6 +95,41 @@ const getReviewAmounts = (container) =>
   );
 
 /**
+ * A review row's value, by its label's key word.
+ *
+ * @param {ParentNode} container
+ * @param {RegExp} label
+ */
+const fieldOf = (container, label) =>
+  /** @type {HTMLElement | null} */ (
+    Array.from(container.querySelectorAll("dt")).find((term) =>
+      label.test(term.textContent?.trim() ?? ""),
+    )?.nextElementSibling ?? null
+  );
+
+/**
+ * What a review amount's label says of it, found by its key word: a bound
+ * ("at most") or an estimate ("about").
+ *
+ * @param {ParentNode} container
+ * @param {RegExp} label
+ */
+const termOf = (container, label) =>
+  Array.from(
+    container.querySelectorAll(".review-amount dt"),
+    (term) => term.textContent?.trim() ?? "",
+  ).find((term) => label.test(term)) ?? "";
+
+/**
+ * The full address a review row gives, as shown.
+ *
+ * @param {ParentNode} container
+ * @param {RegExp} label
+ */
+const addressOf = (container, label) =>
+  fieldOf(container, label)?.querySelector(".full-address")?.textContent;
+
+/**
  * What the card says where a screen reader hears it: its warnings and
  * refusals.
  *
@@ -266,13 +301,22 @@ describe("Bridge", () => {
         target: { value: "12" },
       });
       await sendDeposit(typed);
-      // Its failure, whatever it says.
       await vi.waitFor(() =>
         expect(
           typed.container.querySelector(".dusk-error-alert"),
         ).not.toBeNull(),
       );
 
+      // Not confirmed, as it may have reached the network.
+      expect(
+        typed.container.querySelector(".dusk-error-alert__summary"),
+      ).toHaveTextContent(/not confirmed/i);
+      expect(
+        typed.container.querySelector(".dusk-error-alert__description"),
+      ).toHaveTextContent(/may have reached the network/i);
+      expect(
+        typed.container.querySelector(".dusk-error-alert__description"),
+      ).not.toHaveTextContent(/nothing was sent/i);
       expect(typed.queryByRole("button", { name: "Try again" })).toBeNull();
 
       await lockAndUnlock();
@@ -289,7 +333,7 @@ describe("Bridge", () => {
     const { getByLabelText, getByRole } = render(Bridge, baseProps);
     const amount = getByLabelText("Amount");
 
-    expect(amount).toHaveAccessibleDescription(/1,000 DUSK/);
+    expect(amount).toHaveAccessibleDescription(/(^|\s)1,000 DUSK$/);
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
@@ -306,22 +350,26 @@ describe("Bridge", () => {
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    // The public balance, past the deposit's fee and what's kept, which it
-    // says, with no warning.
+    // The public balance, past the deposit's fee and what's kept, which its
+    // note says, with no warning.
     expect(amount).toHaveValue("999.92");
-    expect(container).toHaveTextContent("0.06 DUSK");
+    expect(container.querySelector(".swap-note")).toHaveTextContent(
+      /(^|\s)0\.06 DUSK\b/,
+    );
     expect(said(container)).toStrictEqual([]);
 
     await fireEvent.input(amount, { target: { value: "999.95" } });
 
-    // Over it: a warning, and nothing said of what Max keeps.
-    expect(said(container)).toHaveLength(1);
-    expect(container).not.toHaveTextContent("0.06 DUSK");
+    // Over it: a warning that it leaves too little, and no note.
+    expect(said(container)).toStrictEqual([
+      expect.stringMatching(/too little/i),
+    ]);
+    expect(container.querySelector(".swap-note")).toBeNull();
 
     await fireEvent.input(amount, { target: { value: "999.9" } });
 
     expect(said(container)).toStrictEqual([]);
-    expect(container).not.toHaveTextContent("0.06 DUSK");
+    expect(container.querySelector(".swap-note")).toBeNull();
   });
 
   it("should leave room for a withdrawal's fee when using it all", async () => {
@@ -329,7 +377,7 @@ describe("Bridge", () => {
 
     await withdraw(container);
 
-    expect(getByLabelText("Amount")).toHaveAccessibleDescription(/\b3 DUSK/);
+    expect(getByLabelText("Amount")).toHaveAccessibleDescription(/\s3 DUSK$/);
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
     await vi.waitFor(() =>
@@ -395,8 +443,15 @@ describe("Bridge", () => {
         "0.0014 DUSK",
       ]),
     );
-    expect(container).toHaveTextContent("30 minutes");
-    expect(container).toHaveTextContent("7 days");
+    // The fee is an estimate, never said as the most it costs.
+    expect(termOf(container, /fee/i)).toMatch(/\babout\b/i);
+    expect(termOf(container, /fee/i)).not.toMatch(/\bat most\b/i);
+
+    // Claim 7 days after proving, and prove about 30 minutes after sending.
+    const next = container.querySelector(".banner__title");
+
+    expect(next).toHaveTextContent(/\bclaim (?:about )?7 days\b/i);
+    expect(next).toHaveTextContent(/\bprove (?:about )?30 minutes\b/i);
   });
 
   it("should show the amount, the network fee and the total when reviewing a deposit", async () => {
@@ -405,14 +460,21 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    // The amount, the network fee and the total, each at most.
+    // The amount, and the network fee and the total, each at most.
     expect(getReviewAmounts(container)).toStrictEqual([
       "2.5 DUSK",
       "0.02 DUSK",
       "2.52 DUSK",
     ]);
-    // The contract it calls, as the network's file has it.
-    expect(container).toHaveTextContent("2257e5…a1b31d");
+    expect(termOf(container, /fee/i)).toMatch(/\bat most\b/i);
+    expect(termOf(container, /total/i)).toMatch(/\bat most\b/i);
+    // From this public account to the connected DuskEVM account, through the
+    // contract the network's file names, shown shortened.
+    expect(addressOf(container, /^from$/i)).toBe(PAID);
+    expect(addressOf(container, /^to$/i)).toBe(CONNECTED.address);
+    expect(fieldOf(container, /^contract$/i)).toHaveTextContent(
+      /(^|\s)2257e5…a1b31d$/,
+    );
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {
@@ -467,14 +529,15 @@ describe("Bridge", () => {
 
     expect(getReviewAmounts(container)[1]).toBe(feeOf(200_000n));
 
-    // Another profile while the estimate runs: the fee isn't its.
+    // Another profile while the estimate runs: the fee isn't its, and the
+    // review gives the amount alone.
     await fireEvent.click(getByRole("button", { name: "Back" }));
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
     await rerender({ unshieldedAccount: {} });
     estimates[2].resolve(300_000n);
     await settle();
 
-    expect(getReviewAmounts(container)[1]).not.toBe(feeOf(300_000n));
+    expect(getReviewAmounts(container)).toStrictEqual(["2.5 DUSK"]);
   });
 
   it("should show only the amount when reviewing a withdrawal whose fee can't be estimated", async () => {

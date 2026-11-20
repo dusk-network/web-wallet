@@ -609,19 +609,25 @@ describe("transfers out to BNB Smart Chain", () => {
     );
     const [fee, memo, onDusk, seenHere] = failed.map(({ failure }) => failure);
 
-    // None of them pays out, each for a reason of its own: the wallet's own
-    // failed as the history's does.
+    // None of them pays out, each for its reason: no more than the bridge's
+    // fee, a memo that isn't an address, or a transfer that failed on Dusk,
+    // the wallet's own as the history's.
     expect(failed.map(({ stage }) => stage)).toStrictEqual([
       "failed",
       "failed",
       "failed",
       "failed",
     ]);
-    for (const failure of [fee, memo, onDusk]) {
-      expect(failure).toMatch(/\S/);
+    expect(fee).toMatch(/\bbridge fee\b/i);
+    expect(memo).toMatch(/\bmemo\b/i);
+    expect(onDusk).toMatch(/\bfailed on Dusk\b/i);
+    expect(seenHere).toMatch(/\bfailed on Dusk\b/i);
+    for (const failure of [memo, onDusk]) {
+      expect(failure).not.toMatch(/\bfee\b/i);
     }
-    expect(new Set([fee, memo, onDusk]).size).toBe(3);
-    expect(seenHere).toBe(onDusk);
+    for (const failure of [fee, onDusk]) {
+      expect(failure).not.toMatch(/\bmemo\b/i);
+    }
     // Received from the route's account isn't a transfer out.
     await expect(
       activity.serviceTransfers(

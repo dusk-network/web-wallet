@@ -438,7 +438,8 @@ describe("Being told when a transfer arrives", () => {
 
       // What arrived, the bridge's fee taken, and where.
       expect(get(arrivalTitle)).toMatch(/(?:^|\s)2 DUSK\b/);
-      expect(get(arrivalTitle)).toContain("BSC");
+      expect(get(arrivalTitle)).toMatch(/\barrived\b/i);
+      expect(get(arrivalTitle)).toMatch(/\bBSC\b/);
     });
 
     it("says nothing of a migration whose payout of days before comes to light as all of the history is read", () => {
@@ -461,20 +462,21 @@ describe("Being told when a transfer arrives", () => {
 
       expect(get(arrivalTitle)).toBe("");
 
-      // One paid now is news.
+      // One paid now is news: what arrived.
       stores.transfers.set([{ ...migration("sent"), hash: "nn" }]);
       stores.transfers.set([{ ...migration("paid", Date.now()), hash: "nn" }]);
 
-      expect(get(arrivalTitle)).not.toBe("");
+      expect(get(arrivalTitle)).toMatch(/(?:^|\s)5 DUSK\b/);
+      expect(get(arrivalTitle)).toMatch(/\barrived\b/i);
     });
 
     it("says a transfer that didn't go through, and a deposit and a withdrawal at each step that asks something", () => {
       stores.transfers.set([service("sent")]);
       stores.transfers.set([{ ...service("failed"), failure: "No" }]);
 
-      // Said, and not as what would have arrived.
-      expect(get(arrivalTitle)).not.toBe("");
-      expect(get(arrivalTitle)).not.toContain("2 DUSK");
+      // That it didn't go through, never that anything arrived.
+      expect(get(arrivalTitle)).toMatch(/didn't go through/i);
+      expect(get(arrivalTitle)).not.toMatch(/\barrived\b/i);
 
       const deposit = {
         amountLux: "250000000",
@@ -485,10 +487,9 @@ describe("Being told when a transfer arrives", () => {
       stores.deposits.set([deposit]);
       stores.deposits.set([{ ...deposit, stage: "completed" }]);
 
-      const deposited = get(arrivalTitle);
-
-      expect(deposited).toMatch(/(?:^|\s)0\.25 DUSK\b/);
-      expect(deposited).toContain("DuskEVM");
+      expect(get(arrivalTitle)).toMatch(/(?:^|\s)0\.25 DUSK\b/);
+      expect(get(arrivalTitle)).toMatch(/\barrived\b/i);
+      expect(get(arrivalTitle)).toMatch(/\bDuskEVM\b/);
 
       const withdrawal = {
         amountWei: "1000000000000000000",
@@ -499,20 +500,20 @@ describe("Being told when a transfer arrives", () => {
       stores.withdrawals.set([withdrawal]);
       stores.withdrawals.set([{ ...withdrawal, stage: "ready_to_prove" }]);
 
-      const prove = get(arrivalTitle);
-
-      expect(prove).not.toBe("");
-      expect(prove).not.toBe(deposited);
+      // The step it asks for: to prove it, then to claim it.
+      expect(get(arrivalTitle)).toMatch(/\bprove\b/i);
+      expect(get(arrivalTitle)).not.toMatch(/\bclaim\b/i);
 
       stores.withdrawals.set([{ ...withdrawal, stage: "ready_to_finalize" }]);
 
-      expect(get(arrivalTitle)).not.toBe("");
-      expect(get(arrivalTitle)).not.toBe(prove);
+      expect(get(arrivalTitle)).toMatch(/\bclaim\b/i);
+      expect(get(arrivalTitle)).not.toMatch(/\bprove\b/i);
 
       stores.withdrawals.set([{ ...withdrawal, stage: "finalized" }]);
 
       // Arrived on Dusk, not DuskEVM.
       expect(get(arrivalTitle)).toMatch(/(?:^|\s)1 DUSK\b/);
+      expect(get(arrivalTitle)).toMatch(/\barrived\b/i);
       expect(get(arrivalTitle)).toMatch(/\bDusk\b/);
     });
 
@@ -603,10 +604,12 @@ describe("Being told when a transfer arrives", () => {
         expect(shown).toMatchObject([
           {
             options: { tag: `send:${hash}` },
-            title: expect.stringContaining("0.02 DUSK to Lucas"),
+            title: expect.stringMatching(/(?:^|\s)0\.02 DUSK to Lucas$/),
           },
         ]),
       );
+      // That it arrived.
+      expect(shown[0].title).toMatch(/\barrived\b/i);
       // History says so too.
       await vi.waitFor(() =>
         expect(
@@ -688,7 +691,8 @@ describe("Being told when a transfer arrives", () => {
       stores.transfers.set([service("sent")]);
       stores.transfers.set([service("arrived")]);
 
-      expect(get(arrivalTitle)).not.toBe("");
+      expect(get(arrivalTitle)).toMatch(/(?:^|\s)2 DUSK\b/);
+      expect(get(arrivalTitle)).toMatch(/\barrived\b/i);
 
       stop();
 

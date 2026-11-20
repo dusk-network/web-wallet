@@ -16,6 +16,15 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
+/**
+ * Matches `value` whole: not inside a longer figure, so "1 LUX" matches
+ * neither "11 LUX" nor "0.1 LUX".
+ *
+ * @param {string} value As the page writes it, as "20,000,000 gas"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
 describe("GasSettings", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
@@ -39,21 +48,26 @@ describe("GasSettings", () => {
   afterEach(cleanup);
 
   it("gives the most it can cost first, rounded up, then exactly in DUSK with the gas that makes it", async () => {
-    const { container, getByRole, getByText } = render(GasSettings, {
+    const { container, getByRole } = render(GasSettings, {
       ...baseOptions,
       props: { ...baseProps, fee: 2_151_569n },
     });
 
     // Rounded up beside Edit, as everywhere.
-    expect(getByText("0.0022")).toBeInTheDocument();
+    expect(container.querySelector(".gas-fee__amount-value")).toHaveTextContent(
+      /^0[.]0022$/,
+    );
 
     await fireEvent.click(getByRole("button", { name: "Edit" }));
 
+    // Exactly, then the gas limit and the price that make it.
     const exact = container.querySelector(".gas-settings__exact");
 
-    expect(exact).toHaveTextContent("0.002151569 DUSK");
-    expect(exact).toHaveTextContent("20,000,000");
-    expect(exact).toHaveTextContent("1 LUX");
+    expect(container.querySelector(".gas-settings__most")).toHaveTextContent(
+      wholeFigure("0.002151569 DUSK"),
+    );
+    expect(exact).toHaveTextContent(wholeFigure("20,000,000 gas"));
+    expect(exact).toHaveTextContent(wholeFigure("1 LUX"));
   });
 
   it("says the network is busy while it asks more than the price, the default stopped at its ceiling, until it's raised to what it asks", async () => {
@@ -88,7 +102,7 @@ describe("GasSettings", () => {
       });
 
       expect(get(gasPriceStore)).toBe(5n);
-      expect(busy.getByRole("status")).toBeInTheDocument();
+      expect(busy.getByRole("status")).toHaveTextContent(/busy/i);
 
       // Raised to what it asks: said no more.
       await busy.rerender({ ...baseProps, price: 900n });

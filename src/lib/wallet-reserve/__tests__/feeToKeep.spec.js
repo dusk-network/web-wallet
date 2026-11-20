@@ -7,8 +7,12 @@ import { feeToKeep } from "..";
 
 const ACCOUNT = "my-account";
 
-/** What it's kept for, whatever its words. */
-const said = expect.stringMatching(/./);
+/**
+ * What it's kept for, by its key word.
+ *
+ * @param {RegExp} words
+ */
+const said = (words) => expect.stringMatching(words);
 
 const stores = vi.hoisted(() => {
   /** @type {any} */
@@ -128,7 +132,7 @@ describe("feeToKeep", () => {
   });
 
   it("keeps the fee to unstake, for a stake or for rewards", () => {
-    const toUnstake = { lux: 50_000_000n, why: said };
+    const toUnstake = { lux: 50_000_000n, why: said(/unstake/) };
 
     expect(keptFor({ amount: { total: 1n } })).toStrictEqual(toUnstake);
     expect(keptFor({ reward: 1n })).toStrictEqual(toUnstake);
@@ -138,17 +142,17 @@ describe("feeToKeep", () => {
     // Sozu's unstake gas, 10,000,000, at the lowest price.
     expect(keptFor({ stDusk: 1n })).toStrictEqual({
       lux: 10_000_000n,
-      why: said,
+      why: said(/Sozu/),
     });
   });
 
   it("keeps a withdrawal's proof and claim, or its claim once it's proved, whatever it pays this account", () => {
     expect(
       keptFor({ stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }] }),
-    ).toStrictEqual({ lux: 120_000_000n, why: said });
+    ).toStrictEqual({ lux: 120_000_000n, why: said(/prove/) });
     expect(
       keptFor({ stages: [{ recipient: null, stage: "ready_to_finalize" }] }),
-    ).toStrictEqual({ lux: 60_000_000n, why: said });
+    ).toStrictEqual({ lux: 60_000_000n, why: said(/claim/) });
     expect(
       keptFor({ stages: [{ recipient: ACCOUNT, stage: "finalized" }] }).lux,
     ).toBe(0n);

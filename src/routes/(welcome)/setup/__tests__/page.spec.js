@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
 import { shortenAddress } from "$lib/dusk/string";
 import { forgetPlace, keepPlace } from "$lib/navigation";
@@ -31,6 +31,20 @@ vi.mock("$lib/dusk-domains", async (importOriginal) => ({
  */
 const literally = (value) => value.replaceAll(".", "\\.");
 
+/**
+ * The row of a payment request its label heads, as Send names them: its
+ * Amount, To or Memo.
+ *
+ * @param {HTMLElement} request
+ * @param {"Amount" | "Memo" | "To"} label
+ */
+const rowOf = (request, label) =>
+  /** @type {HTMLElement} */ (
+    Array.from(request.querySelectorAll("dt")).find(
+      (term) => term.textContent?.trim() === label,
+    )?.nextElementSibling
+  );
+
 describe("Setup", () => {
   describe("opened by a link asking for a payment", () => {
     const TO =
@@ -48,13 +62,23 @@ describe("Setup", () => {
         search: `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`,
       });
 
-      const { findByText, getByRole } = render(Setup, {});
+      const { getByRole } = render(Setup, {});
       const asked = getByRole("region", { name: "Payment request" });
+      const to = rowOf(asked, "To");
 
-      expect(asked).toHaveTextContent("0.011 DUSK");
-      expect(asked).toHaveTextContent("Factura 044");
-      expect(await findByText("sofia.dusk")).toBeInTheDocument();
-      expect(asked).toHaveTextContent(shortenAddress(TO));
+      expect(rowOf(asked, "Amount")).toHaveTextContent(/^0\.011 DUSK$/);
+      expect(rowOf(asked, "Memo")).toHaveTextContent(/^Factura 044$/);
+      // Whom: the name the chain gives the account, then the account,
+      // shortened, and whole in its title.
+      await vi.waitFor(() =>
+        expect(to).toHaveTextContent(
+          new RegExp(`^sofia\\.dusk ${shortenAddress(TO)}$`),
+        ),
+      );
+      expect(to.querySelector(".payment-asked__code")).toHaveAttribute(
+        "title",
+        TO,
+      );
     });
 
     it("should show a .dusk name it pays whole, and where it points, or that it isn't registered, as one that looks like it does", async () => {
@@ -70,25 +94,38 @@ describe("Setup", () => {
         return render(Setup, {});
       };
 
-      // Registered: the account it points to, and nothing said against it.
+      // Registered: whole, the account it points to, nothing said against it.
       const registered = askFor("sofiadesign.dusk");
-      const asked = registered.getByRole("region", { name: "Payment request" });
+      const to = rowOf(
+        registered.getByRole("region", { name: "Payment request" }),
+        "To",
+      );
 
-      await vi.waitFor(() => expect(asked).toHaveTextContent("sEeMSo…v9kgd7"));
+      await vi.waitFor(() =>
+        expect(to.querySelector(".payment-asked__code")).toHaveTextContent(
+          /\bsEeMSo…v9kgd7$/,
+        ),
+      );
+      expect(to.querySelector(".payment-asked__name")?.textContent).toBe(
+        "sofiadesign.dusk",
+      );
       expect(registered.queryByRole("status")).toBeNull();
-      expect(asked).toHaveTextContent("sofiadesign.dusk");
-      expect(asked).not.toHaveTextContent("…n.dusk");
       cleanup();
 
-      // One that looks like it, not registered: said, of the name whole.
+      // One that looks like it, not registered: whole, said so, no account.
       const lookalike = askFor("sofiadmarekn.dusk");
+      const named = rowOf(
+        lookalike.getByRole("region", { name: "Payment request" }),
+        "To",
+      );
 
-      expect(await lookalike.findByRole("status")).toHaveTextContent(
+      expect(await within(named).findByRole("status")).toHaveTextContent(
+        /\b(isn't|not) registered\b/i,
+      );
+      expect(named.querySelector(".payment-asked__name")?.textContent).toBe(
         "sofiadmarekn.dusk",
       );
-      expect(
-        lookalike.getByRole("region", { name: "Payment request" }),
-      ).not.toHaveTextContent("…n.dusk");
+      expect(named.querySelector(".payment-asked__code")).toBeNull();
     });
 
     it("should say when it's for another network or says two amounts, and nothing for a page that asks for nothing", () => {
@@ -98,13 +135,13 @@ describe("Setup", () => {
         search: `?to=${TO}&amount=0.011&network=mainnet`,
       });
 
-      // The network it's for, and the one this is.
-      const other = render(Setup, {}).getByRole("region", {
-        name: "Payment request",
-      });
+      // Where it says what's next: the network it's for, and the one this is.
+      const other = render(Setup, {})
+        .getByRole("region", { name: "Payment request" })
+        .querySelector(".payment-asked__next");
 
-      expect(other).toHaveTextContent("Mainnet");
-      expect(other).toHaveTextContent("Testnet");
+      expect(other).toHaveTextContent(/\bfor Mainnet\b/);
+      expect(other).toHaveTextContent(/\bon Testnet\b/);
       cleanup();
 
       // Nor an amount for one saying two, in DUSK and in lux.
@@ -194,8 +231,11 @@ describe("Setup", () => {
       });
 
       expect(
-        render(Setup, {}).getByRole("region", { name: "Payment request" }),
-      ).toHaveTextContent("0.011 DUSK");
+        rowOf(
+          render(Setup, {}).getByRole("region", { name: "Payment request" }),
+          "Amount",
+        ),
+      ).toHaveTextContent(/^0\.011 DUSK$/);
     });
 
     it("should ask what Send asks of an amount that could be either of two, as 1.000, never settling it, and hand it on to another network's wallet as written", () => {
@@ -217,12 +257,12 @@ describe("Setup", () => {
           name: "Payment request",
         });
 
-        expect(asked).toHaveTextContent(
+        // Its row: the amount as written, then the two it could be, unsettled.
+        expect(rowOf(asked, "Amount")).toHaveTextContent(
           new RegExp(
-            `${literally(amount)} DUSK\\D+${literally(either)}\\D+${or}\\b`,
+            `^${literally(amount)} DUSK\\D+${literally(either)}\\D+${or}\\D*$`,
           ),
         );
-        expect(asked).not.toHaveTextContent(/\s10? DUSK/);
         cleanup();
       }
 
@@ -389,6 +429,35 @@ describe("Setup", () => {
           ),
         },
       });
+    });
+
+    it("offers nothing with an extension too old to take it", async () => {
+      setNodeNetwork(networks.testnet);
+      keepPlace({
+        pathname: "/some-base-path/dashboard/send/",
+        search: SEARCH,
+      });
+
+      const provider = extension(["dusk_getCapabilities"]);
+      const { getByRole } = render(Setup, {});
+
+      await vi.waitFor(() =>
+        expect(provider.request).toHaveBeenCalledWith({
+          method: "dusk_getCapabilities",
+        }),
+      );
+      // Its answer read.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // No offer by the request, and nothing asked of it but what it takes.
+      expect(
+        within(getByRole("region", { name: "Payment request" })).queryByRole(
+          "button",
+        ),
+      ).toBeNull();
+      expect(provider.request.mock.calls).toStrictEqual([
+        [{ method: "dusk_getCapabilities" }],
+      ]);
     });
   });
 

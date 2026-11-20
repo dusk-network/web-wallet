@@ -81,8 +81,10 @@ describe("Remove wallet", () => {
     const hasPhrase = getByRole("checkbox");
 
     // Wallet 1 goes, and it's Wallet 1's phrase the box is for.
-    expect(container).toHaveTextContent("Wallet 1");
-    expect(hasPhrase).toHaveAccessibleName(/Wallet 1\b/);
+    expect(container.querySelector(".remove-wallet__which")).toHaveTextContent(
+      /^Wallet 1(?!\d)/,
+    );
+    expect(hasPhrase).toHaveAccessibleName(/\bWallet 1(?!\d)/);
 
     const password = getByLabelText("Password you unlock with");
     const remove = getByRole("button", { name: "Remove wallet" });

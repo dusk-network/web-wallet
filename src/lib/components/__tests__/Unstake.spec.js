@@ -26,6 +26,18 @@ const getReviewValues = (container) =>
     value.textContent?.trim(),
   );
 
+/**
+ * Matches `value` whole: not inside a longer figure, nor signed, so "1 DUSK"
+ * matches neither "11 DUSK", "0.1 DUSK" nor a signed "1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "0.02 DUSK"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/** What a send that failed came to, as its heading says it. */
+const failureOf = () => document.querySelector(".dusk-error-alert__summary");
+
 // The transaction sent stays pending.
 const { followTransaction } = vi.hoisted(() => ({
   followTransaction: vi.fn(() => new Promise(() => {})),
@@ -128,18 +140,23 @@ describe("Unstake", () => {
         ...baseProps,
         ...unstakeProps,
       });
-      const amountInput = getByRole("textbox", { name: "Amount" });
+      const amountInput = /** @type {HTMLInputElement} */ (
+        getByRole("textbox", { name: "Amount" })
+      );
 
       await vi.advanceTimersToNextTimerAsync();
 
-      // All that is staked, 278 DUSK, filled in, not shown.
-      expect(amountInput).not.toHaveValue("");
-      expect(amountInput).not.toHaveValue("278");
+      // All that is staked, 278 DUSK, filled in, with no figure in the field
+      // nor anywhere on the screen.
+      expect(amountInput.value).not.toBe("");
+      expect(amountInput.value).not.toMatch(/[0-9]/);
+      expect(container.textContent).not.toMatch(/278/);
       expect(getByRole("button", { name: "Next" })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
 
-      expect(getReviewValues(container)[0]).not.toContain("278");
+      expect(getReviewValues(container)[0]).not.toMatch(/[0-9]/);
+      expect(container.textContent).not.toMatch(/278/);
     });
 
     it("should show the amount once it's typed, not when Max fills it in, while balances are hidden", async () => {
@@ -152,7 +169,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput).not.toHaveValue("278");
+      expect(amountInput.value).not.toMatch(/[0-9]/);
 
       await fireEvent.input(amountInput, { target: { value: "100" } });
 
@@ -161,8 +178,8 @@ describe("Unstake", () => {
       await fireEvent.input(amountInput, { target: { value: "" } });
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(amountInput).not.toHaveValue("");
-      expect(amountInput).not.toHaveValue("278");
+      expect(amountInput.value).not.toBe("");
+      expect(amountInput.value).not.toMatch(/[0-9]/);
 
       // Deleting a character of what shows clears it.
       await fireEvent.input(amountInput, {
@@ -218,18 +235,22 @@ describe("Unstake", () => {
           : null;
       };
 
-      expect(await errorOf("ten")).not.toBeNull();
-      expect(await errorOf("1.0000000001")).not.toBeNull();
-      expect(await errorOf("0")).not.toBeNull();
+      // Not an amount: an example of one.
+      expect(await errorOf("ten")).toMatch(wholeFigure("10.5"));
+      // More decimals than DUSK's nine.
+      expect(await errorOf("1.0000000001")).toMatch(wholeFigure("9 decimals"));
+      expect(await errorOf("0")).toMatch(/greater than 0(?![.,]?[0-9])/);
       // More than is staked.
-      expect(await errorOf("278,5")).not.toBeNull();
+      expect(await errorOf("278,5")).toMatch(/more than/i);
       // Less than the 1 DUSK a stake must keep, unless it all goes.
-      expect(await errorOf("277.5")).toContain("1 DUSK");
+      expect(await errorOf("277.5")).toMatch(/at least/i);
+      expect(await errorOf("277.5")).toMatch(wholeFigure("1 DUSK"));
       expect(await errorOf("277")).toBeNull();
 
       await rerender({ availableBalance: 0n });
 
-      expect(await errorOf("278")).toContain("0.02 DUSK");
+      // The fee it can't pay, which the public balance pays.
+      expect(await errorOf("278")).toMatch(wholeFigure("0.02 DUSK"));
     });
 
     it("should take new default gas, as the node's price, until the review", async () => {
@@ -265,7 +286,10 @@ describe("Unstake", () => {
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit,
       );
-      expect(await findByRole("status")).toBeInTheDocument();
+      await findByRole("status");
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull();
     });
 
     it("should send once, and nothing more once the stake read again after it settles shows less", async () => {
@@ -393,7 +417,12 @@ describe("Unstake", () => {
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
 
-      await fireEvent.click(await findByRole("button", { name: "Try again" }));
+      const tryAgain = await findByRole("button", { name: "Try again" });
+
+      // Nothing went out.
+      expect(failureOf()).toHaveTextContent(/not sent/i);
+
+      await fireEvent.click(tryAgain);
 
       expect(getReviewValues(container)[0]).toBe("345 DUSK");
       expect(execute).toHaveBeenCalledOnce();
@@ -407,7 +436,10 @@ describe("Unstake", () => {
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit,
       );
-      expect(await findByRole("status")).toBeInTheDocument();
+      await findByRole("status");
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull();
     });
 
     it("should offer no Try again when it may have gone out", async () => {
@@ -426,6 +458,7 @@ describe("Unstake", () => {
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
 
       expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+      expect(failureOf()).toHaveTextContent(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
 
@@ -448,7 +481,10 @@ describe("Unstake", () => {
         baseProps.gasSettings.gasPrice,
         baseProps.gasSettings.gasLimit,
       );
-      expect(await findByRole("status")).toBeInTheDocument();
+      await findByRole("status");
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull();
     });
 
     it("should claim once, and nothing more once the rewards read again after it settles are none", async () => {
@@ -482,7 +518,7 @@ describe("Unstake", () => {
         target: { value: "345,1" },
       });
 
-      expect(getByRole("alert")).toBeInTheDocument();
+      expect(getByRole("alert")).toHaveTextContent(/more than/i);
       expect(getByRole("button", { name: "Next" })).toBeDisabled();
     });
 

@@ -12,16 +12,27 @@ import { settingsStore, walletStore } from "$lib/stores";
 import { TransactionStatus } from "..";
 
 /**
- * Text that names each of `values`, in any order, whatever its words.
+ * Text that names each of `values`, in any order, whatever its words: a
+ * string whole, so `4,850,170` is never found in `14,850,170`; a regex as
+ * the key phrase of a state; and `{ not }` as what it never says.
  *
- * @param {...string} values
+ * @param {...(string | RegExp | { not: RegExp })} values
  */
 const naming = (...values) =>
   new RegExp(
-    values
-      .map((value) => `(?=.*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`)
-      .join(""),
+    `^${values
+      .map((value) =>
+        typeof value === "string"
+          ? `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`
+          : value instanceof RegExp
+            ? `(?=.*(?${value.flags.includes("i") ? "i" : ""}:${value.source}))`
+            : `(?!.*(?${value.not.flags.includes("i") ? "i" : ""}:${value.not.source}))`,
+      )
+      .join("")}`,
   );
+
+/** @param {Element | null | undefined} element */
+const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
 
 /**
  * Where the transaction is said to be: pending, late, completed or failed.
@@ -29,6 +40,21 @@ const naming = (...values) =>
  * @param {HTMLElement} container
  */
 const statusOf = (container) => container.querySelector(".transaction-status");
+
+/**
+ * A detail of the transaction, by its term's key word: the term, and its
+ * value, as they read.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} term
+ */
+const detailOf = (container, term) => {
+  const dt = Array.from(container.querySelectorAll("dt")).find((each) =>
+    term.test(textOf(each) ?? ""),
+  );
+
+  return { term: textOf(dt), value: textOf(dt?.nextElementSibling) };
+};
 
 const { followTransaction } = vi.hoisted(() => ({
   followTransaction: vi.fn(),
@@ -86,7 +112,7 @@ describe("TransactionStatus", () => {
   it("should say a transaction it follows is being sent, with its hash and the most it can cost", async () => {
     followNext();
 
-    const { container, getByText } = render(TransactionStatus, baseProps);
+    const { container } = render(TransactionStatus, baseProps);
 
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith(
       hash,
@@ -94,16 +120,17 @@ describe("TransactionStatus", () => {
     );
     // Sending, until a block has it.
     expect(statusOf(container)).toHaveClass("transaction-status--pending");
-    expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
-    expect(getByText("0.0025 DUSK")).toBeInTheDocument();
+    expect(detailOf(container, /^transaction$/i).value).toBe("8dcf6f…3db55e");
+    // At most so much: no more is known yet.
+    expect(detailOf(container, /network fee/i)).toStrictEqual({
+      term: expect.stringMatching(/at most/i),
+      value: "0.0025 DUSK",
+    });
   });
 
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {
     const following = followNext();
-    const { container, getByRole, getByText } = render(
-      TransactionStatus,
-      baseProps,
-    );
+    const { container, getByRole } = render(TransactionStatus, baseProps);
     const blockTime = Date.UTC(2026, 9, 28, 0, 34, 7);
 
     following.resolve({
@@ -112,17 +139,21 @@ describe("TransactionStatus", () => {
       fee: 1_854_795n,
       timestamp: blockTime,
     });
-    // At its block's time, to the second, as the request it paid says it.
+    // Sent, at its block's time, to the second, as the request it paid
+    // says it, in its block.
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(
-        naming(timeLabel(blockTime, "en", { seconds: true }), "4,687,200"),
-      ),
+      expect(statusOf(container)).toHaveClass("transaction-status--completed"),
     );
-    expect(getByRole("status")).toHaveTextContent(/\d{1,2}:34:07/);
+    expect(getByRole("status")).toHaveTextContent(
+      naming(timeLabel(blockTime, "en", { seconds: true }), "4,687,200"),
+    );
+    expect(getByRole("status")).toHaveTextContent(/\b\d{1,2}:34:07\b/);
 
     // The fee it was charged, no longer the most it could cost.
-    expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
-    expect(container).not.toHaveTextContent("0.0025");
+    expect(detailOf(container, /network fee/i)).toStrictEqual({
+      term: expect.not.stringMatching(/at most/i),
+      value: "0.001854795 DUSK",
+    });
   });
 
   it("should say it was sent as soon as a block took it, not once that block is final, and read History and the balances again then", async () => {
@@ -131,7 +162,10 @@ describe("TransactionStatus", () => {
       .spyOn(walletStore, "refreshBalance")
       .mockResolvedValue(undefined);
     const onFinal = vi.fn();
-    const { getByRole } = render(TransactionStatus, { ...baseProps, onFinal });
+    const { container, getByRole } = render(TransactionStatus, {
+      ...baseProps,
+      onFinal,
+    });
     const blockTime = Date.UTC(2026, 10, 10, 6, 56, 39);
     const inBlock = {
       blockHeight: 4_820_416n,
@@ -150,6 +184,7 @@ describe("TransactionStatus", () => {
     followTransaction.mock.lastCall?.[1].onBlock(inBlock);
 
     await vi.waitFor(() => expect(getByRole("status")).toHaveTextContent(sent));
+    expect(statusOf(container)).toHaveClass("transaction-status--completed");
     expect(refreshBalance).not.toHaveBeenCalled();
     expect(onFinal).not.toHaveBeenCalled();
 
@@ -190,7 +225,7 @@ describe("TransactionStatus", () => {
 
       expect(rowOf()).toMatchObject({ status: "pending" });
 
-      const { getByRole } = render(TransactionStatus, baseProps);
+      const { container, getByRole } = render(TransactionStatus, baseProps);
       const blockTime = Date.UTC(2026, 10, 12, 1, 41, 9);
       const inBlock = {
         blockHeight: 4_833_654n,
@@ -202,8 +237,9 @@ describe("TransactionStatus", () => {
       followTransaction.mock.lastCall?.[1].onBlock(inBlock);
 
       await vi.waitFor(() =>
-        expect(getByRole("status")).toHaveTextContent("4,833,654"),
+        expect(getByRole("status")).toHaveTextContent(naming("4,833,654")),
       );
+      expect(statusOf(container)).toHaveClass("transaction-status--completed");
       await vi.waitFor(() =>
         expect(rowOf()).toMatchObject({
           blockHeight: 4_833_654,
@@ -240,7 +276,7 @@ describe("TransactionStatus", () => {
     following.resolve(null);
 
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent("4,820,416"),
+      expect(getByRole("status")).toHaveTextContent(naming("4,820,416")),
     );
     // Still sent: never late again.
     expect(statusOf(container)).toHaveClass("transaction-status--completed");
@@ -253,8 +289,8 @@ describe("TransactionStatus", () => {
       const following = followNext();
       const { container, getByRole } = render(TransactionStatus, baseProps);
 
+      expect(detailOf(container, /network fee/i).value).not.toMatch(/\d/);
       expect(container.textContent).not.toMatch(/\d DUSK/);
-      expect(container).not.toHaveTextContent("0.0025");
 
       following.resolve({
         blockHeight: 4_687_200n,
@@ -263,9 +299,10 @@ describe("TransactionStatus", () => {
         timestamp: 1,
       });
       await vi.waitFor(() =>
-        expect(getByRole("status")).toHaveTextContent("4,687,200"),
+        expect(getByRole("status")).toHaveTextContent(naming("4,687,200")),
       );
 
+      expect(detailOf(container, /network fee/i).value).not.toMatch(/\d/);
       expect(container.textContent).not.toContain("0.0019");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -274,7 +311,7 @@ describe("TransactionStatus", () => {
 
   it("should show a transaction that failed, the fee it was charged and why", async () => {
     const following = followNext();
-    const { container, getByText } = render(TransactionStatus, baseProps);
+    const { container, getByRole } = render(TransactionStatus, baseProps);
 
     following.resolve({
       blockHeight: 4_687_200n,
@@ -285,7 +322,12 @@ describe("TransactionStatus", () => {
       expect(statusOf(container)).toHaveClass("transaction-status--failed"),
     );
 
-    expect(getByText("0.0025 DUSK")).toBeInTheDocument();
+    // The fee it was charged: said so, and how much.
+    expect(getByRole("status")).toHaveTextContent(/fee was charged/i);
+    expect(detailOf(container, /network fee/i)).toStrictEqual({
+      term: expect.not.stringMatching(/at most/i),
+      value: "0.0025 DUSK",
+    });
     expect(
       container.querySelector(".dusk-error-details__error"),
     ).toHaveTextContent("Panic: out of gas");
@@ -317,9 +359,10 @@ describe("TransactionStatus", () => {
     again.resolve({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true }),
+        naming(timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true })),
       ),
     );
+    expect(statusOf(container)).toHaveClass("transaction-status--completed");
     vi.restoreAllMocks();
   });
 
@@ -358,9 +401,14 @@ describe("TransactionStatus", () => {
       // Three minutes on, still in no block: this stops following it.
       await act(() => following.resolve(null));
 
-      // Not sent, as chosen: nothing to send again, nor said sent.
+      // Not sent yet, as chosen, as it may still arrive: nothing to send
+      // again, nor said sent.
       expect(getByRole("status")).toHaveTextContent(
-        "0.01 DUSK to your Profile 2",
+        naming(
+          /not sent yet/i,
+          { not: /nothing left|sent after/i },
+          "0.01 DUSK to your Profile 2",
+        ),
       );
       expect(queryByRole("button", { name: "Send it now" })).toBeNull();
       expect(statusOf(container)).not.toHaveClass(

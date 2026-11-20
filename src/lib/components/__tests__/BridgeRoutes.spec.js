@@ -20,6 +20,7 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { routesStopped, stubWalletNetwork } from "$lib/test-helpers";
 import vault from "$lib/vault";
 import { outcomeUnknown } from "$lib/transactions/outcomeUnknown";
+import { forgetDuskAdded } from "$lib/web3/addDusk";
 
 import { Bridge } from "..";
 
@@ -46,6 +47,8 @@ const mocks = vi.hoisted(() => ({
   migrate: vi.fn(),
   switchChain: vi.fn(),
   waitForTransactionReceipt: vi.fn(),
+  /** @type {import("vitest").Mock<(...args: any[]) => Promise<boolean>>} */
+  watchAsset: vi.fn(async () => true),
 }));
 
 vi.mock("$lib/bridge/bridgeTimes", async () => {
@@ -112,6 +115,7 @@ vi.mock("@wagmi/core", async (importOriginal) => {
     getAccount: () => get(/** @type {any} */ (mocks.account)),
     switchChain: mocks.switchChain,
     waitForTransactionReceipt: mocks.waitForTransactionReceipt,
+    watchAsset: mocks.watchAsset,
   };
 });
 
@@ -160,14 +164,48 @@ const props = {
 };
 
 /**
- * Waits for the result to say it failed, whatever it says.
+ * The result's failure, once it shows: its heading and its sentence.
  *
  * @param {HTMLElement} container
  */
-const failureShown = (container) =>
-  vi.waitFor(() =>
+async function failureOf(container) {
+  await vi.waitFor(() =>
     expect(container.querySelector(".dusk-error-alert")).not.toBeNull(),
   );
+
+  const alert = /** @type {HTMLElement} */ (
+    container.querySelector(".dusk-error-alert")
+  );
+
+  return {
+    heading:
+      alert.querySelector(".dusk-error-alert__summary")?.textContent ?? "",
+    sentence:
+      alert.querySelector(".dusk-error-alert__description")?.textContent ?? "",
+  };
+}
+
+/**
+ * A review row's value, by its label's key word.
+ *
+ * @param {ParentNode} container
+ * @param {RegExp} label
+ */
+const fieldOf = (container, label) =>
+  /** @type {HTMLElement | null} */ (
+    Array.from(container.querySelectorAll("dt")).find((term) =>
+      label.test(term.textContent?.trim() ?? ""),
+    )?.nextElementSibling ?? null
+  );
+
+/**
+ * The full address a review row gives, as shown.
+ *
+ * @param {ParentNode} container
+ * @param {RegExp} label
+ */
+const addressOf = (container, label) =>
+  fieldOf(container, label)?.querySelector(".full-address")?.textContent;
 
 /**
  * What the card says where a screen reader hears it: its warnings and
@@ -206,6 +244,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     cleanup();
     vi.clearAllMocks();
     vi.useRealTimers();
+    forgetDuskAdded();
     localStorage.clear();
     settingsStore.update((store) => ({ ...store, hideBalances: false }));
   });
@@ -314,19 +353,23 @@ describe("the Bridge card's routes to and from other chains", () => {
     // No more than the bridge's fee: nothing would arrive.
     await fireEvent.input(amount, { target: { value: "1" } });
 
-    expect(getByRole("button", { name: /1 DUSK/ })).toBeDisabled();
+    expect(getByRole("button", { name: /(^|\s)1 DUSK\b/ })).toBeDisabled();
 
     await fireEvent.input(amount, { target: { value: "2" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    // 2 DUSK sent, the 1 DUSK fee, and 1 DUSK arriving on BNB Smart Chain at
-    // the wallet's address.
+    // Each in its own part of the line: 2 DUSK sent, the 1 DUSK bridge fee,
+    // and 1 DUSK arriving on BNB Smart Chain...
     const line = container.querySelector(".route-review__line");
 
-    expect(line).toHaveTextContent("2 DUSK");
-    expect(line).toHaveTextContent("1 DUSK");
-    expect(line).toHaveTextContent("BNB Smart Chain");
-    expect(container).toHaveTextContent(EVM);
+    expect(line).toHaveTextContent(/(^|·)\s*2 DUSK sent\b/);
+    expect(line).toHaveTextContent(/(^|·)\s*1 DUSK bridge fee\b/);
+    expect(line).toHaveTextContent(
+      /(^|·)\s*1 DUSK arrives on BNB Smart Chain$/,
+    );
+    // ...from this public account, to the connected wallet's address.
+    expect(addressOf(container, /^from$/i)).toBe(ACCOUNT);
+    expect(addressOf(container, /^to$/i)).toBe(EVM);
 
     mocks.executeSend.mockResolvedValue("ab".repeat(32));
     await afterConfirmDelay();
@@ -382,11 +425,15 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.click(getByRole("button", { name: "Review migration" }));
 
     expect(await findByRole("button", { name: "Migrate" })).toBeEnabled();
-    // The amount, from the wallet on BNB Smart Chain to this public account.
-    expect(container).toHaveTextContent("2.5 DUSK");
-    expect(container).toHaveTextContent("BNB Smart Chain");
-    expect(container).toHaveTextContent(EVM);
-    expect(container).toHaveTextContent(ACCOUNT);
+    // The amount, from the wallet on BNB Smart Chain to this public account,
+    // with an approval to sign first.
+    expect(fieldOf(container, /^amount$/i)).toHaveTextContent(/^2\.5 DUSK$/);
+    expect(fieldOf(container, /^from$/i)).toHaveTextContent(
+      /^BNB Smart Chain\s/,
+    );
+    expect(addressOf(container, /^from$/i)).toBe(EVM);
+    expect(addressOf(container, /^to$/i)).toBe(ACCOUNT);
+    expect(fieldOf(container, /^steps$/i)).toHaveTextContent(/\bapprove\b/i);
 
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Migrate" }));
@@ -516,6 +563,8 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       const failed = await failWith(new TypeError("Failed to fetch"));
 
+      // Nothing went out: it can be tried again.
+      expect((await failureOf(failed.container)).heading).toMatch(/not sent/i);
       await failed.findByRole("button", { name: "Try again" });
       cleanup();
 
@@ -528,7 +577,10 @@ describe("the Bridge card's routes to and from other chains", () => {
         outcomeUnknown(new TypeError("Failed to fetch")),
       );
 
-      await failureShown(unknown.container);
+      // It may have gone out.
+      expect((await failureOf(unknown.container)).heading).toMatch(
+        /not confirmed/i,
+      );
       cleanup();
 
       expect(
@@ -641,7 +693,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
       get(sendPasswordAsk)?.cancel();
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(await findByRole("alert")).toHaveTextContent(/nothing moved/i);
       expect(await findByRole("button", { name: "Migrate" })).toBeVisible();
       expect(mocks.migrate).not.toHaveBeenCalled();
     });
@@ -682,7 +734,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(await findByRole("button", { name: "Revoke" })).toBeEnabled();
       expect(getByRole("button", { name: "Finish" })).toBeEnabled();
-      expect(panel(container)).toHaveTextContent("0.5 BEP20 DUSK");
+      expect(panel(container)).toHaveTextContent(/(^|\s)0\.5 BEP20 DUSK\b/);
       expect(mocks.allowance).toHaveBeenCalledWith(
         EVM,
         BSC.token,
@@ -695,7 +747,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       ).toStrictEqual([]);
     });
 
-    it("hides the amount with the balances, and offers to revoke one with no limit", async () => {
+    it("hides the amount with the balances, and says one with no limit as that, there and on a review", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       mocks.allowance.mockResolvedValue(HALF);
 
@@ -714,6 +766,30 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(
         await unlimited.findByRole("button", { name: "Revoke" }),
       ).toBeEnabled();
+      // Any amount, on the form...
+      expect(panel(unlimited.container)).toHaveTextContent(/any amount/i);
+
+      await fireEvent.input(
+        unlimited.getByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "1" } },
+      );
+      await fireEvent.click(
+        unlimited.getByRole("button", { name: "Review migration" }),
+      );
+      await vi.waitFor(() =>
+        expect(
+          unlimited.getByRole("button", { name: "Migrate" }),
+        ).toBeEnabled(),
+      );
+
+      // ...and on the review, an approval with no limit, no figure for it,
+      // which stays after it.
+      const approval = fieldOf(unlimited.container, /^approval$/i);
+
+      expect(approval).toHaveTextContent(/no limit/i);
+      expect(approval).toHaveTextContent(/stays approved/i);
+      expect(approval).not.toHaveTextContent(/none of it/i);
+      expect(approval).not.toHaveTextContent(/\d/);
     });
 
     it("finishes on the review with what the approval still lets go, which says it's approved already", async () => {
@@ -728,11 +804,14 @@ describe("the Bridge card's routes to and from other chains", () => {
       await vi.waitFor(() =>
         expect(getByRole("button", { name: "Migrate" })).toBeEnabled(),
       );
-      expect(container.querySelector(".review-amount")).toHaveTextContent(
-        "0.5 DUSK",
-      );
-      // The earlier approval that covers it.
-      expect(container).toHaveTextContent("0.5 BEP20 DUSK");
+      // All the 0.5 the approval lets go, which covers it, and none of it
+      // approved after.
+      const approval = fieldOf(container, /^approval$/i);
+
+      expect(fieldOf(container, /^amount$/i)).toHaveTextContent(/^0\.5 DUSK$/);
+      expect(approval).toHaveTextContent(/(^|\s)0\.5 BEP20 DUSK covers\b/);
+      expect(approval).toHaveTextContent(/none of it stays approved/i);
+      expect(approval).not.toHaveTextContent(/\d BEP20 DUSK stays approved/);
 
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
@@ -752,8 +831,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
       await more.findByRole("heading", { name: "Review" });
 
-      expect(more.container.querySelector(".review-amount")).toHaveTextContent(
-        "5 DUSK",
+      expect(fieldOf(more.container, /^amount$/i)).toHaveTextContent(
+        /^5 DUSK$/,
       );
       cleanup();
 
@@ -782,8 +861,36 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
 
       // The 0.5 approved covers the 0.2, and 0.3 stays approved.
-      expect(container).toHaveTextContent("0.5 BEP20 DUSK");
-      expect(container).toHaveTextContent("0.3 BEP20 DUSK");
+      const approval = fieldOf(container, /^approval$/i);
+
+      expect(approval).toHaveTextContent(/(^|\s)0\.5 BEP20 DUSK covers\b/);
+      expect(approval).toHaveTextContent(
+        /(^|\s)0\.3 BEP20 DUSK stays approved\b/,
+      );
+      expect(approval).not.toHaveTextContent(/none of it/i);
+    });
+
+    it("keeps to \"exactly this amount\" where it's true: an approval that doesn't cover it is replaced", async () => {
+      mocks.allowance.mockResolvedValue(HALF);
+
+      const { container, findByRole, getByRole } = openRoute();
+
+      await fireEvent.input(
+        await findByRole("textbox", { name: "Amount, in BEP20 DUSK" }),
+        { target: { value: "1" } },
+      );
+      await fireEvent.click(getByRole("button", { name: "Review migration" }));
+      await vi.waitFor(() =>
+        expect(getByRole("button", { name: "Migrate" })).toBeEnabled(),
+      );
+
+      // The 0.5 approved doesn't cover the 1: an approval to sign, for
+      // exactly this amount, not the earlier one.
+      const approval = fieldOf(container, /^approval$/i);
+
+      expect(fieldOf(container, /^steps$/i)).toHaveTextContent(/\bapprove\b/i);
+      expect(approval).toHaveTextContent(/exactly this amount/i);
+      expect(approval).not.toHaveTextContent(/earlier approval/i);
     });
 
     it("hides what an approval leaves on the review with the balances", async () => {
@@ -838,14 +945,21 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         expect(mocks.approve).not.toHaveBeenCalled();
         // What's approved now, from which wallet on which chain.
-        expect(review).toHaveTextContent("0.5 BEP20 DUSK");
-        expect(review).toHaveTextContent("BNB Smart Chain");
-        expect(review).toHaveTextContent(EVM);
-        // What it costs, from what the wallet holds.
-        await vi.waitFor(() =>
-          expect(review).toHaveTextContent("0.000024 BNB"),
+        expect(fieldOf(review, /approved now/i)).toHaveTextContent(
+          /^0\.5 BEP20 DUSK$/,
         );
-        expect(review).toHaveTextContent("1 BNB");
+        expect(fieldOf(review, /^from$/i)).toHaveTextContent(
+          /^BNB Smart Chain\s/,
+        );
+        expect(addressOf(review, /^from$/i)).toBe(EVM);
+        // What it costs, then what the wallet holds to pay it.
+        await vi.waitFor(() =>
+          expect(fieldOf(review, /fees/i)).toHaveTextContent(
+            /\babout 0\.000024 BNB\b.*\s1 BNB$/i,
+          ),
+        );
+        // Revoking moves nothing.
+        expect(fieldOf(review, /^steps$/i)).toHaveTextContent(/nothing moves/i);
         expect(mocks.getRevokeFee).toHaveBeenCalledWith({
           chainId: 56,
           migrationContract: BSC_CONTRACT,
@@ -857,7 +971,9 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(view.getByRole("button", { name: "Back" }));
 
         expect(view.queryByRole("heading", { name: "Review" })).toBeNull();
-        expect(panel(view.container)).toHaveTextContent("0.5 BEP20 DUSK");
+        expect(panel(view.container)).toHaveTextContent(
+          /(^|\s)0\.5 BEP20 DUSK\b/,
+        );
         expect(mocks.approve).not.toHaveBeenCalled();
       });
 
@@ -874,8 +990,11 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         await fireEvent.click(revokeIn(view));
 
-        // Back on the form, which says so.
-        expect(await findByRole("alert")).toBeInTheDocument();
+        // Back on the form, which says it's revoked.
+        const said = await findByRole("alert");
+
+        expect(said).toHaveTextContent(/approval is revoked/i);
+        expect(said).not.toHaveTextContent(/stands|wasn't revoked/i);
         expect(queryByRole("heading", { name: "Review" })).toBeNull();
         expect(mocks.approve).toHaveBeenCalledExactlyOnceWith(
           BSC_CONTRACT,
@@ -943,9 +1062,14 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         // Said on the review, which stays, with what's approved still: it can
         // be signed again.
-        expect(await view.findByRole("alert")).toBeInTheDocument();
+        const said = await view.findByRole("alert");
+
+        expect(said).toHaveTextContent(/approval stands/i);
+        expect(said).not.toHaveTextContent(/is revoked/i);
         expect(view.getByRole("heading", { name: "Review" })).toBeVisible();
-        expect(view.container).toHaveTextContent("0.5 BEP20 DUSK");
+        expect(fieldOf(view.container, /approved now/i)).toHaveTextContent(
+          /^0\.5 BEP20 DUSK$/,
+        );
         expect(mocks.waitForTransactionReceipt).not.toHaveBeenCalled();
       });
 
@@ -961,9 +1085,14 @@ describe("the Bridge card's routes to and from other chains", () => {
         });
         await fireEvent.click(revokeIn(view));
 
-        expect(await view.findByRole("alert")).toBeInTheDocument();
+        const said = await view.findByRole("alert");
+
+        expect(said).toHaveTextContent(/wasn't revoked/i);
+        expect(said).not.toHaveTextContent(/is revoked/i);
         await vi.waitFor(() =>
-          expect(view.container).toHaveTextContent("0.5 BEP20 DUSK"),
+          expect(fieldOf(view.container, /approved now/i)).toHaveTextContent(
+            /^0\.5 BEP20 DUSK$/,
+          ),
         );
       });
 
@@ -976,7 +1105,10 @@ describe("the Bridge card's routes to and from other chains", () => {
         mocks.allowance.mockResolvedValue(0n);
         await fireEvent.click(revokeIn(view));
 
-        expect(await findByRole("alert")).toBeInTheDocument();
+        const said = await findByRole("alert");
+
+        expect(said).toHaveTextContent(/approval is revoked/i);
+        expect(said).not.toHaveTextContent(/stands|wasn't revoked/i);
         expect(mocks.approve).not.toHaveBeenCalled();
         await vi.waitFor(() => expect(panel(container)).toBeNull());
       });
@@ -1002,7 +1134,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         }));
         answer(HALF);
 
-        expect(await findByRole("alert")).toBeInTheDocument();
+        expect(await findByRole("alert")).toHaveTextContent(/nothing moved/i);
         expect(mocks.approve).not.toHaveBeenCalled();
       });
 
@@ -1113,17 +1245,21 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(/** @type {HTMLInputElement} */ (amount).value).toBe(
         formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux),
       );
-      // It says what Max keeps, with no warning.
-      expect(container).toHaveTextContent("0.05 DUSK");
+      // It says what Max keeps, in its note, with no warning.
+      expect(container.querySelector(".swap-note")).toHaveTextContent(
+        /(^|\s)0\.05 DUSK\b/,
+      );
       expect(said(container)).toStrictEqual([]);
 
       await fireEvent.input(amount, {
         target: { value: formatDuskPlain(props.unshieldedBalance - fee) },
       });
 
-      // Over it: a warning, and nothing said of what Max keeps.
-      expect(said(container)).toHaveLength(1);
-      expect(container).not.toHaveTextContent("0.05 DUSK");
+      // Over it: a warning that it leaves too little, and no note.
+      expect(said(container)).toStrictEqual([
+        expect.stringMatching(/too little/i),
+      ]);
+      expect(container.querySelector(".swap-note")).toBeNull();
     });
   });
 
@@ -1143,6 +1279,22 @@ describe("the Bridge card's routes to and from other chains", () => {
     const resultOf = (container) =>
       /** @type {HTMLElement} */ (container.querySelector(".route-result"));
 
+    /**
+     * The result's heading: how it's getting on.
+     *
+     * @param {HTMLElement} container
+     */
+    const headingOf = (container) =>
+      resultOf(container).querySelector("b")?.textContent?.trim() ?? "";
+
+    /**
+     * The result's sentence: what arrives or arrived, where, and when.
+     *
+     * @param {HTMLElement} container
+     */
+    const sentenceOf = (container) =>
+      resultOf(container).querySelector("p")?.textContent?.trim() ?? "";
+
     /** A transfer out of 2 DUSK, sent. */
     async function sendOut() {
       connect({ address: EVM, chainId: 56 });
@@ -1161,7 +1313,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(view.getByRole("button", { name: "Send" }));
       // Sent: when it usually arrives.
       await vi.waitFor(() =>
-        expect(resultOf(view.container)).toHaveTextContent("10 hours"),
+        expect(sentenceOf(view.container)).toMatch(/\b10 hours\b/),
       );
 
       return view;
@@ -1185,22 +1337,131 @@ describe("the Bridge card's routes to and from other chains", () => {
     });
 
     it("says what arrived once a transfer out has", async () => {
-      const result = resultOf((await sendOut()).container);
+      const { container } = await sendOut();
 
       mocks.transfers?.set([out({ stage: "sent" })]);
       await tick();
 
-      // On its way: 1 DUSK, on BNB Smart Chain in about 10 hours.
-      expect(result).toHaveTextContent("1 DUSK");
-      expect(result).toHaveTextContent("BNB Smart Chain");
-      expect(result).toHaveTextContent("10 hours");
+      // Sent: 1 DUSK to arrive on BNB Smart Chain, in about 10 hours.
+      expect(headingOf(container)).toMatch(/^sent$/i);
+      expect(sentenceOf(container)).toMatch(/^1 DUSK\b/);
+      expect(sentenceOf(container)).toMatch(/\bBNB Smart Chain\b/);
+      expect(sentenceOf(container)).toMatch(/\b10 hours\b/);
 
       mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
 
-      // Arrived: the 1 DUSK on BNB Smart Chain, with no time to go.
-      await vi.waitFor(() => expect(result).not.toHaveTextContent("10 hours"));
-      expect(result).toHaveTextContent("1 DUSK");
-      expect(result).toHaveTextContent("BNB Smart Chain");
+      // Arrived: the 1 DUSK, on BNB Smart Chain, with no time to go.
+      await vi.waitFor(() =>
+        expect(headingOf(container)).toMatch(/^arrived$/i),
+      );
+      expect(sentenceOf(container)).toMatch(/^1 DUSK\b/);
+      expect(sentenceOf(container)).toMatch(/\bBNB Smart Chain\b/);
+      expect(sentenceOf(container)).not.toMatch(/\b10 hours\b/);
+    });
+
+    it("offers to add DUSK to the wallet it arrived in, on its chain, and says it was added in its place; a refusal says nothing", async () => {
+      const wallet = { name: "Test MetaMask", type: "injected", uid: "w1" };
+      const { container, findByRole, queryByRole } = await sendOut();
+      const offer = { name: "Add DUSK to Test MetaMask" };
+
+      // Not before it arrives, nor to another account than it went to.
+      connect({ address: EVM, chainId: 1, connector: wallet });
+      mocks.transfers?.set([out({ stage: "sent" })]);
+      await tick();
+      expect(queryByRole("button", offer)).toBeNull();
+
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+      connect({
+        address: `0x${"33".repeat(20)}`,
+        chainId: 1,
+        connector: wallet,
+      });
+      await tick();
+      expect(queryByRole("button", offer)).toBeNull();
+
+      connect({ address: EVM, chainId: 1, connector: wallet });
+      mocks.watchAsset.mockRejectedValueOnce(
+        Object.assign(new Error("User rejected the request."), { code: 4001 }),
+      );
+      await fireEvent.click(await findByRole("button", offer));
+
+      // A refusal says nothing, and it's offered again.
+      await vi.waitFor(async () =>
+        expect(await findByRole("button", offer)).toBeEnabled(),
+      );
+      expect(resultOf(container).querySelector("[role=alert]")).toBeNull();
+
+      await fireEvent.click(await findByRole("button", offer));
+
+      // On BNB Smart Chain, as its token there.
+      expect(mocks.switchChain).toHaveBeenCalledWith({}, { chainId: 56 });
+      expect(mocks.watchAsset).toHaveBeenLastCalledWith(
+        {},
+        {
+          options: {
+            address: routeOf("dusk-to-bsc")?.chain.token,
+            decimals: 18,
+            symbol: "DUSK",
+          },
+          type: "ERC20",
+        },
+      );
+      // Said in its place, for the wallet it was added to.
+      await vi.waitFor(() => expect(queryByRole("button", offer)).toBeNull());
+      expect(
+        resultOf(container).querySelector(".add-dusk--done"),
+      ).toHaveTextContent(/\bTest MetaMask\b/);
+      expect(
+        JSON.parse(localStorage.getItem("web-wallet-evm-dusk-added") ?? ""),
+      ).toStrictEqual([`56:${EVM.toLowerCase()}`]);
+    });
+
+    it("offers nothing to a wallet over WalletConnect whose session doesn't take the request", async () => {
+      const { findByRole, queryByRole } = await sendOut();
+
+      /** A wallet over WalletConnect whose session takes these `methods`. */
+      const overWalletConnect = (
+        /** @type {string} */ name,
+        /** @type {string[]} */ methods,
+      ) => {
+        const getProvider = vi.fn(async () => ({
+          session: { namespaces: { eip155: { methods } } },
+        }));
+
+        connect({
+          address: EVM,
+          chainId: 56,
+          connector: { getProvider, name, type: "walletConnect", uid: name },
+        });
+
+        return getProvider;
+      };
+
+      const session = overWalletConnect("Phone wallet", [
+        "eth_sendTransaction",
+      ]);
+
+      mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
+
+      // Once its session is read: nothing offered, as it doesn't take it.
+      await vi.waitFor(() => expect(session).toHaveBeenCalled());
+      await Promise.all(session.mock.results.map(({ value }) => value));
+      await tick();
+      await tick();
+
+      expect(
+        queryByRole("button", { name: "Add DUSK to Phone wallet" }),
+      ).toBeNull();
+
+      // One whose session takes it is offered it.
+      overWalletConnect("Other phone wallet", [
+        "eth_sendTransaction",
+        "wallet_watchAsset",
+      ]);
+
+      expect(
+        await findByRole("button", { name: "Add DUSK to Other phone wallet" }),
+      ).toBeEnabled();
     });
 
     it("follows a transfer out whose answer got lost, never saying it was sent before the chain has it", async () => {
@@ -1232,20 +1493,30 @@ describe("the Bridge card's routes to and from other chains", () => {
         ),
       );
 
-      const result = resultOf(view.container);
+      const status = /** @type {HTMLElement} */ (
+        resultOf(view.container).querySelector(".transaction-status")
+      );
 
-      // ...saying what went where, but not when it arrives, as sent, and
-      // offering nothing to send it again.
-      expect(result).toHaveTextContent("2 DUSK");
-      expect(result).toHaveTextContent("BNB Smart Chain");
-      expect(result).not.toHaveTextContent("10 hours");
+      // ...saying it isn't confirmed, as it may have reached the network,
+      // what went where, and offering nothing to send it again.
+      expect(
+        status.querySelector(".transaction-status__title"),
+      ).toHaveTextContent(/^not confirmed$/i);
+      expect(status).toHaveTextContent(/may have reached the network/i);
+      expect(status).not.toHaveTextContent(/nothing was sent/i);
+      expect(
+        status.querySelector(".transaction-status__what"),
+      ).toHaveTextContent(/^2 DUSK to BNB Smart Chain$/);
       expect(view.queryByRole("button", { name: "Try again" })).toBeNull();
 
       found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
 
       // Once the chain has it: sent, with what arrives, and when.
-      await vi.waitFor(() => expect(result).toHaveTextContent("10 hours"));
-      expect(result).toHaveTextContent("1 DUSK");
+      await vi.waitFor(() =>
+        expect(headingOf(view.container)).toMatch(/^sent$/i),
+      );
+      expect(sentenceOf(view.container)).toMatch(/^1 DUSK\b/);
+      expect(sentenceOf(view.container)).toMatch(/\b10 hours\b/);
     });
 
     it("says a migration is in the public balance once it's paid", async () => {
@@ -1269,14 +1540,12 @@ describe("the Bridge card's routes to and from other chains", () => {
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
-      // Until it's paid, what's on its way, and when.
+      // Sent: 2.5 DUSK on its way, and when.
       await vi.waitFor(() =>
-        expect(resultOf(container)).toHaveTextContent("70 min"),
+        expect(sentenceOf(container)).toMatch(/\b70 min\b/),
       );
-
-      const result = resultOf(container);
-
-      expect(result).toHaveTextContent("2.5 DUSK");
+      expect(headingOf(container)).toMatch(/\bsent$/i);
+      expect(sentenceOf(container)).toMatch(/^2\.5 DUSK\b/);
 
       mocks.transfers?.set([
         {
@@ -1292,19 +1561,26 @@ describe("the Bridge card's routes to and from other chains", () => {
         },
       ]);
 
-      // Paid: the 2.5 DUSK, with no time to go.
-      await vi.waitFor(() => expect(result).not.toHaveTextContent("70 min"));
-      expect(result).toHaveTextContent("2.5 DUSK");
+      // Paid: the 2.5 DUSK, in the public balance, with no time to go.
+      await vi.waitFor(() =>
+        expect(headingOf(container)).toMatch(/^arrived$/i),
+      );
+      expect(sentenceOf(container)).toMatch(/^2\.5 DUSK\b/);
+      expect(sentenceOf(container)).toMatch(/\bpublic balance\b/i);
+      expect(sentenceOf(container)).not.toMatch(/\b70 min\b/);
     });
 
     it("says so when a transfer takes twice its usual time, or fails", async () => {
-      const result = resultOf((await sendOut()).container);
+      const { container } = await sendOut();
 
       mocks.transfers?.set([out({ at: Date.now() - 86_400_000 })]);
 
-      // Late: no longer when it usually arrives, nor that 1 DUSK did.
-      await vi.waitFor(() => expect(result).not.toHaveTextContent("10 hours"));
-      expect(result).not.toHaveTextContent("1 DUSK");
+      // Late: still sent, taking longer than usual, with no time given.
+      await vi.waitFor(() =>
+        expect(sentenceOf(container)).toMatch(/longer than usual/i),
+      );
+      expect(headingOf(container)).toMatch(/^sent$/i);
+      expect(sentenceOf(container)).not.toMatch(/\b10 hours\b/);
 
       mocks.transfers?.set([
         out({
@@ -1313,26 +1589,30 @@ describe("the Bridge card's routes to and from other chains", () => {
         }),
       ]);
 
-      // Failed: why, as the bridge's record says.
+      // Failed: it didn't go through, for the reason the bridge's record
+      // gives.
       await vi.waitFor(() =>
-        expect(result).toHaveTextContent(
-          "The bridge didn't take this transfer",
-        ),
+        expect(headingOf(container)).toMatch(/didn't go through/i),
       );
-      expect(result).not.toHaveTextContent("10 hours");
+      expect(sentenceOf(container)).toMatch(
+        /^The bridge didn't take this transfer\b/,
+      );
     });
 
     it("keeps amounts hidden while balances are", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
-      const result = resultOf((await sendOut()).container);
+      const { container } = await sendOut();
 
       mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
 
       // Arrived on BNB Smart Chain, with no figure.
-      await vi.waitFor(() => expect(result).not.toHaveTextContent("10 hours"));
-      expect(result).toHaveTextContent("BNB Smart Chain");
-      expect(result).not.toHaveTextContent("1 DUSK");
+      await vi.waitFor(() =>
+        expect(headingOf(container)).toMatch(/^arrived$/i),
+      );
+      expect(sentenceOf(container)).toMatch(/\bBNB Smart Chain\b/);
+      expect(sentenceOf(container)).not.toMatch(/\d/);
+      expect(resultOf(container)).not.toHaveTextContent("1 DUSK");
     });
   });
 
@@ -1360,24 +1640,35 @@ describe("the Bridge card's routes to and from other chains", () => {
 
     const ethereum = () => networks.mainnet.routes.chains.ethereum;
 
-    it("names the contract an approval lets take the amount, and the token, on their chain", async () => {
+    it("names the contract an approval lets take the amount, and the token", async () => {
       mocks.allowance.mockResolvedValue(0n);
 
-      const { container } = await reviewMigration();
+      const { container, findByRole } = await reviewMigration();
+      const migrate = await findByRole("button", { name: "Migrate" });
       const contract = /** @type {any} */ (
         networks.mainnet.routes.migrations.find((m) => m.chain === "ethereum")
       ).contract;
 
-      // For whoever checks them against the wallet: the chain, by its ID 1,
-      // the migration contract, and the token.
+      await vi.waitFor(() => expect(migrate).toBeEnabled());
+
+      // An approval for exactly this amount...
+      expect(fieldOf(container, /^approval$/i)).toHaveTextContent(
+        /exactly this amount/i,
+      );
+
+      // ...that the migration contract may take, of the token, on the chain
+      // by its ID 1: each in its row, for whoever checks them against the
+      // wallet.
       const check = /** @type {HTMLDetailsElement} */ (
         container.querySelector("details.route-review__check")
       );
 
-      expect(check).toHaveTextContent(/Ethereum\D*1(?!\d)/);
-      expect(check).toHaveTextContent(contract);
-      expect(check).toHaveTextContent("ERC20 DUSK");
-      expect(check).toHaveTextContent(ethereum().token);
+      expect(fieldOf(check, /^network$/i)).toHaveTextContent(
+        /^Ethereum\D*\b1$/,
+      );
+      expect(addressOf(check, /contract/i)).toBe(contract);
+      expect(fieldOf(check, /^token$/i)).toHaveTextContent(/^ERC20 DUSK\s/);
+      expect(addressOf(check, /^token$/i)).toBe(ethereum().token);
     });
 
     it("says what the wallet holds for the network fee, and asks nothing without any", async () => {
@@ -1386,11 +1677,12 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       let view = await reviewMigration();
 
-      // The fee, from what the wallet holds on Ethereum.
+      // The fee, then what the wallet holds on Ethereum to pay it.
       await vi.waitFor(() =>
-        expect(view.container).toHaveTextContent("0.00012 ETH"),
+        expect(fieldOf(view.container, /fees/i)).toHaveTextContent(
+          /\babout 0\.00012 ETH\b.*\s1\.2345 ETH\b/i,
+        ),
       );
-      expect(view.container).toHaveTextContent("1.2345 ETH");
       expect(mocks.getNativeBalance).toHaveBeenCalledWith(EVM, 1);
       cleanup();
 
@@ -1413,7 +1705,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Migrate" });
       // The fee, said once what the wallet holds is read, and not that.
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent("0.00012 ETH"),
+        expect(fieldOf(container, /fees/i)).toHaveTextContent(
+          /\babout 0\.00012 ETH\b/i,
+        ),
       );
       expect(container).not.toHaveTextContent("1.2345");
     });
@@ -1469,8 +1763,8 @@ describe("the Bridge card's routes to and from other chains", () => {
         container.querySelector("details.route-review__check")
       );
 
-      expect(check).toHaveTextContent(service.account);
-      expect(check).toHaveTextContent(EVM);
+      expect(addressOf(check, /bridge account/i)).toBe(service.account);
+      expect(addressOf(check, /^memo$/i)).toBe(EVM);
     });
 
     it("says why an amount with too many decimals won't do, on both routes", async () => {
@@ -1539,7 +1833,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(await findByRole("alert")).toHaveTextContent(/nothing moved/i);
       expect(getByRole("button", { name: "Migrate" })).toBeInTheDocument();
       expect(mocks.migrate).not.toHaveBeenCalled();
     });
@@ -1555,7 +1849,11 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      // The approval stands, and nothing moved.
+      const said = await findByRole("alert");
+
+      expect(said).toHaveTextContent(/approval went through/i);
+      expect(said).toHaveTextContent(/nothing moved/i);
 
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -1583,11 +1881,42 @@ describe("the Bridge card's routes to and from other chains", () => {
       const { container, getByRole, queryByRole } = await toReview();
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
-      await failureShown(container);
 
+      // Not confirmed, as it may have reached the network.
+      const failure = await failureOf(container);
+
+      expect(failure.heading).toMatch(/not confirmed/i);
+      expect(failure.sentence).toMatch(/may have reached the network/i);
+      expect(failure.sentence).not.toMatch(/nothing was sent/i);
       expect(queryByRole("button", { name: "Back" })).toBeNull();
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
+    });
+
+    it("never says no fee was charged once the approval it sent went through, though the network can't be reached as it migrates", async () => {
+      // Approved in a block, its gas paid; then the chain's node can't be
+      // reached as the migration is checked, before the wallet is asked.
+      mocks.allowance.mockImplementation(async () => {
+        if (mocks.approve.mock.calls.length) {
+          throw new Error("HTTP request failed.");
+        }
+
+        return 0n;
+      });
+      mocks.approve.mockResolvedValue(`0x${"aa".repeat(32)}`);
+      mocks.migrate.mockRejectedValueOnce(new Error("HTTP request failed."));
+
+      const { container, getByRole } = await toReview();
+
+      await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+      // Nothing moved, but the approval went through, its fee paid.
+      const failure = await failureOf(container);
+
+      expect(failure.sentence).toMatch(/approval went through/i);
+      expect(failure.sentence).toMatch(/nothing moved/i);
+      expect(mocks.approve).toHaveBeenCalledOnce();
+      expect(container).not.toHaveTextContent(/\bno fee\b/i);
     });
 
     it("offers to try again when it failed before it went out", async () => {
@@ -1624,9 +1953,17 @@ describe("the Bridge card's routes to and from other chains", () => {
           throw usedUp();
         });
 
-        const { findByRole, getByRole } = await toReview();
+        const { container, findByRole, getByRole } = await toReview();
 
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        // It didn't go through, and nothing was sent.
+        const failure = await failureOf(container);
+
+        expect(failure.heading).toMatch(/didn't go through/i);
+        expect(failure.sentence).toMatch(/nothing was sent/i);
+        expect(failure.sentence).not.toMatch(/may have/i);
+
         await fireEvent.click(
           await findByRole("button", { name: "Approve again" }),
         );
@@ -1644,9 +1981,17 @@ describe("the Bridge card's routes to and from other chains", () => {
           outcomeUnknown(new Error("execution reverted: Paused")),
         );
 
-        const { findByRole, getByRole, queryByRole } = await toReview();
+        const { container, findByRole, getByRole, queryByRole } =
+          await toReview();
 
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
+
+        // It didn't go through, and nothing was sent.
+        const failure = await failureOf(container);
+
+        expect(failure.heading).toMatch(/didn't go through/i);
+        expect(failure.sentence).toMatch(/nothing was sent/i);
+        expect(failure.sentence).not.toMatch(/may have/i);
 
         const again = await findByRole("button", { name: "Try again" });
 
@@ -1689,8 +2034,13 @@ describe("the Bridge card's routes to and from other chains", () => {
         const { container, getByRole, queryByRole } = await toReview();
 
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
-        await failureShown(container);
 
+        // Not confirmed, as it may have reached the network.
+        const failure = await failureOf(container);
+
+        expect(failure.heading).toMatch(/not confirmed/i);
+        expect(failure.sentence).toMatch(/may have reached the network/i);
+        expect(failure.sentence).not.toMatch(/nothing was sent/i);
         expect(queryByRole("button", { name: "Approve again" })).toBeNull();
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
       });
@@ -1705,8 +2055,13 @@ describe("the Bridge card's routes to and from other chains", () => {
           new Error("execution reverted"),
         );
         await fireEvent.click(getByRole("button", { name: "Migrate" }));
-        await failureShown(container);
 
+        // Not confirmed: it was sent to Ethereum.
+        const failure = await failureOf(container);
+
+        expect(failure.heading).toMatch(/not confirmed/i);
+        expect(failure.sentence).toMatch(/\bsent to Ethereum\b/i);
+        expect(failure.sentence).not.toMatch(/nothing was sent/i);
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
       });
     });
@@ -1784,7 +2139,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(await findByRole("alert")).toHaveTextContent(/nothing moved/i);
       expect(mocks.migrate).not.toHaveBeenCalled();
       expect(
         getByRole("button", { name: "Review migration" }),
@@ -1815,7 +2170,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         chainId: 1,
       });
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(await findByRole("alert")).toHaveTextContent(/nothing moved/i);
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
       expect(
         getByRole("button", { name: "Review migration" }),
@@ -1841,7 +2196,9 @@ describe("the Bridge card's routes to and from other chains", () => {
         chainId: 56,
       });
 
-      expect(await view.findByRole("alert")).toBeInTheDocument();
+      expect(await view.findByRole("alert")).toHaveTextContent(
+        /nothing was sent/i,
+      );
       expect(view.queryByRole("button", { name: "Send" })).toBeNull();
     });
   });
@@ -1861,12 +2218,19 @@ describe("the Bridge card's routes to and from other chains", () => {
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Send" }));
 
-    // Nothing went out: back to the review, with what's filled in.
+    // The network refused it, so nothing went out...
+    const failure = await failureOf(container);
+
+    expect(failure.heading).toMatch(/didn't go through/i);
+    expect(failure.sentence).toMatch(/network refused it/i);
+    expect(failure.sentence).not.toMatch(/may have/i);
+
+    // ...and Try again goes back to the review, with what's filled in.
     await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
     expect(getByRole("heading", { name: "Review" })).toBeInTheDocument();
     expect(container.querySelector(".route-review__line")).toHaveTextContent(
-      "2 DUSK",
+      /^2 DUSK sent\b/,
     );
     expect(mocks.executeSend).toHaveBeenCalledOnce();
   });
@@ -1885,8 +2249,13 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: "Send" }));
-    await failureShown(container);
 
+    // Not confirmed, as it may have reached the network.
+    const failure = await failureOf(container);
+
+    expect(failure.heading).toMatch(/not confirmed/i);
+    expect(failure.sentence).toMatch(/may have reached the network/i);
+    expect(failure.sentence).not.toMatch(/nothing was sent/i);
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
 

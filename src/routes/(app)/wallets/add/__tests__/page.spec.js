@@ -70,7 +70,7 @@ describe("Add wallet", () => {
 
     await fireEvent.click(getByRole("button", { name: /Import wallet/ }));
 
-    expect(getByText(/Wallet 2/)).toBeInTheDocument();
+    expect(getByText(/\bWallet 2(?!\d)/)).toBeInTheDocument();
 
     await pasteInto(getByLabelText("Word 5"), A);
     await fireEvent.click(getByRole("button", { name: "Next" }));

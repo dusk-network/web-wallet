@@ -9,6 +9,23 @@ import {
 } from "../accountantExport";
 import { rowOf } from "./fixtures/rows";
 
+/**
+ * Text that has each of these values as a whole, never part of another:
+ * block 4,200,000, not 14,200,000.
+ *
+ * @param {string[]} values
+ */
+const having = (...values) =>
+  new RegExp(
+    values
+      .map(
+        (value) =>
+          `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`,
+      )
+      .join(""),
+    "s",
+  );
+
 // Nandini's two profiles, and an EVM address each migrated from on the BSC
 // test chain: Profile 1 from 0x7cdb…, connected here, and Profile 2 from
 // 0xb746…, in a browser of its own. Each bridged DUSK out to its own.
@@ -365,8 +382,7 @@ describe("History's Export", () => {
       booked: [OTHER_EVM],
       unread: [],
     });
-    expect(savedWords(two)).toContain("0xB746");
-    expect(savedWords(two)).toContain("aa25");
+    expect(savedWords(two)).toMatch(having("0xB746…aa25"));
     expect(savedWords(two).toLowerCase()).not.toContain("0x7cdb");
   });
 
@@ -401,17 +417,10 @@ describe("History's Export", () => {
     });
 
     // Its 3 lines, whose fees, and which it couldn't read.
-    expect(said).toMatch(/\b3\b/);
-
-    for (const value of [
-      "0x7cdb",
-      "8e73",
-      "BSC test chain",
-      "Sepolia",
-      "4,200,000",
-    ]) {
-      expect(said).toContain(value);
-    }
+    expect(said).toMatch(/(?<![\d.,])3 lines?\b/i);
+    expect(said).toMatch(
+      having("0x7cdb…8e73", "BSC test chain", "Sepolia", "4,200,000"),
+    );
   });
 
   it("says an approval of an address connected here that never migrated may be in another profile's file, where the first profile's books it", async () => {

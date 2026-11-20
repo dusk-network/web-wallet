@@ -90,7 +90,7 @@ describe("route times", () => {
       depositStageMessage(deposit, {
         time: routeTime(DEPOSIT, { net: networks.testnet }),
       }),
-    ).toMatch(/\b1 min\b/);
+    ).toMatch(/(^|[^\d.,])1 min\b/);
     // No time made up where none is known.
     expect(depositStageMessage(deposit)).toMatch(/\S/);
     expect(depositStageMessage(deposit)).not.toMatch(/\d/);

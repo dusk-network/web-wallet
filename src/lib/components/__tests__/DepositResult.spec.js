@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
-import { describeFailure, outcomeUnknown } from "$lib/transactions";
+import { outcomeUnknown } from "$lib/transactions";
 
 import { DepositResult } from "..";
 
@@ -25,6 +25,9 @@ vi.mock("$lib/bridge/depositActivity", async () => {
   };
 });
 
+/** What the screen says nothing that went out came to: not sent, at no fee. */
+const NOTHING_SENT = /\bnothing was sent\b/i;
+
 describe("DepositResult", () => {
   afterEach(() => {
     cleanup();
@@ -38,7 +41,7 @@ describe("DepositResult", () => {
 
     followTransaction.mockReturnValueOnce(found.promise);
 
-    const { getByRole, queryByRole } = render(DepositResult, {
+    const { container, getByRole, queryByRole } = render(DepositResult, {
       onRetry: vi.fn(),
       onSeen,
       operation: Promise.reject(
@@ -50,7 +53,17 @@ describe("DepositResult", () => {
     await vi.waitFor(() =>
       expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
     );
-    expect(getByRole("status")).toHaveTextContent("0.05 DUSK to DuskEVM");
+
+    // Not confirmed, as it may have gone out: never sent, nor not sent.
+    const status = getByRole("status");
+
+    expect(
+      status.querySelector(".transaction-status__what")?.textContent?.trim(),
+    ).toBe("0.05 DUSK to DuskEVM");
+    expect(
+      status.querySelector(".transaction-status__title")?.textContent,
+    ).toMatch(/\bnot confirmed\b/i);
+    expect(container).not.toHaveTextContent(NOTHING_SENT);
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
     expect(onSeen).not.toHaveBeenCalled();
 
@@ -59,6 +72,17 @@ describe("DepositResult", () => {
     await vi.waitFor(() =>
       expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash),
     );
+  });
+
+  it("says a deposit that failed before it went out wasn't sent, and charged no fee", async () => {
+    const { container, findByText } = render(DepositResult, {
+      operation: Promise.reject(new TypeError("Failed to fetch")),
+    });
+
+    expect(await findByText(NOTHING_SENT)).toBeInTheDocument();
+    expect(container).toHaveTextContent(/\bnot sent\b/i);
+    expect(container).toHaveTextContent(/\bno fee\b/i);
+    expect(container).not.toHaveTextContent(/\bnot confirmed\b/i);
   });
 
   it("offers to try again only when nothing went out", async () => {
@@ -76,18 +100,16 @@ describe("DepositResult", () => {
 
     cleanup();
 
-    const lost = outcomeUnknown(new TypeError("Failed to fetch"));
     const unknown = render(DepositResult, {
       onRetry,
-      operation: Promise.reject(lost),
+      operation: Promise.reject(
+        outcomeUnknown(new TypeError("Failed to fetch")),
+      ),
     });
 
-    // Shown as one that may have gone out.
-    expect(
-      await unknown.findByText(
-        /** @type {string} */ (describeFailure(lost).heading),
-      ),
-    ).toBeInTheDocument();
+    // Not confirmed, as it may have gone out: no Try again.
+    expect(await unknown.findByText(/\bnot confirmed\b/i)).toBeInTheDocument();
+    expect(unknown.container).not.toHaveTextContent(NOTHING_SENT);
     expect(unknown.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

@@ -46,6 +46,12 @@ const V1 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`;
 const V2 = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-v2`;
 const PASSKEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-login-passkey`;
 
+/**
+ * Fingerprint or face unlock's button, as the cases where it's on find it:
+ * the same name where it must be absent.
+ */
+const FINGERPRINT = { name: "Use fingerprint or face" };
+
 /** @param {string} key */
 const stored = (key) => JSON.parse(localStorage.getItem(key) ?? "null");
 
@@ -141,8 +147,7 @@ describe("Unlock Wallet", async () => {
     });
 
     /** @param {import("@testing-library/svelte").RenderResult<any>} view */
-    const fingerprint = (view) =>
-      view.getByRole("button", { name: "Use fingerprint or face" });
+    const fingerprint = (view) => view.getByRole("button", FINGERPRINT);
 
     it("should go straight to it as the wallet opens, unlock what the password unlocks, and go where it left off", async () => {
       const place = vi
@@ -264,12 +269,37 @@ describe("Unlock Wallet", async () => {
       const view = render(UnlockWallet);
 
       expect(await view.findByRole("alert")).toBeInTheDocument();
-      expect(
-        view.queryByRole("button", { name: "Use fingerprint or face" }),
-      ).toBeNull();
+      expect(view.queryByRole("button", FINGERPRINT)).toBeNull();
       expect(vault.passkey()).toBeNull();
       expect(openSpy).not.toHaveBeenCalled();
     });
+  });
+
+  it("should offer no fingerprint without it turned on, and ask the device nothing", async () => {
+    const device = fakeAuthenticator();
+    // Someone at the tab, as where it's on: only its being off holds it back.
+    const focus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
+
+    try {
+      localStorage.clear();
+      await vault.setUp(mnemonic, pwd);
+
+      const view = render(UnlockWallet);
+
+      // Not as it opens, nor as the tab comes back.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      document.dispatchEvent(new Event("visibilitychange"));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(view.queryByRole("button", FINGERPRINT)).toBeNull();
+      expect(device.get).not.toHaveBeenCalled();
+      expect(device.create).not.toHaveBeenCalled();
+    } finally {
+      cleanup();
+      focus.mockRestore();
+      removeFakeAuthenticator();
+      localStorage.clear();
+    }
   });
 
   it("should discard an unlock whose profile derivation finishes after leaving", async () => {

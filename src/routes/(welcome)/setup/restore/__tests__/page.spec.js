@@ -93,48 +93,60 @@ describe("Restore", async () => {
   });
 
   /**
-   * What the notice before restoring says with the one wallet here.
+   * The notice before restoring, which says what it removes: the one with the
+   * button that removes it.
    *
-   * Public BIP39 test phrases, never a real wallet's.
+   * @param {import("@testing-library/svelte").RenderResult<any>} view
    */
-  const noticeForOneWallet = async () => {
+  const noticeIn = (view) =>
+    /** @type {HTMLElement} */ (
+      view
+        .getByRole("button", { name: "Remove and restore" })
+        .closest("section")
+    );
+
+  /** What it says where it removes more than one wallet. */
+  const EVERY_WALLET = /every wallet|all wallets/i;
+
+  it("should say that it removes every wallet from this browser where there's more than one", async () => {
+    // Public BIP39 test phrases, never a real wallet's.
     await vault.setUp(
       "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
       pwd,
     );
     settingsStore.update(setUserId(userId));
 
-    const said = render(Restore).container.textContent;
-
+    // The one wallet here: that one.
+    expect(noticeIn(render(Restore))).not.toHaveTextContent(EVERY_WALLET);
     cleanup();
-
-    return said;
-  };
-
-  it("should say otherwise that it removes every wallet from this browser where there's more than one", async () => {
-    const one = await noticeForOneWallet();
 
     await vault.add(
       "scheme spot photo card baby mountain device kick cradle pact join borrow",
       pwd,
     );
 
-    expect(render(Restore).container.textContent).not.toBe(one);
+    // More than one: every one of them.
+    expect(noticeIn(render(Restore))).toHaveTextContent(EVERY_WALLET);
 
     await vault.clear();
   });
 
   it("should count the phrase of earlier versions still to move as a wallet of its own", async () => {
-    const one = await noticeForOneWallet();
-
+    await vault.setUp(
+      "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      pwd,
+    );
     localStorage.setItem(
       `${CONFIG.LOCAL_STORAGE_APP_KEY}-login`,
       fixtures.current.stored,
     );
+    settingsStore.update(setUserId(userId));
 
-    const { container } = render(Restore);
+    const view = render(Restore);
 
-    await vi.waitFor(() => expect(container.textContent).not.toBe(one));
+    await vi.waitFor(() =>
+      expect(noticeIn(view)).toHaveTextContent(EVERY_WALLET),
+    );
 
     await vault.clear();
   });
@@ -181,7 +193,7 @@ describe("Restore", async () => {
     await pasteInto(getByLabelText("Word 1"), `${twentyFour} abandon`);
     await tick();
 
-    expect(getByRole("alert")).toHaveTextContent("25");
+    expect(getByRole("alert")).toHaveTextContent(/\b25\b/);
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
     // The same 24 alone are a phrase.

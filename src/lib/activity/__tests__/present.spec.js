@@ -20,6 +20,18 @@ const context = { locale: "en" };
 
 const bridged = withBridge(networks.testnet, BRIDGE);
 
+/**
+ * A figure on its own, never part of a longer one: "0.0037 DUSK" never as
+ * part of "10.0037 DUSK".
+ *
+ * @param {string} text
+ */
+const figure = (text) => {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  return new RegExp(`(?<![\\d.,])${escaped}(?![\\d])`);
+};
+
 const DEFAULTS = {
   amount: "25000000000",
   blockHeight: 4_687_000,
@@ -132,14 +144,14 @@ describe("describeRow", () => {
       describeRow(row({ feePaid: "3700000", status: "failed" }), context),
     ).toMatchObject({
       amount: { muted: true, sign: "" },
-      line: expect.stringContaining("0.0037 DUSK"),
+      line: expect.stringMatching(figure("0.0037 DUSK")),
       status: "failed",
     });
 
     // A fee paid rounds to the nearest of four decimals.
     expect(
       describeRow(row({ feePaid: "1853542", status: "failed" }), context).line,
-    ).toContain("0.0019 DUSK");
+    ).toMatch(figure("0.0019 DUSK"));
 
     // None paid: none said.
     const unpaid = describeRow(
@@ -279,7 +291,7 @@ describe("describeRow", () => {
         ),
       ).toMatchObject({
         line: "Dusk Domains",
-        title: expect.stringContaining("alice.dusk"),
+        title: expect.stringMatching(/registered.*(?<![\w.-])alice\.dusk$/i),
       });
 
       // A reservation: the first of two steps, until a registration after
@@ -308,17 +320,23 @@ describe("describeRow", () => {
         named,
       );
 
-      for (const one of [registered, reserved]) {
-        expect(describeRow(one, context).title).toContain("alice.dusk");
-      }
+      expect(describeRow(registered, context).title).toMatch(
+        /registered.*(?<![\w.-])alice\.dusk$/i,
+      );
+      expect(describeRow(reserved, context).title).toMatch(
+        /reserved.*(?<![\w.-])alice\.dusk$/i,
+      );
 
       // On Mainnet, the same contract is no one's: any call.
       setNodeNetwork(networks.mainnet);
 
       const anyCall = describeRow(row(call, named), context);
 
-      expect(anyCall.line).not.toBe("Dusk Domains");
-      expect(anyCall.title).toContain("register");
+      expect(anyCall).toMatchObject({
+        icon: "call",
+        line: expect.stringMatching(/contract/i),
+        title: expect.stringMatching(/called register/i),
+      });
     } finally {
       setNodeNetwork(null);
     }

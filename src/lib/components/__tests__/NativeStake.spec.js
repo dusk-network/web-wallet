@@ -63,8 +63,39 @@ const baseProps = {
  */
 const showsDusk = (amount) => (text) => ` ${text}`.includes(` ${amount} DUSK`);
 
-/** Some error, whatever its words. */
-const said = expect.stringMatching(/./);
+/**
+ * Matches `value` whole: not inside a longer figure, nor signed, so "1 DUSK"
+ * matches neither "11 DUSK", "0.1 DUSK" nor a signed "1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "1,000.5 DUSK"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/**
+ * The value of a row of the summary, found by its label's key word.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const rowOf = (container, label) =>
+  Array.from(container.querySelectorAll(".stake-flow__rows > div"))
+    .find((row) => label.test(row.querySelector("dt")?.textContent ?? ""))
+    ?.querySelector("dd") ?? null;
+
+/**
+ * The summary's total: the most a stake costs.
+ *
+ * @param {HTMLElement} container
+ */
+const totalOf = (container) =>
+  container.querySelector(".stake-flow__rows--total dd");
+
+/** What a send that failed came to, as its heading says it. */
+const failureOf = () => document.querySelector(".dusk-error-alert__summary");
+
+/** What a send on its way says it is. */
+const goingOf = () => document.querySelector(".transaction-status__what");
 
 describe("readDuskInput", () => {
   it("reads DUSK as lux, with up to nine decimals and nothing else", () => {
@@ -125,9 +156,13 @@ describe("amountProblem", () => {
     // "1.000" for one reads as a thousand in German.
     expect(numbers(amountProblem("1.000", "de"))).toStrictEqual(["1", "1000"]);
     expect(numbers(amountProblem("1,000", "en"))).toStrictEqual(["1", "1000"]);
-    expect(amountProblem("0,1234567891", "de")).toContain("9");
-    expect(amountProblem("ten", "de")).not.toBe("");
-    expect(amountProblem("ten", "en", "1000")).not.toBe("");
+    // More decimals than DUSK's nine.
+    expect(amountProblem("0,1234567891", "de")).toMatch(
+      wholeFigure("9 decimals"),
+    );
+    // Not an amount: an example, written as the language writes one.
+    expect(amountProblem("ten", "de")).toMatch(wholeFigure("10,5"));
+    expect(amountProblem("ten", "en", "1000")).toMatch(wholeFigure("1000.5"));
   });
 });
 
@@ -150,15 +185,22 @@ describe("checkAmount", () => {
 
   it("says what is wrong with an amount, in the words the page shows", () => {
     expect(check("")).toStrictEqual({ error: "", isMinimum: false, ok: false });
-    expect(check("ten")).toMatchObject({ error: said, ok: false });
-    expect(check("0")).toMatchObject({ error: said, ok: false });
+    // Not an amount: an example of one, for the 1,000 DUSK minimum.
+    expect(check("ten")).toMatchObject({
+      error: expect.stringMatching(wholeFigure("1000.5")),
+      ok: false,
+    });
+    expect(check("0")).toMatchObject({
+      error: expect.stringMatching(/greater than 0(?![.,]?[0-9])/),
+      ok: false,
+    });
     expect(check("999")).toStrictEqual({
-      error: expect.stringContaining("1,000 DUSK"),
+      error: expect.stringMatching(wholeFigure("1,000 DUSK")),
       isMinimum: true,
       ok: false,
     });
     expect(check("1483")).toMatchObject({
-      error: expect.stringContaining("0.05 DUSK"),
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
       ok: false,
     });
     expect(check("1482.95")).toStrictEqual({
@@ -173,26 +215,33 @@ describe("checkAmount", () => {
     const hidden = check("1482.95", { hidden: true, keep });
 
     expect(check("1482.95", { keep })).toMatchObject({
-      error: expect.stringContaining("0.05 DUSK"),
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
       ok: false,
     });
-    // Refused all the same with balances hidden, without the figure.
-    expect(hidden).toMatchObject({ error: said, ok: false });
-    expect(hidden.error).not.toContain("0.05");
+    // Refused all the same with balances hidden, with no figure.
+    expect(hidden).toMatchObject({
+      error: expect.stringMatching(/too little/),
+      ok: false,
+    });
+    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("1482.9", { keep }).ok).toBe(true);
   });
 
   it("doesn't let an amount give away the balance while balances are hidden", () => {
-    // What each would say shown: how much more than the balance it is.
-    for (const [text, more] of [
-      ["1483", "0.05"],
-      ["1484", "1.05"],
+    // Shown, each says how much more than the balance it is; hidden, why
+    // it's refused, with no figure.
+    for (const { more, text, why } of [
+      { more: "0.05 DUSK", text: "1483", why: /too little/ },
+      { more: "1.05 DUSK", text: "1484", why: /more than/i },
     ]) {
       const hidden = check(text, { hidden: true });
 
-      expect(check(text).error).toContain(more);
-      expect(hidden).toMatchObject({ error: said, ok: false });
-      expect(hidden.error).not.toContain(more);
+      expect(check(text).error).toMatch(wholeFigure(more));
+      expect(hidden).toMatchObject({
+        error: expect.stringMatching(why),
+        ok: false,
+      });
+      expect(hidden.error).not.toMatch(/[0-9]/);
     }
   });
 
@@ -201,18 +250,19 @@ describe("checkAmount", () => {
     const short = { available: 49_000_000n, minimum: 0n, most };
 
     expect(check("6", { minimum: 0n, most }).error).toBe(most.error);
+    // Not an amount: an example of one.
     expect(check("ten", { minimum: 0n, most })).toMatchObject({
-      error: said,
+      error: expect.stringMatching(wholeFigure("10.5")),
       ok: false,
     });
     expect(check("5", { available: 0n, minimum: 0n, most })).toMatchObject({
-      error: expect.stringContaining("0.05 DUSK"),
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
       ok: false,
     });
     // However low the fee can go.
     for (const leastFee of [undefined, 49_000_001n, 49_000_000n]) {
       expect(check("5", { ...short, leastFee })).toMatchObject({
-        error: expect.stringContaining("0.001 DUSK"),
+        error: expect.stringMatching(wholeFigure("0.001 DUSK")),
         ok: false,
       });
     }
@@ -220,7 +270,7 @@ describe("checkAmount", () => {
     const hidden = check("5", { ...short, hidden: true });
 
     expect(hidden.ok).toBe(false);
-    expect(hidden.error).not.toContain("0.001");
+    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
 
@@ -229,7 +279,7 @@ describe("checkAmount", () => {
     expect(
       check("0.000000001", { action: "unstake", minimum: 4n }),
     ).toStrictEqual({
-      error: expect.stringContaining("0.000000004 DUSK"),
+      error: expect.stringMatching(wholeFigure("0.000000004 DUSK")),
       isMinimum: true,
       ok: false,
     });
@@ -258,8 +308,10 @@ describe("NativeStake", () => {
         target: { value: "1500" },
       });
 
-      // Shown, it would say 17.1 DUSK more than the balance.
-      expect(getByRole("alert")).not.toHaveTextContent("17.1");
+      // Refused, with no figure: shown, it would say 17.1 DUSK more than
+      // the balance.
+      expect(getByRole("alert")).toHaveTextContent(/more than/i);
+      expect(getByRole("alert")).not.toHaveTextContent(/[0-9]/);
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -277,13 +329,21 @@ describe("NativeStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      // 1,482.9, filled in, not shown.
-      expect(getByLabelText("Stake amount")).not.toHaveValue("");
+      // 1,482.9, filled in, with no figure in the field.
+      const field = /** @type {HTMLInputElement} */ (
+        getByLabelText("Stake amount")
+      );
+
+      expect(field.value).not.toBe("");
+      expect(field.value).not.toMatch(/[0-9]/);
       expect(container.textContent).not.toContain("1,482.9");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("button", { name: /DUSK/ })).toBeEnabled();
+      const stake = getByRole("button", { name: /DUSK/ });
+
+      expect(stake).toBeEnabled();
+      expect(stake).not.toHaveAccessibleName(/[0-9]/);
       expect(container.textContent).not.toContain("1,482.9");
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
@@ -300,18 +360,20 @@ describe("NativeStake", () => {
   });
 
   it("stakes the amount typed, with the gas shown, and shows the result", async () => {
-    const { container, findByRole, getByLabelText, getByRole, getByText } =
-      render(NativeStake, baseProps);
+    const { container, getByLabelText, getByRole } = render(
+      NativeStake,
+      baseProps,
+    );
 
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1200.5" },
     });
 
-    // The amount, and the most it costs with the gas shown.
-    const summary = container.querySelector(".stake-flow__summary");
-
-    expect(summary).toHaveTextContent("1,200.5 DUSK");
-    expect(summary).toHaveTextContent("1,200.55 DUSK");
+    // The amount, and the most it costs with the gas shown, each in its row.
+    expect(rowOf(container, /stake/i)).toHaveTextContent(
+      wholeFigure("1,200.5 DUSK"),
+    );
+    expect(totalOf(container)).toHaveTextContent(wholeFigure("1,200.55 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
@@ -323,8 +385,12 @@ describe("NativeStake", () => {
       50_000_000n,
     );
     // On its way, with its amount.
-    await findByRole("status");
-    expect(getByText(showsDusk("1,200.5"))).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull(),
+    );
+    expect(goingOf()).toHaveTextContent(wholeFigure("1,200.5 DUSK"));
   });
 
   it("takes an amount with a decimal comma, as Send does", async () => {
@@ -337,8 +403,8 @@ describe("NativeStake", () => {
       target: { value: "1000,5" },
     });
 
-    expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
-      "1,000.5 DUSK",
+    expect(rowOf(container, /stake/i)).toHaveTextContent(
+      wholeFigure("1,000.5 DUSK"),
     );
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -399,7 +465,7 @@ describe("NativeStake", () => {
       target: { value: "1482.95" },
     });
 
-    expect(getByRole("alert")).toHaveTextContent("0.05 DUSK");
+    expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.05 DUSK"));
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
 
@@ -483,10 +549,15 @@ describe("NativeStake", () => {
     });
 
     it("goes back to the review with Try again, the amount kept, when nothing went out", async () => {
-      const { execute, findByRole, getByLabelText, getByRole, getByText } =
-        await staked(new TypeError("Failed to fetch"));
+      const { execute, findByRole, getByLabelText, getByRole } = await staked(
+        new TypeError("Failed to fetch"),
+      );
+      const tryAgain = await findByRole("button", { name: "Try again" });
 
-      await fireEvent.click(await findByRole("button", { name: "Try again" }));
+      // Nothing went out.
+      expect(failureOf()).toHaveTextContent(/not sent/i);
+
+      await fireEvent.click(tryAgain);
 
       expect(
         getByRole("button", { name: showsDusk("1,000") }),
@@ -499,8 +570,12 @@ describe("NativeStake", () => {
 
       expect(execute).toHaveBeenCalledTimes(2);
       // On its way, with its amount.
-      await findByRole("status");
-      expect(getByText(showsDusk("1,000"))).toBeInTheDocument();
+      await vi.waitFor(() =>
+        expect(
+          document.querySelector(".transaction-status--pending"),
+        ).not.toBeNull(),
+      );
+      expect(goingOf()).toHaveTextContent(wholeFigure("1,000 DUSK"));
     });
 
     it("offers no Try again when it may have gone out", async () => {
@@ -511,6 +586,7 @@ describe("NativeStake", () => {
       expect(
         await findByRole("link", { name: "Open History" }),
       ).toBeInTheDocument();
+      expect(failureOf()).toHaveTextContent(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
 
       historyAt({});
@@ -526,7 +602,7 @@ describe("NativeStake", () => {
       NativeStake,
       { ...baseProps, execute: vi.fn().mockResolvedValue(HASH) },
     );
-    const total = () => container.querySelector(".stake-flow__rows--total");
+    const total = () => totalOf(container);
 
     await fireEvent.input(getByLabelText("Stake amount"), {
       target: { value: "1000" },
@@ -534,10 +610,10 @@ describe("NativeStake", () => {
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 3n } });
 
-    expect(total()).toHaveTextContent("1,000.05 DUSK");
+    expect(total()).toHaveTextContent(wholeFigure("1,000.05 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
-    expect(total()).toHaveTextContent("1,000.15 DUSK");
+    expect(total()).toHaveTextContent(wholeFigure("1,000.15 DUSK"));
   });
 });

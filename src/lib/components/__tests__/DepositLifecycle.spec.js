@@ -46,6 +46,19 @@ vi.mock("$lib/bridge/bridgeTimes", () => ({
   },
 }));
 
+/**
+ * What the deposit's details give for the line `name` says: its `dd`, as
+ * the line's `dt` names it.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} name
+ */
+const detail = (container, name) =>
+  Array.from(container.querySelectorAll(".deposit-status__details dt"))
+    .find((term) => name.test(term.textContent ?? ""))
+    ?.nextElementSibling?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
 /** A deposit on its way to DuskEVM. */
 const deposit = () => ({
   account: null,
@@ -75,12 +88,15 @@ describe("DepositLifecycle", () => {
       deposit: { ...deposit(), stage: "completed" },
     });
 
+    // None made up before.
+    expect(detail(container, /network fee/i)).toBeUndefined();
+
     await act(() =>
       history.state?.set({
         rows: [{ fee: 1_987_516n, hash: "ab".repeat(32) }],
       }),
     );
 
-    expect(container).toHaveTextContent("0.001987516 DUSK");
+    expect(detail(container, /network fee/i)).toBe("0.001987516 DUSK");
   });
 });

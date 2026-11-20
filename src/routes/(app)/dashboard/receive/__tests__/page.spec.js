@@ -76,6 +76,46 @@ vi.mock("$lib/activity", async (importOriginal) => {
   };
 });
 
+/**
+ * What each QR code drawn holds, by the picture made of it, and the pictures
+ * still being made: as the library is asked to draw them.
+ */
+const qr = vi.hoisted(() => ({
+  /** @type {Map<string, string>} */
+  encoded: new Map(),
+  /** @type {Set<Promise<string>>} */
+  pending: new Set(),
+}));
+
+vi.mock("qrcode", async (importOriginal) => {
+  /** @type {any} */
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    /**
+     * @param {string} text
+     * @param {object} options
+     */
+    toDataURL: async (text, options) => {
+      /** @type {Promise<string>} */
+      const making = original.toDataURL(text, options);
+
+      qr.pending.add(making);
+
+      try {
+        const picture = await making;
+
+        qr.encoded.set(picture, text);
+
+        return picture;
+      } finally {
+        qr.pending.delete(making);
+      }
+    },
+  };
+});
+
 vi.mock("$lib/dusk-domains", () => ({ getPrimaryName }));
 
 vi.mock("$app/navigation", async (importOriginal) => ({
@@ -114,13 +154,25 @@ vi.mock("$lib/stores", async (importOriginal) => {
 const paidAt = (ms) => formatTime(ms, { locale: "en", seconds: true });
 
 /**
+ * A figure on its own, never the end or start of a longer one: "0.15 DUSK"
+ * never as part of "10.15 DUSK", "2:05:01" never of "12:05:01".
+ *
+ * @param {string} text
+ */
+const figure = (text) => {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  return new RegExp(`(?<![\\d.,])${escaped}(?![\\d])`);
+};
+
+/**
  * The time of day of `paidAt`, to the second, as any sentence about the
  * payment gives it.
  *
  * @param {number} ms
  */
 const clockOf = (ms) =>
-  /** @type {string} */ (paidAt(ms).match(/\d{1,2}:\d{2}:\d{2}/)?.[0]);
+  figure(/** @type {string} */ (paidAt(ms).match(/\d{1,2}:\d{2}:\d{2}/)?.[0]));
 
 describe("Receive", () => {
   const currentProfile = /** @type {Profile} */ (
@@ -137,6 +189,22 @@ describe("Receive", () => {
   // threadpool: running the fake timers doesn't wait for that.
   const qrCodeDrawn = () =>
     vi.waitFor(() => screen.getByRole("img", { name: /^QR code for your/ }));
+
+  /**
+   * What the QR code on screen holds, once all it was asked to draw is
+   * drawn: never what a picture made before shows.
+   */
+  const qrHolds = async () => {
+    while (qr.pending.size) {
+      await Promise.allSettled([...qr.pending]);
+    }
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    return qr.encoded.get(
+      document.querySelector("img.receive__qr")?.getAttribute("src") ?? "",
+    );
+  };
 
   beforeEach(() => {
     getPrimaryName.mockResolvedValue("");
@@ -165,6 +233,7 @@ describe("Receive", () => {
 
     expect(getByRole("radiogroup")).toBeInTheDocument();
     expect(shownAddress()).toBe(expectedAccount);
+    expect(await qrHolds()).toBe(expectedAccount);
   });
 
   it("should copy the full address shown, public or shielded, from its field", async () => {
@@ -198,6 +267,7 @@ describe("Receive", () => {
     await qrCodeDrawn();
 
     expect(shownAddress()).toBe(expectedAddress);
+    expect(await qrHolds()).toBe(expectedAddress);
   });
 
   describe("Request payment", () => {
@@ -257,8 +327,14 @@ describe("Receive", () => {
      */
     const linkIn = (text) => String(text).match(/https:\/\/\S+/)?.[0] ?? "";
 
-    /** What the QR code on screen holds, as the library was asked to draw it. */
-    const qrAlt = () => screen.getByRole("img", { name: /^QR code for your/ });
+    /**
+     * A line of a request's picture ending with the address it pays, as
+     * shortened there.
+     *
+     * @param {string} address
+     */
+    const paying = (address) =>
+      expect.stringMatching(new RegExp(`(^|\\s)${shortenAddress(address)}$`));
 
     /**
      * A listed request's state, as its badge is marked: "paid", "waiting",
@@ -282,7 +358,12 @@ describe("Receive", () => {
 
       expect(get(requestsStore)).toStrictEqual([]);
       // The QR holds the request, not the address alone.
-      await vi.waitFor(() => expect(qrAlt()).toHaveAccessibleName(/request/i));
+      expect(parsePaymentLink(await qrHolds())).toMatchObject({
+        amountDusk: "0.15",
+        chainId: "dusk:2",
+        memo: "Factura 33",
+        to: ACCOUNT,
+      });
 
       await fireEvent.click(
         screen.getByRole("button", { name: "Copy request" }),
@@ -293,8 +374,8 @@ describe("Receive", () => {
       const [said] = copied.split("\n");
 
       // What it asks in a line, as the extension gives it, then the link.
-      expect(said).toContain("0.15 DUSK");
-      expect(said).toContain("Testnet");
+      expect(said).toMatch(figure("0.15 DUSK"));
+      expect(said).toMatch(/\bTestnet\b/);
       expect(said).toContain("Factura 33");
       expect(linkIn(copied)).toMatch(
         /^https:\/\/apps\.testnet\.dusk\.network\/wallet\/dashboard\/send\?/,
@@ -313,6 +394,72 @@ describe("Receive", () => {
           to: ACCOUNT,
         },
       ]);
+    });
+
+    // What's scanned: the QR code holds the request shown and copied, drawn
+    // anew as it changes, never one from before.
+    it("should hold in its QR code exactly the request shown and copied, anew as its amount, memo or address changes", async () => {
+      /** The request the QR code on screen holds, as a wallet reads it. */
+      const held = async () => parsePaymentLink(await qrHolds());
+
+      render(Receive);
+      await vi.runAllTimersAsync();
+
+      // Nothing asked: the address alone, as shown.
+      expect(await qrHolds()).toBe(ACCOUNT);
+
+      await openRequest();
+      await type("Amount (optional)", "0.15");
+      await type("Memo (optional)", "Factura 33");
+      await vi.runAllTimersAsync();
+      await fireEvent.click(
+        screen.getByRole("button", { name: "Copy request" }),
+      );
+      await vi.advanceTimersByTimeAsync(0);
+
+      const asked = {
+        amountDusk: "0.15",
+        chainId: "dusk:2",
+        memo: "Factura 33",
+        to: ACCOUNT,
+      };
+
+      expect(
+        parsePaymentLink(
+          linkIn(vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0]),
+        ),
+      ).toMatchObject(asked);
+      expect(await held()).toMatchObject(asked);
+
+      // Another amount, another memo, then the shielded address: each drawn
+      // anew.
+      await type("Amount (optional)", "0.2");
+
+      expect(await held()).toMatchObject({ ...asked, amountDusk: "0.2" });
+
+      await type("Memo (optional)", "Factura 34");
+
+      expect(await held()).toMatchObject({
+        ...asked,
+        amountDusk: "0.2",
+        memo: "Factura 34",
+      });
+
+      await fireEvent.click(screen.getByRole("radio", { checked: false }));
+
+      expect(shownAddress()).toBe(expectedAddress);
+      expect(await held()).toMatchObject({
+        ...asked,
+        amountDusk: "0.2",
+        memo: "Factura 34",
+        to: expectedAddress,
+      });
+
+      // Nothing asked again: the address alone.
+      await type("Amount (optional)", "");
+      await type("Memo (optional)", "");
+
+      expect(await qrHolds()).toBe(expectedAddress);
     });
 
     it("should say what a request comes to in the person's currency on mainnet, with the price's time, its link asking DUSK, and nothing on testnet", async () => {
@@ -353,7 +500,7 @@ describe("Receive", () => {
         await type("Amount (optional)", "2");
 
         await vi.waitFor(() =>
-          expect(screen.getByText(/€1\.00/)).toBeInTheDocument(),
+          expect(screen.getByText(figure("€1.00"))).toBeInTheDocument(),
         );
 
         // The link asks what it asked: DUSK.
@@ -400,8 +547,8 @@ describe("Receive", () => {
       await type("Amount (optional)", "2.125");
       await vi.runAllTimersAsync();
 
-      expect(screen.getByRole("alert")).toHaveTextContent("2.1250");
-      expect(screen.getByRole("alert")).toHaveTextContent("2125");
+      expect(screen.getByRole("alert")).toHaveTextContent(figure("2.1250"));
+      expect(screen.getByRole("alert")).toHaveTextContent(figure("2125"));
       expect(screen.queryByRole("button", { name: "Copy request" })).toBe(null);
 
       await fireEvent.click(
@@ -497,8 +644,10 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       // The request in a line, then its link, as text alone.
-      expect(share.mock.lastCall?.[0].text).toContain("2 DUSK");
-      expect(share.mock.lastCall?.[0].text).toContain("Testnet");
+      const [sharedLine] = share.mock.lastCall?.[0].text.split("\n") ?? [];
+
+      expect(sharedLine).toMatch(figure("2 DUSK"));
+      expect(sharedLine).toMatch(/\bTestnet\b/);
       expect(
         parsePaymentLink(linkIn(share.mock.lastCall?.[0].text)),
       ).toMatchObject({
@@ -526,7 +675,9 @@ describe("Receive", () => {
       );
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(share.mock.lastCall?.[0].text).toContain("2 DUSK");
+      expect(share.mock.lastCall?.[0].text.split("\n")[0]).toMatch(
+        figure("2 DUSK"),
+      );
       expect(
         parsePaymentLink(linkIn(share.mock.lastCall?.[0].text)),
       ).toMatchObject({
@@ -552,13 +703,15 @@ describe("Receive", () => {
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
-      /** All the picture's words, a line each. */
-      const words = () => written.mock.calls.map(([text]) => text).join("\n");
+      /** The picture's lines, each as written under its QR code. */
+      const lines = () => written.mock.calls.map(([text]) => text);
 
-      expect(words()).toContain("Testnet");
-      expect(words()).toContain("0.05 DUSK");
-      expect(words()).toContain("Factura 33");
-      expect(words()).toContain(shortenAddress(ACCOUNT));
+      // Each a line of its own: the network, the amount, the memo, and the
+      // address it pays, at the end of its line.
+      expect(lines()).toContainEqual(expect.stringMatching(/\bTestnet\b/));
+      expect(lines()).toContain("0.05 DUSK");
+      expect(lines()).toContain("Factura 33");
+      expect(lines()).toContainEqual(paying(ACCOUNT));
 
       // Mainnet's is the one that names no network.
       setNodeNetwork(networks.mainnet);
@@ -568,8 +721,8 @@ describe("Receive", () => {
       );
       await vi.waitFor(() => expect(click).toHaveBeenCalledTimes(2));
 
-      expect(words()).toContain("0.05 DUSK");
-      expect(words()).not.toMatch(/testnet|mainnet/i);
+      expect(lines()).toContain("0.05 DUSK");
+      expect(lines().join("\n")).not.toMatch(/testnet|mainnet/i);
 
       click.mockRestore();
       written.mockRestore();
@@ -642,8 +795,8 @@ describe("Receive", () => {
       named("");
       await vi.waitFor(() => expect(click).toHaveBeenCalledOnce());
 
-      expect(written.mock.calls.map(([text]) => text).join("\n")).toContain(
-        shortenAddress(ACCOUNT),
+      expect(written.mock.calls.map(([text]) => text)).toContainEqual(
+        paying(ACCOUNT),
       );
       expect(get(requestsStore)).toMatchObject([{ to: ACCOUNT }]);
 
@@ -720,9 +873,14 @@ describe("Receive", () => {
 
       // On the card, beside its Copy and Share: Paid, with when; the one
       // paid twice, when first.
-      expect(actionsOf(once)).toHaveTextContent(clockOf(at + 500));
+      expect(stateOf(once)).toBe("paid");
+      expect(
+        actionsOf(once).querySelector(".requests__paid"),
+      ).toHaveTextContent(clockOf(at + 500));
       expect(stateOf(twice)).toBe("again");
-      expect(actionsOf(twice)).toHaveTextContent(clockOf(at + 1500));
+      expect(
+        actionsOf(twice).querySelector(".requests__paid"),
+      ).toHaveTextContent(clockOf(at + 1500));
 
       // Copy request asks first, on the card: nothing copied yet.
       await fireEvent.click(
@@ -759,8 +917,10 @@ describe("Receive", () => {
         vi.mocked(navigator.clipboard.writeText).mock.lastCall?.[0],
       );
 
-      expect(copied).toContain("0.013 DUSK");
-      expect(copied).toContain("Factura 2026-071");
+      const [copiedLine] = copied.split("\n");
+
+      expect(copiedLine).toMatch(figure("0.013 DUSK"));
+      expect(copiedLine).toContain("Factura 2026-071");
       expect(parsePaymentLink(linkIn(copied))).toMatchObject({
         amountDusk: "0.013",
         memo: "Factura 2026-071",
@@ -785,8 +945,14 @@ describe("Receive", () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(share).toHaveBeenCalledOnce();
-      expect(share.mock.lastCall?.[0].text).toContain("0.03 DUSK");
-      expect(share.mock.lastCall?.[0].text).toContain("Factura 2026-101");
+
+      const [sharedLine] = share.mock.lastCall?.[0].text.split("\n") ?? [];
+
+      expect(sharedLine).toMatch(figure("0.03 DUSK"));
+      expect(sharedLine).toContain("Factura 2026-101");
+      expect(
+        parsePaymentLink(linkIn(share.mock.lastCall?.[0].text)),
+      ).toMatchObject({ amountDusk: "0.03", memo: "Factura 2026-101" });
       expect(get(toastList)).toStrictEqual([]);
 
       toastTimer.set(0);
@@ -955,7 +1121,7 @@ describe("Receive", () => {
 
       // Paid by a payment of its amount and memo, and when.
       expect(stateOf(screen.getByRole("listitem"))).toBe("paid");
-      expect(line()).toHaveTextContent("0.15 DUSK");
+      expect(line()).toHaveTextContent(figure("0.15 DUSK"));
       expect(line()).toHaveTextContent(clockOf(at + 500));
       // It stays paid with its payment out of what's read, and what it paid.
       expect(get(requestsStore)[0].paid).toStrictEqual({
@@ -1082,28 +1248,22 @@ describe("Receive", () => {
           },
         ],
       });
+      history.flags?.set({ failed: false, reading: true });
+
       try {
-        // All of it read, nothing of it came in: what's said then.
-        render(Receive);
-        await vi.advanceTimersByTimeAsync(0);
-
-        const nothing = said();
-
-        cleanup();
-
-        // While what's further back is read: not that.
-        history.flags?.set({ failed: false, reading: true });
         render(Receive);
         await vi.advanceTimersByTimeAsync(0);
 
         expect(stateOf(screen.getByRole("listitem"))).toBe("waiting");
-        expect(said()).not.toBe(nothing);
+        expect(said()).toMatch(/checking/i);
+        expect(said()).not.toMatch(/nothing matching/i);
 
         // All of it read: nothing of it came in.
         history.flags?.set({ failed: false, reading: false });
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(said()).toBe(nothing);
+        expect(said()).toMatch(/nothing matching/i);
+        expect(said()).not.toMatch(/checking/i);
       } finally {
         history.state?.set({ hasMore: false, rows: [] });
         history.flags?.set({ failed: false, reading: false });
@@ -1111,8 +1271,7 @@ describe("Receive", () => {
     });
 
     it("should say it's checking, not that nothing came in, while a payment to it from another profile here is looked for, two minutes at most", async () => {
-      // Asked days ago: when, on its card, reads the same two minutes on.
-      const at = Date.now() - 5 * 86_400_000;
+      const at = Date.now() - 1000;
       const { awaitArrival, forgetArrivals } = await import("$lib/activity");
       /** What its card says of what came in. */
       const said = () =>
@@ -1138,17 +1297,15 @@ describe("Receive", () => {
         render(Receive);
         await vi.advanceTimersByTimeAsync(0);
 
-        // Nothing matching has come in: what's said then.
-        const nothing = said();
+        expect(said()).toMatch(/nothing matching/i);
 
         // Sent from another profile here, and seen to go out: the history
         // doesn't have it yet.
         awaitArrival({ hash: "ab".repeat(32), to: ACCOUNT });
         await vi.advanceTimersByTimeAsync(0);
 
-        const checking = said();
-
-        expect(checking).not.toBe(nothing);
+        expect(said()).toMatch(/checking/i);
+        expect(said()).not.toMatch(/nothing matching/i);
 
         // In the history: what came in.
         history.state?.set({
@@ -1190,11 +1347,11 @@ describe("Receive", () => {
         render(Receive);
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(said()).toBe(checking);
+        expect(said()).toMatch(/checking/i);
 
         await vi.advanceTimersByTimeAsync(120_000);
 
-        expect(said()).toBe(nothing);
+        expect(said()).toMatch(/nothing matching/i);
       } finally {
         forgetArrivals();
         history.state?.set({ hasMore: false, rows: [] });
@@ -1322,13 +1479,26 @@ describe("Receive", () => {
       ]);
 
       const paidLine = paid.querySelector(".requests__line")?.textContent ?? "";
+      /**
+       * One figure, then another, in the same sentence.
+       *
+       * @param {RegExp} first
+       * @param {RegExp} second
+       */
+      const then = (first, second) =>
+        new RegExp(`${first.source}[^.]*${second.source}`);
 
       expect(stateOf(paid)).toBe("paid");
-      // Paid by the first; its memo for another amount after it.
-      expect(paidLine).toContain("0.01 DUSK");
-      expect(paidLine).toContain(clockOf(at + 1000));
-      expect(paidLine).toContain("0.02 DUSK");
-      expect(paidLine).toContain(clockOf(at + 4000));
+      // Paid by the first, as kept with it: its amount, then when; its memo
+      // for another amount after it: when, then that amount.
+      await vi.waitFor(() =>
+        expect(get(requestsStore)[0].paid).toMatchObject({
+          hash: (1).toString(16).padStart(64, "0"),
+          lux: "10000000",
+        }),
+      );
+      expect(paidLine).toMatch(then(figure("0.01 DUSK"), clockOf(at + 1000)));
+      expect(paidLine).toMatch(then(clockOf(at + 4000), figure("0.02 DUSK")));
       expect(paidLine).not.toMatch(/Factura 4[45]/);
 
       // Not paid: the same memo first, then the same amount with another
@@ -1347,7 +1517,7 @@ describe("Receive", () => {
       // Not paid by any: its memo for another amount, and the first three of
       // its amount with another memo, a lookalike's too, each as it's written.
       expect(stateOf(open)).toBe("check");
-      expect(line).toContain("0.07 DUSK");
+      expect(line).toMatch(figure("0.07 DUSK"));
       expect(line).toContain('"Factura 7O"');
       expect(line).toContain('"Fra \\u202e34 aruc"');
       expect(line).toContain('"Factura 73"');
@@ -1452,9 +1622,12 @@ describe("Receive", () => {
       const payments = () =>
         screen.getByRole("list", { name: "Payments for this request" });
 
-      // What each brought.
-      expect(payments()).toHaveTextContent(paidAt(at + 2500));
-      expect(payments()).toHaveTextContent("0.012 DUSK");
+      // What each brought, on its own line, with when.
+      const second = Array.from(
+        payments().querySelectorAll(".requests__payment > span:first-child"),
+      ).find((line) => line.textContent?.includes(paidAt(at + 2500)));
+
+      expect(second).toHaveTextContent(figure("0.012 DUSK"));
 
       vi.mocked(goto).mockClear();
       await fireEvent.click(
@@ -1492,7 +1665,7 @@ describe("Receive", () => {
       // What went back, on its way, and Send back no more.
       expect(
         payments().querySelector(".requests__sent-back"),
-      ).toHaveTextContent("0.012 DUSK");
+      ).toHaveTextContent(figure("0.012 DUSK"));
       expect(
         screen.queryByRole("link", { name: /^Send back the payment of/ }),
       ).toBeNull();
@@ -1605,7 +1778,7 @@ describe("Receive", () => {
       // What went back, and when, once a block has it.
       const sent = payments().querySelector(".requests__sent-back");
 
-      expect(sent).toHaveTextContent("0.012 DUSK");
+      expect(sent).toHaveTextContent(figure("0.012 DUSK"));
       expect(sent).toHaveTextContent(paidAt(at + 4000));
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -1696,9 +1869,9 @@ describe("Receive", () => {
       const line = () =>
         screen.getByRole("listitem").querySelector(".requests__line");
 
-      expect(badge()).toHaveTextContent("0.000000001 DUSK");
+      expect(badge()).toHaveTextContent(/^0\.000000001 DUSK$/);
       expect(badge()).not.toHaveClass("requests__state--paid");
-      expect(line()).toHaveTextContent("0.000000001 DUSK");
+      expect(line()).toHaveTextContent(figure("0.000000001 DUSK"));
       expect(line()).toHaveTextContent(clockOf(at + 500));
       await vi.waitFor(() => expect(get(requestsStore)[0].paid?.lux).toBe("1"));
 
@@ -1710,7 +1883,7 @@ describe("Receive", () => {
       render(Receive);
       await vi.advanceTimersByTimeAsync(0);
 
-      expect(line()).toHaveTextContent("0.000000001 DUSK");
+      expect(line()).toHaveTextContent(figure("0.000000001 DUSK"));
 
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       await vi.advanceTimersByTimeAsync(0);
@@ -1952,9 +2125,11 @@ describe("Receive", () => {
       const copied = vi.mocked(navigator.clipboard.writeText).mock
         .lastCall?.[0];
 
-      expect(copied).toContain("sofiadesign.dusk");
-      expect(copied).toContain("0.01 DUSK");
-      expect(copied).toContain("Factura F-2026-125");
+      const [copiedLine] = String(copied).split("\n");
+
+      expect(copiedLine).toMatch(/(?<![\w.-])sofiadesign\.dusk(?![\w.-])/);
+      expect(copiedLine).toMatch(figure("0.01 DUSK"));
+      expect(copiedLine).toContain("Factura F-2026-125");
       expect(share).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ text: copied }),
       );

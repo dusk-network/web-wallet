@@ -17,7 +17,7 @@ import {
   formatDuskExact,
   formatDuskPlain,
 } from "$lib/dusk/currency";
-import { timeLabel } from "$lib/activity/present";
+import { paidInSentence, timeLabel } from "$lib/activity/present";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { shortenAddress } from "$lib/dusk/string";
 import { afterConfirmDelay, getAsHTMLElement } from "$lib/dusk/test-helpers";
@@ -123,16 +123,78 @@ vi.mock("qr-scanner", () => ({
 const scanned = (data) => qr.read({ data });
 
 /**
- * The summary's rows, in order, as their values: what each row says, not
- * what it's called.
+ * What the summary's row says whose label has `key` in it: a value, bound to
+ * the row it's said in.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} key
+ */
+const summaryRow = (container, key) =>
+  Array.from(container.querySelectorAll(".send__summary .send__rows > div"))
+    .find((row) => key.test(row.querySelector("dt")?.textContent ?? ""))
+    ?.querySelector("dd")
+    ?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The whole of the summary's row whose label has `key` in it, label and value:
+ * where a bound such as "up to" goes, whichever of the two says it.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} key
+ */
+const summaryLine = (container, key) =>
+  Array.from(container.querySelectorAll(".send__summary .send__rows > div"))
+    .find((row) => key.test(row.querySelector("dt")?.textContent ?? ""))
+    ?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
+/** A total that is the most it can cost: up to it. */
+const UP_TO = /\bup to\b/i;
+
+/**
+ * The address on the recipient's card, in full, as it shows.
  *
  * @param {HTMLElement} container
  */
-const getSummary = (container) =>
-  Array.from(
-    container.querySelectorAll(".send__summary .send__rows > div"),
-    (row) => row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
-  );
+const cardAddress = (container) =>
+  container.querySelector(".send__card .full-address")?.textContent;
+
+/**
+ * The result's line of what went to whom: the amount first, the recipient
+ * last.
+ *
+ * @param {HTMLElement} container
+ */
+const sentWhat = (container) =>
+  container.querySelector(".transaction-status__what")?.textContent?.trim();
+
+/**
+ * What the result's detail says whose label has `key` in it.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} key
+ */
+const resultDetail = (container, key) =>
+  Array.from(container.querySelectorAll(".transaction-status__details dt"))
+    .find((term) => key.test(term.textContent ?? ""))
+    ?.nextElementSibling?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * A line that ends with `recipient`, said last, as a word of its own.
+ *
+ * @param {string} recipient
+ */
+const endingWith = (recipient) =>
+  new RegExp(`(^|\\s)${recipient.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
+
+// The summary's rows, by their labels' key words.
+const FROM = /from/i;
+const TO = /^to\b/i;
+const AMOUNT = /amount/i;
+const MEMO = /memo/i;
+const TOTAL = /total/i;
 
 // The contacts open with a wallet, as when it unlocks.
 beforeAll(() => openTestContacts());
@@ -1430,13 +1492,13 @@ describe("Send", () => {
 
       await fireEvent.input(fields.amount(), { target: { value: "1,5" } });
 
-      expect(getSummary(container)).toContain("1.5 DUSK");
+      expect(summaryRow(container, AMOUNT)).toBe("1.5 DUSK");
       expect(fields.review()).toBeEnabled();
       expect(queryByRole("alert")).toBeNull();
 
       await fireEvent.input(fields.amount(), { target: { value: "1,000.5" } });
 
-      expect(getSummary(container)).toContain("1,000.5 DUSK");
+      expect(summaryRow(container, AMOUNT)).toBe("1,000.5 DUSK");
 
       // A lone comma before three digits could mean 1 or 1000: asked, with
       // a button for each, which puts that one in the field.
@@ -1595,9 +1657,7 @@ describe("Send", () => {
         for (const typed of ["1 000", "1\u00a0000", "1\u202f000"]) {
           await fireEvent.input(fields.amount(), { target: { value: typed } });
 
-          expect(getSummary(container)).toContainEqual(
-            expect.stringMatching(/^1\s000 DUSK$/),
-          );
+          expect(summaryRow(container, AMOUNT)).toMatch(/^1\s000 DUSK$/);
           expect(fields.review()).toBeEnabled();
         }
 
@@ -1705,9 +1765,12 @@ describe("Send", () => {
       // Not "Up to 173.901884001 DUSK" beside "Available 173.9018 DUSK":
       // the balance as it shows there, rounded down.
       expect(container.querySelector(".send__hint")).toHaveTextContent(
-        "173.9018 DUSK",
+        /(?<![\d.,])173\.9018 DUSK\b/,
       );
-      expect(getSummary(container).at(-1)).toContain("173.9018 DUSK");
+      expect(summaryRow(container, TOTAL)).toMatch(
+        /(?<![\d.,])173\.9018 DUSK$/,
+      );
+      expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
     });
 
     it.each([
@@ -1791,8 +1854,13 @@ describe("Send", () => {
         expect(
           decimal(/** @type {HTMLInputElement} */ (fields.amount()).value),
         ).toBe(formatDuskPlain(allOfIt - keepForLater.lux));
-        // Saying what it keeps.
-        expect(container).toHaveTextContent("0.05 DUSK");
+        // Saying what it keeps, in a hint of the amount's own.
+        expect(
+          Array.from(
+            container.querySelectorAll(".send__field .send__hint"),
+            (hint) => hint.textContent?.replace(/\s+/g, " ").trim(),
+          ),
+        ).toContainEqual(expect.stringMatching(/(?<![\d.,])0\.05 DUSK\b/));
       });
 
       it("lets an amount over that go, and says what it leaves too little for", async () => {
@@ -1877,7 +1945,7 @@ describe("Send", () => {
         initialRecipient: shieldedAddress,
       });
       const fields = fieldsOf(getByRole);
-      // What the summary notes of its memo, in words of its own.
+      // What the summary notes of its memo, in its notes' own elements.
       const noted = () =>
         Array.from(
           container.querySelectorAll(".send__summary-memo .memo-text__note"),
@@ -1892,27 +1960,26 @@ describe("Send", () => {
       expect(container.querySelector(".send__summary-memo")).toHaveTextContent(
         "pay \\u202e0001\\u202c",
       );
-      const hidden = noted();
-
-      expect(hidden).not.toBe("");
+      // Noted: it has hidden characters, shown as codes.
+      expect(noted()).toMatch(/hidden/i);
 
       // Nor can a number's digits read as another number unsaid.
       await fireEvent.input(fields.memo(), {
         target: { value: "pay 1\u06605" },
       });
 
-      const mixed = noted();
-
-      expect(mixed).not.toBe("");
-      expect(mixed).not.toBe(hidden);
+      // Noted: its digits are of different scripts, and nothing's hidden.
+      expect(noted()).toMatch(/scripts/i);
+      expect(noted()).not.toMatch(/hidden/i);
 
       // Nor one of digits that look like others, as the extension says.
       await fireEvent.input(fields.memo(), {
         target: { value: "Pay \u09EA DUSK" },
       });
 
-      expect(noted()).not.toBe("");
-      expect(noted()).not.toBe(mixed);
+      // Noted: its digits look like other digits.
+      expect(noted()).toMatch(/look like/i);
+      expect(noted()).not.toMatch(/scripts|hidden/i);
     });
 
     it("should say when a memo is over the network's limit, counting bytes, and keep Send off", async () => {
@@ -2020,6 +2087,9 @@ describe("Send", () => {
         })
       );
 
+    /** Its 0.0019 DUSK, as said: never part of a larger amount. */
+    const itsAmount = /(?<![\d.,])0\.0019 DUSK\b/;
+
     it("should say what's on its way from this profile, as after a reload while it went", () => {
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -2027,8 +2097,9 @@ describe("Send", () => {
       });
       const status = getByRole("status");
 
-      // What, and to whom.
-      expect(status).toHaveTextContent("0.0019 DUSK");
+      // On its way, not a warning: what, and to whom.
+      expect(status).toHaveClass("banner--info");
+      expect(status).toHaveTextContent(itsAmount);
       expect(status).toHaveTextContent(shortenAddress(otherAccount));
     });
 
@@ -2055,10 +2126,18 @@ describe("Send", () => {
 
       await fireEvent.click(fieldsOf(stranger.getByRole).review());
 
-      // What it sent, all of it.
-      expect(stranger.getByRole("note")).toHaveTextContent(
-        "URGENT: send 0.1 DUSK back",
-      );
+      const note = stranger.getByRole("note");
+      const title = note.querySelector(".banner__title");
+
+      // Said as theirs: the wallet's own words, the note's title, say this
+      // address sent it, the one paid, in full on the review; what it sent
+      // is apart from them, all of it, in its own element.
+      expect(title).toHaveTextContent(/sent you/i);
+      expect(title).not.toHaveTextContent(/URGENT/);
+      expect(summaryRow(stranger.container, TO)).toBe(otherAccount);
+      expect(
+        note.querySelector(".send__stranger-said .memo-text")?.textContent,
+      ).toBe("URGENT: send 0.1 DUSK back");
       cleanup();
 
       // A contact's words are their own: nothing said of them.
@@ -2069,6 +2148,43 @@ describe("Send", () => {
       await fireEvent.click(fieldsOf(contact.getByRole).review());
 
       expect(contact.queryByRole("note")).toBeNull();
+    });
+
+    // Amélie's: the stranger's words on Review were cut off mid-memo,
+    // "…Send 0.1 DUSK back t…", in the extension; both wallets say all of
+    // them, as a memo is said, under the warning.
+    it("should give a stranger's whole memo on the review, in an element of its own under the warning", async () => {
+      const memo =
+        "Mamie c'est Lucas, nouveau téléphone ! URGENT : renvoie 0,15 DUSK sur ce compte tout de suite, je t'explique ce soir. Ne dis rien à maman.";
+      const view = render(Send, {
+        ...baseProps,
+        historyRows: [
+          sentRow({
+            category: "received",
+            direction: "in",
+            hash: "e2".repeat(32),
+            memo,
+            source: "public",
+            status: "executed",
+          }),
+        ],
+        initialAmount: "0.15",
+        initialRecipient: otherAccount,
+      });
+
+      await fireEvent.click(fieldsOf(view.getByRole).review());
+
+      const note = view.getByRole("note");
+
+      // A warning, with all of the memo, never cut off, in an element of its
+      // own: apart from the wallet's words over it.
+      expect(note).toHaveClass("banner--warning");
+      expect(
+        note.querySelector(".send__stranger-said .memo-text")?.textContent,
+      ).toBe(memo);
+      expect(note.querySelector(".banner__title")).not.toHaveTextContent(
+        /Mamie/,
+      );
     });
 
     it("should say what this profile sent whose answer never came isn't confirmed yet, never on its way, for as long as the wallet waits for it", () => {
@@ -2086,10 +2202,13 @@ describe("Send", () => {
       });
       const statuses = getAllByRole("status");
 
-      // The one waited for only, as a warning: not as one on its way.
+      // The one waited for only, as a warning that it isn't confirmed: not as
+      // one on its way.
       expect(statuses).toHaveLength(1);
       expect(statuses[0]).toHaveClass("banner--warning");
-      expect(statuses[0]).toHaveTextContent("0.0019 DUSK");
+      expect(statuses[0]).toHaveTextContent(/not confirmed/i);
+      expect(statuses[0]).not.toHaveTextContent(/on its way/i);
+      expect(statuses[0]).toHaveTextContent(itsAmount);
       expect(statuses[0]).toHaveTextContent(shortenAddress(otherAccount));
     });
 
@@ -2103,6 +2222,7 @@ describe("Send", () => {
         });
         const status = getByRole("status");
 
+        expect(status).toHaveClass("banner--info");
         expect(status).not.toHaveTextContent("0.0019");
         expect(status).toHaveTextContent(shortenAddress(otherAccount));
       } finally {
@@ -2110,7 +2230,7 @@ describe("Send", () => {
       }
     });
 
-    it("should warn of the same payment made moments ago, or with the same memo before, when to the second, and let it go all the same", async () => {
+    it("should warn of the same payment made moments ago, or with the same memo before, when to the second, and let it go all the same, the button saying Send again", async () => {
       const sent = Date.now() - 20_000;
       const { getByRole } = render(Send, {
         ...baseProps,
@@ -2118,19 +2238,21 @@ describe("Send", () => {
         initialAmount: "0.0019",
         initialRecipient: otherAccount,
       });
+      const madeAgo = getByRole("alert");
 
-      // What, to whom, and when a block took it, to the second, as its
-      // request and its Sent screen say it.
-      expect(getByRole("alert")).toHaveTextContent("0.0019 DUSK");
-      expect(getByRole("alert")).toHaveTextContent(
-        shortenAddress(otherAccount),
-      );
-      expect(getByRole("alert")).toHaveTextContent(/\d{1,2}:\d{2}:\d{2}/);
+      // Sent, when a block took it, to the second, as its request and its
+      // Sent screen say it: what, and to whom.
+      expect(madeAgo).toHaveTextContent(/you sent/i);
+      expect(madeAgo).toHaveTextContent(paidInSentence(sent, "en"));
+      expect(madeAgo).toHaveTextContent(itsAmount);
+      expect(madeAgo).toHaveTextContent(shortenAddress(otherAccount));
+      expect(madeAgo).not.toHaveTextContent(/on its way|not confirmed/i);
 
-      // It can be meant: it goes.
+      // It can be meant: it goes, as the button says.
       await fireEvent.click(fieldsOf(getByRole).review());
 
-      expect(fieldsOf(getByRole).send()).toHaveTextContent(/0\.0019 DUSK/);
+      expect(fieldsOf(getByRole).send()).toHaveAccessibleName(itsAmount);
+      expect(fieldsOf(getByRole).send()).toHaveAccessibleName(/\bagain\b/i);
 
       await afterConfirmDelay();
       await fireEvent.click(fieldsOf(getByRole).send());
@@ -2139,8 +2261,8 @@ describe("Send", () => {
       cleanup();
       baseProps.execute.mockClear();
 
-      // Found while the review shows, as from another tab: it's said, and
-      // Send takes no press meant for it before.
+      // Found while the review shows, as from another tab: the button says so
+      // and takes no press meant for Send.
       const review = render(Send, {
         ...baseProps,
         initialAmount: "0.0019",
@@ -2151,14 +2273,20 @@ describe("Send", () => {
       await afterConfirmDelay();
 
       expect(review.queryByRole("alert")).toBeNull();
+      expect(fieldsOf(review.getByRole).send()).toHaveAccessibleName(itsAmount);
+      expect(fieldsOf(review.getByRole).send()).not.toHaveAccessibleName(
+        /\bagain\b/i,
+      );
 
       await review.rerender({
         historyRows: [sentRow({ status: "executed", time: sent })],
       });
 
-      expect(review.getByRole("alert")).toHaveTextContent("0.0019 DUSK");
-      expect(fieldsOf(review.getByRole).send()).toHaveTextContent(
-        /0\.0019 DUSK/,
+      expect(review.getByRole("alert")).toHaveTextContent(
+        paidInSentence(sent, "en"),
+      );
+      expect(fieldsOf(review.getByRole).send()).toHaveAccessibleName(
+        /\bagain\b/i,
       );
 
       await fireEvent.click(fieldsOf(review.getByRole).send());
@@ -2203,12 +2331,16 @@ describe("Send", () => {
         initialRecipient: otherAccount,
       });
 
+      // Sent with this memo, when a block took it, to the second.
       const paidAlert = request.getByRole("alert");
 
-      expect(paidAlert).toHaveTextContent("0.0019 DUSK");
+      expect(paidAlert).toHaveTextContent(/you sent/i);
+      expect(paidAlert).toHaveTextContent(/with this memo/i);
+      expect(paidAlert).toHaveTextContent(paidInSentence(paid, "en"));
+      expect(paidAlert).toHaveTextContent(/29 Oct, \d{1,2}:30:00/);
+      expect(paidAlert).toHaveTextContent(itsAmount);
       expect(paidAlert).toHaveTextContent(shortenAddress(otherAccount));
-      expect(paidAlert).toHaveTextContent(/29 Oct/);
-      expect(paidAlert).toHaveTextContent(/\d{1,2}:30:00/);
+      expect(paidAlert).not.toHaveTextContent(/on its way|not confirmed/i);
       cleanup();
 
       // Still on its way, in no block: no time a block's would change.
@@ -2221,12 +2353,15 @@ describe("Send", () => {
       });
       const pendingAlert = onItsWay.getByRole("alert");
 
-      expect(pendingAlert).toHaveTextContent("0.0019 DUSK");
+      expect(pendingAlert).toHaveTextContent(/on its way/i);
+      expect(pendingAlert).toHaveTextContent(/with this memo/i);
+      expect(pendingAlert).toHaveTextContent(itsAmount);
       expect(pendingAlert).toHaveTextContent(shortenAddress(otherAccount));
       expect(pendingAlert).not.toHaveTextContent(/\d{1,2}:\d{2}:\d{2}/);
+      expect(pendingAlert).not.toHaveTextContent(/not confirmed/i);
       cleanup();
 
-      // Its answer never came: it may have gone out, so it's said too.
+      // Its answer never came: not on its way for all that's known.
       const unconfirmed = render(Send, {
         ...baseProps,
         historyRows: [sentRow({ memo: "Factura 044", status: "unknown" })],
@@ -2236,9 +2371,12 @@ describe("Send", () => {
       });
       const unknownAlert = unconfirmed.getByRole("alert");
 
-      expect(unknownAlert).toHaveTextContent("0.0019 DUSK");
+      expect(unknownAlert).toHaveTextContent(/not confirmed/i);
+      expect(unknownAlert).toHaveTextContent(/with this memo/i);
+      expect(unknownAlert).toHaveTextContent(itsAmount);
       expect(unknownAlert).toHaveTextContent(shortenAddress(otherAccount));
       expect(unknownAlert).not.toHaveTextContent(/\d{1,2}:\d{2}:\d{2}/);
+      expect(unknownAlert).not.toHaveTextContent(/you sent|on its way/i);
     });
 
     /**
@@ -2267,7 +2405,7 @@ describe("Send", () => {
       return gate;
     };
 
-    it("should warn of the same send waiting to go out already, from the same balance, and let it go all the same", async () => {
+    it("should warn of the same send waiting to go out already, from the same balance, and let it go all the same, the button saying Send again", async () => {
       const waiting = waitingSend();
 
       try {
@@ -2277,14 +2415,18 @@ describe("Send", () => {
           initialMemo: "Factura 044",
           initialRecipient: otherAccount,
         });
+        const waits = getByRole("alert");
 
-        // What waits, and to whom.
-        expect(getByRole("alert")).toHaveTextContent("0.0019 DUSK");
-        expect(getByRole("alert")).toHaveTextContent("Lena");
+        // Waiting to go out, with this memo: what, and to whom.
+        expect(waits).toHaveTextContent(/waiting/i);
+        expect(waits).toHaveTextContent(/with this memo/i);
+        expect(waits).toHaveTextContent(itsAmount);
+        expect(waits).toHaveTextContent(/\bLena\b/);
 
         await fireEvent.click(fieldsOf(getByRole).review());
 
-        expect(fieldsOf(getByRole).send()).toHaveTextContent(/0\.0019 DUSK/);
+        expect(fieldsOf(getByRole).send()).toHaveAccessibleName(itsAmount);
+        expect(fieldsOf(getByRole).send()).toHaveAccessibleName(/\bagain\b/i);
 
         await afterConfirmDelay();
         await fireEvent.click(fieldsOf(getByRole).send());
@@ -2354,13 +2496,14 @@ describe("Send", () => {
       );
 
       expect(queryByRole("button", { name: "Review" })).toBeNull();
-      expect(getSummary(container)).toStrictEqual([
-        expect.stringContaining(shortenAddress(publicAddress)),
-        otherAccount,
-        "0.0019 DUSK",
-        "tab dropped 1",
-        expect.stringContaining("0.0219 DUSK"),
-      ]);
+      expect(summaryRow(container, FROM)).toContain(
+        shortenAddress(publicAddress),
+      );
+      expect(summaryRow(container, TO)).toBe(otherAccount);
+      expect(summaryRow(container, AMOUNT)).toBe("0.0019 DUSK");
+      expect(summaryRow(container, MEMO)).toBe("tab dropped 1");
+      expect(summaryRow(container, TOTAL)).toMatch(/(?<![\d.,])0\.0219 DUSK$/);
+      expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
       expect(execute).not.toHaveBeenCalled();
 
       await afterConfirmDelay();
@@ -2404,12 +2547,17 @@ describe("Send", () => {
           "send--review",
         ),
       );
-      expect(getSummary(open.container)).toStrictEqual([
-        expect.stringContaining(shortenAddress(publicAddress)),
-        otherAccount,
-        "0.0019 DUSK",
-        expect.stringContaining("0.0219 DUSK"),
-      ]);
+      expect(summaryRow(open.container, FROM)).toContain(
+        shortenAddress(publicAddress),
+      );
+      expect(summaryRow(open.container, TO)).toBe(otherAccount);
+      expect(summaryRow(open.container, AMOUNT)).toBe("0.0019 DUSK");
+      // Its own memo, none: not what was half typed.
+      expect(summaryRow(open.container, MEMO)).toBeUndefined();
+      expect(summaryRow(open.container, TOTAL)).toMatch(
+        /(?<![\d.,])0\.0219 DUSK$/,
+      );
+      expect(summaryLine(open.container, TOTAL)).toMatch(UP_TO);
 
       // Another profile's isn't this form's to fill in.
       sendUnsentAgain({ ...unsent, account: otherAccount, id: "unsent-3" });
@@ -2543,9 +2691,9 @@ describe("Send", () => {
       const underAmount = () =>
         container.querySelector(".send__in-currency")?.textContent?.trim();
 
-      // The value, and the price's time.
+      // The value, exactly, and the price's time.
       await vi.waitFor(() =>
-        expect(underAmount()).toMatch(/\$1\.00\D.*\d{1,2}:\d{2}/),
+        expect(underAmount()).toMatch(/\$1\.00(?!\d).*\d{1,2}:\d{2}/),
       );
 
       // As the amount is typed: none for one that doesn't read.
@@ -2555,13 +2703,13 @@ describe("Send", () => {
 
       await fireEvent.input(fields.amount(), { target: { value: "4" } });
 
-      expect(underAmount()).toMatch(/\$2\.00\D/);
+      expect(underAmount()).toMatch(/\$2\.00(?!\d)/);
 
       await fireEvent.click(fields.review());
 
       expect(
         container.querySelector(".send__summary-currency")?.textContent?.trim(),
-      ).toMatch(/\$2\.00\D/);
+      ).toMatch(/\$2\.00(?!\d)/);
     });
 
     it("should say nothing of it on testnet, where DUSK has no value, nor ask for a price", async () => {
@@ -2597,23 +2745,26 @@ describe("Send", () => {
         target: { value: "abc-example-memo" },
       });
 
-      // From the shielded balance; the total as the most it costs.
-      expect(getSummary(container)).toStrictEqual([
-        expect.stringMatching(/shielded/i),
-        shortenAddress(shieldedAddress),
-        "2,345.5 DUSK",
-        "abc-example-memo",
-        expect.stringContaining("2,345.52 DUSK"),
-      ]);
+      // Each in its row, exactly: from the shielded balance, the amount as
+      // typed, and the total as the most it costs.
+      expect(summaryRow(container, FROM)).toMatch(/shielded/i);
+      expect(summaryRow(container, TO)).toBe(shortenAddress(shieldedAddress));
+      expect(summaryRow(container, AMOUNT)).toBe("2,345.5 DUSK");
+      expect(summaryRow(container, MEMO)).toBe("abc-example-memo");
+      expect(summaryRow(container, TOTAL)).toMatch(
+        /(?<![\d.,])2,345\.52 DUSK$/,
+      );
+      expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
+      // And the fee, the most it costs, in its own place.
       expect(
-        container.querySelector(".send__summary .gas-fee"),
-      ).toHaveTextContent("0.02 DUSK");
+        container.querySelector(".send__summary .gas-fee__amount-value"),
+      ).toHaveTextContent(/^0\.02$/);
       expect(container.querySelector(".send__visible")).toBeNull();
 
       // Sending is for the review.
       await fireEvent.click(fields.review());
 
-      expect(fields.send()).toHaveTextContent("2,345.5 DUSK");
+      expect(fields.send()).toHaveTextContent(/(?<![\d.,])2,345\.5 DUSK\b/);
     });
 
     it("should say what a public transfer shows everyone, where it's sent from, and on the review", async () => {
@@ -2628,13 +2779,24 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: otherAccount } });
       await fireEvent.input(fields.amount(), { target: { value: "0.1" } });
 
-      expect(visible()).toHaveTextContent(/\S/);
+      // Seen by everyone: with no memo, nothing said of one.
+      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).not.toHaveTextContent(/memo/i);
+
+      await fireEvent.input(fields.memo(), {
+        target: { value: "Invoice 118" },
+      });
+
+      // With one, the memo too.
+      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).toHaveTextContent(/memo/i);
 
       // The review it's sent from is the summary, the line in it.
       await fireEvent.click(fields.review());
 
       expect(container.querySelector(".send--review")).not.toBeNull();
-      expect(visible()).toHaveTextContent(/\S/);
+      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).toHaveTextContent(/memo/i);
     });
   });
 
@@ -2708,10 +2870,13 @@ describe("Send", () => {
         aGate,
       );
 
-      // What went to whom, and the transaction it follows.
-      expect(getByRole("status")).toHaveTextContent("567 DUSK");
-      expect(getByRole("status")).toHaveTextContent(
-        shortenAddress(shieldedAddress),
+      // On its way: what went to whom, and the transaction it follows.
+      expect(
+        container.querySelector(".transaction-status--pending"),
+      ).toBeInTheDocument();
+      expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
+      expect(sentWhat(container)).toMatch(
+        endingWith(shortenAddress(shieldedAddress)),
       );
       expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
       expect(followTransaction).toHaveBeenCalledWith(
@@ -2733,9 +2898,7 @@ describe("Send", () => {
       expect(container.querySelector(".send")).toHaveClass("send--review");
       expect(queryByRole("button", { name: "Review" })).toBeNull();
       // The address in full, on the last it shows before it goes.
-      expect(container.querySelector(".send__summary")).toHaveTextContent(
-        shieldedAddress,
-      );
+      expect(summaryRow(container, TO)).toBe(shieldedAddress);
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
 
@@ -2780,13 +2943,16 @@ describe("Send", () => {
 
       followTransaction.mockReturnValue(following.promise);
 
-      const { getByRole, getByText } = render(Send, baseProps);
+      const { container, getByRole } = render(Send, baseProps);
 
       await sendWith(getByRole);
 
-      // What goes, and the most its fee can be.
-      expect(getByRole("status")).toHaveTextContent("567 DUSK");
-      expect(getByText("0.02 DUSK")).toBeInTheDocument();
+      // On its way: what goes, and the most its fee can be.
+      expect(
+        container.querySelector(".transaction-status--pending"),
+      ).toBeInTheDocument();
+      expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
+      expect(resultDetail(container, /fee/i)).toBe("0.02 DUSK");
 
       const blockTime = Date.UTC(2026, 9, 28, 0, 34);
 
@@ -2798,17 +2964,22 @@ describe("Send", () => {
       });
       await vi.advanceTimersToNextTimerAsync();
 
-      // Sent, at its block's time, in its block.
-      const sent = getByRole("status");
-
-      expect(sent).toHaveTextContent(
-        timeLabel(blockTime, "en", { seconds: true }),
+      // Sent, at its block's time, to the second, in its block: what went to
+      // whom, and the fee it was charged, to the last digit.
+      expect(
+        container.querySelector(".transaction-status--completed"),
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector(".transaction-status__title"),
+      ).toHaveTextContent(
+        endingWith(timeLabel(blockTime, "en", { seconds: true })),
       );
-      expect(sent).toHaveTextContent("567 DUSK");
-      expect(sent).toHaveTextContent(shortenAddress(shieldedAddress));
-      expect(sent).toHaveTextContent("4,687,200");
-      // The fee charged, to the last digit.
-      expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
+      expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
+      expect(sentWhat(container)).toMatch(
+        endingWith(shortenAddress(shieldedAddress)),
+      );
+      expect(getByRole("status")).toHaveTextContent(/\b4,687,200\b/);
+      expect(resultDetail(container, /fee/i)).toBe("0.001854795 DUSK");
     });
 
     it("should perform the transfer with the gas limit the user sets", async () => {
@@ -2872,7 +3043,7 @@ describe("Send", () => {
         target: { value: ` \n${evmAddress}\t ` },
       });
 
-      expect(getSummary(container)).toContain(evmAddress);
+      expect(summaryRow(container, MEMO)).toBe(evmAddress);
 
       await fireEvent.click(fields.review());
       await afterConfirmDelay();
@@ -2895,12 +3066,17 @@ describe("Send", () => {
 
       baseProps.execute.mockRejectedValueOnce(new Error(errorMessage));
 
-      const { getByRole, getByText } = render(Send, baseProps);
+      const { container, getByRole, getByText } = render(Send, baseProps);
 
       await sendWith(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      // The failure's own message.
+      // Failed before it went out, so it can be tried again: with the
+      // failure's own message.
+      expect(
+        container.querySelector(".dusk-error-alert__summary"),
+      ).toHaveTextContent(/failed/i);
+      expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
       expect(getByText(errorMessage)).toBeInTheDocument();
     });
 
@@ -2916,11 +3092,9 @@ describe("Send", () => {
       /** @param {HTMLElement} container */
       const expectReview = (container) => {
         expect(container.querySelector(".send")).toHaveClass("send--review");
-        expect(container.querySelector(".send__summary")).toHaveTextContent(
-          otherAccount,
-        );
-        expect(getSummary(container)).toContain("2 DUSK");
-        expect(getSummary(container)).toContain("Invoice 118");
+        expect(summaryRow(container, TO)).toBe(otherAccount);
+        expect(summaryRow(container, AMOUNT)).toBe("2 DUSK");
+        expect(summaryRow(container, MEMO)).toBe("Invoice 118");
       };
 
       afterEach(() => {
@@ -2990,7 +3164,7 @@ describe("Send", () => {
           },
         );
 
-        const { getByRole, queryByRole } = render(Send, baseProps);
+        const { container, getByRole, queryByRole } = render(Send, baseProps);
 
         await sendWith(getByRole, filled);
         await vi.waitFor(() =>
@@ -3000,13 +3174,19 @@ describe("Send", () => {
         );
         await fireEvent.click(getByRole("button", { name: "Don't send" }));
 
-        // Nothing went out: it can be tried again, with nothing for History
-        // to say of it.
+        // Not sent, nothing left the wallet: it can be tried again, with
+        // nothing for History to say of it.
         await vi.waitFor(() =>
           expect(
             getByRole("button", { name: "Try again" }),
           ).toBeInTheDocument(),
         );
+        expect(
+          container.querySelector(".dusk-error-alert__summary"),
+        ).toHaveTextContent(/not sent/i);
+        expect(
+          container.querySelector(".dusk-error-alert__description"),
+        ).toHaveTextContent(/nothing (was sent|left)/i);
         expect(queryByRole("link", { name: "Open History" })).toBeNull();
         expect(baseProps.execute).toHaveBeenCalledOnce();
       });
@@ -3047,7 +3227,10 @@ describe("Send", () => {
           undefined,
           aGate,
         );
-        expect(getByRole("status")).toHaveTextContent("2 DUSK");
+        expect(sentWhat(container)).toMatch(/^2 DUSK\b/);
+        expect(sentWhat(container)).toMatch(
+          endingWith(shortenAddress(otherAccount)),
+        );
       });
 
       it("should offer no Try again, and no way back to the form, when it may have gone out", async () => {
@@ -3059,7 +3242,10 @@ describe("Send", () => {
 
         await sendWith(getByRole, filled);
 
-        // History to check instead, as it may have gone out.
+        // Not confirmed, as it may have gone out: History to check instead.
+        expect(
+          container.querySelector(".dusk-error-alert__summary"),
+        ).toHaveTextContent(/not confirmed/i);
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
         expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
 
@@ -3076,20 +3262,28 @@ describe("Send", () => {
         await pressBack();
 
         expect(container.querySelector(".send")).toBeNull();
-        expect(getByRole("status")).toHaveTextContent("2 DUSK");
+        expect(
+          container.querySelector(".transaction-status--pending"),
+        ).toBeInTheDocument();
+        expect(sentWhat(container)).toMatch(/^2 DUSK\b/);
+        expect(sentWhat(container)).toMatch(
+          endingWith(shortenAddress(otherAccount)),
+        );
       });
     });
 
     it("should show it as sent, following nothing, if the execution promise doesn't resolve with an hash", async () => {
       baseProps.execute.mockResolvedValueOnce(void 0);
 
-      const { getByRole, queryByRole } = render(Send, baseProps);
+      const { container, getByRole, queryByRole } = render(Send, baseProps);
 
       await sendWith(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
       // Sent, as a send's state says it: not a failure to try again.
-      expect(getByRole("status")).toBeInTheDocument();
+      expect(
+        container.querySelector(".transaction-status__title"),
+      ).toHaveTextContent(/^sent$/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
       expect(followTransaction).not.toHaveBeenCalled();
     });
@@ -3134,7 +3328,7 @@ describe("Send", () => {
      */
     const resolvedTo = (container, address) =>
       waitFor(() =>
-        expect(getSummary(container)[1]).toContain(shortenAddress(address)),
+        expect(summaryRow(container, TO)).toContain(shortenAddress(address)),
       );
 
     // Send takes a click half a second after it shows: on this clock.
@@ -3179,7 +3373,7 @@ describe("Send", () => {
       answerNewName({ account: otherAccount, name: "second.dusk" });
       await resolvedTo(container, otherAccount);
       expect(fields.review()).toBeEnabled();
-      expect(getSummary(container)[1]).toContain(shortenAddress(otherAccount));
+      expect(summaryRow(container, TO)).toContain(shortenAddress(otherAccount));
     });
 
     it("should look a name up afresh when it's entered again, and keep Send off until the answer comes", async () => {
@@ -3209,7 +3403,7 @@ describe("Send", () => {
       answers[1]({ account: otherAccount, name: "first.dusk" });
       await resolvedTo(container, otherAccount);
       expect(fields.review()).toBeEnabled();
-      expect(getSummary(container)[1]).toContain(shortenAddress(otherAccount));
+      expect(summaryRow(container, TO)).toContain(shortenAddress(otherAccount));
     });
 
     it("should leave out an older answer for the same name when it comes after a newer one", async () => {
@@ -3234,7 +3428,7 @@ describe("Send", () => {
       await new Promise((resolve) => setTimeout(resolve));
 
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
-      expect(getSummary(container)[1]).toContain(shortenAddress(otherAccount));
+      expect(summaryRow(container, TO)).toContain(shortenAddress(otherAccount));
     });
 
     it("should leave out a late answer for a name that has been replaced", async () => {
@@ -3260,7 +3454,7 @@ describe("Send", () => {
       await new Promise((resolve) => setTimeout(resolve));
 
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
-      expect(getSummary(container)[1]).toContain(shortenAddress(otherAccount));
+      expect(summaryRow(container, TO)).toContain(shortenAddress(otherAccount));
     });
 
     it("should send to the account a name resolves to, with its name and address shown", async () => {
@@ -3287,13 +3481,11 @@ describe("Send", () => {
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
       await vi.waitFor(() =>
-        expect(getSummary(container)[1]).toBe(
+        expect(summaryRow(container, TO)).toBe(
           `alice.dusk ${shortenAddress(nameAccount)}`,
         ),
       );
-      expect(
-        getAsHTMLElement(container, ".send__card .full-address"),
-      ).toHaveTextContent(nameAccount);
+      expect(cardAddress(container)).toBe(nameAccount);
 
       await sendIt(getByRole);
 
@@ -3412,9 +3604,7 @@ describe("Send", () => {
       expect(keyChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ detail: { type: "address" } }),
       );
-      expect(
-        getAsHTMLElement(container, ".send__card .full-address"),
-      ).toHaveTextContent(nameAddress);
+      expect(cardAddress(container)).toBe(nameAddress);
 
       await sendIt(getByRole);
 
@@ -3499,6 +3689,71 @@ describe("Send", () => {
 
       expect(shieldedOption).not.toBeChecked();
       expect(fieldsOf(getByRole).review()).toBeEnabled();
+    });
+
+    it("should keep the address picked for a name when it is entered again, and start any other name at its public account", async () => {
+      baseProps.resolveName.mockImplementation((input) =>
+        Promise.resolve(withBothAddresses(input.toLowerCase())),
+      );
+
+      const { container, findByRole, getByRole, queryByRole } = render(
+        Send,
+        baseProps,
+      );
+
+      /** @param {string} value */
+      const enter = (value) =>
+        fireEvent.input(fieldsOf(getByRole).to(), { target: { value } });
+
+      /**
+       * Once the option named `name` is picked, and the address it gives is
+       * the one the transfer would go to.
+       *
+       * @param {string} name
+       * @param {string} address
+       */
+      const findPicked = async (name, address) => {
+        const option = await findByRole("radio", { name });
+
+        await waitFor(() => expect(option).toBeChecked());
+        expect(cardAddress(container)).toBe(address);
+      };
+
+      await enter("alice.dusk");
+      await fireEvent.click(
+        await findByRole("radio", { name: "Shielded address" }),
+      );
+      await findPicked("Shielded address", nameAddress);
+
+      await enter("alice.dus");
+
+      expect(queryByRole("radiogroup")).not.toBeInTheDocument();
+
+      // Entered again, however it's written: the shielded address still.
+      await enter("alice.dusk");
+      await findPicked("Shielded address", nameAddress);
+      await enter("Alice.dusk");
+      await findPicked("Shielded address", nameAddress);
+
+      // Another name starts at its public account.
+      await enter("bob.dusk");
+      await findPicked("Public account", nameAccount);
+
+      // And Alice's is hers still: what goes, goes to her shielded address.
+      await enter("alice.dusk");
+      await findPicked("Shielded address", nameAddress);
+      await sendIt(getByRole);
+
+      expect(baseProps.resolveName).toHaveBeenCalledTimes(5);
+      expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+        nameAddress,
+        duskToLux(amount),
+        "",
+        gasPrice,
+        gasLimit,
+        "alice.dusk",
+        aGate,
+      );
     });
 
     it("should report no recipient type, for the page to show the public balance, while the name entered doesn't resolve", async () => {
@@ -3762,7 +4017,7 @@ describe("Send", () => {
         ],
       });
 
-      expect(getSummary(container)[0]).toBe(
+      expect(summaryRow(container, FROM)).toBe(
         `Profile 1 · wallet-both.dusk ${shortenAddress(publicAddress)}`,
       );
     });
@@ -3958,8 +4213,8 @@ describe("Send", () => {
       expect(
         getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent(/^\u0410lice · \S/);
-      expect(getSummary(container)[1]).toContain("\u0410lice");
-      expect(getSummary(container)[1]).toContain(shortenAddress(nameAccount));
+      expect(summaryRow(container, TO)).toContain("\u0410lice");
+      expect(summaryRow(container, TO)).toContain(shortenAddress(nameAccount));
       expect(
         container.querySelector(".send__summary .send__summary-alike"),
       ).toBeInTheDocument();
@@ -3978,9 +4233,11 @@ describe("Send", () => {
       await vi.waitFor(() => {
         const what = container.querySelector(".transaction-status__what");
 
-        expect(what).toHaveTextContent("0.001 DUSK");
+        expect(what).toHaveTextContent(/^0\.001 DUSK\b/);
         expect(what).toHaveTextContent("\u0410lice");
-        expect(what).toHaveTextContent(shortenAddress(nameAccount));
+        expect(what).toHaveTextContent(
+          endingWith(`(${shortenAddress(nameAccount)})`),
+        );
       });
       vi.useRealTimers();
     });
@@ -4000,7 +4257,7 @@ describe("Send", () => {
       expect(
         getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent(shown);
-      expect(getSummary(container)[1]).toBe(
+      expect(summaryRow(container, TO)).toBe(
         `${shown} ${shortenAddress(otherAccount)}`,
       );
 
@@ -4031,7 +4288,7 @@ describe("Send", () => {
       expect(
         getAsHTMLElement(container, ".send__card-title"),
       ).toHaveTextContent("Cold storage");
-      expect(getSummary(container)[1]).toBe(
+      expect(summaryRow(container, TO)).toBe(
         `Cold storage ${shortenAddress(otherAccount)}`,
       );
     });
@@ -4241,9 +4498,7 @@ describe("Send", () => {
         target: { value: "1" },
       });
       expect(fields.review()).toBeEnabled();
-      expect(
-        getAsHTMLElement(container, ".send__card .full-address"),
-      ).toHaveTextContent(nameAccount);
+      expect(cardAddress(container)).toBe(nameAccount);
       expect(getContact(alice.id)?.address).toBe(otherAccount);
 
       // Or the saved one, which the field then holds.
@@ -4442,7 +4697,7 @@ describe("Send", () => {
 
       const { container, getByRole } = render(Send, baseProps);
       const to = fieldsOf(getByRole).to();
-      const toLine = () => getSummary(container)[1];
+      const toLine = () => summaryRow(container, TO);
 
       await fireEvent.input(to, { target: { value: account } });
 
@@ -4509,7 +4764,7 @@ describe("Send", () => {
       /** @param {string} found */
       const toFound = (found) =>
         waitFor(() =>
-          expect(getSummary(container)[1]).toContain(shortenAddress(found)),
+          expect(summaryRow(container, TO)).toContain(shortenAddress(found)),
         );
 
       await fireEvent.input(to, { target: { value: "profile1.dusk" } });
@@ -4537,7 +4792,7 @@ describe("Send", () => {
 
     it("should name the profile of the other wallet sent to on the Done screen", async () => {
       const { account } = await holdOtherWallet();
-      const { getByRole } = render(Send, baseProps);
+      const { container, getByRole } = render(Send, baseProps);
 
       await fireEvent.input(fieldsOf(getByRole).to(), {
         target: { value: account },
@@ -4546,10 +4801,8 @@ describe("Send", () => {
       await sendOne(getByRole);
 
       await waitFor(() => {
-        const sending = getByRole("status");
-
-        expect(sending).toHaveTextContent("1 DUSK");
-        expect(sending).toHaveTextContent("Wallet 1 · Profile 1");
+        expect(sentWhat(container)).toMatch(/^1 DUSK\b/);
+        expect(sentWhat(container)).toMatch(endingWith("Wallet 1 · Profile 1"));
       });
     });
 
@@ -4571,10 +4824,8 @@ describe("Send", () => {
       await sendOne(getByRole);
 
       await waitFor(() => {
-        const sending = getByRole("status");
-
-        expect(sending).toHaveTextContent("1 DUSK");
-        expect(sending).toHaveTextContent("Rent");
+        expect(sentWhat(container)).toMatch(/^1 DUSK\b/);
+        expect(sentWhat(container)).toMatch(endingWith("Rent"));
       });
     });
   });

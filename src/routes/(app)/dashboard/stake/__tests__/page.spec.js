@@ -185,6 +185,27 @@ const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
  */
 const showsDusk = (amount) => (text) => ` ${text}`.includes(` ${amount} DUSK`);
 
+/**
+ * Matches `value` whole: not inside a longer figure, nor signed, so "1 DUSK"
+ * matches neither "11 DUSK", "0.1 DUSK" nor a signed "1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "1,000 DUSK"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/**
+ * What the amount field says there is to stake, or to unstake.
+ *
+ * @param {HTMLElement} field
+ */
+const availableOf = (field) =>
+  textOf(
+    document.getElementById(
+      String(field.getAttribute("aria-describedby")).split(" ")[0],
+    ),
+  ) ?? "";
+
 describe("Staking", () => {
   afterEach(async () => {
     cleanup();
@@ -325,7 +346,8 @@ describe("Staking", () => {
 
       await fireEvent.input(amount, { target: { value: "100" } });
 
-      expect(getByRole("alert")).toHaveTextContent("1,000 DUSK");
+      expect(getByRole("alert")).toHaveTextContent(/minimum/i);
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("1,000 DUSK"));
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
       await fireEvent.click(getByRole("button", { name: /1,000/ }));
@@ -350,7 +372,7 @@ describe("Staking", () => {
         target: { value: "1483" },
       });
 
-      expect(getByRole("alert")).toHaveTextContent("0.1 DUSK");
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.1 DUSK"));
     });
 
     it("keeps the fee to unstake, at this network's gas, with Max", async () => {
@@ -465,9 +487,20 @@ describe("Staking", () => {
             ).not.toBeNull();
           }
 
-          expect(textOf(container)).toContain(
-            formatFee(gasLimit * price, "en", { max: true }),
-          );
+          const fee = formatFee(gasLimit * price, "en", { max: true });
+
+          if (operation === "unstake") {
+            expect(
+              Array.from(
+                container.querySelectorAll(".review-amount dd"),
+                textOf,
+              ),
+            ).toContain(`${fee} DUSK`);
+          } else {
+            expect(
+              textOf(container.querySelector(".gas-fee__amount-value")),
+            ).toBe(fee);
+          }
 
           cleanup();
         }
@@ -521,13 +554,15 @@ describe("Staking", () => {
       })),
     );
 
-    const { container } = render(Staking);
+    const { container, getByLabelText } = render(Staking);
+    const underWay = container.querySelector(".liquid-stake__under-way");
 
-    expect(
-      container.querySelector(".liquid-stake__under-way"),
-    ).toHaveTextContent("0.1 DUSK");
+    expect(underWay).toHaveTextContent(wholeFigure("0.1 DUSK"));
+    expect(underWay).toHaveTextContent(/ stake /);
     // 172 DUSK less the 0.1 on its way.
-    expect(textOf(container)).toContain("171.9 DUSK");
+    expect(availableOf(getByLabelText("Stake amount"))).toMatch(
+      wholeFigure("171.9 DUSK"),
+    );
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
 
     // The form read its position as it opened.
@@ -560,20 +595,20 @@ describe("Staking", () => {
     // For what's left once testnet's 0.25% deposit fee is off it.
     const estimate = container.querySelector(".liquid-stake__estimate");
 
-    expect(estimate).toHaveTextContent("32.4378 stDUSK");
-    expect(estimate).toHaveTextContent("99.75 DUSK");
+    expect(estimate).toHaveTextContent(wholeFigure("32.4378 stDUSK"));
+    expect(estimate).toHaveTextContent(wholeFigure("99.75 DUSK"));
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
     // A stake's own gas: up to 5,000,000 at the node's price.
     expect(
-      container.querySelector(".stake-flow__rows--total"),
-    ).toHaveTextContent("100.005 DUSK");
+      container.querySelector(".stake-flow__rows--total dd"),
+    ).toHaveTextContent(wholeFigure("100.005 DUSK"));
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
     // An unstake's: up to 10,000,000, as it can touch more provisioners,
     // paid from what comes back.
-    expect(container.querySelector(".gas-settings")).toHaveTextContent(
-      "0.01 DUSK",
+    expect(textOf(container.querySelector(".gas-fee__amount-value"))).toBe(
+      "0.01",
     );
   });
 

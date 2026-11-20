@@ -47,7 +47,8 @@ describe("CopyButton", () => {
     await fireEvent.click(getByRole("button"));
     await vi.advanceTimersByTimeAsync(50);
 
-    expect(nameOf(getByRole("button"))).not.toBe(idle);
+    // Said to have copied it, as the button's name goes.
+    expect(nameOf(getByRole("button"))).toMatch(/copied/i);
 
     // Receive switched to the other address while it said it copied.
     await rerender({ name: "address", value: "another address" });

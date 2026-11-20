@@ -11,10 +11,24 @@ import {
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 const READY_AT = String(CLAIM_AT / 1_000);
 const locale = "en-GB";
-const day = claimDay(CLAIM_AT, locale);
 
 /** A time of day, as every date the wallet writes has one. */
 const A_DATE = /\d:\d\d/;
+
+/** @param {string} text */
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * `text` as a whole value, in the sentence that says `step`: `7 days` not
+ * inside `17 days`, and a claim's wait never a proof's.
+ *
+ * @param {string} step
+ * @param {string} text
+ */
+const said = (step, text) =>
+  new RegExp(`\\b${step}\\b[^.]*(?<![\\w.,])${escaped(text)}(?!\\w)`, "i");
+
+const day = claimDay(CLAIM_AT, locale);
 
 /** What the chain said about withdrawals on testnet. */
 const TIME = /** @type {RouteTime} */ ({
@@ -48,11 +62,13 @@ describe("withdrawal presentation", () => {
       { locale },
     );
 
-    // The date, said as exact, as about, or as the soonest once overdue.
     for (const message of [exact, about, overdue]) {
-      expect(message).toContain(day);
+      expect(message).toMatch(said("claim", day));
     }
-    expect(new Set([exact, about, overdue]).size).toBe(3);
+    // That date exactly, about it, or at the soonest once it's overdue.
+    expect(exact).not.toMatch(/\babout\b|\bsoonest\b/i);
+    expect(about).toMatch(/\babout\b/i);
+    expect(overdue).toMatch(/\bsoonest\b/i);
     expect(claimDateOf(waiting({ readyAt: READY_AT }))).toStrictEqual({
       at: CLAIM_AT,
       exact: false,
@@ -63,7 +79,7 @@ describe("withdrawal presentation", () => {
   it("makes no date up from a fixed wait: until the chain gives one, the Portal's wait after the proof", () => {
     const wait = stageMessage(waiting({}), { locale, time: TIME });
 
-    expect(wait).toContain("7 days");
+    expect(wait).toMatch(said("claim", "7 days"));
     expect(wait).not.toMatch(A_DATE);
     expect(stageMessage(waiting({}), { locale })).toBe("");
     expect(claimDateOf(waiting({}))).toBeNull();
@@ -75,8 +91,9 @@ describe("withdrawal presentation", () => {
       { locale },
     );
 
-    // Not with the date of the proof rejected.
-    expect(rejected).toMatch(/\S/);
+    // To prove it again: not with the date of the proof rejected.
+    expect(rejected).toMatch(/\breject/i);
+    expect(rejected).toMatch(/\bprove\b/i);
     expect(rejected).not.toContain(day);
   });
 
@@ -86,25 +103,30 @@ describe("withdrawal presentation", () => {
       { locale, time: TIME },
     );
 
-    expect(beforeProof).toContain("7 days");
-    expect(beforeProof).toContain("30 minutes");
-    // Without the chain's times, no date.
+    // Each wait with its step.
+    expect(beforeProof).toMatch(said("claim", "7 days"));
+    expect(beforeProof).toMatch(said("prove", "30 minutes"));
+
+    // Without the chain's times, the usual wait, and no date.
     const unknown = stageMessage({ stage: "waiting_for_output" }, { locale });
 
-    expect(unknown).toMatch(/\S/);
+    expect(unknown).toMatch(/\bhour\b/i);
     expect(unknown).not.toMatch(A_DATE);
     expect(
       stageMessage({ stage: "ready_to_prove" }, { locale, time: TIME }),
-    ).toContain("7 days");
-    expect(
-      stageMessage(
-        { stage: "ready_to_prove" },
-        {
-          locale,
-          proveNow: { at: CLAIM_AT, exact: false, overdue: false },
-          time: TIME,
-        },
-      ),
-    ).toContain(day);
+    ).toMatch(said("claim", "7 days"));
+
+    // Proved now: about when it can be claimed.
+    const proveNow = stageMessage(
+      { stage: "ready_to_prove" },
+      {
+        locale,
+        proveNow: { at: CLAIM_AT, exact: false, overdue: false },
+        time: TIME,
+      },
+    );
+
+    expect(proveNow).toMatch(said("claim", day));
+    expect(proveNow).toMatch(/\babout\b/i);
   });
 });

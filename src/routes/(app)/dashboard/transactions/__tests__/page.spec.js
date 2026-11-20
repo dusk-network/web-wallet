@@ -199,31 +199,37 @@ const visit = (path) =>
   );
 
 /**
- * The rows shown: their name, line, type, time and amount.
+ * What an element says, its white space as one space.
+ *
+ * @param {Element | null | undefined} element
+ */
+const textOf = (element) =>
+  element?.textContent?.replace(/\s+/g, " ").trim() ?? null;
+
+/**
+ * The rows shown, by their cells: whom each is with, its privacy and its
+ * amount.
  *
  * @param {HTMLElement} container
  */
 const shownRows = (container) =>
-  Array.from(container.querySelectorAll(".history__row"), (row) =>
-    [
-      ".history__name",
-      ".history__line",
-      ".history__col-type",
-      ".history__col-time",
-      ".history__amount",
-    ]
-      .map((selector) => {
-        const cell = row.querySelector(selector);
-        // A line's own text: its time and type repeat in it for phones only.
-        const text =
-          selector === ".history__line"
-            ? cell?.firstChild?.textContent
-            : cell?.textContent;
+  Array.from(container.querySelectorAll(".history__row"), (row) => ({
+    amount: textOf(row.querySelector(".history__amount")),
+    name: textOf(row.querySelector(".history__name")),
+    privacy: textOf(row.querySelector(".history__col-type")),
+  }));
 
-        return text?.replace(/\s+/g, " ").trim();
-      })
-      .join(" "),
-  );
+/**
+ * A figure on its own, never part of a longer one: "0.39" never as part of
+ * "10.39" or "0.395".
+ *
+ * @param {string} text
+ */
+const figure = (text) => {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  return new RegExp(`(?<![\\d.,])${escaped}(?![\\d])`);
+};
 
 // The contacts open with a wallet, as when it unlocks.
 beforeAll(() => openTestContacts());
@@ -247,10 +253,10 @@ describe("History", () => {
   it("lists each row with its counterparty, privacy and signed amount", () => {
     const { container } = render(History);
 
-    expect(shownRows(container)).toEqual([
-      expect.stringMatching(/^alice-shop\.dusk .*Public .+ −25 DUSK$/),
-      expect.stringMatching(/Shielded .+ \+50 DUSK$/),
-      expect.stringMatching(/Public .+ −1,000 DUSK$/),
+    expect(shownRows(container)).toStrictEqual([
+      { amount: "−25 DUSK", name: "alice-shop.dusk", privacy: "Public" },
+      { amount: "+50 DUSK", name: expect.any(String), privacy: "Shielded" },
+      { amount: "−1,000 DUSK", name: expect.any(String), privacy: "Public" },
     ]);
   });
 
@@ -265,13 +271,21 @@ describe("History", () => {
       container.querySelector(".tx-detail")
     );
 
-    expect(detail.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "alice-shop.dusk",
+    const fee = Array.from(
+      detail.querySelectorAll(
+        ".tx-detail__list:not(.tx-detail__list--tech) dt",
+      ),
+    ).find((term) => /fee/i.test(term.textContent ?? ""))?.nextElementSibling;
+
+    expect(textOf(detail.querySelector(".tx-detail__headline"))).toMatch(
+      /(?<![\w.-])alice-shop\.dusk$/,
     );
-    expect(detail).toHaveTextContent("Order 1042");
+    expect(textOf(detail.querySelector(".tx-detail__memo"))).toBe("Order 1042");
     // In its details, to the last digit.
-    expect(detail).toHaveTextContent("0.001854786 DUSK");
-    expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(SENT);
+    expect(textOf(fee)).toBe("0.001854786 DUSK");
+    expect(
+      textOf(detail.querySelector(".tx-detail__id .tx-detail__code")),
+    ).toBe(SENT);
     expect(getByRole("link", { name: "Send again" })).toHaveAttribute(
       "href",
       `/some-base-path/dashboard/send?to=${ALICE}`,
@@ -283,16 +297,14 @@ describe("History", () => {
 
     const { container, getByRole, queryByRole } = render(History);
 
-    expect(shownRows(container)[0]).toMatch(
-      /^Alice's shop · alice-shop\.dusk /,
-    );
+    expect(shownRows(container)[0].name).toBe("Alice's shop · alice-shop.dusk");
 
     await fireEvent.click(
       getByRole("button", { name: /^Alice's shop · alice-shop\.dusk/ }),
     );
 
-    expect(container.querySelector(".tx-detail__headline")).toHaveTextContent(
-      "Alice's shop · alice-shop.dusk",
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
+      /(?<![\w.-])Alice's shop · alice-shop\.dusk$/,
     );
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
 
@@ -366,11 +378,15 @@ describe("History", () => {
     const { container, getByRole, rerender } = render(History);
 
     // Its address beside its name, in its row and in what it reads as.
-    expect(container.querySelector(".history__row")).toHaveTextContent(
+    const first = /** @type {HTMLElement} */ (
+      container.querySelector(".history__row")
+    );
+
+    expect(textOf(first.querySelector(".history__name"))).toBe(
       "Estudio Marta · alice-shop.dusk",
     );
-    expect(container.querySelector(".history__row")).toHaveTextContent(
-      shortAddress(ALICE),
+    expect(first.querySelector(".history__alike")).toHaveTextContent(
+      new RegExp(`(?<![\\w…])${shortAddress(ALICE)}(?![\\w…])`),
     );
     expect(
       getByRole("button", {
@@ -388,8 +404,8 @@ describe("History", () => {
     await act(() => saveContact({ address: ALICE, name: "\u202EecilA" }));
     await rerender({});
 
-    expect(shownRows(container)[0]).toMatch(
-      /^\\u202eecilA · alice-shop\.dusk /,
+    expect(shownRows(container)[0].name).toMatch(
+      /^\\u202eecilA · alice-shop\.dusk$/,
     );
   });
 
@@ -676,7 +692,7 @@ describe("History", () => {
       // Both days first.
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
 
-      const bothDays = (await findByRole("alert")).textContent;
+      expect(await findByRole("alert")).toHaveTextContent(/both days/i);
 
       expect(mocks.whole).not.toHaveBeenCalled();
 
@@ -687,9 +703,9 @@ describe("History", () => {
         target: { value: "2020-03-31" },
       });
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
-      // Nothing in it: said in its place, once it's been read.
+      // Nothing in it: said, once it's been read, and nothing saved.
       await vi.waitFor(() =>
-        expect(getByRole("alert").textContent).not.toBe(bothDays),
+        expect(getByRole("alert")).toHaveTextContent(/nothing in that period/i),
       );
       expect(mocks.whole).toHaveBeenCalled();
       expect(blobs).toHaveLength(0);
@@ -717,7 +733,7 @@ describe("History", () => {
 
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
 
-      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(await findByRole("alert")).toHaveTextContent(/nothing was saved/i);
       expect(blobs).toHaveLength(0);
     });
 
@@ -889,26 +905,31 @@ describe("History", () => {
             name: "Add each reward's value in euros, from CoinGecko's prices",
           }),
         );
-        await vi.waitFor(() => expect(years()[1][1]).toContain("€1.00"));
+        await vi.waitFor(() => expect(years()[1][1]).toMatch(figure("€1.00")));
 
         const [[, claimedBefore, ...sozuBefore], [, claimed, grown, taken]] =
           years();
 
         // A year and a half back, past CoinGecko's year: no value.
-        expect(claimedBefore).toContain("1 DUSK");
+        expect(claimedBefore).toMatch(/^1 DUSK\b/);
         expect(claimedBefore).not.toContain("€");
         expect(sozuBefore).toStrictEqual([
-          expect.stringContaining("€0.00"),
-          expect.stringContaining("€0.00"),
+          expect.stringMatching(/^0 DUSK\b/),
+          expect.stringMatching(/^0 DUSK\b/),
         ]);
-        expect(claimed).toContain("2 DUSK");
+        expect(sozuBefore).toStrictEqual([
+          expect.stringMatching(figure("€0.00")),
+          expect.stringMatching(figure("€0.00")),
+        ]);
+        expect(claimed).toMatch(/^2 DUSK\b/);
+        expect(claimed).toMatch(figure("€1.00"));
         // The stake's fee, when CoinGecko has no price, has none: one left
         // out of the sum.
-        expect(grown).toContain("0.75 DUSK");
-        expect(grown).toContain("€0.39");
-        expect(grown).toMatch(/\b1\b/);
-        expect(taken).toContain("0.25 DUSK");
-        expect(taken).toContain("€0.13");
+        expect(grown).toMatch(/^0\.75 DUSK\b/);
+        expect(grown).toMatch(figure("€0.39"));
+        expect(grown).toMatch(/\b1 with\b/);
+        expect(taken).toMatch(/^0\.25 DUSK\b/);
+        expect(taken).toMatch(figure("€0.13"));
         // The panel stays, with no file.
         expect(names).toStrictEqual([]);
         expect(getByRole("button", { name: "Save CSV" })).toBeEnabled();
@@ -931,15 +952,16 @@ describe("History", () => {
         await fireEvent.click(
           getByRole("button", { name: "Show staking rewards by year" }),
         );
-        await vi.waitFor(() => expect(years()[1][1]).toContain("¥1"));
+        await vi.waitFor(() =>
+          expect(years()[1][1]).toMatch(/(?<!under )¥1(?!\d)/),
+        );
 
         const [[, claimedBeforeInYen], [, , grownInYen, takenInYen]] = years();
 
         expect(claimedBeforeInYen).not.toContain("¥");
-        expect(grownInYen).toContain("¥1");
-        expect(grownInYen).not.toContain("¥0");
-        expect(takenInYen).toContain("¥1");
-        expect(takenInYen).not.toContain("¥0");
+        // Less than a yen: under one, never one, nor none.
+        expect(grownInYen).toMatch(/under ¥1(?!\d)/);
+        expect(takenInYen).toMatch(/under ¥1(?!\d)/);
       } finally {
         mocks.sozuFacts.mockImplementation(() => Promise.resolve(new Map()));
         mocks.sozuStatus.mockResolvedValue(null);

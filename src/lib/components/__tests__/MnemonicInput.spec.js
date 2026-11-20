@@ -71,7 +71,7 @@ describe("MnemonicInput", () => {
 
     await pasteInto(getByLabelText("Word 1"), TWELVE.replace("worth", "wurth"));
 
-    expect(getByRole("alert")).toHaveTextContent("7");
+    expect(getByRole("alert")).toHaveTextContent(/\b7\b/);
     expect(getByLabelText("Word 7")).toHaveAttribute("aria-invalid", "true");
 
     // A word typed right: what was said goes at once.
@@ -84,7 +84,7 @@ describe("MnemonicInput", () => {
 
     await pasteInto(getByLabelText("Word 1"), `${TWELVE} legal`);
 
-    expect(getByRole("alert")).toHaveTextContent("13");
+    expect(getByRole("alert")).toHaveTextContent(/\b13\b/);
 
     // Twelve recovery words, though not a phrase: said, and not as a count.
     await pasteInto(
@@ -112,7 +112,7 @@ describe("MnemonicInput", () => {
       relatedTarget: document.body,
     });
 
-    expect(getByRole("alert")).toHaveTextContent("3");
+    expect(getByRole("alert")).toHaveTextContent(/\b3\b/);
   });
 
   it("puts what's copied in the boxes with Paste, as a paste into the first box, where the browser lets a page read it", async () => {
@@ -132,7 +132,9 @@ describe("MnemonicInput", () => {
     );
 
     await fireEvent.click(paste);
-    await vi.waitFor(() => expect(getByRole("alert")).toHaveTextContent("25"));
+    await vi.waitFor(() =>
+      expect(getByRole("alert")).toHaveTextContent(/\b25\b/),
+    );
 
     cleanup();
     Object.assign(navigator, { clipboard: undefined });

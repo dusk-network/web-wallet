@@ -36,6 +36,18 @@ const row = (hash, timestamp, more = {}) =>
     ...more,
   });
 
+/**
+ * A figure on its own, never part of a longer one: "0.1 DUSK" never as part
+ * of "10.1 DUSK", "1:32:00" never of "11:32:00".
+ *
+ * @param {string} text
+ */
+const figure = (text) => {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  return new RegExp(`(?<![\\d.,])${escaped}(?![\\d])`);
+};
+
 const state = {
   complete: true,
   error: null,
@@ -76,7 +88,7 @@ describe("HistoryView", () => {
       );
     const shown = render(HistoryView, { locale: "en", state });
 
-    expect(names(shown.container)[0]).toContain("0.1 DUSK");
+    expect(names(shown.container)[0]).toMatch(figure("−0.1 DUSK"));
     shown.unmount();
 
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
@@ -113,13 +125,21 @@ describe("HistoryView", () => {
       state,
     });
     const years = () => container.querySelector(".rewards-by-year");
+    /** What native staking claimed in a year, as its row says. */
+    const claimedIn = (/** @type {number} */ year) =>
+      Array.from(
+        container.querySelectorAll(".rewards-by-year tbody tr"),
+        (line) => /** @type {HTMLTableRowElement} */ (line).cells,
+      )
+        .find((cells) => cells[0].textContent?.trim() === String(year))?.[1]
+        ?.textContent?.trim();
 
     history.whole.mockResolvedValue(whole);
     await fireEvent.click(getByRole("button", { name: "Export" }));
     await fireEvent.click(
       getByRole("button", { name: "Show staking rewards by year" }),
     );
-    await vi.waitFor(() => expect(years()).toHaveTextContent("2 DUSK"));
+    await vi.waitFor(() => expect(claimedIn(2026)).toBe("2 DUSK"));
 
     await rerender({ account: other });
 
@@ -175,7 +195,7 @@ describe("HistoryView", () => {
 
     expect(outcome).toHaveTextContent(SENT_AFTER_DONT_SEND);
     expect(outcome).toHaveTextContent(
-      timeLabel(WINTER, "en", { seconds: true }),
+      figure(timeLabel(WINTER, "en", { seconds: true })),
     );
     expect(get(sentAfterDontSend)).toStrictEqual({});
 
@@ -238,7 +258,7 @@ describe("HistoryView", () => {
         expect(outcome()).toHaveTextContent(SENT_AFTER_DONT_SEND),
       );
       expect(outcome()).toHaveTextContent(
-        timeLabel(WINTER, "en", { seconds: true }),
+        figure(timeLabel(WINTER, "en", { seconds: true })),
       );
       expect(get(sentAfterDontSend)).toStrictEqual({});
 
