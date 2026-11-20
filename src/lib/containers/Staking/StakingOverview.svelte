@@ -209,7 +209,11 @@
         ]
       : []),
     { label: hasLiquid ? "Native rewards" : "Rewards", lux: stakeInfo.reward },
-    { label: "Available (public)", lux: publicBalance },
+    {
+      label: "Available to stake",
+      lux: publicBalance,
+      sub: "From your public balance",
+    },
   ];
   // Unstake and Claim show once there is something natively staked.
   $: hasNative = staked > 0n || stakeInfo.reward > 0n;
@@ -235,7 +239,9 @@
                     ><BalanceValue {...amountOf(figure.lux)} /></span
                   > DUSK</span
                 >
-                {#if figure.stDusk !== undefined}
+                {#if figure.sub}
+                  <span class="staking__sub">{figure.sub}</span>
+                {:else if figure.stDusk !== undefined}
                   <span class="staking__sub"
                     ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
                     included</span
@@ -426,10 +432,11 @@
                 >
               {/if}
               {#if rate}
-                stDUSK, {formatDusk(rate, locale)} DUSK each now. It can fall with
-                a penalty.
+                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now.
+                It usually rises with rewards, but can fall with a penalty.
               {:else}
-                stDUSK, your share of Sozu's pool. It can fall with a penalty.
+                You get stDUSK, a token for your share of Sozu's pool. Its worth
+                usually rises with rewards, but can fall with a penalty.
               {/if}
             </td>
           {/if}
