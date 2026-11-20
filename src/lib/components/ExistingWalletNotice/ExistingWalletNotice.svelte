@@ -27,18 +27,18 @@
 </script>
 
 <section>
-  <WarningCard
-    heading={many ? "This browser has wallets" : "This browser has a wallet"}
-  >
+  <WarningCard heading="Existing wallet detected">
     {#if many}
       <p>
-        This removes every wallet, with its settings and contacts. Your funds
-        stay on Dusk. To get them back you need each one's recovery phrase.
+        Removes every wallet from this browser, with its settings and contacts.
+        Your funds stay on Dusk. You need each wallet's recovery phrase to get
+        back in.
       </p>
     {:else}
       <p>
-        This removes it, with its settings and contacts. Your DUSK stays on the
-        network. To get it back you need its recovery phrase.
+        This removes the wallet from this browser, with its settings and
+        contacts. Your DUSK stays on the network. The wallet comes back only
+        with its recovery phrase.
       </p>
     {/if}
     <div class="actions">

@@ -40,9 +40,11 @@
   $: shown = isMasked ? mnemonicPhrase.map(() => HIDDEN_WORD) : mnemonicPhrase;
 </script>
 
-<!-- Above the words: whoever sees the screen sees the phrase. -->
-<WarningCard heading="Make sure no one can see your screen.">
-  <p class="mnemonic-card__notice">On paper, in order, kept offline.</p>
+<WarningCard heading="Keep it safe">
+  <p class="mnemonic-card__notice">
+    Please make sure to write your phrase down and save it in a secure location.
+    Make sure no one can see your screen.
+  </p>
   <Words words={shown} />
   {#if $touchOnly}
     <HoldToShow bind:held={isHeld} className="mnemonic-card__show" />

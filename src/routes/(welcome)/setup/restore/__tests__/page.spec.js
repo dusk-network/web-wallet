@@ -228,7 +228,7 @@ describe("Restore", async () => {
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(false);
     });
-    await fireEvent.click(getByRole("button", { name: "Start sync" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(initWalletSpy).toHaveBeenCalledExactlyOnceWith(phrase, 0n);
 
@@ -264,7 +264,7 @@ describe("Restore", async () => {
     });
 
     // Block Height Step
-    await fireEvent.click(getByRole("button", { name: "Start sync" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -283,7 +283,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // All Done Step
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
@@ -308,10 +308,10 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(vault.exists()).toBe(false));
-    await fireEvent.click(getByRole("button", { name: "Start sync" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(asked, {
@@ -331,7 +331,7 @@ describe("Restore", async () => {
 
     expect(usePassword).toHaveAttribute("aria-checked", "true");
     expect(passwordField()).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save password" })).toBeDisabled();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
     await fireEvent.click(usePassword);
 
@@ -354,14 +354,14 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const nextButton = getByRole("button", { name: "Start sync" });
+    const nextButton = getByRole("button", { name: "Next" });
 
     // Off, the wallet syncs from the first block.
     expect(nextButton).toBeEnabled();
 
     await fireEvent.click(getByRole("switch"));
 
-    const field = getByRole("textbox", { name: /start from block/i });
+    const field = getByRole("textbox", { name: /block height/i });
 
     expect(field).toHaveValue("");
     expect(nextButton).toBeDisabled();
@@ -380,13 +380,10 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("switch"));
 
-    expect(getByRole("textbox", { name: /start from block/i })).toHaveValue("");
+    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
     expect(nextButton).toBeDisabled();
 
-    await fireInput(
-      getByRole("textbox", { name: /start from block/i }),
-      "999000",
-    );
+    await fireInput(getByRole("textbox", { name: /block height/i }), "999000");
     await fireEvent.click(nextButton);
 
     expect(initWalletSpy).toHaveBeenCalledWith(mnemonic, 999000n);
@@ -429,13 +426,13 @@ describe("Restore", async () => {
 
     expect(vault.exists()).toBe(false);
 
-    await fireEvent.click(getByRole("button", { name: "Save password" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(true);
     });
 
     // Block Height step
-    await fireEvent.click(getByRole("button", { name: "Start sync" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -460,7 +457,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 

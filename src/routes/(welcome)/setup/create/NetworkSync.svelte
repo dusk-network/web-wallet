@@ -3,9 +3,10 @@
 <script>
   import { AppAnchor, CopyField } from "$lib/components";
   import { DOCUMENTATION_LINKS } from "$lib/constants";
-  import { Card } from "$lib/dusk/components";
+  import { IconHeadingCard } from "$lib/containers/Cards";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { settingsStore } from "$lib/stores";
+  import { mdiCubeOutline } from "@mdi/js";
 
   /** @type {bigint} */
   export let currentBlockHeight;
@@ -13,19 +14,24 @@
   const numberFormatter = createNumberFormatter($settingsStore.language);
 </script>
 
-<Card>
+<IconHeadingCard icons={[mdiCubeOutline]} heading="Ready to sync">
+  <p>Next, the wallet syncs with the network.</p>
+
   <!-- For experts: where the wallet starts, which Settings keeps too. -->
   <details class="network-sync__advanced">
     <summary>Advanced</summary>
     <div class="network-sync__advanced-content">
+      <p>
+        The wallet starts at this block. Restoring it from here syncs faster.
+        Settings shows it too, under Advanced.
+      </p>
       <CopyField
-        name="Starts at block"
+        name="Block height"
         displayValue={numberFormatter(currentBlockHeight)}
         rawValue={String(currentBlockHeight)}
       />
       <small>
-        Restore from this block to sync faster. Settings shows it too, under
-        Advanced. More in our <AppAnchor
+        Find out more in our <AppAnchor
           className="text-link"
           href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
           rel="noopener noreferrer"
@@ -34,7 +40,7 @@
       </small>
     </div>
   </details>
-</Card>
+</IconHeadingCard>
 
 <style lang="postcss">
   .network-sync__advanced {

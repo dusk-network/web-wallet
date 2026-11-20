@@ -124,10 +124,10 @@ describe("Add wallet", () => {
     // A block typed, then back from the password to the block height.
     await fireEvent.click(getByRole("switch"));
 
-    expect(getByRole("textbox", { name: /start from block/i })).toHaveValue("");
+    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
-    await fireEvent.input(getByRole("textbox", { name: /start from block/i }), {
+    await fireEvent.input(getByRole("textbox", { name: /block height/i }), {
       target: { value: "5" },
     });
     await vi.waitFor(() =>

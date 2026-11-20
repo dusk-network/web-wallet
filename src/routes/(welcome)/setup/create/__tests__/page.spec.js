@@ -175,14 +175,14 @@ describe("Create", async () => {
 
     const firstCheckbox = getAllByRole("checkbox")[0];
     const secondCheckbox = getAllByRole("checkbox")[1];
-    const nextButton = getByRole("button", { name: "Show my recovery phrase" });
+    const nextButton = getByRole("button", { name: "Next" });
 
     expect(nextButton).toBeDisabled();
 
     // Select the first checkbox
     await fireEvent.click(firstCheckbox);
 
-    // Ensure Show my recovery phrase is disabled
+    // Ensure Next is disabled
     expect(nextButton).toBeDisabled();
 
     // Unselect the first checkbox
@@ -191,45 +191,43 @@ describe("Create", async () => {
     // Select the second checkbox
     await fireEvent.click(secondCheckbox);
 
-    // Ensure Show my recovery phrase is disabled
-    expect(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    ).toBeDisabled();
+    // Ensure Next is disabled
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
     // Select first checkbox too
     await fireEvent.click(firstCheckbox);
 
-    // Ensure Show my recovery phrase is enabled
+    // Ensure Next is enabled
     expect(nextButton).toBeEnabled();
   });
 
-  // Marek's, in Firefox for Android: the app switcher and the tab list kept
-  // a picture of the words, as nothing hid them again.
-  it("says to make sure no one can see the screen above the words, and to keep them offline", async () => {
-    const { container, getAllByRole, getByRole } = render(Create, baseOptions);
+  // Persona round 41: nothing said to check that no one sees the screen
+  // while the words show.
+  it("says to make sure no one can see the screen in the backup text, above the words", async () => {
+    const { container, getAllByRole, getByRole, getByText } = render(
+      Create,
+      baseOptions,
+    );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const line = getByRole("heading", {
-      level: 3,
-      name: /no one can see your screen/i,
-    });
+    const backup = getByText(/no one can see your screen/i);
     const words = /** @type {HTMLElement} */ (
       container.querySelector(".dusk-words")
     );
 
-    // Above the words, so it's read before them.
-    expect(line.compareDocumentPosition(words)).toBe(
+    // In the text that says to write the phrase down, read before the words.
+    expect(backup).toHaveTextContent(/write your phrase down/i);
+    expect(backup.compareDocumentPosition(words)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
-    expect(container.textContent).toMatch(/\bkept offline\b/i);
   });
 
+  // Marek's, in Firefox for Android: the app switcher and the tab list kept
+  // a picture of the words, as nothing hid them again.
   it("hides the words to write down the moment the page is hidden, and what's typed in their check, until Show words", async () => {
     const { container, getAllByRole, getByRole, queryByRole } = render(
       Create,
@@ -250,9 +248,7 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(shownWords()).toStrictEqual(words);
 
@@ -269,7 +265,7 @@ describe("Create", async () => {
     expect(queryByRole("button", { name: "Show words" })).toBeNull();
 
     // Their check: what's typed hidden as the page goes to the background.
-    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     const boxes = container.querySelector(".recovery-check__words");
 
@@ -332,9 +328,7 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Accept" }));
       await fireEvent.click(getAllByRole("checkbox")[0]);
       await fireEvent.click(getAllByRole("checkbox")[1]);
-      await fireEvent.click(
-        getByRole("button", { name: "Show my recovery phrase" }),
-      );
+      await fireEvent.click(getByRole("button", { name: "Next" }));
 
       // At rest: none of them, though nothing left the page.
       expect(wordsShown()).toStrictEqual([]);
@@ -356,7 +350,7 @@ describe("Create", async () => {
       expect(wordsShown()).toStrictEqual([]);
 
       // Their check: masked as it's typed, its suggestions kept.
-      await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
 
       const boxes = container.querySelector(".recovery-check__words");
       const first = /** @type {HTMLInputElement} */ (
@@ -395,10 +389,8 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    );
-    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     /** The boxes the check asks in. */
     const boxesShown = () =>
@@ -501,12 +493,10 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Generate step
-    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Validate step
     await checkWords(getByRole);
@@ -521,7 +511,7 @@ describe("Create", async () => {
     expect(vault.exists()).toBe(false);
 
     // Network Syncing step
-    await fireEvent.click(getByRole("button", { name: "Create wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -540,7 +530,7 @@ describe("Create", async () => {
     );
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
@@ -559,17 +549,15 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Accept" }));
       await fireEvent.click(getAllByRole("checkbox")[0]);
       await fireEvent.click(getAllByRole("checkbox")[1]);
-      await fireEvent.click(
-        getByRole("button", { name: "Show my recovery phrase" }),
-      );
-      await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
 
       await checkWords(getByRole);
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("switch"));
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Create wallet" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
       await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
 
       return rendered;
@@ -580,14 +568,14 @@ describe("Create", async () => {
     );
 
     // All set, while the wallet opens.
-    expect(getByRole("button", { name: "Open wallet" })).toBeDisabled();
+    expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
     opening.resolve(undefined);
 
     await vi.waitFor(() => {
-      expect(getByRole("button", { name: "Open wallet" })).toBeEnabled();
+      expect(getByRole("button", { name: "Next" })).toBeEnabled();
     });
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
@@ -604,7 +592,7 @@ describe("Create", async () => {
     await vi.waitFor(() => {
       expect(failed.getByText(/some error/)).toBeInTheDocument();
     });
-    expect(failed.getByRole("button", { name: "Open wallet" })).toBeDisabled();
+    expect(failed.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(gotoSpy).not.toHaveBeenCalled();
   });
 
@@ -624,12 +612,10 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(
-      getByRole("button", { name: "Show my recovery phrase" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Generate step
-    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // Mnemonic Validate step
     await checkWords(getByRole);
@@ -647,13 +633,13 @@ describe("Create", async () => {
 
     expect(vault.exists()).toBe(false);
 
-    await fireEvent.click(getByRole("button", { name: "Save password" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(true);
     });
 
     // Network Syncing step
-    await fireEvent.click(getByRole("button", { name: "Create wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -678,7 +664,7 @@ describe("Create", async () => {
     ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 

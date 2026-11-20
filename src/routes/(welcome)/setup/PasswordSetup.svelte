@@ -23,7 +23,7 @@
   /** @type {Record<ReturnType<typeof getPasswordStrength>, string>} */
   const strengthHints = {
     fair: "Fair password. Longer is safer.",
-    strong: "Strong password",
+    strong: "Strong password.",
     weak: "Weak password: easy to guess. Make it longer, or use a few unrelated words.",
   };
 
@@ -47,13 +47,14 @@
   iconPath={mdiKeyOutline}
   bind:isToggled
 >
+  <p>Please store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}
     className="password-input"
     type="password"
     autocomplete="new-password"
     bind:value={password}
-    placeholder="Password"
+    placeholder="Set password"
   />
   {#if strength}
     <p
@@ -73,20 +74,25 @@
       placeholder="Confirm password"
     />
     {#if password.length < 8}
-      <span class="confirm-password--meta">At least 8 characters</span>
+      <span class="confirm-password--meta"
+        >Password must be at least 8 characters</span
+      >
     {:else if confirmPassword && password !== confirmPassword}
       <span
         class="confirm-password--meta
-						confirm-password--meta--error">Passwords don't match</span
+						confirm-password--meta--error">Passwords do not match</span
       >
     {/if}
   </div>
 </ToggleableCard>
 
-<Banner title="A password is recommended." variant="info">
+<Banner
+  title="Setting a password for your web wallet is recommended."
+  variant="info"
+>
   <p>
-    Without one, you type your full recovery phrase at every unlock, which could
-    expose it.
+    Without a password, you need to enter your full recovery phrase each time
+    you open the wallet, which could expose it.
   </p>
 </Banner>
 

@@ -87,21 +87,13 @@
         href: "/setup",
         isAnchor: true,
       }}
-      nextButton={{
-        disabled: !agreementAccepted,
-        label: "Show my recovery phrase",
-      }}
+      nextButton={{ disabled: !agreementAccepted }}
     >
       <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPreSetup bind:isValid={agreementAccepted} />
     </WizardStep>
-    <WizardStep
-      step={1}
-      {key}
-      showStepper={true}
-      nextButton={{ disabled: false, label: "I wrote it down" }}
-    >
-      <h2 class="h1" slot="heading">Write down your recovery phrase</h2>
+    <WizardStep step={1} {key} showStepper={true}>
+      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <!-- Three of the words, as written down: checked, or for later, as
@@ -119,7 +111,7 @@
         variant: areWordsChecked ? "primary" : "secondary",
       }}
     >
-      <h2 class="h1" slot="heading">Check your recovery phrase</h2>
+      <h2 class="h1" slot="heading">Check your recovery words</h2>
       <RecoveryWordsCheck
         on:checked={() => {
           areWordsChecked = true;
@@ -137,7 +129,6 @@
           await refreshLocalStoragePasswordInfo(mnemonicPhrase, password);
         },
         disabled: !isValidPassword,
-        label: showPasswordSetup ? "Save password" : "Next",
       }}
     >
       <h2 class="h1" slot="heading">Set a password</h2>
@@ -175,7 +166,6 @@
           }
         },
         disabled: false,
-        label: "Create wallet",
       }}
     >
       <h2 class="h1" slot="heading">Sync</h2>
@@ -192,10 +182,9 @@
           await goto(takePlace() ?? "/dashboard", { replaceState: true });
         },
         disabled: !isWalletOpen,
-        label: "Open wallet",
       }}
     >
-      <h2 class="h1" slot="heading">Your wallet is ready</h2>
+      <h2 class="h1" slot="heading">Welcome to Dusk</h2>
       {#if openError}
         <ErrorAlert
           description="Restore it with the recovery phrase you wrote down."

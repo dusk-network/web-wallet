@@ -31,7 +31,9 @@ describe("Restore sync recovery", () => {
     const { getByRole } = render(NetworkSyncProgress, {
       fromBlock: 123n,
     });
-    await fireEvent.click(getByRole("button", { name: "Try again" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Retry synchronization" }),
+    );
     expect(sync).toHaveBeenCalledWith(123n);
   });
 
@@ -39,7 +41,9 @@ describe("Restore sync recovery", () => {
     showFailure();
     const logout = vi.spyOn(navigation, "logout").mockResolvedValue();
     const { getByRole } = render(NetworkSyncProgress);
-    await fireEvent.click(getByRole("button", { name: "Lock and exit" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Lock wallet and exit" }),
+    );
     expect(logout).toHaveBeenCalledWith(false);
   });
 });

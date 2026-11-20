@@ -27,15 +27,15 @@ function unknownWords(typed) {
   );
 
   if (unknown.length > 3) {
-    return `${unknown.length} words are unknown. Check the marked ones.`;
+    return `${unknown.length} words aren't recovery words. Check the marked ones.`;
   }
 
   if (unknown.length === 1) {
-    return `${wordsNamed(unknown)} is unknown. Check its spelling.`;
+    return `${wordsNamed(unknown)} isn't a recovery word. Check its spelling.`;
   }
 
   return unknown.length
-    ? `${wordsNamed(unknown)} are unknown. Check their spelling.`
+    ? `${wordsNamed(unknown)} aren't recovery words. Check their spelling.`
     : "";
 }
 
@@ -90,7 +90,7 @@ export function phraseProblem(words, { pasted = 0 } = {}) {
 
   return validateMnemonic(typed.map(listWord).join(" "), wordlist)
     ? ""
-    : "Not a valid recovery phrase. Check each word.";
+    : "These words aren't a valid recovery phrase. Check each word.";
 }
 
 /**
