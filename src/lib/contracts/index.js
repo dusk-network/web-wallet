@@ -9,4 +9,5 @@ export {
   getGasLimits,
   getGasSettings,
 } from "./gasDefaults";
+export { highFeeText, networkPriceOf, timesNetworkPrice } from "./highFee";
 export { default as updateOperation } from "./updateOperation";

@@ -2,7 +2,11 @@
   import { GAS_PRICE_BUSY } from "@dusk-network/app-core/gas";
   import { Button } from "$lib/dusk/components";
   import { GasControls, GasFee } from "$lib/components";
-  import { areValidGasSettings } from "$lib/contracts";
+  import {
+    areValidGasSettings,
+    highFeeText,
+    networkPriceOf,
+  } from "$lib/contracts";
   import { section } from "$lib/dusk/motion";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { gasPriceStore, settingsStore } from "$lib/stores";
@@ -35,6 +39,9 @@
   // may wait, as said, until the price is raised.
   $: ({ busy, median } = $gasPriceRule);
   $: isWaitingLonger = busy && median !== null && price < median;
+  // A price far above what the network asks, as the fee editor or a custom
+  // gas from Settings set it: said, as the extension says a site's.
+  $: highFee = highFeeText(price, networkPriceOf($gasPriceRule), language);
 
   const gasPriceRule = gasPriceStore.rule;
 
@@ -67,6 +74,9 @@
   </dl>
   {#if isWaitingLonger}
     <p class="gas-settings__busy" role="status">{GAS_PRICE_BUSY}</p>
+  {/if}
+  {#if highFee}
+    <p class="gas-settings__high" role="status">{highFee}</p>
   {/if}
   <!-- It opens and closes the same way. -->
   {#if isExpanded}
@@ -112,7 +122,8 @@
     line-height: 1.45;
   }
 
-  .gas-settings__busy {
+  .gas-settings__busy,
+  .gas-settings__high {
     margin: 0;
     color: var(--banner-warning-color);
     font-size: 0.875rem;

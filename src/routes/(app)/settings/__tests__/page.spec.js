@@ -327,6 +327,28 @@ describe("Settings", () => {
     ).toBeInTheDocument();
   });
 
+  it("should say custom gas far above the network's price is a high fee, where it's set", async () => {
+    const rendered = render(Settings);
+    const { getByLabelText, queryByText } = rendered;
+
+    await setCustomGas(rendered);
+
+    const priceInput = asInput(getByLabelText(/^gas price/i));
+
+    // At the network's price, as custom gas starts.
+    expect(queryByText(/^High fee/)).toBeNull();
+
+    await fireInput(priceInput, "3");
+
+    expect(
+      queryByText("High fee. It's 3 times the network's price."),
+    ).toHaveAttribute("role", "status");
+
+    await fireInput(priceInput, "1");
+
+    expect(queryByText(/^High fee/)).toBeNull();
+  });
+
   it("should show stored custom gas until the gas settings are reset", async () => {
     settingsStore.update((settings) => ({
       ...settings,

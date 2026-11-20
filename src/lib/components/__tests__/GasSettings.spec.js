@@ -132,6 +132,72 @@ describe("GasSettings", () => {
     }
   });
 
+  it("says a fee far above the network's price in one line, as the extension says a site's: from twice it, wherever the gas came from", async () => {
+    const high = () =>
+      document.querySelector(".gas-settings__high")?.textContent?.trim();
+
+    // At the network's price: nothing said.
+    const view = render(GasSettings, baseOptions);
+
+    expect(get(gasPriceStore)).toBe(1n);
+    expect(high()).toBeUndefined();
+
+    // Under twice: still nothing.
+    await view.rerender({ ...baseProps, price: 1n });
+
+    expect(high()).toBeUndefined();
+
+    // Twice, or far above, as the fee editor or custom gas set it.
+    await view.rerender({ ...baseProps, price: 2n });
+
+    expect(high()).toBe("High fee. It's 2 times the network's price.");
+
+    await view.rerender({ ...baseProps, price: 50n });
+
+    expect(high()).toBe("High fee. It's 50 times the network's price.");
+    // Said beside the fee, not only once Edit opens it.
+    expect(view.queryByRole("textbox")).toBeNull();
+  });
+
+  it("says no high fee for a price raised to what a busy network asks, only for twice that", async () => {
+    const connect = vi.spyOn(networkStore, "connect");
+
+    /** @param {bigint} median */
+    const nodeAsks = async (median) => {
+      connect.mockResolvedValue(
+        /** @type {any} */ ({
+          query: async () => ({
+            mempoolTxs: Array.from({ length: 1_000 }, () => ({
+              gasLimit: 2_500_000,
+              gasPrice: String(median),
+            })),
+          }),
+        }),
+      );
+      await gasPriceStore.refresh();
+    };
+    const high = () =>
+      document.querySelector(".gas-settings__high")?.textContent?.trim();
+
+    try {
+      await nodeAsks(900n);
+
+      const view = render(GasSettings, {
+        ...baseOptions,
+        props: { ...baseProps, price: 900n },
+      });
+
+      expect(high()).toBeUndefined();
+
+      await view.rerender({ ...baseProps, price: 1_800n });
+
+      expect(high()).toBe("High fee. It's 2 times the network's price.");
+    } finally {
+      await nodeAsks(1n);
+      connect.mockRestore();
+    }
+  });
+
   it("opens when the limit is below its lower bound", () => {
     const { getAllByRole } = render(GasSettings, {
       ...baseOptions,

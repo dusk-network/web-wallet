@@ -38,6 +38,8 @@
   import {
     HIGHEST_DEFAULT_GAS_LIMIT,
     areValidGasSettings,
+    highFeeText,
+    networkPriceOf,
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
@@ -290,6 +292,14 @@
       ? settingsHeight
       : 0n;
   $: hasCustomGas = customGasLimit !== null && customGasPrice !== null;
+  const gasPriceRule = gasPriceStore.rule;
+
+  // Custom gas far above what the network asks: said where it's set, as each
+  // fee it then sets says it.
+  $: customHighFee =
+    customGasPrice !== null
+      ? highFeeText(customGasPrice, networkPriceOf($gasPriceRule), language)
+      : "";
   $: isGasValid =
     customGasLimit !== null && customGasPrice !== null
       ? areValidGasSettings(customGasPrice, customGasLimit)
@@ -490,6 +500,14 @@
                   { max: true },
                 )} DUSK.
               </p>
+              {#if customHighFee}
+                <p
+                  class="settings-group__note settings-group__note--warning"
+                  role="status"
+                >
+                  {customHighFee}
+                </p>
+              {/if}
             {/if}
           {:else}
             <p class="settings-group__note">
@@ -798,6 +816,10 @@
 
         &--error {
           color: var(--badge-error-color);
+        }
+
+        &--warning {
+          color: var(--banner-warning-color);
         }
       }
 
