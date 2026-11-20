@@ -91,7 +91,7 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "This removes the wallet from this browser, with its settings and contacts. Your DUSK stays on the network. The wallet comes back only with its recovery phrase.",
+        "This removes it, with its settings and contacts. To get it back you need its recovery phrase.",
       ),
     ).toBeInTheDocument();
     expect(back).toHaveAttribute("href", expect.stringMatching(/\/setup$/));
@@ -119,7 +119,7 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+        "This removes them, with their settings and contacts. To get them back you need each one's recovery phrase.",
       ),
     ).toBeInTheDocument();
 
@@ -141,7 +141,7 @@ describe("Restore", async () => {
 
     expect(
       await findByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+        "This removes them, with their settings and contacts. To get them back you need each one's recovery phrase.",
       ),
     ).toBeInTheDocument();
 
@@ -209,7 +209,7 @@ describe("Restore", async () => {
     await tick();
 
     expect(getByRole("alert")).toHaveTextContent(
-      "These words aren't a valid recovery phrase. Check each word.",
+      "Not a valid recovery phrase. Check each word.",
     );
     expect(nextButton).toBeDisabled();
   });
@@ -260,7 +260,7 @@ describe("Restore", async () => {
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(false);
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Start sync" }));
 
     expect(initWalletSpy).toHaveBeenCalledExactlyOnceWith(phrase, 0n);
   });
@@ -293,7 +293,7 @@ describe("Restore", async () => {
     });
 
     // Block Height Step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Start sync" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -312,7 +312,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // All Done Step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
@@ -332,12 +332,10 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(vault.exists()).toBe(false));
 
-    expect(getByRole("heading", { name: "Ready to sync" })).toBeInTheDocument();
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent("Sync");
     // What syncing does, in a line.
     expect(
-      getByText(
-        "Next, the wallet syncs with the network to find your balance and past payments.",
-      ),
+      getByText("Finds your balance and past payments."),
     ).toBeInTheDocument();
 
     const advanced = /** @type {HTMLDetailsElement} */ (
@@ -347,9 +345,9 @@ describe("Restore", async () => {
     expect(advanced.open).toBe(false);
     expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
     expect(
-      advanced.contains(getByRole("switch", { name: "Block height" })),
+      advanced.contains(getByRole("switch", { name: "Start from block" })),
     ).toBe(true);
-    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(getByRole("button", { name: "Start sync" })).toBeEnabled();
   });
 
   it("should open the page a link asked for once it's restored, as Send filled in by a payment request", async () => {
@@ -369,10 +367,10 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(vault.exists()).toBe(false));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Start sync" }));
     await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledExactlyOnceWith(asked, {
@@ -391,13 +389,13 @@ describe("Restore", async () => {
     const usePassword = getByRole("switch", { name: "Use a password" });
 
     expect(usePassword).toHaveAttribute("aria-checked", "true");
-    expect(queryByPlaceholderText("Set password")).toBeInTheDocument();
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(queryByPlaceholderText("Password")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Save password" })).toBeDisabled();
 
     await fireEvent.click(usePassword);
 
     expect(usePassword).toHaveAttribute("aria-checked", "false");
-    expect(queryByPlaceholderText("Set password")).toBeNull();
+    expect(queryByPlaceholderText("Password")).toBeNull();
     expect(getByRole("button", { name: "Next" })).toBeEnabled();
   });
 
@@ -415,18 +413,18 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const nextButton = getByRole("button", { name: "Next" });
+    const nextButton = getByRole("button", { name: "Start sync" });
 
     // Off, the wallet syncs from the first block.
     expect(nextButton).toBeEnabled();
 
     await fireEvent.click(getByRole("switch"));
 
-    const field = getByRole("textbox", { name: /block height/i });
+    const field = getByRole("textbox", { name: /start from block/i });
 
     expect(field).toHaveValue("");
     expect(field).toHaveAccessibleDescription(
-      "The block your wallet was made at, or earlier. Not sure? Leave this off.",
+      "Your wallet's first block, or earlier. Too late hides payments. Not sure? Leave it off.",
     );
     expect(nextButton).toBeDisabled();
 
@@ -444,10 +442,13 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("switch"));
     await fireEvent.click(getByRole("switch"));
 
-    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
+    expect(getByRole("textbox", { name: /start from block/i })).toHaveValue("");
     expect(nextButton).toBeDisabled();
 
-    await fireInput(getByRole("textbox", { name: /block height/i }), "999000");
+    await fireInput(
+      getByRole("textbox", { name: /start from block/i }),
+      "999000",
+    );
     await fireEvent.click(nextButton);
 
     expect(initWalletSpy).toHaveBeenCalledWith(mnemonic, 999000n);
@@ -482,18 +483,18 @@ describe("Restore", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Password")), pwd);
     await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Save password" }));
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(true);
     });
 
     // Block Height step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Start sync" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -518,7 +519,7 @@ describe("Restore", async () => {
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 

@@ -173,9 +173,10 @@ describe("Create", async () => {
     const { getByRole, getByText } = render(Create, baseOptions);
 
     expect(
-      getByText(
-        "Your keys stay in this browser, and only you hold them: Dusk can't recover them. The wallet has no analytics, and gets the DUSK price from CoinGecko.",
-      ),
+      getByText("Your keys stay in this browser. Dusk can't recover them."),
+    ).toBeInTheDocument();
+    expect(
+      getByText("No analytics. The DUSK price comes from CoinGecko."),
     ).toBeInTheDocument();
     expect(getByRole("link", { name: "Terms of use" })).toHaveAttribute(
       "href",
@@ -188,35 +189,38 @@ describe("Create", async () => {
   });
 
   it("should call it the recovery phrase, warn that anyone with its words can take the DUSK, and say how to check it", async () => {
-    const { container, getByLabelText, getByRole, getAllByRole, getByText } =
-      render(Create, baseOptions);
+    const { container, getByLabelText, getByRole, getAllByRole } = render(
+      Create,
+      baseOptions,
+    );
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const agreementStep = container.textContent ?? "";
 
-    expect(agreementStep).toMatch(/Keep it safe/);
+    expect(agreementStep).toMatch(/Back up your recovery phrase/);
     expect(agreementStep).toMatch(/my recovery phrase/);
     expect(agreementStep).not.toMatch(/mnemonic/i);
     expect(
-      getByLabelText(
-        "I understand that without my recovery phrase I cannot access my wallet and its assets.",
-      ),
+      getByLabelText("Lose it and you lose the wallet. Dusk can't restore it."),
     ).toHaveAttribute("type", "checkbox");
     expect(
       getByLabelText(
-        "Anyone with these 12 words can take my DUSK. Dusk will never ask for them.",
+        "Anyone with the phrase can take your DUSK. Dusk never asks for it.",
       ),
     ).toHaveAttribute("type", "checkbox");
 
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
-    expect(
-      getByText(/^Type words \d+, \d+ and \d+ as you wrote them down\.$/),
-    ).toBeInTheDocument();
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Check your recovery phrase",
+    );
+    expect(getAllByRole("combobox")).toHaveLength(3);
     expect(container.textContent).not.toMatch(/mnemonic/i);
   });
 
@@ -241,21 +245,19 @@ describe("Create", async () => {
     expect(getByRole("link", { name: "Back" })).toHaveClass(
       "dusk-anchor-button--variant--tertiary",
     );
-    expect(getByRole("button", { name: "Next" })).toHaveClass(
-      "dusk-button--variant--primary",
-    );
+    expect(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    ).toHaveClass("dusk-button--variant--primary");
   });
 
   it("should not allow the user proceed unless both agreement checks are selected on the `Securely store your mnemonic phrase!` step", async () => {
-    const { getByRole, getAllByRole, getByText } = render(Create, baseOptions);
+    const { getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
     const firstCheckbox = getAllByRole("checkbox")[0];
     const secondCheckbox = getAllByRole("checkbox")[1];
-    const nextButton = getByRole("button", { name: "Next" });
-
-    expect(getByText("Tick both boxes to continue.")).toBeInTheDocument();
+    const nextButton = getByRole("button", { name: "Show my recovery phrase" });
 
     // Select the first checkbox
     await fireEvent.click(firstCheckbox);
@@ -270,7 +272,9 @@ describe("Create", async () => {
     await fireEvent.click(secondCheckbox);
 
     // Ensure Next is disabled
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    ).toBeDisabled();
 
     // Select first checkbox too
     await fireEvent.click(firstCheckbox);
@@ -287,7 +291,9 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
   });
 
   it("correctly renders the Mnemonic Verification page", async () => {
@@ -298,8 +304,10 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
   });
 
   // Marek's, in Firefox for Android: the app switcher and the tab list kept
@@ -324,7 +332,9 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
 
     expect(shownWords()).toStrictEqual(words);
 
@@ -342,7 +352,7 @@ describe("Create", async () => {
     expect(queryByRole("button", { name: "Show words" })).toBeNull();
 
     // Their check: what's typed hidden as the page goes to the background.
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     const boxes = container.querySelector(".recovery-check__words");
 
@@ -400,7 +410,9 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Accept" }));
       await fireEvent.click(getAllByRole("checkbox")[0]);
       await fireEvent.click(getAllByRole("checkbox")[1]);
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(
+        getByRole("button", { name: "Show my recovery phrase" }),
+      );
 
       // At rest: none of them, though nothing left the page.
       expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
@@ -422,7 +434,7 @@ describe("Create", async () => {
       expect(shownWords()).toStrictEqual(words.map(() => "•••••"));
 
       // Their check: masked as it's typed, its suggestions kept.
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
       const boxes = container.querySelector(".recovery-check__words");
       const first = /** @type {HTMLInputElement} */ (
@@ -452,15 +464,17 @@ describe("Create", async () => {
 
   // Then Nandini's and Amélie's: one word wrong, or three made up, put all
   // twelve on screen. A check is not a reveal.
-  it("asks for three of the words as written down, with Check, and Skip for now until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {
+  it("asks for three of the words as written down, with Check, and Skip until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {
     const { container, getAllByRole, getByRole, getByText, queryByRole } =
       render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     /** The boxes the check asks in. */
     const boxesShown = () =>
@@ -485,12 +499,12 @@ describe("Create", async () => {
       expect(box).toHaveAttribute("spellcheck", "false");
     }
 
-    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
-    // Amélie's: Skip for now was the big black button, Check a pale one.
+    expect(getByRole("button", { name: "Skip" })).toBeEnabled();
+    // Amélie's: Skip was the big black button, Check a pale one.
     expect(getByRole("button", { name: "Check" })).toHaveClass(
       "dusk-button--variant--primary",
     );
-    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+    expect(getByRole("button", { name: "Skip" })).toHaveClass(
       "dusk-button--variant--secondary",
     );
 
@@ -519,12 +533,12 @@ describe("Create", async () => {
       expect(wordsShown()).toStrictEqual([]);
       expect(container.querySelector(".dusk-words")).toBeNull();
       expect(boxesShown()).toStrictEqual([]);
-      expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
-      // Try again leads, Skip for now quieter.
+      expect(getByRole("button", { name: "Skip" })).toBeEnabled();
+      // Try again leads, Skip quieter.
       expect(getByRole("button", { name: "Try again" })).toHaveClass(
         "dusk-button--variant--primary",
       );
-      expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+      expect(getByRole("button", { name: "Skip" })).toHaveClass(
         "dusk-button--variant--secondary",
       );
 
@@ -579,8 +593,10 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     for (const box of container.querySelectorAll(
       ".recovery-check__word input",
@@ -594,7 +610,7 @@ describe("Create", async () => {
     );
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Back up your recovery phrase",
+      "Write down your recovery phrase",
     );
     expect(
       Array.from(
@@ -604,25 +620,27 @@ describe("Create", async () => {
     ).toStrictEqual(mnemonic.split(" "));
 
     // And on to a new check of them.
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Check your recovery words",
+      "Check your recovery phrase",
     );
     expect(
       container.querySelectorAll(".recovery-check__word input"),
     ).toHaveLength(3);
   });
 
-  it("goes on past the check with Skip for now, the words never checked", async () => {
+  it("goes on past the check with Skip, the words never checked", async () => {
     const { getAllByRole, getByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Skip for now" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
+    await fireEvent.click(getByRole("button", { name: "Skip" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
       "Set a password",
@@ -637,8 +655,10 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     await checkWords(getByRole);
 
@@ -661,13 +681,15 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Save password" }));
   });
 
   it("should write the block height in the language set, whatever the browser's", () => {
@@ -683,27 +705,26 @@ describe("Create", async () => {
   });
 
   it("should keep the block height out of the way, under Advanced, on the Network Syncing step", async () => {
-    const { container, getByRole, getAllByRole, getByText } = render(
-      Create,
-      baseOptions,
-    );
+    const { container, getByRole, getAllByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Save password" }));
 
     const advanced = /** @type {HTMLDetailsElement} */ (
       container.querySelector("details")
     );
 
-    expect(getByText("Next, the wallet syncs with the network.")).toBeVisible();
+    expect(getByRole("heading", { level: 2 })).toHaveTextContent("Sync");
     expect(advanced.open).toBe(false);
     expect(advanced.querySelector("summary")).toHaveTextContent("Advanced");
     expect(advanced).toContainElement(getByRole("textbox", { hidden: true }));
@@ -718,14 +739,16 @@ describe("Create", async () => {
     await fireEvent.click(getByRole("button", { name: "Accept" }));
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const password = getByPlaceholderText("Set password");
+    const password = getByPlaceholderText("Password");
     const hint = () => container.querySelector(".password-strength");
 
     await fireInput(password, "pass");
@@ -745,7 +768,7 @@ describe("Create", async () => {
 
     await fireInput(password, "correct horse battery");
 
-    expect(hint()).toHaveTextContent("Strong password.");
+    expect(hint()).toHaveTextContent("Strong password");
   });
 
   it("ensures the All Done step renders as expected", async () => {
@@ -756,18 +779,20 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     await checkWords(getByRole);
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Save password" }));
+    await fireEvent.click(getByRole("button", { name: "Create wallet" }));
 
     // Once the wallet is open.
     await vi.waitFor(() => {
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(getByRole("button", { name: "Open wallet" })).toBeEnabled();
     });
   });
 
@@ -781,10 +806,12 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
 
     // Mnemonic Generate step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     // Mnemonic Validate step
     await checkWords(getByRole);
@@ -799,7 +826,7 @@ describe("Create", async () => {
     expect(vault.exists()).toBe(false);
 
     // Network Syncing step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Create wallet" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -818,7 +845,7 @@ describe("Create", async () => {
     );
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
@@ -837,15 +864,17 @@ describe("Create", async () => {
       await fireEvent.click(getByRole("button", { name: "Accept" }));
       await fireEvent.click(getAllByRole("checkbox")[0]);
       await fireEvent.click(getAllByRole("checkbox")[1]);
-      await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(
+        getByRole("button", { name: "Show my recovery phrase" }),
+      );
+      await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
       await checkWords(getByRole);
 
       await fireEvent.click(getByRole("button", { name: "Next" }));
       await fireEvent.click(getByRole("switch"));
       await fireEvent.click(getByRole("button", { name: "Next" }));
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Create wallet" }));
       await vi.waitUntil(() => clearAndInitSpy.mock.calls.length === 1);
 
       return rendered;
@@ -856,14 +885,14 @@ describe("Create", async () => {
     );
 
     // All set, while the wallet opens.
-    expect(getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(getByRole("button", { name: "Open wallet" })).toBeDisabled();
 
     opening.resolve(undefined);
 
     await vi.waitFor(() => {
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(getByRole("button", { name: "Open wallet" })).toBeEnabled();
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 
     expect(gotoSpy).toHaveBeenCalledWith("/dashboard", { replaceState: true });
@@ -882,8 +911,8 @@ describe("Create", async () => {
     expect(
       failed.getByText("Restore it with the recovery phrase you wrote down."),
     ).toBeInTheDocument();
-    expect(failed.queryByText("You are all set!")).toBeNull();
-    expect(failed.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(failed.queryByRole("img", { name: "All Set" })).toBeNull();
+    expect(failed.getByRole("button", { name: "Open wallet" })).toBeDisabled();
     expect(gotoSpy).not.toHaveBeenCalled();
   });
 
@@ -906,10 +935,12 @@ describe("Create", async () => {
     await fireEvent.click(getAllByRole("checkbox")[0]);
     await fireEvent.click(getAllByRole("checkbox")[1]);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
 
     // Mnemonic Generate step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     // Mnemonic Validate step
     await checkWords(getByRole);
@@ -919,18 +950,18 @@ describe("Create", async () => {
     // Set Password step
     expect(vault.exists()).toBe(false);
 
-    await fireInput(asInput(getByPlaceholderText("Set password")), pwd);
+    await fireInput(asInput(getByPlaceholderText("Password")), pwd);
     await fireInput(asInput(getByPlaceholderText("Confirm password")), pwd);
 
     expect(vault.exists()).toBe(false);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Save password" }));
     await vi.waitFor(() => {
       expect(vault.exists()).toBe(true);
     });
 
     // Network Syncing step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Create wallet" }));
 
     expect(settingsResetSpy).toHaveBeenCalledTimes(1);
     expect(initWalletSpy).toHaveBeenCalledTimes(1);
@@ -955,7 +986,7 @@ describe("Create", async () => {
     ).toBe(clearAndInitSpy.mock.calls[0][2]?.key);
 
     // All Done step
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Open wallet" }));
 
     await vi.waitUntil(() => gotoSpy.mock.calls.length > 0);
 

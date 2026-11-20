@@ -44,13 +44,13 @@
   // What is wrong with each value, said while it is typed.
   $: priceMessage =
     price < priceLower
-      ? `The minimum is ${formatGas(priceLower)} LUX.`
+      ? `Minimum ${formatGas(priceLower)} LUX`
       : price > limit
         ? "It can't be higher than the gas limit."
         : "";
   $: limitMessage =
     limit < limitLower
-      ? `The minimum is ${formatGas(limitLower)}.`
+      ? `Minimum ${formatGas(limitLower)}`
       : limit > limitUpper
         ? `The maximum is ${formatGas(limitUpper)}.`
         : "";

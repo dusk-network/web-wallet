@@ -37,15 +37,13 @@ describe("Restore sync recovery", () => {
     const { getByRole, getByText, queryByRole } = render(NetworkSyncProgress, {
       fromBlock: 123n,
     });
-    await fireEvent.click(
-      getByRole("button", { name: "Retry synchronization" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Try again" }));
     expect(sync).toHaveBeenCalledWith(123n);
-    expect(getByText("Syncing...")).toBeInTheDocument();
-    expect(queryByRole("button", { name: "Retry synchronization" })).toBeNull();
+    expect(getByText("Syncing…")).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Try again" })).toBeNull();
     mockedWalletStore.setMockedStoreValue(initial);
     await tick();
-    expect(getByText("Sync completed!")).toBeInTheDocument();
+    expect(getByText("Sync completed")).toBeInTheDocument();
 
     // The wallet's own sync a minute on doesn't take it back.
     mockedWalletStore.setMockedStoreValue({
@@ -53,7 +51,7 @@ describe("Restore sync recovery", () => {
       syncStatus: { ...initial.syncStatus, isInProgress: true },
     });
     await tick();
-    expect(getByText("Sync completed!")).toBeInTheDocument();
+    expect(getByText("Sync completed")).toBeInTheDocument();
   });
 
   it("should say which blocks it syncs under its bar, not bare numbers", async () => {
@@ -85,9 +83,7 @@ describe("Restore sync recovery", () => {
     showFailure();
     const logout = vi.spyOn(navigation, "logout").mockResolvedValue();
     const { getByRole } = render(NetworkSyncProgress);
-    await fireEvent.click(
-      getByRole("button", { name: "Lock wallet and exit" }),
-    );
+    await fireEvent.click(getByRole("button", { name: "Lock and exit" }));
     expect(logout).toHaveBeenCalledWith(false);
   });
 });

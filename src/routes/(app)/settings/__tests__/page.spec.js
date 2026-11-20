@@ -315,13 +315,13 @@ describe("Settings", () => {
 
     await fireInput(limitInput, "1500000");
 
-    expect(getByText("The minimum is 2,000,000.")).toBeInTheDocument();
-    expect(limitInput).toHaveAccessibleDescription("The minimum is 2,000,000.");
+    expect(getByText("Minimum 2,000,000")).toBeInTheDocument();
+    expect(limitInput).toHaveAccessibleDescription("Minimum 2,000,000");
     expect(queryByText(/^Each transaction costs at most/)).toBeNull();
 
     await fireInput(limitInput, "3000000");
 
-    expect(queryByText("The minimum is 2,000,000.")).toBeNull();
+    expect(queryByText("Minimum 2,000,000")).toBeNull();
     expect(
       getByText("Each transaction costs at most 0.003 DUSK."),
     ).toBeInTheDocument();
@@ -395,10 +395,10 @@ describe("Settings", () => {
     });
   });
 
-  it("should reset wallet store and navigate to landing page on clicking the Lock Wallet button", async () => {
+  it("should reset wallet store and navigate to landing page on clicking the Lock button", async () => {
     const { getByRole } = render(Settings);
 
-    const button = getByRole("button", { name: "Lock Wallet" });
+    const button = getByRole("button", { name: "Lock" });
 
     await fireEvent.click(button);
     await vi.advanceTimersToNextTimerAsync();
@@ -412,7 +412,7 @@ describe("Settings", () => {
 
     const { getByRole } = render(Settings);
 
-    await fireEvent.click(getByRole("button", { name: "Lock Wallet" }));
+    await fireEvent.click(getByRole("button", { name: "Lock" }));
     await vi.advanceTimersToNextTimerAsync();
 
     expect(navigation.takePlace()).toBeNull();
@@ -540,7 +540,7 @@ describe("Settings", () => {
 
       expect(
         getByText(
-          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./,
+          "Removes this wallet, its contacts and settings from this browser. Only the recovery phrase brings it back.",
         ),
       ).toBeInTheDocument();
 

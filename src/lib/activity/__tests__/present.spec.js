@@ -178,8 +178,8 @@ describe("describeRow", () => {
     );
 
     expect(unconfirmed).toMatchObject({
-      line: "Not confirmed yet",
-      shortLine: "Not confirmed yet",
+      line: "Not confirmed",
+      shortLine: "Not confirmed",
       status: "unknown",
     });
     expect(

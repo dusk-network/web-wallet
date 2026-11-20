@@ -62,7 +62,7 @@ describe("Settings, with more than one wallet", () => {
     ).toBeInTheDocument();
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+        "Removes every wallet, their contacts and settings from this browser. Only each one's recovery phrase brings it back.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -95,7 +95,7 @@ describe("Settings, with more than one wallet", () => {
     );
     expect(
       getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+        "Removes every wallet, their contacts and settings from this browser. Only each one's recovery phrase brings it back.",
       ),
     ).toBeInTheDocument();
     expect(getByRole("button", { name: "Lock" })).toBeInTheDocument();

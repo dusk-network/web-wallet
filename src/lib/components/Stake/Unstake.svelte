@@ -244,8 +244,8 @@
     most: {
       amount: maxWithdrawAmount,
       error: isUnstake
-        ? "That's more than you have staked."
-        : "That's more than your rewards.",
+        ? "More than you have staked."
+        : "More than your rewards.",
     },
     text: amountText,
   });
@@ -284,6 +284,7 @@
       nextButton={{
         action: review,
         disabled: isNextButtonDisabled,
+        label: "Review",
       }}
     >
       <div class="operation__field">
@@ -384,7 +385,7 @@
               : formatDuskExact(reviewed.amount, language)}
           />
           <ReviewAmount
-            label="Network fee (at most)"
+            label="Fee up to"
             value={formatFee(reviewed.gasLimit * reviewed.gasPrice, language, {
               max: true,
             })}

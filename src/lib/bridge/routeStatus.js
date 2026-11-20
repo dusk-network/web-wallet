@@ -95,9 +95,9 @@ const lastPayoutWords = ({ lastPayout }, now) =>
 
 /**
  * A route's status in a line, for under its route: `text`, and `warn` where it
- * could make someone wait. Null with nothing to say: nothing read yet, or a route
- * that isn't running, which its card says itself. "unknown" says it doesn't know,
- * not that anything is wrong.
+ * could make someone wait. Null with nothing to say: nothing read yet, a route
+ * that isn't running, which its card says itself, or one paying out, or not
+ * known to, with no limit to say: only what could make someone wait is said.
  *
  * @param {RouteStatus | null | undefined} status
  * @param {{ amountLux?: bigint | null, locale?: string, now?: number }} [options]
@@ -117,15 +117,16 @@ export function statusLine(
   /** @type {Record<string, string[]>} */
   const said = {
     late: ["Payouts are running late.", last],
-    "on-claim": ["It pays when you claim it."],
+    "on-claim": [],
     quiet: [
       last ||
         (status.readSince
           ? `No payouts since ${dayOf(status.readSince)}.`
           : "No recent payouts."),
     ],
-    unknown: ["Last payout not known right now."],
-    yes: ["Paying out.", last],
+    // Running as it should: only what it can pay is said.
+    unknown: [],
+    yes: [],
   };
   const words = said[status.paying];
 
@@ -145,11 +146,9 @@ export function statusLine(
   const room = !pays
     ? ""
     : short
-      ? `It can pay up to ${pays} DUSK now, less than you're sending, so yours may wait.`
-      : `It can pay up to ${pays} DUSK.`;
+      ? `Can pay up to ${pays} DUSK now, less than you're sending: yours may wait.`
+      : `Can pay up to ${pays} DUSK.`;
+  const text = [...words, room].filter(Boolean).join(" ");
 
-  return {
-    text: [...words, room].filter(Boolean).join(" "),
-    warn: status.paying === "late" || short,
-  };
+  return text ? { text, warn: status.paying === "late" || short } : null;
 }

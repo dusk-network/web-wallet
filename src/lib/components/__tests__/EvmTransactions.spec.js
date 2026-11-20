@@ -590,11 +590,15 @@ describe("EvmTransactions", () => {
     expect(paid.closest("section")).toHaveAccessibleName("Completed");
     expect(sent.closest("section")).toHaveAccessibleName("In progress");
     // No DuskEVM on mainnet: nothing to connect for it, nor to look up.
-    expect(queryByText(/Connect DuskEVM wallet/)).toBeNull();
-    expect(queryByLabelText("Find by transaction hash")).toBeNull();
-    expect(container).toHaveTextContent(
-      "Transfers between Dusk and other chains.",
-    );
+    expect(queryByText(/Connect a DuskEVM wallet/)).toBeNull();
+    expect(
+      queryByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+    ).toBeNull();
+    // No line saying what the page is: its head says it.
+    expect(container).not.toHaveTextContent("Transfers between");
+    expect(
+      container.querySelector(".bridge-activity__lede"),
+    ).not.toHaveTextContent("DuskEVM");
 
     // Followed as soon as the history gives the one under way: the one
     // paid needs no read.
@@ -714,8 +718,10 @@ describe("EvmTransactions", () => {
 
     // Its gas, with the approval sent for it, as its chain says.
     expect(
-      (await findByText("Gas, approval and migration")).parentElement,
-    ).toHaveTextContent("Gas, approval and migration 0.000093199001491184 BNB");
+      (await findByText("Gas, allowance and migration")).parentElement,
+    ).toHaveTextContent(
+      "Gas, allowance and migration 0.000093199001491184 BNB",
+    );
     expect(evmReads.readMigrationsEvm).toHaveBeenCalledWith(networks.mainnet, [
       {
         approval: APPROVAL,
@@ -928,9 +934,9 @@ describe("EvmTransactions", () => {
 
       await tick();
 
-      const page = getByLabelText("Find by transaction hash").closest(
-        ".bridge-activity",
-      );
+      const page = getByLabelText(
+        "Find a withdrawal by its DuskEVM transaction ID",
+      ).closest(".bridge-activity");
 
       expect(page).toBeInTheDocument();
       expect(animations.runs.filter((run) => run.element === page)).toEqual([]);
@@ -949,11 +955,11 @@ describe("EvmTransactions", () => {
       },
     );
 
-    expect(getByLabelText("Find by transaction hash")).toBeInTheDocument();
     expect(
-      await findByText(
-        "Connect DuskEVM wallet to list its deposits and other withdrawals.",
-      ),
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+    ).toBeInTheDocument();
+    expect(
+      await findByText("Connect a DuskEVM wallet to see its transfers."),
     ).toBeInTheDocument();
     await fireEvent.click(getByRole("button", { name: /^connect$/i }));
     expect(mocks.modalOpen).toHaveBeenCalledOnce();
@@ -1051,9 +1057,12 @@ describe("EvmTransactions", () => {
     // A withdrawal found by its hash opens in the deposit's place, which
     // stays closed once that withdrawal goes: it's the account's, and
     // another account connects.
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: withdrawalHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: withdrawalHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     await waitFor(() =>
       expect(withdrawalButton).toHaveAttribute("aria-expanded", "true"),
@@ -1237,7 +1246,9 @@ describe("EvmTransactions", () => {
       EvmTransactions,
       { target: document.body },
     );
-    const input = getByLabelText("Find by transaction hash");
+    const input = getByLabelText(
+      "Find a withdrawal by its DuskEVM transaction ID",
+    );
 
     // Its account isn't connected: the deposit isn't listed yet. A Dusk
     // hash waits for what it names, a deposit or a transfer out.
@@ -1268,9 +1279,12 @@ describe("EvmTransactions", () => {
       { target: document.body },
     );
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: `0x${"ab".repeat(32)}` },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: `0x${"ab".repeat(32)}` },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(await findByRole("alert")).toHaveTextContent(
@@ -1294,9 +1308,12 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: hash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: hash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     unmount();
     answer({ stage: "pending" });
@@ -1317,7 +1334,9 @@ describe("EvmTransactions", () => {
     const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const input = getByLabelText("Find by transaction hash");
+    const input = getByLabelText(
+      "Find a withdrawal by its DuskEVM transaction ID",
+    );
 
     await fireEvent.input(input, { target: { value: "0x1234" } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
@@ -1334,7 +1353,9 @@ describe("EvmTransactions", () => {
     const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const input = getByLabelText("Find by transaction hash");
+    const input = getByLabelText(
+      "Find a withdrawal by its DuskEVM transaction ID",
+    );
 
     await fireEvent.input(input, { target: { value: "0x1234" } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
@@ -1543,9 +1564,12 @@ describe("EvmTransactions", () => {
     const { findByRole, getAllByText, getByLabelText, getByRole, getByText } =
       render(EvmTransactions, { target: document.body });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(
@@ -1580,9 +1604,12 @@ describe("EvmTransactions", () => {
     const { findByText, getByLabelText, getByRole, queryByRole, queryByText } =
       render(EvmTransactions, { target: document.body });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(await findByText("Usually within an hour.")).toBeInTheDocument();
@@ -1611,7 +1638,9 @@ describe("EvmTransactions", () => {
     const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const input = getByLabelText("Find by transaction hash");
+    const input = getByLabelText(
+      "Find a withdrawal by its DuskEVM transaction ID",
+    );
 
     await fireEvent.input(input, { target: { value: checkedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
@@ -1644,9 +1673,12 @@ describe("EvmTransactions", () => {
       queryByRole,
     } = render(EvmTransactions, { target: document.body });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     const actionButton = await findByRole("button", {
       name: /^prove on dusk$/i,
@@ -1692,9 +1724,12 @@ describe("EvmTransactions", () => {
       queryByText,
     } = render(EvmTransactions, { target: document.body });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     const actionButton = await findByRole("button", {
       name: /^prove on dusk$/i,
@@ -1762,9 +1797,12 @@ describe("EvmTransactions", () => {
       const { findByRole, findByText, getByLabelText, getByRole, queryByText } =
         render(EvmTransactions, { target: document.body });
 
-      await fireEvent.input(getByLabelText("Find by transaction hash"), {
-        target: { value: txHash },
-      });
+      await fireEvent.input(
+        getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+        {
+          target: { value: txHash },
+        },
+      );
       await fireEvent.click(getByRole("button", { name: /^check$/i }));
       const actionButton = await findByRole("button", { name: button });
 
@@ -1806,9 +1844,12 @@ describe("EvmTransactions", () => {
     const { findByRole, findByText, getByLabelText, getByRole, queryByText } =
       render(EvmTransactions, { target: document.body });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
     const actionButton = await findByRole("button", {
       name: /^claim on dusk$/i,
@@ -1880,7 +1921,9 @@ describe("EvmTransactions", () => {
       EvmTransactions,
       { target: document.body },
     );
-    const input = getByLabelText("Find by transaction hash");
+    const input = getByLabelText(
+      "Find a withdrawal by its DuskEVM transaction ID",
+    );
 
     await fireEvent.input(input, { target: { value: selectedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
@@ -2054,9 +2097,12 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(
@@ -2089,9 +2135,12 @@ describe("EvmTransactions", () => {
       target: document.body,
     });
 
-    await fireEvent.input(getByLabelText("Find by transaction hash"), {
-      target: { value: txHash },
-    });
+    await fireEvent.input(
+      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
+      {
+        target: { value: txHash },
+      },
+    );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(

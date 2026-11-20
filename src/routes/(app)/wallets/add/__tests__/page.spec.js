@@ -69,9 +69,8 @@ describe("Add wallet", () => {
     const { getByRole, getByText } = render(AddWallet);
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent("Add wallet");
-    expect(
-      getByText("Your password unlocks every wallet in this browser."),
-    ).toBeInTheDocument();
+    expect(getByText("New recovery phrase")).toBeInTheDocument();
+    expect(getByText("From a recovery phrase you have")).toBeInTheDocument();
     expect(getByRole("button", { name: /Create wallet/ })).toBeInTheDocument();
     expect(getByRole("button", { name: /Import wallet/ })).toBeInTheDocument();
   });
@@ -104,16 +103,14 @@ describe("Add wallet", () => {
 
     // Where it syncs from, then the password.
     await vi.waitFor(() =>
-      expect(getByText("Block height")).toBeInTheDocument(),
+      expect(getByText("Start from block")).toBeInTheDocument(),
     );
     await fireEvent.click(getByRole("button", { name: "Next" }));
 
-    const password = getByLabelText("Password you unlock with");
+    const password = getByLabelText("Password");
 
     expect(password).not.toHaveAttribute("placeholder");
-    expect(password).toHaveAccessibleDescription(
-      "One password unlocks every wallet in this browser.",
-    );
+    expect(password).not.toHaveAccessibleDescription();
 
     await fireEvent.input(password, { target: { value: "password12" } });
     await fireEvent.click(getByRole("button", { name: "Import wallet" }));
@@ -146,10 +143,10 @@ describe("Add wallet", () => {
     // A block typed, then back from the password to the block height.
     await fireEvent.click(getByRole("switch"));
 
-    expect(getByRole("textbox", { name: /block height/i })).toHaveValue("");
+    expect(getByRole("textbox", { name: /start from block/i })).toHaveValue("");
     expect(getByRole("button", { name: "Next" })).toBeDisabled();
 
-    await fireEvent.input(getByRole("textbox", { name: /block height/i }), {
+    await fireEvent.input(getByRole("textbox", { name: /start from block/i }), {
       target: { value: "5" },
     });
     await vi.waitFor(() =>
@@ -161,7 +158,7 @@ describe("Add wallet", () => {
     expect(getByRole("switch")).toHaveAttribute("aria-checked", "false");
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Import wallet" }));
@@ -183,7 +180,9 @@ describe("Add wallet", () => {
       await fireEvent.click(box);
     }
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
 
     // The words as the page shows them to be written down.
     const words = Array.from(
@@ -193,16 +192,16 @@ describe("Add wallet", () => {
 
     expect(words).toHaveLength(12);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
-    // Three of them, as written down: Skip for now until they match. One
+    // Three of them, as written down: Skip until they match. One
     // that doesn't says no more than that (Nandini's and Amélie's), and Show
     // my recovery words goes back to them, to be checked again.
-    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+    expect(getByRole("button", { name: "Skip" })).toBeEnabled();
     expect(getByRole("button", { name: "Check" })).toHaveClass(
       "dusk-button--variant--primary",
     );
-    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+    expect(getByRole("button", { name: "Skip" })).toHaveClass(
       "dusk-button--variant--secondary",
     );
 
@@ -217,11 +216,11 @@ describe("Add wallet", () => {
     expect(getByRole("alert")).toHaveTextContent(
       "That doesn't match your recovery words. Check the words you wrote down.",
     );
-    // Try again leads, Skip for now quieter.
+    // Try again leads, Skip quieter.
     expect(getByRole("button", { name: "Try again" })).toHaveClass(
       "dusk-button--variant--primary",
     );
-    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
+    expect(getByRole("button", { name: "Skip" })).toHaveClass(
       "dusk-button--variant--secondary",
     );
     expect(container.querySelector(".dusk-words")).toBeNull();
@@ -237,7 +236,7 @@ describe("Add wallet", () => {
       ),
     ).toStrictEqual(words);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     for (const label of container.querySelectorAll(".recovery-check__word")) {
       const n = Number(label.textContent?.replace(/\D/g, ""));
@@ -253,7 +252,7 @@ describe("Add wallet", () => {
     expect(container).toHaveTextContent("They match.");
 
     await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Add wallet" }));

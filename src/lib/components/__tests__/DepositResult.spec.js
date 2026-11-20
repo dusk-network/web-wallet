@@ -49,7 +49,7 @@ describe("DepositResult", () => {
 
     expect(await findByText("Not confirmed")).toBeInTheDocument();
     expect(getByRole("status")).toHaveTextContent(
-      "0.05 DUSK to DuskEVM It may have reached the network. Wait for it here before you send it again.",
+      "0.05 DUSK to DuskEVM It may have gone out: wait here before sending it again.",
     );
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
     expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
@@ -69,9 +69,7 @@ describe("DepositResult", () => {
     });
 
     expect(
-      await findByText(
-        "Couldn't reach the network. Nothing was sent and no fee was charged.",
-      ),
+      await findByText("Couldn't reach the network. Not sent, no fee charged."),
     ).toBeInTheDocument();
     expect(container).toHaveTextContent("Not sent");
     expect(container.querySelector("details summary")).toHaveTextContent(

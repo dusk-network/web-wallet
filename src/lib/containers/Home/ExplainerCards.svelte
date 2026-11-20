@@ -8,7 +8,6 @@
   import { resolve } from "$app/paths";
   import { Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
-  import { lastReadText } from "$lib/activity/present";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
 
   /** @type {bigint} */
@@ -27,17 +26,11 @@
   /** @type {bigint} */
   export let reward;
 
-  /** @type {bigint} */
-  export let minimumStake;
-
   /** Whether the history holds staking: an empty stake then isn't "yet". */
   export let hasPastStaking = false;
 
   /** What is staked with Sozu, as far as known. */
   export let liquid = 0n;
-
-  /** Whether this network has Sozu, for staking any amount. */
-  export let sozuAvailable = false;
 
   export let stakeEnabled = true;
 
@@ -47,25 +40,8 @@
    */
   export let stakeUnread = false;
 
-  /**
-   * Whether the balances couldn't be read: the public and shielded ones
-   * shown are what was read before.
-   */
-  export let balanceUnread = false;
-
   /** Whether it's being read, with nothing read before to show meanwhile. */
   export let stakeReading = false;
-
-  /**
-   * When the balances, and what's staked, were last read whole: said with
-   * what may be out of date. Null where that isn't known.
-   *
-   * @type {number | null}
-   */
-  export let balanceReadAt = null;
-
-  /** @type {number | null} */
-  export let stakeReadAt = null;
 
   /**
    * Reads what's staked again.
@@ -103,16 +79,8 @@
       <span class="explainer-card__unit">DUSK</span>
     </p>
     <p class="explainer-card__text">
-      Visible on chain. Staking and the bridge use this balance.
+      Visible on chain. Staking and the bridge use it.
     </p>
-    {#if balanceUnread}
-      <p class="explainer-card__text">
-        It couldn't be read just now. This may be out of date. {lastReadText(
-          balanceReadAt,
-          locale,
-        )}
-      </p>
-    {/if}
   </li>
   <li class="explainer-card">
     <p class="explainer-card__key ledger-label">
@@ -125,17 +93,7 @@
       />
       <span class="explainer-card__unit">DUSK</span>
     </p>
-    <p class="explainer-card__text">
-      Amounts and accounts stay hidden on chain.
-    </p>
-    {#if balanceUnread}
-      <p class="explainer-card__text">
-        It couldn't be read just now. This may be out of date. {lastReadText(
-          balanceReadAt,
-          locale,
-        )}
-      </p>
-    {/if}
+    <p class="explainer-card__text">Amounts and accounts hidden on chain.</p>
   </li>
   {#if stakeEnabled}
     <li class="explainer-card">
@@ -177,7 +135,7 @@
         </p>
       {:else if stakeUnread}
         <p class="explainer-card__value explainer-card__value--text">
-          Your stake couldn't be read
+          Couldn't be read
         </p>
       {:else if stakeReading}
         <p class="explainer-card__value explainer-card__value--text">
@@ -185,13 +143,7 @@
         </p>
       {:else}
         <p class="explainer-card__value explainer-card__value--text">
-          Nothing staked right now
-        </p>
-        <p class="explainer-card__text">
-          From {formatDusk(minimumStake, locale)}
-          DUSK with your own node{sozuAvailable
-            ? ", or any amount with Sozu (third party)"
-            : ""}.
+          Nothing staked
         </p>
         {#if hasPastStaking}
           <a
@@ -202,14 +154,6 @@
         {/if}
       {/if}
       {#if stakeUnread}
-        {#if staked || liquid > 0n}
-          <p class="explainer-card__text">
-            Your stake couldn't be read just now. This may be out of date. {lastReadText(
-              stakeReadAt,
-              locale,
-            )}
-          </p>
-        {/if}
         <Button
           className="explainer-card__retry"
           disabled={isRetrying}

@@ -32,7 +32,7 @@ const A =
 const B =
   "scheme spot photo card baby mountain device kick cradle pact join borrow";
 
-describe("Check your recovery words", () => {
+describe("Check recovery phrase", () => {
   const gotoSpy = vi.spyOn(navigation, "goto").mockResolvedValue(undefined);
 
   stubWalletNetwork();
@@ -76,10 +76,10 @@ describe("Check your recovery words", () => {
 
     expect(askedIn(container)).toStrictEqual([]);
 
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: "not the password" },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitFor(() =>
       expect(getByRole("alert")).toHaveTextContent("Wrong password."),
@@ -92,10 +92,10 @@ describe("Check your recovery words", () => {
     const { container, getByLabelText, getByRole, getByText } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const words = B.split(" ");
@@ -116,10 +116,10 @@ describe("Check your recovery words", () => {
     const { container, getByLabelText, getByRole, getByText, queryByRole } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const words = B.split(" ");
@@ -169,7 +169,7 @@ describe("Check your recovery words", () => {
     await typeInto(second.box, "qx");
 
     expect(second.box).toHaveAttribute("aria-invalid", "true");
-    expect(second.box).toHaveAccessibleDescription("Not a recovery word");
+    expect(second.box).toHaveAccessibleDescription("Unknown word");
 
     // A tap takes one too.
     const last = words[third.n - 1].slice(0, 2);
@@ -203,10 +203,10 @@ describe("Check your recovery words", () => {
       const { container, getByLabelText, getByRole, queryByRole } =
         render(CheckWords);
 
-      await fireEvent.input(getByLabelText("Password you unlock with"), {
+      await fireEvent.input(getByLabelText("Password"), {
         target: { value: PASSWORD },
       });
-      await fireEvent.click(getByRole("button", { name: "Continue" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
       await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
       const [first] = askedIn(container);
@@ -229,10 +229,10 @@ describe("Check your recovery words", () => {
     const { container, getByLabelText, getByRole, queryByRole } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const [first, second, third] = askedIn(container);
@@ -335,10 +335,10 @@ describe("Check your recovery words", () => {
         new RegExp(`\\b${word}\\b`).test(container.textContent ?? ""),
       );
 
-    await fireEvent.input(getByLabelText("Password you unlock with"), {
+    await fireEvent.input(getByLabelText("Password"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const asked = askedIn(container).map(({ n }) => n);
@@ -410,7 +410,7 @@ describe("Check your recovery words", () => {
       getByRole("button", { name: "Show my recovery words" }),
     );
 
-    const password = getByLabelText("Password you unlock with");
+    const password = getByLabelText("Password");
 
     expect(password).toHaveValue("");
     await vi.waitFor(() => expect(document.activeElement).toBe(password));

@@ -46,7 +46,7 @@ describe("TopBar", () => {
       "href",
       "/some-base-path/dashboard/",
     );
-    expect(getByRole("link", { name: "History" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Activity" })).toHaveAttribute(
       "aria-current",
       "page",
     );

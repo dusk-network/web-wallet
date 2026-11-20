@@ -131,7 +131,7 @@ describe("A transfer's amounts, as its details say them", () => {
     expect(linesOf(transferOut({}), { rows: history })).toStrictEqual([
       "Sent 3.053082083 DUSK",
       "Bridge fee 1 DUSK",
-      "Network fee 0.001859281 DUSK",
+      "Fee 0.001859281 DUSK",
       "You receive 2.053082083 BEP20 DUSK",
     ]);
   });
@@ -161,7 +161,7 @@ describe("A transfer's amounts, as its details say them", () => {
     ]);
 
     expect(linesOf(transferOut({}), { rows: failed })).toStrictEqual([
-      "Network fee 0.001859281 DUSK",
+      "Fee 0.001859281 DUSK",
     ]);
   });
 
@@ -237,7 +237,7 @@ describe("A transfer's amounts, as its details say them", () => {
     ).toStrictEqual([
       "Sent 4 BEP20 DUSK",
       "Received 4 DUSK",
-      "Gas, approval and migration 0.000093199001491184 BNB",
+      "Gas, allowance and migration 0.000093199001491184 BNB",
     ]);
     // Not read on its chain yet: no gas said.
     expect(linesOf(paid)).toStrictEqual([
@@ -262,7 +262,7 @@ describe("A transfer's amounts, as its details say them", () => {
     );
 
     expect(lines).toContain("Sent 3.053082083 DUSK");
-    expect(lines.some((line) => line?.startsWith("Network fee"))).toBe(true);
+    expect(lines.some((line) => line?.startsWith("Fee "))).toBe(true);
     expect(lines.some((line) => line?.startsWith("You receive"))).toBe(false);
     expect(lines.at(-1)).toMatch(/^Received 0 /);
   });
@@ -307,7 +307,7 @@ describe("A transfer's amounts, as its details say them", () => {
       ),
     ).toStrictEqual([
       "Sent 0.090082082 DUSK",
-      "Network fee 0.002 DUSK",
+      "Fee 0.002 DUSK",
       "Received 0.090082082 DUSK",
     ]);
   });

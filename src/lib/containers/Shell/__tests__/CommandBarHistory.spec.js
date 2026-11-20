@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 
-import { dayLabel, shortAddress, timeLabel } from "$lib/activity/present";
+import { dayLabel, timeLabel } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
@@ -121,7 +121,7 @@ describe("CommandBar, with a history", () => {
 
     expect(option).toHaveAttribute("id", `command-tx:${ids.older}`);
     expect(option.querySelector(".command-bar__memo")).toHaveTextContent(
-      `From ${shortAddress(ids.stranger)} · not in your contacts “Pour le marché, merci”`,
+      "Not a contact “Pour le marché, merci”",
     );
   });
 });

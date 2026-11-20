@@ -291,7 +291,7 @@ describe("Send page", () => {
     const to = getByRole("textbox", { name: "To" });
 
     expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
+      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK (public)`,
     );
 
     await fireEvent.input(to, {
@@ -299,14 +299,14 @@ describe("Send page", () => {
     });
 
     expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK from your shielded balance`,
+      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK (shielded)`,
     );
 
     await fireEvent.input(to, {
       target: { value: currentProfile.account.toString() },
     });
 
-    expect(available(container)).toHaveTextContent(/from your public balance$/);
+    expect(available(container)).toHaveTextContent(/\(public\)$/);
   });
 
   it("should count out of Available and Max what the sends waiting to go out from that balance take, and say so", async () => {
@@ -341,7 +341,7 @@ describe("Send page", () => {
       const left = balance.unshielded.value - 12_500_000n;
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`,
+        `Available ${formatDusk(left, "en")} DUSK (public, after what's waiting to go out)`,
       );
 
       await fireEvent.input(getByRole("textbox", { name: "To" }), {
@@ -359,7 +359,7 @@ describe("Send page", () => {
       await act(() => fromShielded.cancel());
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK from your public balance, after what's waiting to go out`,
+        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK (public, after what's waiting to go out)`,
       );
 
       // Gone out, or called off: all of it again.
@@ -367,7 +367,7 @@ describe("Send page", () => {
 
       await vi.waitFor(() =>
         expect(available(container)).toHaveTextContent(
-          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
+          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK (public)`,
         ),
       );
       expect(available(container)).not.toHaveTextContent("waiting");
@@ -397,23 +397,25 @@ describe("Send page", () => {
 
     await enter("alice.dusk");
 
-    expect(
-      await findByText("alice.dusk points to a shielded address"),
-    ).toBeInTheDocument();
-    expect(available(container)).toHaveTextContent(/shielded balance$/);
+    await vi.waitFor(() =>
+      expect(container.querySelector(".send__card-title")).toHaveTextContent(
+        /^alice\.dusk \(this profile\)$/,
+      ),
+    );
+    expect(available(container)).toHaveTextContent(/\(shielded\)$/);
 
     await enter("bob.dusk");
 
     expect(await findByText("bob.dusk isn't registered.")).toBeInTheDocument();
-    expect(available(container)).toHaveTextContent(/public balance$/);
+    expect(available(container)).toHaveTextContent(/\(public\)$/);
 
     await enter(currentProfile.address.toString());
 
-    expect(available(container)).toHaveTextContent(/shielded balance$/);
+    expect(available(container)).toHaveTextContent(/\(shielded\)$/);
 
     await enter("");
 
-    expect(available(container)).toHaveTextContent(/public balance$/);
+    expect(available(container)).toHaveTextContent(/\(public\)$/);
   });
 
   it("should hide the balance it pays from, and what Max fills in, while balances are hidden", async () => {
@@ -429,7 +431,7 @@ describe("Send page", () => {
     const amount = getByRole("textbox", { name: "Amount" });
 
     expect(available(container)).toHaveTextContent(
-      /^Available •••• hidden DUSK from your public balance$/,
+      /^Available •••• hidden DUSK \(public\)$/,
     );
     expect(container).not.toHaveTextContent(
       formatDusk(balance.unshielded.value, "en"),
@@ -638,7 +640,7 @@ describe("Send page", () => {
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(getByRole("note")).toHaveTextContent(
-        `This address sent you: “${URGENT}” · not in your contacts.`,
+        `Not a contact. They sent you: “${URGENT}”`,
       );
     } finally {
       history.whole?.set({

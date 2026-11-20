@@ -103,7 +103,7 @@ describe("DepositLifecycle", () => {
     setNodeNetwork(null);
   });
 
-  it("should call its chain Dusk, as the Bridge does, and say the network fee its Dusk transaction paid once the history has it", async () => {
+  it("should call its chain Dusk, as the Bridge does, and say the fee its Dusk transaction paid once the history has it", async () => {
     const { container, getByText, queryByText } = render(DepositLifecycle, {
       deposit: { ...deposit(), stage: "completed" },
     });
@@ -111,7 +111,7 @@ describe("DepositLifecycle", () => {
     expect(container).not.toHaveTextContent("DuskDS");
     expect(getByText("Finalized on Dusk")).toBeInTheDocument();
     expect(getByText("Dusk transaction")).toBeInTheDocument();
-    expect(queryByText("Network fee")).toBeNull();
+    expect(queryByText("Fee")).toBeNull();
 
     await act(() =>
       history.state?.set({
@@ -119,7 +119,7 @@ describe("DepositLifecycle", () => {
       }),
     );
 
-    expect(getByText("Network fee").nextElementSibling).toHaveTextContent(
+    expect(getByText("Fee").nextElementSibling).toHaveTextContent(
       "0.001987516 DUSK",
     );
   });

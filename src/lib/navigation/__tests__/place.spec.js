@@ -473,9 +473,7 @@ describe("Keeping what's typed in a form that moves money", () => {
         name: "Leave this payment?",
       });
 
-      expect(question).toHaveTextContent(
-        "This clears your unfinished payment.",
-      );
+      expect(question).toHaveTextContent("The form will be cleared.");
       await vi.waitFor(() =>
         expect(typed.getByRole("button", { name: "Stay" })).toHaveFocus(),
       );
@@ -584,7 +582,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       expect(goHome()).toBe(true);
       expect(await opened.findByRole("alertdialog")).toHaveTextContent(
-        "This clears the payment the link filled in.",
+        "The form will be cleared.",
       );
     });
 
@@ -804,27 +802,27 @@ describe("Keeping what's typed in a form that moves money", () => {
     it("keeps what's typed through a switch of profile with the form still open, for the profile a lock comes back to", async () => {
       const typed = render(NativeStake, stakeProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "1200" },
       });
       await switchProfileAndUnlock();
 
       expect(
-        render(NativeStake, stakeProps).getByLabelText("Stake amount"),
+        render(NativeStake, stakeProps).getByLabelText("Amount"),
       ).toHaveValue("1200");
     });
 
     it("brings the amount back after a lock or a failed stake, and lets it go as it's staked", async () => {
       const typed = render(NativeStake, stakeProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "1200" },
       });
       await lockAndUnlock();
 
       const back = render(NativeStake, stakeProps);
 
-      expect(back.getByLabelText("Stake amount")).toHaveValue("1200");
+      expect(back.getByLabelText("Amount")).toHaveValue("1200");
 
       /** @type {PromiseWithResolvers<string>} */
       const sending = Promise.withResolvers();
@@ -845,7 +843,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       const failed = render(NativeStake, stakeProps);
 
-      expect(failed.getByLabelText("Stake amount")).toHaveValue("1200");
+      expect(failed.getByLabelText("Amount")).toHaveValue("1200");
 
       await fireEvent.click(failed.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
@@ -855,7 +853,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       leave();
 
       expect(
-        render(NativeStake, stakeProps).getByLabelText("Stake amount"),
+        render(NativeStake, stakeProps).getByLabelText("Amount"),
       ).toHaveValue("");
     });
   });
@@ -900,20 +898,20 @@ describe("Keeping what's typed in a form that moves money", () => {
     it("keeps what's typed through a switch of profile with the form still open, for the profile a lock comes back to", async () => {
       const typed = render(liquidView, liquidProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "7" },
       });
       await switchProfileAndUnlock();
 
       expect(
-        render(liquidView, liquidProps).getByLabelText("Stake amount"),
+        render(liquidView, liquidProps).getByLabelText("Amount"),
       ).toHaveValue("7");
     });
 
     it("keeps what's typed as the form is left by the Staking link above it, for its next opening", async () => {
       const typed = render(liquidView, liquidProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "7" },
       });
       nav.navigating?.set({ type: "link" });
@@ -921,29 +919,29 @@ describe("Keeping what's typed in a form that moves money", () => {
       nav.navigating?.set(null);
 
       expect(
-        render(liquidView, liquidProps).getByLabelText("Stake amount"),
+        render(liquidView, liquidProps).getByLabelText("Amount"),
       ).toHaveValue("7");
     });
 
     it("brings back each tab's amount and the tab it was on, and lets them go as one is sent", async () => {
       const typed = render(liquidView, liquidProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "7" },
       });
       await fireEvent.click(typed.getByRole("tab", { name: "Unstake" }));
-      await fireEvent.input(typed.getByLabelText("Unstake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "3" },
       });
       await lockAndUnlock();
 
       const back = render(liquidView, liquidProps);
 
-      expect(back.getByLabelText("Unstake amount")).toHaveValue("3");
+      expect(back.getByLabelText("Amount")).toHaveValue("3");
 
       await fireEvent.click(back.getByRole("tab", { name: "Stake" }));
 
-      expect(back.getByLabelText("Stake amount")).toHaveValue("7");
+      expect(back.getByLabelText("Amount")).toHaveValue("7");
 
       await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
@@ -958,7 +956,7 @@ describe("Keeping what's typed in a form that moves money", () => {
     it("leaves it for a link to the other action", async () => {
       const typed = render(liquidView, liquidProps);
 
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
+      await fireEvent.input(typed.getByLabelText("Amount"), {
         target: { value: "7" },
       });
       await lockAndUnlock();
@@ -968,7 +966,7 @@ describe("Keeping what's typed in a form that moves money", () => {
         action: "unstake",
       });
 
-      expect(linked.getByLabelText("Unstake amount")).toHaveValue("");
+      expect(linked.getByLabelText("Amount")).toHaveValue("");
     });
   });
 
@@ -1003,7 +1001,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       expect(back.getByRole("textbox", { name: "Amount" })).toHaveValue("12");
 
-      await fireEvent.click(back.getByRole("button", { name: "Next" }));
+      await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(back.getByRole("button", { name: "Unstake" }));
 
@@ -1084,9 +1082,11 @@ describe("Keeping what's typed in a form that moves money", () => {
         .spyOn(walletStore, "shield")
         .mockReturnValue(new Promise(() => {}));
 
-      await fireEvent.click(back.getByRole("button", { name: "Next" }));
+      await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(back.getByRole("button", { name: "Send" }));
+      await fireEvent.click(
+        back.getByRole("button", { name: /^(Shield|Unshield) / }),
+      );
 
       expect(shield).toHaveBeenCalledOnce();
       expect(isKept("2500")).toBe(false);
@@ -1110,7 +1110,7 @@ describe("Keeping what's typed in a form that moves money", () => {
     };
     const typed = render(NativeStake, stakeProps);
 
-    await fireEvent.input(typed.getByLabelText("Stake amount"), {
+    await fireEvent.input(typed.getByLabelText("Amount"), {
       target: { value: "1200" },
     });
 
@@ -1125,7 +1125,7 @@ describe("Keeping what's typed in a form that moves money", () => {
     await lockAndUnlock();
 
     expect(
-      render(NativeStake, stakeProps).getByLabelText("Stake amount"),
+      render(NativeStake, stakeProps).getByLabelText("Amount"),
     ).toHaveValue("");
 
     networks.mockRestore();

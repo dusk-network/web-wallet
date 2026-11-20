@@ -111,7 +111,7 @@
         <dd>{deposit.l1BlockHeight}</dd>
       {/if}
       {#if fee !== null}
-        <dt>Network fee</dt>
+        <dt>Fee</dt>
         <dd>
           <BalanceValue value={formatDuskExact(fee, $settingsStore.language)} />
           DUSK

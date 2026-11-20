@@ -96,6 +96,7 @@
           await refreshLocalStoragePasswordInfo(mnemonicPhrase, password);
         },
         disabled: !isValidPassword,
+        label: showPasswordSetup ? "Save password" : "Next",
       }}
     >
       <h2 class="h1" slot="heading">Set a password</h2>
@@ -115,6 +116,7 @@
           mnemonicPhrase = [];
         },
         disabled: !isValidBlockHeight,
+        label: "Start sync",
       }}
     >
       <h2 class="h1" slot="heading">Sync</h2>
@@ -144,9 +146,10 @@
           await goto(takePlace() ?? "/dashboard", { replaceState: true });
         },
         disabled: false,
+        label: "Open wallet",
       }}
     >
-      <h2 class="h1" slot="heading">Welcome to Dusk</h2>
+      <h2 class="h1" slot="heading">Your wallet is ready</h2>
       <AllSet />
     </WizardStep>
   </Wizard>

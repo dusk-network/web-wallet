@@ -411,7 +411,7 @@ describe("AddressPicker", () => {
           ".address-picker__copy-button",
         );
         expect(copyButtons).toHaveLength(2);
-        expect(copyButtons[0]).toHaveAccessibleName("Copy public address");
+        expect(copyButtons[0]).toHaveAccessibleName("Copy public account");
         expect(copyButtons[0]).toHaveTextContent("Public");
         expect(copyButtons[1]).toHaveAccessibleName("Copy shielded address");
         expect(copyButtons[1]).toHaveTextContent("Shielded");
@@ -557,7 +557,7 @@ describe("AddressPicker", () => {
       expect(currentProfile).toBe(profiles[0]);
       expect(profileHeaders).toHaveLength(profiles.length);
       expect(profileHeaders[0]).toHaveTextContent("Profile 1");
-      expect(profileHeaders[0]).toHaveTextContent("(Current)");
+      expect(profileHeaders[0]).toHaveTextContent("✓");
     });
 
     it("should list each profile on two lines, its label and its account shortened, with the account in full on hover and for screen readers", async () => {
@@ -576,7 +576,7 @@ describe("AddressPicker", () => {
 
       items.forEach((item, index) => {
         const account = profiles[index].account.toString();
-        const label = `Profile ${index + 1}${index === 0 ? " (Current)" : ""}`;
+        const label = `Profile ${index + 1}${index === 0 ? " ✓" : ""}`;
         const accountLine = getAsHTMLElement(
           item,
           ".address-picker__address-value",
@@ -587,7 +587,7 @@ describe("AddressPicker", () => {
           shortenAddress(account),
         ]);
         expect(accountLine).toHaveAttribute("title", account);
-        expect(item).toHaveAccessibleName(`${label} ${account}`);
+        expect(item).toHaveAccessibleName(`Profile ${index + 1} ${account}`);
       });
 
       // The profiles' shielded addresses are left to their copy buttons.
@@ -949,12 +949,10 @@ describe("AddressPicker", () => {
       expect(secondItem).toHaveAccessibleName("Profile 2 bob.dusk");
       expect(secondItem).not.toHaveTextContent(secondAccount);
       expect(Array.from(firstItem.children, getShownText)).toStrictEqual([
-        "Profile 1 (Current)",
+        "Profile 1 ✓",
         shortenAddress(firstAccount),
       ]);
-      expect(firstItem).toHaveAccessibleName(
-        `Profile 1 (Current) ${firstAccount}`,
-      );
+      expect(firstItem).toHaveAccessibleName(`Profile 1 ${firstAccount}`);
       expect(
         container.querySelectorAll(".address-picker__address-name"),
       ).toHaveLength(1);
@@ -1020,7 +1018,7 @@ describe("AddressPicker", () => {
       });
 
       const [copyPublic] = getAllByRole("button", {
-        name: "Copy public address",
+        name: "Copy public account",
       });
       const [copyShielded] = getAllByRole("button", {
         name: "Copy shielded address",
@@ -1103,13 +1101,13 @@ describe("AddressPicker", () => {
           first.querySelectorAll(".address-picker__copy-button"),
           (button) => button.getAttribute("aria-label"),
         ),
-      ).toEqual(["Copy public address", "Copy shielded address"]);
+      ).toEqual(["Copy public account", "Copy shielded address"]);
       expect(
         Array.from(
           second.querySelectorAll(".address-picker__copy-button"),
           (button) => button.getAttribute("aria-label"),
         ),
-      ).toEqual(["Copy public address"]);
+      ).toEqual(["Copy public account"]);
 
       await fireEvent.click(
         getAsHTMLElement(

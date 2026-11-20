@@ -77,7 +77,7 @@ describe("CommandBar", () => {
       "true",
     );
     // The keys, in one short line.
-    expect(getByText("Enter: open · Shift+Enter: copy")).toHaveClass(
+    expect(getByText("Enter open · Shift+Enter copy")).toHaveClass(
       "command-bar__note",
     );
 
@@ -173,7 +173,7 @@ describe("CommandBar", () => {
     await fireEvent.input(input, { target: { value: hash } });
     await fireEvent.keyDown(input, { key: "Enter" });
 
-    const result = await findByRole("option", { name: /in Dusk explorer/ });
+    const result = await findByRole("option", { name: /in explorer/ });
 
     await fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
 

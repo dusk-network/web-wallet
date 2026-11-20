@@ -107,9 +107,7 @@ describe("ContactsView", () => {
         ),
     );
 
-    expect(
-      getByText("Saved only in this wallet, on this device."),
-    ).toBeInTheDocument();
+    expect(getByText("Kept in this browser only.")).toBeInTheDocument();
     expect(cells).toEqual([
       [
         "A Alice's shop Sent 40 DUSK · Today",
@@ -411,7 +409,7 @@ describe("ContactsView", () => {
     // Its payments, from the history, by what happened.
     expect(
       container.querySelector(".contact-detail__activity .activity-row"),
-    ).toHaveTextContent(/^Sent .* Public/);
+    ).toHaveTextContent(/^Sent /);
   });
 
   it("notes nothing when the network has no names to check a contact's against", async () => {
@@ -499,7 +497,7 @@ describe("ContactsView", () => {
     );
 
     expect(await findByText(/points to a public account/)).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled(); // The address is already Alice's shop's.
+    expect(getByRole("button", { name: "Save" })).toBeDisabled(); // The address is already Alice's shop's.
 
     resolveName.mockResolvedValueOnce({ account: OTHER, name: "bram.dusk" });
     await fireEvent.input(
@@ -507,7 +505,7 @@ describe("ContactsView", () => {
       { target: { value: "bram.dusk" } },
     );
     await act(() => {});
-    await fireEvent.click(getByRole("button", { name: "Save contact" }));
+    await fireEvent.click(getByRole("button", { name: "Save" }));
 
     const bram = listContacts("bram")[0];
 
@@ -535,7 +533,7 @@ describe("ContactsView", () => {
     );
 
     expect(getByText("Not a valid address.")).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "Delete contact" }));
 
@@ -563,7 +561,7 @@ describe("ContactsView", () => {
         ContactForm,
         { events: { saved }, props: { own: [OWN], resolveName } },
       );
-      const save = () => getByRole("button", { name: "Save contact" });
+      const save = () => getByRole("button", { name: "Save" });
       /** @param {string} value */
       const name = (value) =>
         fireEvent.input(getByRole("textbox", { name: "Name" }), {
@@ -667,7 +665,7 @@ describe("ContactsView", () => {
       );
 
       expect(other.getByText("This is your own address.")).toBeInTheDocument();
-      expect(other.getByRole("button", { name: "Save contact" })).toBeEnabled();
+      expect(other.getByRole("button", { name: "Save" })).toBeEnabled();
       expect(queryByText(/^You have a contact/)).toBeNull();
     } finally {
       for (const contact of listContacts()) {
@@ -703,7 +701,7 @@ describe("ContactsView", () => {
         "One of your profiles is called Profile 2. Choose another name.",
       ),
     ).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     // A Cyrillic о.
     await name("Pr\u043efile 2");
@@ -713,12 +711,12 @@ describe("ContactsView", () => {
         "That looks like Profile 2, one of your profiles. Choose another name.",
       ),
     ).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     await name("Profile 3");
 
     expect(queryByRole("alert")).toBeNull();
-    expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+    expect(getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("asks at Save about a name that starts as a profile's, word for word, saving it only once answered", async () => {
@@ -743,7 +741,7 @@ describe("ContactsView", () => {
       getByText("One of your profiles is called Lucas. Is this someone else?"),
     ).toBeInTheDocument();
 
-    await fireEvent.click(getByRole("button", { name: "Save contact" }));
+    await fireEvent.click(getByRole("button", { name: "Save" }));
 
     expect(saved).not.toHaveBeenCalled();
 
@@ -794,7 +792,7 @@ describe("ContactsView", () => {
             "This name has hidden characters. Type it again without them.",
           ),
         ).toBeInTheDocument();
-        expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+        expect(getByRole("button", { name: "Save" })).toBeDisabled();
       }
 
       await fireEvent.input(getByRole("textbox", { name: "Name" }), {
@@ -802,7 +800,7 @@ describe("ContactsView", () => {
       });
 
       expect(queryByRole("alert")).toBeNull();
-      expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+      expect(getByRole("button", { name: "Save" })).toBeEnabled();
     } finally {
       removeContact(alice.id);
     }
@@ -885,7 +883,7 @@ describe("ContactsView", () => {
       ContactForm,
       { resolveName },
     );
-    const save = () => getByRole("button", { name: "Save contact" });
+    const save = () => getByRole("button", { name: "Save" });
     /** @param {string} value */
     const name = (value) =>
       fireEvent.input(getByRole("textbox", { name: "Name" }), {

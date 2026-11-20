@@ -9,18 +9,16 @@
 </script>
 
 <section>
-  <IconHeadingCard heading="Terms &amp; privacy policy">
-    <p>
-      Your keys stay in this browser, and only you hold them: Dusk can't recover
-      them. The wallet has no analytics, and gets the DUSK price from CoinGecko.
-    </p>
+  <IconHeadingCard heading="Terms and privacy">
+    <p>Your keys stay in this browser. Dusk can't recover them.</p>
+    <p>No analytics. The DUSK price comes from CoinGecko.</p>
     <p>
       Accepting means you agree to the <AppAnchor
         className="text-link"
         href={LEGAL_LINKS.TERMS_OF_USE}
         rel="noopener noreferrer"
         target="_blank">Terms of use</AppAnchor
-      > and the <AppAnchor
+      > and <AppAnchor
         className="text-link"
         href={LEGAL_LINKS.PRIVACY_POLICY}
         rel="noopener noreferrer"

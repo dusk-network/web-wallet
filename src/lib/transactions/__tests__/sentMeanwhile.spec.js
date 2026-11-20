@@ -220,7 +220,7 @@ describe("What an account sent while a send waited", () => {
         items: [],
         memo: "",
         same: "",
-        title: "Your account sent something else while this waited.",
+        title: "Meanwhile your account sent something else.",
       });
     }
   });
@@ -262,8 +262,8 @@ describe("What an account sent while a send waited", () => {
       checking: false,
       items: [],
       memo: "",
-      same: "That looks like this same payment.",
-      title: `Your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
+      same: "That looks like this payment.",
+      title: `Meanwhile your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")}.`,
     });
 
     // Another memo: not the same, its memo said.
@@ -274,14 +274,14 @@ describe("What an account sent while a send waited", () => {
       items: [],
       memo: "kopi",
       same: "",
-      title: `Your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
+      title: `Meanwhile your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")}.`,
     });
 
     // Hidden balances: no amount.
     expect(
       sayMeanwhile([sent], payment, { ...shown, hidden: true }).title,
     ).toBe(
-      `Your account sent ${BALANCE_MASK} DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
+      `Meanwhile your account sent ${BALANCE_MASK} DUSK to Profile 2 at ${timeLabel(AT_1002, "en")}.`,
     );
   });
 
@@ -301,8 +301,8 @@ describe("What an account sent while a send waited", () => {
         },
       ],
       memo: "",
-      same: "One of them looks like this same payment.",
-      title: "Your account sent 2 payments while this waited.",
+      same: "One of them looks like this payment.",
+      title: "Meanwhile your account sent 2 payments.",
     });
   });
 
@@ -312,7 +312,7 @@ describe("What an account sent while a send waited", () => {
       items: [],
       memo: "",
       same: "",
-      title: "Your account sent something else while this waited.",
+      title: "Meanwhile your account sent something else.",
     };
 
     expect(sayMeanwhile(null, payment, shown)).toStrictEqual(generic);

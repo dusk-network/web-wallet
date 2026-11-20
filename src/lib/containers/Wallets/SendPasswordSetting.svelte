@@ -133,9 +133,9 @@
     class="settings-group__control settings-group__control--switch"
     for={undefined}
   >
-    <span>Ask for the password on big sends</span>
+    <span>Password for big sends</span>
     <Switch
-      aria-label="Ask for the password on big sends"
+      aria-label="Password for big sends"
       disabled={busy}
       on:change={(event) => startEditing(event.detail)}
       value={wantsOn}

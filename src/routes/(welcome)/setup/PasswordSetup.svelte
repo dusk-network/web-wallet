@@ -23,7 +23,7 @@
   /** @type {Record<ReturnType<typeof getPasswordStrength>, string>} */
   const strengthHints = {
     fair: "Fair password. Longer is safer.",
-    strong: "Strong password.",
+    strong: "Strong password",
     weak: "Weak password: easy to guess. Make it longer, or use a few unrelated words.",
   };
 
@@ -47,14 +47,13 @@
   iconPath={mdiKeyOutline}
   bind:isToggled
 >
-  <p>Please store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}
     className="password-input"
     type="password"
     autocomplete="new-password"
     bind:value={password}
-    placeholder="Set password"
+    placeholder="Password"
   />
   {#if strength}
     <p
@@ -74,27 +73,22 @@
       placeholder="Confirm password"
     />
     {#if password.length < 8}
-      <span class="confirm-password--meta"
-        >Password must be at least 8 characters</span
-      >
+      <span class="confirm-password--meta">At least 8 characters</span>
     {:else if confirmPassword && password !== confirmPassword}
       <span
         class="confirm-password--meta
-						confirm-password--meta--error">Passwords do not match</span
+						confirm-password--meta--error">Passwords don't match</span
       >
     {/if}
   </div>
 </ToggleableCard>
 
-<Banner
-  title="Setting a password for your web wallet is recommended."
-  variant="info"
->
-  <p>
-    Without a password, you need to enter your full recovery phrase each time
-    you open the wallet, which could expose it.
-  </p>
-</Banner>
+{#if !isToggled}
+  <Banner
+    title="Without a password you type your recovery phrase at every unlock, which exposes it."
+    variant="info"
+  />
+{/if}
 
 <style lang="postcss">
   /* Under a field, as the wallet's hints are. */

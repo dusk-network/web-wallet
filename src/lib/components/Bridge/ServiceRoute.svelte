@@ -311,7 +311,7 @@
             ? { label: "Not enough DUSK", ready: false }
             : !isGasValid
               ? { label: "Check the network fee", ready: false }
-              : { label: "Review bridge", ready: true };
+              : { label: "Review", ready: true };
   // A review needs the address it pays: without a wallet, back to the form.
   $: if (step === "review" && !isConnected) {
     leaveReview();
@@ -357,7 +357,7 @@
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
     <div class="swap-foot">
-      <span id="service-balance-label">Public balance:</span>
+      <span id="service-balance-label">Public</span>
       <span class="swap-foot__value">
         <span id="service-balance"
           ><BalanceValue
@@ -399,11 +399,11 @@
       <p class="swap-error" role="alert">{problem}</p>
     {:else if leavesTooLittle}
       <p class="swap-error" role="status">
-        That leaves too little {keepForLater.why}.
+        Too little left {keepForLater.why}.
       </p>
     {:else if keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - total === keepForLater.lux}
       <p class="swap-note">
-        Max keeps {hideBalances
+        Max leaves {hideBalances
           ? "the fee"
           : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
         {keepForLater.why}.
@@ -459,18 +459,17 @@
     </div>
     {#if isConnected && address}
       <p class="swap-recipient">
-        to your {chainName} address
-        <b title={address}>{shortenAddress(address)}</b>
+        To <b title={address}>{shortenAddress(address)}</b>
         ·
         <button
-          aria-label={`${chainName} address ${address}: disconnect or change wallet`}
+          aria-label={`${chainName} account ${address}: disconnect or change wallet`}
           class="swap-link"
           on:click={() => modal.open()}
           type="button">Change</button
         >
       </p>
     {:else}
-      <p class="swap-recipient">to the address of the EVM wallet you connect</p>
+      <p class="swap-recipient">To the EVM wallet you connect</p>
     {/if}
   </div>
 
@@ -563,28 +562,31 @@
       <div>
         <dt>From</dt>
         <dd>
-          <span>Your public account on Dusk</span>
-          <FullAddress address={unshieldedAddress} />
+          <!-- Your own: shortened. Where it pays out is in full. -->
+          <span>Public account</span>
+          <span class="route-review__address" title={unshieldedAddress}
+            >{shortenAddress(unshieldedAddress)}</span
+          >
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
-          <span>Your {chainName} address</span>
+          <span>Your {chainName} account</span>
           <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
         <dt>Through</dt>
-        <dd>The bridge's account, which pays your address</dd>
+        <dd>The bridge's account, which pays you</dd>
       </div>
     </dl>
     <ReviewAmount
-      label="Network fee (at most)"
+      label="Fee up to"
       value={formatFee(fee, language, { max: true })}
     />
     <ReviewAmount
-      label="Total (at most)"
+      label="Total up to"
       value={isAmountMasked
         ? BALANCE_MASK
         : formatTotal(total, unshieldedBalance, language)}
@@ -603,7 +605,7 @@
       </dl>
       <p class="route-review__public">
         <b>Public on Dusk and {chainName}, and linked:</b> your public account,
-        your {chainName} address and the amount.
+        your {chainName} account and the amount.
       </p>
     </details>
     <div class="route-review__actions">
@@ -618,7 +620,7 @@
         disabled={arrivesLux === 0n || !isConnected || !isGasValid}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}
-        text="Send"
+        text={`Bridge ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
         variant="primary"
       />
     </div>
@@ -731,6 +733,13 @@
     margin: 0;
     color: var(--calm-muted);
     font-size: 0.875rem;
+  }
+
+  .route-review__address {
+    color: var(--calm-muted);
+    font-family: var(--mono-font-family, monospace);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
   }
 
   .route-review__ends {

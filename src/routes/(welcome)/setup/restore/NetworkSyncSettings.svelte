@@ -3,13 +3,12 @@
 <script>
   import { mdiCubeOutline } from "@mdi/js";
 
-  import { Textbox } from "$lib/dusk/components";
+  import { Card, Textbox } from "$lib/dusk/components";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { makeClassName } from "$lib/dusk/string";
 
-  import { AppAnchor, Banner } from "$lib/components";
-  import { DOCUMENTATION_LINKS } from "$lib/constants";
-  import { IconHeadingCard, ToggleableCard } from "$lib/containers/Cards";
+  import { Banner } from "$lib/components";
+  import { ToggleableCard } from "$lib/containers/Cards";
 
   import { networkStore, settingsStore } from "$lib/stores";
 
@@ -71,11 +70,8 @@
 
 <!-- As on a new wallet: the block it starts at is for experts, under
   Advanced, open while one is chosen. -->
-<IconHeadingCard icons={[mdiCubeOutline]} heading="Ready to sync">
-  <p>
-    Next, the wallet syncs with the network to find your balance and past
-    payments.
-  </p>
+<Card>
+  <p>Finds your balance and past payments.</p>
 
   <details class="network-sync__advanced" open={isToggled}>
     <summary>Advanced</summary>
@@ -83,14 +79,14 @@
       <ToggleableCard
         bind:isToggled
         iconPath={mdiCubeOutline}
-        heading="Block height"
+        heading="Start from block"
         onSurface
         on:toggle={clearTyped}
       >
         <Textbox
           aria-describedby="block-height-hint"
           aria-invalid={isWrong}
-          aria-label="Block height"
+          aria-label="Start from block"
           autocomplete="off"
           bind:value={typed}
           className={makeClassName({
@@ -102,40 +98,26 @@
         />
 
         <span class="block-height-meta" id="block-height-hint"
-          >The block your wallet was made at, or earlier. Not sure? Leave this
-          off.</span
+          >Your wallet's first block, or earlier. Too late hides payments. Not
+          sure? Leave it off.</span
         >
 
         {#if currentNetworkBlock}
           <span class="block-height-meta"
-            >Network block height: {numberFormatter(currentNetworkBlock)}</span
+            >Network is at {numberFormatter(currentNetworkBlock)}</span
           >
         {/if}
 
         {#if errorFetchingCurrentNetworkBlock}
           <Banner
-            title="Unable to fetch current network block height."
+            title="Couldn't read the network's latest block."
             variant="error"
-          >
-            <p>Please try again later.</p>
-          </Banner>
+          />
         {/if}
       </ToggleableCard>
-
-      <Banner title="Syncing from a later block is faster." variant="info">
-        <p>
-          A wrong block can lead to a wrong balance or missing transactions.
-          Find out more in our <AppAnchor
-            className="text-link"
-            href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
-            rel="noopener noreferrer"
-            target="_blank">documentation</AppAnchor
-          >.
-        </p>
-      </Banner>
     </div>
   </details>
-</IconHeadingCard>
+</Card>
 
 <style lang="postcss">
   .network-sync__advanced {

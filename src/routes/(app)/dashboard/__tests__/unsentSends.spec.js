@@ -347,15 +347,15 @@ describe("A send that never went out", () => {
     const after = await openPage();
     const { container, findByText, getByRole } = after.render(after.Home);
 
-    await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+    await findByText("Not sent: 0.01 DUSK to your Profile 2");
 
     expect(noticesOf(container)).toStrictEqual([
-      `Not sent: 0.01 DUSK to your Profile 2. tab dropped 1 · ${formatTime(at, { locale: "en" })} Nothing left your wallet. Send it now Don't send`,
+      `Not sent: 0.01 DUSK to your Profile 2 tab dropped 1 · ${formatTime(at, { locale: "en" })} Send now Don't send`,
     ]);
     expect(app.transfer).not.toHaveBeenCalled();
 
-    // Send it now: Send's review, filled in with it, to send it from there.
-    await after.fireEvent.click(getByRole("button", { name: "Send it now" }));
+    // Send now: Send's review, filled in with it, to send it from there.
+    await after.fireEvent.click(getByRole("button", { name: "Send now" }));
 
     expect(app.goto).toHaveBeenCalledWith(
       expect.stringMatching(/\/dashboard\/send$/),
@@ -377,7 +377,7 @@ describe("A send that never went out", () => {
     // Taken by Send, and left there before it's sent, as a call comes: said
     // still, here and after another reload.
     expect(noticesOf(container)).toStrictEqual([
-      `Not sent: 0.01 DUSK to your Profile 2. tab dropped 1 · ${formatTime(at, { locale: "en" })} Nothing left your wallet. Send it now Don't send`,
+      `Not sent: 0.01 DUSK to your Profile 2 tab dropped 1 · ${formatTime(at, { locale: "en" })} Send now Don't send`,
     ]);
 
     const later = await openPage();
@@ -386,7 +386,7 @@ describe("A send that never went out", () => {
     await vi.waitFor(() =>
       expect(noticesOf(laterPage)).toStrictEqual([
         expect.stringMatching(
-          /^Not sent: 0\.01 DUSK to your Profile 2\. tab dropped 1 /,
+          /^Not sent: 0\.01 DUSK to your Profile 2 tab dropped 1 /,
         ),
       ]),
     );
@@ -394,7 +394,7 @@ describe("A send that never went out", () => {
   });
 
   // Chen's, on two phones, the tab dropped: the send waiting on phone A
-  // was said "Not sent … Nothing left your wallet. Send it now", though
+  // was said "Not sent … Send now", though
   // she'd paid the same from phone B meanwhile, which A's Activity didn't
   // list yet. Held as its account sent something else, or once its
   // account's nonce moved on since it was sent, it says so after a reload.
@@ -425,13 +425,13 @@ describe("A send that never went out", () => {
     const after = await openPage();
     const { container, findAllByText, getAllByRole } = after.render(after.Home);
 
-    await findAllByText("Not sent: 0.01 DUSK to your Profile 2.");
+    await findAllByText("Not sent: 0.01 DUSK to your Profile 2");
     await vi.waitFor(() => expect(noticesOf(container)).toHaveLength(3));
 
     // Two sent the same moment may come back in either order.
     expect(noticesOf(container)).toEqual([
       expect.stringMatching(
-        /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 5 · .+ Your account sent something else while this waited\. Send it too Don't send$/,
+        /^Not sent: 0\.01 DUSK to your Profile 2 night shift 5 · .+ Meanwhile your account sent something else\. Send it too Don't send$/,
       ),
       expect.any(String),
       expect.any(String),
@@ -440,10 +440,10 @@ describe("A send that never went out", () => {
       expect.arrayContaining([
         // What its account sent meanwhile is read first, its answers off.
         expect.stringMatching(
-          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 6 · .+ Checking what your account sent… Send it too Don't send$/,
+          /^Not sent: 0\.01 DUSK to your Profile 2 night shift 6 · .+ Checking what your account sent… Send it too Don't send$/,
         ),
         expect.stringMatching(
-          /^Not sent: 0\.01 DUSK to your Profile 2\. night shift 7 · .+ Nothing left your wallet\. Send it now Don't send$/,
+          /^Not sent: 0\.01 DUSK to your Profile 2 night shift 7 · .+ Send now Don't send$/,
         ),
       ]),
     );
@@ -476,7 +476,7 @@ describe("A send that never went out", () => {
     const after = await openPage();
     const { container, findByText, getByRole } = after.render(after.Home);
 
-    await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+    await findByText("Not sent: 0.01 DUSK to your Profile 2");
     await after.fireEvent.click(getByRole("button", { name: "Don't send" }));
 
     expect(noticesOf(container)).toStrictEqual([]);
@@ -531,7 +531,7 @@ describe("A send that never went out", () => {
     // The other tab goes before the other went out: said here now.
     otherTabGoes.resolve(undefined);
 
-    await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+    await findByText("Not sent: 0.01 DUSK to your Profile 2");
 
     expect(noticesOf(container)).toHaveLength(1);
     expect(noticesOf(container)[0]).toContain("its tab goes");
@@ -624,11 +624,11 @@ describe("A send that never went out", () => {
     const { container, findByText, query } = await reopenWith(null);
 
     try {
-      await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent: 0.01 DUSK to your Profile 2");
 
       expect(noticesOf(container)).toHaveLength(1);
       expect(noticesOf(container)[0]).toContain("built only");
-      expect(noticesOf(container)[0]).toContain("Nothing left your wallet.");
+      expect(noticesOf(container)[0]).toMatch(/^Not sent: /);
       // Nothing to look up: it never had a transaction to the node.
       expect(query).not.toHaveBeenCalled();
     } finally {
@@ -658,7 +658,7 @@ describe("A send that never went out", () => {
     try {
       const notConfirmed = [
         expect.stringMatching(
-          /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. nonce used · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/,
+          /^Not confirmed: 0\.01 DUSK to your Profile 2 nonce used · .+ It may have gone out\. Check Activity before sending again\. Open Activity Done$/,
         ),
       ];
 
@@ -793,7 +793,7 @@ describe("A send that never went out", () => {
       await reopenWithNonces(() => listed);
 
     try {
-      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
 
       // Its block final, the archive lists it: said as not sent once its
       // nonce is looked up again, a minute on, and kept so. Another
@@ -804,7 +804,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent: 0\.01 DUSK to your Profile 2\. nonce taken · .+ Your account sent something else while this waited\. Send it too Don't send$/,
+            /^Not sent: 0\.01 DUSK to your Profile 2 nonce taken · .+ Meanwhile your account sent something else\. Send it too Don't send$/,
           ),
         ]),
       );
@@ -844,7 +844,7 @@ describe("A send that never went out", () => {
   });
 
   /**
-   * Another tab sends a kept send again ("Send it now"), as another
+   * Another tab sends a kept send again ("Send now"), as another
    * transaction, under its ID, and closes once it's handed over, nothing
    * broadcast: what's kept of it, as that tab writes it.
    *
@@ -880,13 +880,13 @@ describe("A send that never went out", () => {
     ]);
 
     try {
-      await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent: 0.01 DUSK to your Profile 2");
       await sentAgainElsewhere(again);
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. sent now · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/,
+            /^Not confirmed: 0\.01 DUSK to your Profile 2 sent now · .+ It may have gone out\. Check Activity before sending again\. Open Activity Done$/,
           ),
         ]),
       );
@@ -964,7 +964,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. sent again · .+ It may have reached the network\./,
+            /^Not confirmed: 0\.01 DUSK to your Profile 2 sent again · .+ It may have gone out\./,
           ),
         ]),
       );
@@ -994,7 +994,7 @@ describe("A send that never went out", () => {
       );
 
       try {
-        await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+        await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
         await vi.waitFor(() =>
           expect(query).toHaveBeenCalledWith(
             expect.stringMatching(/^t0: tx\(hash:/),
@@ -1026,17 +1026,17 @@ describe("A send that never went out", () => {
       await reopenWith(null);
 
     try {
-      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
 
       expect(noticesOf(container)).toStrictEqual([
         expect.stringMatching(
-          /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. kept only · .+ It may have reached the network\. Check History before you send it again\. Open History Done$/,
+          /^Not confirmed: 0\.01 DUSK to your Profile 2 kept only · .+ It may have gone out\. Check Activity before sending again\. Open Activity Done$/,
         ),
       ]);
       expect(container).not.toHaveTextContent("Not sent");
       expect(container).not.toHaveTextContent("Nothing left your wallet");
       expect(container).not.toHaveTextContent("If it still arrives");
-      expect(getByRole("link", { name: "Open History" })).toHaveAttribute(
+      expect(getByRole("link", { name: "Open Activity" })).toHaveAttribute(
         "href",
         `/some-base-path/dashboard/transactions?tx=${sentTx.hash}`,
       );
@@ -1147,7 +1147,7 @@ describe("A send that never went out", () => {
 
   // Chen's, on hospital Wi-Fi: the node never got it, and it was "Not
   // confirmed yet" for good, with nothing to tap.
-  it("is said as not sent yet where its page died once it was kept as handed over, and the node doesn't have it, in a block or its mempool, its nonce still free: nothing left the wallet, History doesn't show it, and Send it now sends the very same transaction again, once", async () => {
+  it("is said as not sent yet where its page died once it was kept as handed over, and the node doesn't have it, in a block or its mempool, its nonce still free: nothing left the wallet, History doesn't show it, and Send now sends the very same transaction again, once", async () => {
     const dies = Promise.withResolvers();
     const owner = `testnet::${from}`;
 
@@ -1165,11 +1165,11 @@ describe("A send that never went out", () => {
       await reopenWithNode({ nonce: () => 106n, queued: () => isQueued });
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
 
       expect(noticesOf(container)).toStrictEqual([
         expect.stringMatching(
-          /^Not sent yet: 0\.01 DUSK to your Profile 2\. not known · .+ If it still arrives, it will show here\. Send it now Don't send$/,
+          /^Not sent yet: 0\.01 DUSK to your Profile 2 not known · .+ It may still arrive\. Send now Don't send$/,
         ),
       ]);
       expect(container).not.toHaveTextContent("Not confirmed");
@@ -1181,12 +1181,12 @@ describe("A send that never went out", () => {
       );
       expect(app.sendAgain).not.toHaveBeenCalled();
 
-      // Send it now: its very bytes, hash and nonce, again; the node has it
+      // Send now: its very bytes, hash and nonce, again; the node has it
       // then, and it's on its way.
       app.sendAgain.mockImplementation(async () => {
         isQueued = true;
       });
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
       expect(app.sendAgain).toHaveBeenCalledExactlyOnceWith({
@@ -1227,8 +1227,8 @@ describe("A send that never went out", () => {
       await reopenWithNode({ nonce: () => 106n, queued: () => false });
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() => expect(app.sendAgain).toHaveBeenCalledOnce());
       await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
@@ -1245,7 +1245,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent yet: 0\.01 DUSK to your Profile 2\. taken again · .+ If it still arrives, it will show here\. Send it now Don't send$/,
+            /^Not sent yet: 0\.01 DUSK to your Profile 2 taken again · .+ It may still arrive\. Send now Don't send$/,
           ),
         ]),
       );
@@ -1266,28 +1266,28 @@ describe("A send that never went out", () => {
       await reopenWithNode({ nonce: () => 106n, queued: () => false });
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
 
       app.sendAgain.mockRejectedValueOnce(
         new Error("Tx not accepted: value spent larger than account holds"),
       );
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent yet: .+ The network refused it\. If it still arrives, it will show here\. Send it now Don't send$/,
+            /^Not sent yet: .+ The network refused it\. It may still arrive\. Send now Don't send$/,
           ),
         ]),
       );
 
       app.sendAgain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent yet: .+ Couldn't reach the network\. If it still arrives, it will show here\. Send it now Don't send$/,
+            /^Not sent yet: .+ Couldn't reach the network\. It may still arrive\. Send now Don't send$/,
           ),
         ]),
       );
@@ -1323,7 +1323,7 @@ describe("A send that never went out", () => {
     const { lookAgainNow } = await import("$lib/transactions/handedOverSends");
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
       // Toasts stay as long as the app keeps them.
       page.toasts.toastTimer.set(5_000);
       await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
@@ -1331,7 +1331,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
       await vi.waitFor(() =>
         expect(toastsOf(page)).toStrictEqual([
-          "Not sent yet: 0.01 DUSK to your Profile 2. If it still arrives, it will show here.",
+          "Not sent yet: 0.01 DUSK to your Profile 2. It may still arrive.",
         ]),
       );
       // Kept, its bytes forgotten, and History keeps it unseen.
@@ -1356,7 +1356,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Sent after you chose not to send: 0\.01 DUSK to your Profile 2\. not wanted · .+ In block 4,850,170\.$/,
+            /^Sent after you chose not to send: 0\.01 DUSK to your Profile 2 not wanted · .+ In block 4,850,170\.$/,
           ),
         ]),
       );
@@ -1459,7 +1459,7 @@ describe("A send that never went out", () => {
       });
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
       await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
 
       await vi.waitFor(async () =>
@@ -1487,7 +1487,7 @@ describe("A send that never went out", () => {
     expect(app.sendAgain).not.toHaveBeenCalled();
   });
 
-  it("is never sent again in another tab once Don't send was chosen in one, though that tab still shows Send it now", async () => {
+  it("is never sent again in another tab once Don't send was chosen in one, though that tab still shows Send now", async () => {
     const dies = Promise.withResolvers();
 
     await sendThrough(await openPage(), "two tabs", dies.promise, "kept");
@@ -1499,7 +1499,7 @@ describe("A send that never went out", () => {
     });
 
     try {
-      await one.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await one.findByText("Not sent yet: 0.01 DUSK to your Profile 2");
 
       // Another tab, showing it as not sent yet too.
       const other = await openPage();
@@ -1507,7 +1507,7 @@ describe("A send that never went out", () => {
       const { container } = other.render(other.Home);
       const otherTab = other.within(container);
 
-      await otherTab.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await otherTab.findByText("Not sent yet: 0.01 DUSK to your Profile 2");
 
       // Don't send in the first: the other hasn't heard of it yet.
       await one.page.fireEvent.click(
@@ -1524,7 +1524,7 @@ describe("A send that never went out", () => {
       );
 
       await other.fireEvent.click(
-        otherTab.getByRole("button", { name: "Send it now" }),
+        otherTab.getByRole("button", { name: "Send now" }),
       );
 
       await vi.waitFor(() =>
@@ -1540,7 +1540,7 @@ describe("A send that never went out", () => {
 
   // Astra's: sent again, its answer lost, History still had nothing of it
   // while it might go out.
-  it("is said as not confirmed yet in History too where Send it now's answer gets lost", async () => {
+  it("is said as not confirmed yet in History too where Send now's answer gets lost", async () => {
     const dies = Promise.withResolvers();
     const owner = `testnet::${from}`;
 
@@ -1567,7 +1567,7 @@ describe("A send that never went out", () => {
     const { outcomeUnknown } = await import("$lib/transactions/outcomeUnknown");
 
     try {
-      await findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not sent yet: 0.01 DUSK to your Profile 2");
       await vi.waitFor(async () =>
         expect(await listLocalTransactions(owner)).toStrictEqual([
           expect.objectContaining({ status: "removed" }),
@@ -1580,12 +1580,12 @@ describe("A send that never went out", () => {
 
         throw outcomeUnknown(new TypeError("Failed to fetch"), sentTx.hash);
       });
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not confirmed yet: 0\.01 DUSK to your Profile 2\. lost again · /,
+            /^Not confirmed: 0\.01 DUSK to your Profile 2 lost again · /,
           ),
         ]),
       );
@@ -1651,14 +1651,14 @@ describe("A send that never went out", () => {
     });
 
     try {
-      await later.findByText("Not sent yet: 0.01 DUSK to your Profile 2.");
+      await later.findByText("Not sent yet: 0.01 DUSK to your Profile 2");
 
       expect(noticesOf(later.container)).toStrictEqual([
         expect.stringMatching(
-          /^Not sent yet: 0\.01 DUSK to your Profile 2\. cancel race 4 · .+ If it still arrives, it will show here\. Send it now Don't send$/,
+          /^Not sent yet: 0\.01 DUSK to your Profile 2 cancel race 4 · .+ It may still arrive\. Send now Don't send$/,
         ),
       ]);
-      expect(later.getByRole("button", { name: "Send it now" })).toBeEnabled();
+      expect(later.getByRole("button", { name: "Send now" })).toBeEnabled();
     } finally {
       later.restore();
     }
@@ -1767,20 +1767,20 @@ describe("A send that never went out", () => {
       await findByText("Not sent yet");
 
       expect(resultOf(container)).toBe(
-        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here.",
+        "Not sent yet 0.01 DUSK to your Profile 2 It may still arrive.",
       );
       // History and the explorer have nothing of it.
-      expect(queryByRole("link", { name: "See in History" })).toBeNull();
+      expect(queryByRole("link", { name: "See in Activity" })).toBeNull();
       expect(queryByRole("link", { name: "View in Dusk explorer" })).toBeNull();
 
       await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
 
       // It may still arrive: said so, and kept, never to send again.
       await vi.waitFor(() =>
-        expect(queryByRole("button", { name: "Send it now" })).toBeNull(),
+        expect(queryByRole("button", { name: "Send now" })).toBeNull(),
       );
       expect(resultOf(container)).toBe(
-        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here.",
+        "Not sent yet 0.01 DUSK to your Profile 2 It may still arrive.",
       );
       await vi.waitFor(async () =>
         expect(await keptNow()).toStrictEqual([
@@ -1856,7 +1856,7 @@ describe("A send that never went out", () => {
     }
   }, 30_000);
 
-  it("is sent again as it is from its own screen with Send it now, where the node doesn't have it: on its way once the node has it", async () => {
+  it("is sent again as it is from its own screen with Send now, where the node doesn't have it: on its way once the node has it", async () => {
     let isQueued = false;
     const { container, findByText, getByRole, page, restore } =
       await loseAnswerOnScreen("sent from its screen", {
@@ -1870,11 +1870,11 @@ describe("A send that never went out", () => {
       app.sendAgain.mockImplementation(async () => {
         isQueued = true;
       });
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() =>
         expect(resultOf(container)).toBe(
-          "Sending… 0.01 DUSK to your Profile 2 This usually takes under a minute.",
+          "Sending… 0.01 DUSK to your Profile 2 Usually under a minute.",
         ),
       );
       await vi.waitFor(() => expect(app.sendAgain).toHaveBeenCalled());
@@ -1938,7 +1938,7 @@ describe("A send that never went out", () => {
     });
 
     try {
-      await used.findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await used.findByText("Not confirmed: 0.01 DUSK to your Profile 2");
 
       expect(used.container).not.toHaveTextContent("Not sent yet");
       expect(used.container).not.toHaveTextContent("Nothing left your wallet");
@@ -1994,7 +1994,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, no answer · .+ In block 4,850,155\.$/,
+            /^Sent: 0\.01 DUSK to your Profile 2 broadcast, no answer · .+ In block 4,850,155\.$/,
           ),
         ]),
       );
@@ -2056,7 +2056,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Sent: 0\.01 DUSK to your Profile 2\. sync hangs · .+ In block 4,850,158\.$/,
+            /^Sent: 0\.01 DUSK to your Profile 2 sync hangs · .+ In block 4,850,158\.$/,
           ),
         ]),
       );
@@ -2086,7 +2086,7 @@ describe("A send that never went out", () => {
     const { container, findByText, page, query } = await reopenWith(null);
 
     try {
-      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
 
       expect(container).not.toHaveTextContent("Not sent");
 
@@ -2099,7 +2099,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Sent: 0\.01 DUSK to your Profile 2\. broadcast, not in a block yet · .+ In block 4,850,156\.$/,
+            /^Sent: 0\.01 DUSK to your Profile 2 broadcast, not in a block yet · .+ In block 4,850,156\.$/,
           ),
         ]),
       );
@@ -2129,7 +2129,7 @@ describe("A send that never went out", () => {
     const { container, findByText, query } = await reopenWith(null);
 
     try {
-      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
 
       // Past its first minutes: looked up once a minute from then on.
       await vi.advanceTimersByTimeAsync(200_000);
@@ -2186,7 +2186,7 @@ describe("A send that never went out", () => {
     const { setNetworkReach } = await import("$lib/stores/networkReach");
 
     try {
-      await findByText("Not confirmed yet: 0.01 DUSK to your Profile 2.");
+      await findByText("Not confirmed: 0.01 DUSK to your Profile 2");
       setNetworkReach("offline");
 
       // Past its first minutes: looked up once a minute from then on.
@@ -2199,7 +2199,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent yet: 0\.01 DUSK to your Profile 2\. back online · .+ If it still arrives, it will show here\. Send it now Don't send$/,
+            /^Not sent yet: 0\.01 DUSK to your Profile 2 back online · .+ It may still arrive\. Send now Don't send$/,
           ),
         ]),
       );
@@ -2274,7 +2274,7 @@ describe("A send that never went out", () => {
       const { container, findByText, query } = await reopenWith(null);
 
       try {
-        await findByText("Not sent: 0.01 DUSK to your Profile 2.");
+        await findByText("Not sent: 0.01 DUSK to your Profile 2");
 
         expect(noticesOf(container)[0]).toContain("storage full");
       } finally {
@@ -2390,8 +2390,8 @@ describe("A send that never went out", () => {
     expect(
       noticesOf(container).map((notice) => notice?.split(" · ")[0]),
     ).toStrictEqual([
-      "Not sent: 0.01 DUSK to your Profile 2. screen left",
-      "Not sent: 0.01 DUSK to your Profile 2. locked",
+      "Not sent: 0.01 DUSK to your Profile 2 screen left",
+      "Not sent: 0.01 DUSK to your Profile 2 locked",
     ]);
   });
 
@@ -2437,7 +2437,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent: 0\.01 DUSK to your Profile 2\. left before · .+ Nothing left your wallet\. Send it now Don't send$/,
+            /^Not sent: 0\.01 DUSK to your Profile 2 left before · .+ Send now Don't send$/,
           ),
         ]),
       );
@@ -2496,7 +2496,7 @@ describe("A send that never went out", () => {
       await vi.waitFor(() =>
         expect(noticesOf(container)).toStrictEqual([
           expect.stringMatching(
-            /^Not sent: 0\.01 DUSK to your Profile 2\. kept there · /,
+            /^Not sent: 0\.01 DUSK to your Profile 2 kept there · /,
           ),
         ]),
       );

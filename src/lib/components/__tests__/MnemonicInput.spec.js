@@ -54,7 +54,7 @@ describe("MnemonicInput", () => {
     expect(getAllByRole("combobox")).toHaveLength(12);
     expect(
       getByRole("group", { name: "Recovery phrase" }),
-    ).toHaveAccessibleDescription("Paste the whole phrase into any box.");
+    ).toHaveAccessibleDescription("Paste all words into any box.");
 
     await pasteInto(getByLabelText("Word 5"), `  ${TWELVE.toUpperCase()}\n`);
 
@@ -77,7 +77,7 @@ describe("MnemonicInput", () => {
     await pasteInto(getByLabelText("Word 1"), TWELVE.replace("worth", "wurth"));
 
     expect(getByRole("alert")).toHaveTextContent(
-      "Word 7 isn't a recovery word. Check its spelling.",
+      "Word 7 is unknown. Check its spelling.",
     );
     expect(getByLabelText("Word 7")).toHaveAttribute("aria-invalid", "true");
 
@@ -101,7 +101,7 @@ describe("MnemonicInput", () => {
     );
 
     expect(getByRole("alert")).toHaveTextContent(
-      "These words aren't a valid recovery phrase. Check each word.",
+      "Not a valid recovery phrase. Check each word.",
     );
   });
 
@@ -326,7 +326,7 @@ describe("MnemonicInput", () => {
 
     expect(queryByRole("listbox")).toBeNull();
     expect(box(3)).toHaveAttribute("aria-invalid", "true");
-    expect(box(3)).toHaveAccessibleDescription("Not a recovery word");
+    expect(box(3)).toHaveAccessibleDescription("Unknown word");
 
     // A space goes on, the letters as typed, none taken: as a key, and as
     // text, as a phone's keyboard sends it.
@@ -342,7 +342,7 @@ describe("MnemonicInput", () => {
     expect(valueOf(box(5))).toBe("lib");
     expect(document.activeElement).toBe(box(6));
     expect(queryByRole("listbox")).toBeNull();
-    expect(box(5)).toHaveAccessibleDescription("Not a recovery word");
+    expect(box(5)).toHaveAccessibleDescription("Unknown word");
 
     // Nothing suggested where a phrase was pasted: its last box holds "art".
     await pasteInto(box(5), TWENTY_FOUR);
@@ -364,15 +364,15 @@ describe("MnemonicInput", () => {
     await typeInto(first, "zx");
 
     expect(first).toHaveAttribute("aria-invalid", "true");
-    expect(first).toHaveAccessibleDescription("Not a recovery word");
-    expect(getByText("Not a recovery word")).toBeInTheDocument();
+    expect(first).toHaveAccessibleDescription("Unknown word");
+    expect(getByText("Unknown word")).toBeInTheDocument();
     // In its box, while it's typed: the sentence waits for the words' end.
     expect(queryByRole("alert")).toBeNull();
     expect(document.activeElement).toBe(first);
     // And said to screen readers as it comes.
     await vi.waitFor(() =>
       expect(document.querySelector("[aria-live='polite']")).toHaveTextContent(
-        "Not a recovery word",
+        "Unknown word",
       ),
     );
 
@@ -382,7 +382,7 @@ describe("MnemonicInput", () => {
     expect(first).not.toHaveAttribute("aria-invalid");
     expect(
       within(getByRole("group", { name: "Recovery phrase" })).queryByText(
-        "Not a recovery word",
+        "Unknown word",
       ),
     ).toBeNull();
   });

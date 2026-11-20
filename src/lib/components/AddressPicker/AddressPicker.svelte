@@ -467,9 +467,9 @@
     {#if account}
       <CopyButton
         className="address-picker__copy-button"
-        name="public address"
+        name="public account"
         text="Public"
-        title="Copy public address"
+        title="Copy public account"
         value={account}
       />
     {/if}
@@ -508,7 +508,9 @@
         <span class="address-picker__profile-header">
           {profileNameAt(profileNames, profiles.indexOf(profile))}
           {#if profile === currentProfile}
-            <span class="address-picker__current-indicator">(Current)</span>
+            <span aria-hidden="true" class="address-picker__current-indicator"
+              >✓</span
+            >
           {/if}
         </span>
         {#await getName(account)}

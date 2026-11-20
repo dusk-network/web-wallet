@@ -76,17 +76,18 @@ describe("TransactionStatus", () => {
     );
     // Not sent, nor pending, twice over: sending, until a block has it.
     expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute.",
+      "Sending… Usually under a minute.",
     );
     expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
     expect(
-      getByRole("button", { name: "Copy transaction hash" }),
+      getByRole("button", { name: "Copy transaction id" }),
     ).toBeInTheDocument();
-    expect(getByText("Network fee (at most)")).toBeInTheDocument();
+    expect(getByText("Fee up to")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
-    expect(
-      getByRole("link", { name: "View in Dusk explorer" }),
-    ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
+    expect(getByRole("link", { name: "View in explorer" })).toHaveAttribute(
+      "href",
+      `/explorer/transactions/transaction?id=${hash}`,
+    );
   });
 
   it("should say while it's being sent that it waits for the network, offline or where the network doesn't answer, and that it has left the wallet", async () => {
@@ -98,19 +99,19 @@ describe("TransactionStatus", () => {
       await act(() => setNetworkReach("offline"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… You're offline. It has left your wallet. This updates once you're back online.",
+        "Sending… Offline. It has left your wallet. Updates once you're back online.",
       );
 
       await act(() => setNetworkReach("silent"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… The network isn't answering. It has left your wallet. This updates once it answers.",
+        "Sending… The network isn't answering. It has left your wallet. Updates once it answers.",
       );
 
       await act(() => setNetworkReach("answering"));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… This usually takes under a minute.",
+        "Sending… Usually under a minute.",
       );
     } finally {
       setNetworkReach("answering");
@@ -139,9 +140,9 @@ describe("TransactionStatus", () => {
     );
     expect(getByRole("status")).toHaveTextContent(/Sent at \d{1,2}:34:07/);
 
-    expect(getByText("Network fee")).toBeInTheDocument();
+    expect(getByText("Fee")).toBeInTheDocument();
     expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
-    expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
+    expect(queryByText("Fee up to")).not.toBeInTheDocument();
     expect(queryByText("Details")).not.toBeInTheDocument();
   });
 
@@ -315,7 +316,7 @@ describe("TransactionStatus", () => {
       const following = followNext();
       const { container, getByText } = render(TransactionStatus, baseProps);
 
-      expect(getByText("Network fee (at most)")).toBeInTheDocument();
+      expect(getByText("Fee up to")).toBeInTheDocument();
       expect(container.textContent).not.toMatch(/\d DUSK/);
 
       following.resolve({
@@ -324,9 +325,7 @@ describe("TransactionStatus", () => {
         fee: 1_854_795n,
         timestamp: 1,
       });
-      await vi.waitFor(() =>
-        expect(getByText("Network fee")).toBeInTheDocument(),
-      );
+      await vi.waitFor(() => expect(getByText("Fee")).toBeInTheDocument());
 
       expect(container.textContent).not.toContain("0.0019");
     } finally {
@@ -348,11 +347,11 @@ describe("TransactionStatus", () => {
     });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Failed It didn't go through. The network fee was charged.",
+        "Failed The fee was charged.",
       ),
     );
 
-    expect(getByText("Network fee")).toBeInTheDocument();
+    expect(getByText("Fee")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
     expect(getByText("Details")).toBeInTheDocument();
     expect(
@@ -367,7 +366,7 @@ describe("TransactionStatus", () => {
     following.resolve(null);
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer.",
+        "Sending… Still sending. Check the explorer.",
       ),
     );
 
@@ -377,7 +376,7 @@ describe("TransactionStatus", () => {
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
     expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute.",
+      "Sending… Usually under a minute.",
     );
     expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
@@ -428,7 +427,7 @@ describe("TransactionStatus", () => {
       await act(() => following.resolve(null));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here.",
+        "Not sent yet 0.01 DUSK to your Profile 2 It may still arrive.",
       );
 
       // A block took it: found, and kept no more.
@@ -463,7 +462,7 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer.",
+        "Sending… Still sending. Check the explorer.",
       ),
     );
   });

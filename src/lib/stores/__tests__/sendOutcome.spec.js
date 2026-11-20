@@ -171,8 +171,7 @@ describe("A send that fails", () => {
       icon: mdiCloseThick,
       links: [["Home", "/some-base-path/dashboard"]],
       offersRetry: true,
-      sentence:
-        "Couldn't reach the network. Nothing was sent and no fee was charged.",
+      sentence: "Couldn't reach the network. Not sent, no fee charged.",
     });
     cleanup();
 
@@ -183,8 +182,7 @@ describe("A send that fails", () => {
     expect(result).toMatchObject({
       heading: "Not confirmed",
       offersRetry: false,
-      sentence:
-        "It may have reached the network. Wait for it here before you send it again.",
+      sentence: "It may have gone out: wait here before sending it again.",
     });
     // Nothing on the screen says it failed, or to try again.
     expect(result.text).not.toMatch(/try again|transaction failed/i);
@@ -193,7 +191,7 @@ describe("A send that fails", () => {
     expect(follow.spy).toHaveBeenCalledWith(built.hash, expect.anything());
     expect(result.links).toStrictEqual([
       [
-        "See in History",
+        "See in Activity",
         `/some-base-path/dashboard/transactions?tx=${built.hash}`,
       ],
       ["Home", "/some-base-path/dashboard"],
@@ -254,7 +252,7 @@ describe("A send that fails", () => {
 
       const before = waiting();
 
-      expect(before.getByText("Processing transaction")).toBeInTheDocument();
+      expect(before.getByText("Sending")).toBeInTheDocument();
       expect(before.container).not.toHaveTextContent("isn't answering");
 
       await act(() => setNetworkReach("silent"));
@@ -266,7 +264,7 @@ describe("A send that fails", () => {
       await act(() => setNetworkReach("offline"));
 
       expect(before.getByRole("status")).toHaveTextContent(
-        "You're offline. Nothing has left your wallet yet.",
+        "Offline. Nothing has left your wallet yet.",
       );
       cleanup();
       // It's over before the next goes out, in its turn.
@@ -281,7 +279,7 @@ describe("A send that fails", () => {
 
       await vi.waitFor(() =>
         expect(after.getByRole("status")).toHaveTextContent(
-          "The network isn't answering. Your transaction may have reached it: wait for it here before you send it again.",
+          "The network isn't answering. It may have gone out: wait here before sending it again.",
         ),
       );
     } finally {
@@ -291,7 +289,7 @@ describe("A send that fails", () => {
     }
   });
 
-  it("calls off a send that waits, at once, says nothing was sent, offers Cancel and Home while the network doesn't answer, and never sends it, though the network answers after", async () => {
+  it("calls off a send that waits, at once, says nothing was sent, offers Don't send and Home while the network doesn't answer, and never sends it, though the network answers after", async () => {
     const { SendCancelledError, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const synced = Promise.withResolvers();
@@ -320,12 +318,14 @@ describe("A send that fails", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(rendered.getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet. It goes out once the network answers.",
+        "The network isn't answering. Nothing has left your wallet yet. Goes out once the network answers.",
       );
       expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
 
       // Cancel: it stops at once, with nothing sent.
-      await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
+      await act(() =>
+        rendered.getByRole("button", { name: "Don't send" }).click(),
+      );
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
@@ -375,7 +375,7 @@ describe("A send that fails", () => {
   /** The browser says it's back online. */
   const backOnline = () => act(() => window.dispatchEvent(new Event("online")));
 
-  it("waits for the network where a send that can still be called off couldn't reach it, offline, says so with Cancel and Home, and sends it once, once the network answers", async () => {
+  it("waits for the network where a send that can still be called off couldn't reach it, offline, says so with Don't send and Home, and sends it once, once the network answers", async () => {
     const { broadcastsAsked } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const asked = get(broadcastsAsked);
@@ -419,10 +419,10 @@ describe("A send that fails", () => {
 
       const waiting = () => {
         expect(rendered.getByRole("status")).toHaveTextContent(
-          "You're offline. Nothing has left your wallet yet. It goes out once the network answers.",
+          "Offline. Nothing has left your wallet yet. Goes out once the network answers.",
         );
         expect(
-          rendered.getByRole("button", { name: "Cancel" }),
+          rendered.getByRole("button", { name: "Don't send" }),
         ).toBeInTheDocument();
         expect(rendered.getByRole("link", { name: "Home" })).toHaveAttribute(
           "href",
@@ -702,11 +702,14 @@ describe("A send that fails", () => {
         to: 20_001n,
       });
       expect(rendered.getByRole("status")).toHaveTextContent(
-        "Your account sent something else while this waited.",
+        "Meanwhile your account sent something else.",
       );
-      expect(rendered.getByText("Not sent yet")).toBeInTheDocument();
+      expect(rendered.getByText("Held")).toBeInTheDocument();
       expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
-      expect(rendered.queryByRole("button", { name: "Cancel" })).toBeNull();
+      // The hold's own Don't send, beside Send it too: no other way off.
+      expect(
+        rendered.getAllByRole("button", { name: "Don't send" }),
+      ).toHaveLength(1);
 
       // It waits for the person, however long.
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1040,7 +1043,9 @@ describe("A send that fails", () => {
       const { gate, rendered, sending } = await gatedTransfer();
 
       await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
-      await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
+      await act(() =>
+        rendered.getByRole("button", { name: "Don't send" }).click(),
+      );
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
@@ -1098,7 +1103,7 @@ describe("A send that fails", () => {
     await vi.waitFor(() =>
       expect(shown(second.rendered.container)).toMatchObject({
         heading: "Failed",
-        sentence: "It didn't go through. The network fee was charged.",
+        sentence: "The fee was charged.",
       }),
     );
   });
@@ -1112,7 +1117,7 @@ describe("A send that fails", () => {
     );
 
     expect(await shieldResult()).toMatchObject({
-      heading: "Transaction failed",
+      heading: "Not sent",
       icon: mdiCloseThick,
       links: [["Home", "/some-base-path/dashboard"]],
       offersRetry: true,
@@ -1126,8 +1131,7 @@ describe("A send that fails", () => {
       heading: "Not confirmed",
       links: [["Home", "/some-base-path/dashboard"]],
       offersRetry: false,
-      sentence:
-        "It may have reached the network. Wait for it here before you send it again.",
+      sentence: "It may have gone out: wait here before sending it again.",
     });
   });
 
@@ -1141,8 +1145,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       heading: "Not confirmed",
       offersRetry: false,
-      sentence:
-        "It may have reached the network. Wait for it here before you send it again.",
+      sentence: "It may have gone out: wait here before sending it again.",
     });
   });
 
@@ -1173,7 +1176,7 @@ describe("A send that fails", () => {
         heading: "Not confirmed",
         offersRetry: false,
         sentence:
-          "It isn't in a block yet. See its status in the explorer before you send it again.",
+          "Not in a block yet. Check the explorer before sending it again.",
       }),
     );
 

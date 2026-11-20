@@ -362,7 +362,7 @@
         stillHere,
       });
 
-      note = "The approval is revoked.";
+      note = "The allowance is revoked.";
       leaveRevokeReview();
     } catch (error) {
       const isOtherAccount =
@@ -371,8 +371,8 @@
       note = isOtherAccount
         ? ACCOUNT_CHANGED_NOTE
         : isDeclinedInWallet(error)
-          ? "You cancelled the revoke in your wallet. The approval stands."
-          : "The approval wasn't revoked. Check your EVM wallet's activity before you try again.";
+          ? "You cancelled the revoke in your wallet. The allowance stands."
+          : "The allowance wasn't revoked. Check your EVM wallet's activity before trying again.";
 
       if (isOtherAccount) {
         leaveRevokeReview();
@@ -593,10 +593,10 @@
     if (isDeclinedInWallet(error)) {
       note =
         sending === "approving"
-          ? "You cancelled the approval in your wallet. Nothing moved."
+          ? "You cancelled the allowance in your wallet. Nothing moved."
           : approved
             ? "You cancelled the migration in your wallet. Nothing moved."
-            : "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved.";
+            : "You cancelled the migration in your wallet. The allowance went through, so next time it only asks to migrate. Nothing moved.";
       step = "review";
       readApproval();
 
@@ -622,18 +622,18 @@
       });
 
       return failedOnChain
-        ? { sentence: `${chainName} refused the approval, so nothing moved.` }
+        ? { sentence: `${chainName} refused the allowance, so nothing moved.` }
         : isApprovalShort
           ? {
               sentence:
-                "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
+                "Your allowance no longer covers this amount. Nothing was sent.",
             }
           : // The approval it sent went through, and paid its fee there.
             said.unreachable && sending === "migrating" && !approved
             ? {
                 ...said,
                 sentence:
-                  "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved.",
+                  "Couldn't reach the network. The allowance went through, so next time it only asks to migrate. Nothing moved.",
               }
             : said;
     }
@@ -744,8 +744,8 @@
   $: routeLine = [
     timeText,
     isCovered
-      ? `migrate, in your ${chainName} wallet`
-      : `approve, then migrate, in your ${chainName} wallet`,
+      ? "migrate, in your wallet"
+      : "allow spending, then migrate, in your wallet",
   ]
     .filter(Boolean)
     .join(" · ")
@@ -773,7 +773,7 @@
                   }
                 : amountLux > balanceLux
                   ? { label: `Not enough ${unit}`, ready: false }
-                  : { label: "Review migration", ready: true };
+                  : { label: "Review", ready: true };
   $: canType = route.running && isConnected && Boolean(balanceLux);
   // A review needs its wallet: without one, back to the form.
   $: if (step === "review" && !isConnected) {
@@ -805,7 +805,7 @@
   {/if}
   {#if hasOpenApproval && openApproval !== undefined}
     <div class="route-approval">
-      <p class="route-approval__title">Open approval</p>
+      <p class="route-approval__title">Open allowance</p>
       <p>
         {#if openApproval >= NO_LIMIT}
           The migration contract may still take any amount of {unit} from this wallet.
@@ -872,13 +872,13 @@
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
     <div class="swap-foot">
-      <span id="migration-balance-label">Balance on {chainName}:</span>
+      <span id="migration-balance-label">Balance</span>
       <span class="swap-foot__value">
         <span id="migration-balance">
           {#if !isConnected}
-            connect a wallet to see it
+            connect a wallet
           {:else if balanceLux === undefined}
-            {$isAskingToSwitch ? "checking" : "switch network to see it"}
+            {$isAskingToSwitch ? "checking" : `on ${chainName}`}
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}
@@ -974,7 +974,7 @@
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
     <div class="swap-foot"><span>You receive</span></div>
-    <p class="swap-recipient">to your public balance on Dusk</p>
+    <p class="swap-recipient">To your public balance</p>
   </div>
 
   <details class="swap-route">
@@ -992,8 +992,8 @@
         <dt>Steps</dt>
         <dd>
           {isCovered
-            ? `Migrate, in your ${chainName} wallet: your open approval covers it`
-            : `Approve, if needed, then migrate, in your ${chainName} wallet`}
+            ? `Migrate, in your ${chainName} wallet: your allowance covers it`
+            : `Allow spending, if needed, then migrate, in your ${chainName} wallet`}
         </dd>
       </div>
       <div>
@@ -1032,14 +1032,17 @@
       <div>
         <dt>From</dt>
         <dd>
+          <!-- Your own: shortened. Where it pays out is in full. -->
           <span>{chainName}</span>
-          <FullAddress address={address ?? ""} />
+          <span class="route-review__address" title={address ?? ""}
+            >{shortenAddress(address ?? "")}</span
+          >
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
-          <span>Your public account on Dusk</span>
+          <span>Your public account</span>
           <FullAddress address={recipient} />
         </dd>
       </div>
@@ -1050,35 +1053,27 @@
             ? "Checking what the contract may take…"
             : approved
               ? "Migrate, in your wallet"
-              : "Approve the amount, then migrate, in your wallet"}
+              : "Allow spending of exactly this amount, then migrate, in your wallet"}
         </dd>
       </div>
-      {#if approved === false}
+      {#if approved}
         <div>
-          <dt>Approval</dt>
-          <dd>
-            You allow the migration contract to take exactly this amount.
-            Nothing moves yet.
-          </dd>
-        </div>
-      {:else if approved}
-        <div>
-          <dt>Approval</dt>
+          <dt>Allowance</dt>
           <dd>
             <span>
               {#if reviewedApproval >= NO_LIMIT}
-                An earlier approval with no limit covers this, so you aren't
-                asked to approve. It stays approved after it.
+                Covered by an unlimited allowance from before. It stays after
+                this.
               {:else}
-                An earlier approval of <BalanceValue
+                Covered by an allowance of <BalanceValue
                   value={approvalText(reviewedApproval)}
                 />
-                {unit} covers this, so you aren't asked to approve.
+                {unit} from before.
                 {#if approvalLeft > 0n}
                   <BalanceValue value={approvalText(approvalLeft)} />
-                  {unit} stays approved after it.
+                  {unit} stays after this.
                 {:else}
-                  None of it stays approved after it.
+                  None of it stays after this.
                 {/if}
               {/if}
             </span>
@@ -1086,23 +1081,19 @@
         </div>
       {/if}
       <div>
-        <dt>Network fees</dt>
+        <dt>Fee</dt>
         <dd>
           {typeof feeBalance === "bigint"
             ? feeEstimate
-              ? `About ${feeText(feeEstimate)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}. No bridge fee`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for them. No bridge fee`
-            : `On ${chainName}, as your wallet shows. No bridge fee`}
+              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)}) · no bridge fee`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
+            : `As your wallet shows · no bridge fee`}
         </dd>
       </div>
       {#if timeText}
         <div>
           <dt>Arrives</dt>
-          <dd>
-            {isAmountMasked
-              ? ""
-              : `${formatDuskExact(amountLux, language)} DUSK `}on Dusk in {timeText}
-          </dd>
+          <dd>in {timeText}</dd>
         </div>
       {/if}
     </dl>
@@ -1126,7 +1117,7 @@
         </div>
       </dl>
       <p class="route-review__public">
-        <b>Public on {chainName} and Dusk, and linked:</b> your {chainName} address,
+        <b>Public on {chainName} and Dusk, and linked:</b> your {chainName} account,
         your public account and the amount.
       </p>
     </details>
@@ -1152,7 +1143,7 @@
           disabled={approved === undefined || !isConnected}
           icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
           on:click={send}
-          text="Migrate"
+          text={`${approved === false ? "Allow spending" : "Migrate"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} ${unit}`}
           variant="primary"
         />
       {:else}
@@ -1174,12 +1165,12 @@
     <ReviewWallet />
     <!-- Hidden with the balances, as the form before it hides it. -->
     <ReviewAmount
-      label="Approved now"
+      label="Allowance now"
       {unit}
       value={openApproval === undefined
         ? "…"
         : openApproval >= NO_LIMIT
-          ? "Any amount of"
+          ? "Unlimited"
           : hideBalances
             ? BALANCE_MASK
             : approvalText(openApproval)}
@@ -1201,13 +1192,13 @@
         <dd>The migration contract can take no {unit} from this wallet.</dd>
       </div>
       <div>
-        <dt>Network fees</dt>
+        <dt>Fee</dt>
         <dd>
           {typeof revokeFees.balance === "bigint"
             ? revokeFees.fee
-              ? `About ${feeText(revokeFees.fee)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit}`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for them`
-            : `On ${chainName}, as your wallet shows`}
+              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)})`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for it`
+            : "As your wallet shows"}
         </dd>
       </div>
     </dl>
@@ -1231,8 +1222,8 @@
         </div>
       </dl>
       <p class="route-review__public">
-        <b>Public on {chainName}:</b> your {chainName} address, and that it revokes
-        its approval.
+        <b>Public on {chainName}:</b> your {chainName} account, and that it revokes
+        its allowance.
       </p>
     </details>
     {#if revoking}
@@ -1285,7 +1276,7 @@
       errorMessage="The migration didn't go through"
       {operation}
       pendingMessage={sending === "approving"
-        ? "Approve the amount in your wallet"
+        ? "Allow spending in your wallet"
         : sending === "confirming"
           ? `Waiting for ${chainName}…`
           : "Migrate in your wallet"}
@@ -1307,7 +1298,7 @@
         {#if canGoBack}
           <Button
             on:click={review}
-            text={isApprovalShort ? "Approve again" : "Try again"}
+            text={isApprovalShort ? "Allow again" : "Try again"}
             variant="primary"
           />
         {/if}
@@ -1388,6 +1379,13 @@
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
+  }
+
+  .route-review__address {
+    color: var(--calm-muted);
+    font-family: var(--mono-font-family, monospace);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
   }
 
   .route-review__ends {

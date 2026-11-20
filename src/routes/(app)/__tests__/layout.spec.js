@@ -89,7 +89,7 @@ describe("App layout.svelte, on a wallet open", () => {
     const asking = sendPasswordFor(1n, "");
 
     expect(
-      await findByRole("dialog", { name: "Enter your password" }),
+      await findByRole("dialog", { name: /^Password for sends over / }),
     ).toBeInTheDocument();
 
     cleanup();

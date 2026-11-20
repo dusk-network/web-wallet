@@ -63,7 +63,7 @@ describe("searchLocally", () => {
     ]);
     expect(searchLocally("wallet-both", index)).toEqual([
       expect.objectContaining({
-        group: "Your profiles",
+        group: "Profiles",
         label: "Profile 1 · wallet-both.dusk",
         value: OWN,
       }),
@@ -357,7 +357,7 @@ describe("searchLocally for a block, a memo or a label", () => {
     ).toEqual([]);
   });
 
-  it("lists five transactions at most, and the rest in History, where the same are found", () => {
+  it("lists five transactions at most, and the rest in Activity, where the same are found", () => {
     const invoices = {
       ...index,
       history: [1, 2, 3, 4, 5, 6, 7].map((n) =>
@@ -380,7 +380,7 @@ describe("searchLocally for a block, a memo or a label", () => {
       group: "Transactions",
       href: "/dashboard/transactions?q=Factura%202026-05",
       id: "tx:all",
-      label: "See all 7 in History",
+      label: "See all 7 in Activity",
     });
     expect(
       transactionsFound("Factura 2026-05", invoices).map(({ row }) => row.hash),

@@ -480,7 +480,7 @@
     {/if}
   </div>
   <p class="mnemonic-input__hint" id="{id}-hint">
-    Paste the whole phrase into any box.
+    Paste all words into any box.
   </p>
   <div
     aria-describedby={said ? `${id}-hint ${id}-problem` : `${id}-hint`}

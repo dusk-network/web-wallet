@@ -78,7 +78,7 @@ vi.mock("$lib/bridge/withdrawalActivityStorage", async () => {
 });
 
 /**
- * What Max keeps for a wallet holding these.
+ * What Max leaves for a wallet holding these.
  *
  * @param {{ amount?: any, reward?: bigint, stDusk?: bigint, stages?: any[] }} held
  */

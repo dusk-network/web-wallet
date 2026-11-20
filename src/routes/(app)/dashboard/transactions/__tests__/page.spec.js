@@ -343,20 +343,24 @@ describe("History", () => {
       container.querySelector(".tx-detail")
     );
 
-    expect(getByText("Sent to alice-shop.dusk")).toBeInTheDocument();
+    expect(detail.querySelector(".tx-detail__headline")).toHaveTextContent(
+      /^Sent$/,
+    );
+    expect(detail).toHaveTextContent("To alice-shop.dusk");
     expect(getByText("Completed")).toBeInTheDocument();
     expect(detail).toHaveTextContent("Memo Order 1042");
     // In its details, to the last digit.
-    expect(detail).toHaveTextContent("Network fee paid 0.001854786 DUSK");
+    expect(detail).toHaveTextContent("Fee 0.001854786 DUSK");
 
     // The hash in full, its ending kept on one line.
     expect(detail.querySelector(".tx-detail__id")).toHaveTextContent(SENT);
     expect(
       detail.querySelector(".tx-detail__id .tx-detail__tail"),
     ).toHaveTextContent(SENT.slice(-6));
-    expect(
-      getByRole("link", { name: "View in Dusk explorer" }),
-    ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${SENT}`);
+    expect(getByRole("link", { name: "View in explorer" })).toHaveAttribute(
+      "href",
+      `/explorer/transactions/transaction?id=${SENT}`,
+    );
     expect(getByRole("link", { name: "Send again" })).toHaveAttribute(
       "href",
       `/some-base-path/dashboard/send?to=${ALICE}`,
@@ -446,7 +450,7 @@ describe("History", () => {
     );
 
     expect(container.querySelector(".tx-detail")).toHaveTextContent(
-      "Sent to Alice's shop · alice-shop.dusk",
+      "To Alice's shop · alice-shop.dusk",
     );
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
 
@@ -548,7 +552,7 @@ describe("History", () => {
     const { container, queryByRole } = render(History);
 
     expect(container.querySelector(".tx-detail")).toHaveTextContent(
-      "Network fee paid Paid by the sender",
+      "Fee Paid by the sender",
     );
     expect(queryByRole("link", { name: "Send again" })).toBeNull();
   });
@@ -706,10 +710,8 @@ describe("History", () => {
       expect(await blobs[0].text()).not.toContain("Alice Rent");
 
       await fireEvent.click(getByRole("button", { name: "Export" }));
-      await fireEvent.click(
-        getByRole("checkbox", { name: /Add my contact names/ }),
-      );
-      await fireEvent.click(getByRole("checkbox", { name: /^For Excel/ }));
+      await fireEvent.click(getByRole("checkbox", { name: /Contact names/ }));
+      await fireEvent.click(getByRole("checkbox", { name: /^Excel/ }));
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
       await vi.waitFor(() => expect(names).toHaveLength(2));
 
@@ -743,7 +745,7 @@ describe("History", () => {
               .querySelector(".export-panel__evm .export-panel__note")
               ?.textContent?.trim() ?? "";
 
-          expect(said).toMatch(/^(?!Reading)./);
+          expect(said).toMatch(/^(?!Checking)./);
         });
 
         return said;
@@ -793,25 +795,25 @@ describe("History", () => {
 
         // Added for the file: what it isn't is said, what it is is listed.
         await fireEvent.click(
-          getByRole("button", { name: "Add an EVM address" }),
+          getByRole("button", { name: "Add an EVM account" }),
         );
 
         const field = getByRole("textbox", {
-          name: "EVM address you migrated from",
+          name: "EVM account you migrated from",
         });
 
         await fireEvent.input(field, { target: { value: "0x90fe" } });
         await fireEvent.click(getByRole("button", { name: "Add" }));
 
         expect(getByRole("alert")).toHaveTextContent(
-          "That isn't an EVM address.",
+          "That isn't an EVM account.",
         );
 
         await fireEvent.input(field, { target: { value: ADDED } });
         await fireEvent.click(getByRole("button", { name: "Add" }));
 
         expect(
-          getByRole("list", { name: "EVM addresses added" }),
+          getByRole("list", { name: "EVM accounts added" }),
         ).toHaveTextContent(/0x90fE…4b39/i);
 
         const withAdded = await feesSaid(container);
@@ -847,7 +849,7 @@ describe("History", () => {
         await fireEvent.click(unlocked.getByRole("button", { name: "Export" }));
 
         expect(
-          unlocked.getByRole("list", { name: "EVM addresses added" }),
+          unlocked.getByRole("list", { name: "EVM accounts added" }),
         ).toHaveTextContent(/0x90fE…4b39/i);
 
         // And Remove takes it off this one's.
@@ -856,7 +858,7 @@ describe("History", () => {
         );
 
         expect(
-          unlocked.queryByRole("list", { name: "EVM addresses added" }),
+          unlocked.queryByRole("list", { name: "EVM accounts added" }),
         ).toBeNull();
         expect(hydrateExportAddresses()).toStrictEqual({});
       } finally {
@@ -1069,7 +1071,7 @@ describe("History", () => {
           );
 
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" }),
+          getByRole("button", { name: "Staking rewards by year" }),
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -1096,7 +1098,9 @@ describe("History", () => {
 
         // The file's values ask nothing of them.
         await fireEvent.click(
-          getByRole("checkbox", { name: /^Add each payment's value in euros/ }),
+          getByRole("checkbox", {
+            name: "Value in euros (CoinGecko, past year)",
+          }),
         );
 
         expect(prices).not.toHaveBeenCalled();
@@ -1104,7 +1108,7 @@ describe("History", () => {
         // Their own, under them: read again with each one's value.
         await fireEvent.click(
           getByRole("checkbox", {
-            name: "Add each reward's value in euros, from CoinGecko's prices",
+            name: "Value in euros (CoinGecko)",
           }),
         );
         await vi.waitFor(() =>
@@ -1152,10 +1156,10 @@ describe("History", () => {
         // shows as under that.
         settingsStore.update((store) => ({ ...store, currency: "JPY" }));
         await vi.waitFor(() =>
-          getByRole("checkbox", { name: /reward's value in Japanese yen/ }),
+          getByRole("checkbox", { name: "Value in Japanese yen (CoinGecko)" }),
         );
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" }),
+          getByRole("button", { name: "Staking rewards by year" }),
         );
         await vi.waitFor(() =>
           expect(years()).toStrictEqual([
@@ -1229,7 +1233,7 @@ describe("History", () => {
 
       await fireEvent.click(
         getByRole("checkbox", {
-          name: `Add each payment's value in ${words}, from CoinGecko's prices (the past year)`,
+          name: `Value in ${words} (CoinGecko, past year)`,
         }),
       );
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
@@ -1262,14 +1266,13 @@ describe("History", () => {
       settingsStore.update((store) => ({ ...store, currency: "EUR" }));
 
       try {
-        const { container, getByRole, getByText } = await openExport();
+        const { container, getByRole } = await openExport();
         const fileValues = getByRole("checkbox", {
-          name: /^Add each payment's value in euros/,
+          name: "Value in euros (CoinGecko, past year)",
         });
 
         expect(fileValues).toBeDisabled();
         expect(fileValues).not.toBeChecked();
-        expect(getByText("Test DUSK has no value.")).toBeInTheDocument();
 
         await fireEvent.click(getByRole("button", { name: "Save CSV" }));
         await vi.waitFor(() => expect(names).toHaveLength(1));
@@ -1293,21 +1296,18 @@ describe("History", () => {
         });
         await fireEvent.click(getByRole("button", { name: "Export" }));
         await fireEvent.click(
-          getByRole("button", { name: "Show staking rewards by year" }),
+          getByRole("button", { name: "Staking rewards by year" }),
         );
 
         const rewardValues = await vi.waitFor(() =>
           getByRole("checkbox", {
-            name: "Add each reward's value in euros, from CoinGecko's prices",
+            name: "Value in euros (CoinGecko)",
           }),
         );
 
         expect(rewardValues).toBeDisabled();
-        expect(
-          container.querySelector(
-            ".rewards-by-year__option + .rewards-by-year__note",
-          ),
-        ).toHaveTextContent("Test DUSK has no value.");
+        // The testnet strip says test DUSK has no value: not said again here.
+        expect(container).not.toHaveTextContent("Test DUSK has no value.");
         expect(
           prices.mock.calls.filter(([url]) =>
             String(url).includes("coingecko"),

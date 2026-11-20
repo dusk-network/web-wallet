@@ -13,7 +13,7 @@ import {
 
 /**
  * The wallet's pages, as the top bar and the phone's tab bar show them.
- * History and Staking are there when they are on; Contacts always is.
+ * Activity and Staking are there when they are on; Contacts always is.
  *
  * @param {{ history?: boolean, stake: boolean }} features
  * @returns {ShellTab[]}
@@ -27,7 +27,7 @@ export function shellTabs({ history = true, stake }) {
             href: "/dashboard/transactions",
             icon: mdiHistory,
             id: "history",
-            label: "History",
+            label: "Activity",
           },
         ])
       : []),
@@ -72,7 +72,7 @@ const PAGE_NAMES = new Map([
   ["/dashboard/receive", "Receive"],
   ["/dashboard/send", "Send"],
   ["/dashboard/stake", "Staking"],
-  ["/dashboard/transactions", "History"],
+  ["/dashboard/transactions", "Activity"],
   ["/settings", "Settings"],
   ["/settings/password", "Change password"],
   ["/settings/remove-wallet", "Remove wallet"],

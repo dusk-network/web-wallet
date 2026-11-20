@@ -1,6 +1,6 @@
 <script>
   import { MnemonicInput } from "$lib/components";
-  import { IconHeadingCard } from "$lib/containers/Cards";
+  import { Card } from "$lib/dusk/components";
 
   /** @type {boolean} */
   export let isValid = false;
@@ -17,6 +17,6 @@
   $: enteredMnemonicPhrase = mnemonic ? mnemonic.split(" ") : [];
 </script>
 
-<IconHeadingCard gap="medium" heading="Recovery phrase">
+<Card gap="medium">
   <MnemonicInput bind:isValid bind:mnemonic {initialWords} />
-</IconHeadingCard>
+</Card>

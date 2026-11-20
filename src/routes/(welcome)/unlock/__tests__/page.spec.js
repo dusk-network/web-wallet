@@ -314,7 +314,7 @@ describe("Unlock Wallet", async () => {
       );
       // The password asked for at once: no Create or Restore in the way.
       expect(container.querySelector("input[type=password]")).toBeTruthy();
-      expect(container).not.toHaveTextContent("Create new wallet");
+      expect(container).not.toHaveTextContent("Create wallet");
     } finally {
       arrived.mockRestore();
       await vault.clear();
@@ -446,7 +446,7 @@ describe("Unlock Wallet", async () => {
       });
 
       expect(getByRole("alert")).toHaveTextContent(
-        "These words aren't a valid recovery phrase. Check each word.",
+        "Not a valid recovery phrase. Check each word.",
       );
       expect(getByRole("button", { name: /unlock/i })).toBeDisabled();
 
@@ -641,13 +641,9 @@ describe("Unlock Wallet", async () => {
       );
 
       expect(openSpy).not.toHaveBeenCalled();
-      expect(errorElement).toHaveTextContent(
-        "Wrong password. Forgot it? Restore with your recovery phrase.",
-      );
+      expect(errorElement).toHaveTextContent(/^Wrong password\.$/);
       expect(
-        within(/** @type {HTMLElement} */ (errorElement)).getByRole("link", {
-          name: "Restore with your recovery phrase",
-        }),
+        within(container).getByRole("link", { name: "Forgot password?" }),
       ).toHaveAttribute("href", expect.stringMatching(/\/setup\/restore$/));
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);

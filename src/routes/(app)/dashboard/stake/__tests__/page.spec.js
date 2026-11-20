@@ -250,7 +250,7 @@ describe("Staking", () => {
     expect(figures).toStrictEqual([
       "Staked 1,000 DUSK",
       "Rewards 11,022.8426 DUSK",
-      "Available to stake 1,172.5 DUSK From your public balance",
+      "Available (public) 1,172.5 DUSK",
     ]);
     expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
@@ -263,12 +263,12 @@ describe("Staking", () => {
     const { container, queryByRole } = render(Staking);
 
     // Nothing staked natively: no Unstake or Claim to grey out, and the
-    // stake says there's nothing to unstake or claim.
+    // stake says 0, and no more.
     expect(queryByRole("button", { name: "Unstake" })).toBeNull();
     expect(queryByRole("button", { name: "Claim rewards" })).toBeNull();
     expect(container.querySelector(".staking__actions")).toBeNull();
     expect(textOf(container.querySelector(".staking__figures > div"))).toBe(
-      "Staked 0 DUSK Nothing to unstake or claim",
+      "Staked 0 DUSK",
     );
 
     await act(() =>
@@ -287,7 +287,7 @@ describe("Staking", () => {
     );
 
     expect(textOf(container.querySelector(".staking__figures > div"))).toBe(
-      "Staked 0 DUSK Nothing to unstake or claim",
+      "Staked 0 DUSK",
     );
     expect(
       textOf(container.querySelector(".staking__side .activity-row")),
@@ -442,12 +442,12 @@ describe("Staking", () => {
       "Node",
       "Rewards",
       "Unstake",
-      "If it goes wrong",
+      "Risk",
     ]);
     expect(rows[0].slice(1)).toStrictEqual(["1,000 DUSK", "Any amount"]);
     // A node, and the docs on running one.
     expect(rows[1].slice(1)).toStrictEqual([
-      "Needs your own Dusk node Run a node",
+      "Your own node Run a node",
       "Not needed",
     ]);
     expect(
@@ -456,19 +456,16 @@ describe("Staking", () => {
       "href",
       "https://docs.dusk.network/operator/provisioner/",
     );
-    // Sozu pays an unstake out at once.
-    expect(rows[3].slice(1)).toStrictEqual([
-      "Any time, with no waiting period",
-      "The DUSK comes back in the same transaction. No Sozu fee, no waiting.",
-    ]);
+    // Sozu pays an unstake out at once, free.
+    expect(rows[3].slice(1)).toStrictEqual(["Any time", "Any time, no fee"]);
     expect(rows[4][1]).toBe(
-      "If your node misses its turn, part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost).",
+      "Node misses a turn: part locked, unstaking returns it. Breaks the rules: part burned.",
     );
     // Sozu's own site, with no terms of the wallet's about it.
     expect(rows[4][2]).toBe("sozu.fi");
     // stDUSK's worth isn't promised to rise: a penalty can lower it.
     expect(rows[2][2]).toBe(
-      "You get stDUSK, a token for your share of Sozu's pool. Its worth usually rises with rewards, but can fall with a penalty.",
+      "stDUSK, your share of Sozu's pool. It can fall with a penalty.",
     );
 
     // Nothing picked: two ways to go, neither one chosen.
@@ -490,13 +487,13 @@ describe("Staking", () => {
     await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
 
     expect(textOf(table.tBodies[0].rows[2].cells[2])).toBe(
-      "You get stDUSK. Each is worth 3.0751 DUSK now. It usually rises with rewards, but can fall with a penalty.",
+      "stDUSK, 3.0751 DUSK each now. It can fall with a penalty.",
     );
     // And Sozu's fees, as its contract gives them on this network.
     expect(Array.from(table.tBodies[0].rows[3].cells, textOf)).toStrictEqual([
       "Fees",
-      "Network fee only",
-      "Sozu keeps 10% of rewards · 0.25% on deposits · no unstake fee",
+      "Network fee",
+      "10% of rewards · 0.25% of deposits",
     ]);
   });
 
@@ -518,13 +515,13 @@ describe("Staking", () => {
       );
       await vi.waitFor(() =>
         expect(rewards()[1]).toBe(
-          "About 24% a year, estimated across the network. Not promised. Start in about 6 to 12 hours",
+          "About 24% a year, estimated across the network. Not promised. Starts in 6–12 hours",
         ),
       );
       // Testnet's Sozu keeps 10% of rewards: the native figure as shown,
       // 24%, less 10% of it.
       expect(rewards()[2]).toMatch(
-        /^About 22% a year after Sozu's 10%\. Not promised\. You get stDUSK/,
+        /^About 22% a year after Sozu's 10%\. Not promised\. stDUSK,/,
       );
       expect(container).not.toHaveTextContent(/\bEarn\b/);
     } finally {
@@ -589,7 +586,7 @@ describe("Staking", () => {
       );
       await vi.waitFor(() =>
         expect(rewards()[1]).toBe(
-          "About 88% a year over the last 30 days. Not promised. Start in about 6 to 12 hours",
+          "About 88% a year over the last 30 days. Not promised. Starts in 6–12 hours",
         ),
       );
       expect(rewards()[2]).toMatch(
@@ -604,9 +601,13 @@ describe("Staking", () => {
       await vi.waitFor(() =>
         expect(
           textOf(container.querySelector(".liquid-stake__facts")),
-        ).toContain(
-          "About 79% a year. Not promised. 15.6 DUSK a block to stakers over the last 30 days, 55M DUSK staked now: about 88% a year. Less Sozu's 10%: about 79%",
-        ),
+        ).toContain("About 79% a year after Sozu's 10%. Not promised."),
+      );
+      // What it's made of, under Details.
+      expect(
+        textOf(container.querySelector(".liquid-stake__details")),
+      ).toContain(
+        "15.6 DUSK a block to stakers over the last 30 days, 55M DUSK staked now: about 88% a year. Less Sozu's 10%: about 79%",
       );
     } finally {
       rates.measured = null;
@@ -650,9 +651,12 @@ describe("Staking", () => {
       await vi.waitFor(() =>
         expect(
           textOf(container.querySelector(".liquid-stake__facts")),
-        ).toContain(
-          "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share.",
-        ),
+        ).toContain("About 40% a year after Sozu's 10%. Not promised."),
+      );
+      expect(
+        textOf(container.querySelector(".liquid-stake__details")),
+      ).toContain(
+        "stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share.",
       );
     } finally {
       rates.native = null;
@@ -764,9 +768,7 @@ describe("Staking", () => {
     expect(
       textOf(container.querySelectorAll(".staking__figures > div")[1]),
     ).toBe("With Sozu 2.7471 DUSK 0.8645 stDUSK, rewards included");
-    expect(summary()).toContain(
-      "Your stake with Sozu couldn't be read just now. It may be out of date.",
-    );
+    expect(summary()).toContain("Your Sozu stake couldn't be read. Last read");
 
     sozu.load.mockClear();
     await fireEvent.click(getByRole("button", { name: "Try again" }));
@@ -777,9 +779,7 @@ describe("Staking", () => {
     // trying, until a read gets through.
     await act(() => sozu.store?.update((s) => ({ ...s, loading: true })));
 
-    expect(summary()).toContain(
-      "Your stake with Sozu couldn't be read just now. It may be out of date.",
-    );
+    expect(summary()).toContain("Your Sozu stake couldn't be read. Last read");
     expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
 
     await act(() => sozu.store?.update((s) => ({ ...s, loading: false })));
@@ -787,7 +787,8 @@ describe("Staking", () => {
     // Never read here: it couldn't be, which isn't nothing.
     await act(() => sozu.store?.update((s) => ({ ...s, kept: null })));
 
-    expect(summary()).toContain("Your stake with Sozu couldn't be read.");
+    expect(summary()).toContain("Your Sozu stake couldn't be read.");
+    expect(summary()).not.toContain("Last read");
 
     // Nor the native stake.
     mockedWalletStore.setMockedStoreValue({
@@ -796,12 +797,10 @@ describe("Staking", () => {
     });
     await act(() => {});
 
-    expect(summary()).toContain(
-      "Your stake couldn't be read again. These amounts may be out of date.",
-    );
+    expect(summary()).toContain("Stake couldn't be read.");
   });
 
-  it("says with the native stake, not under Unstake from Sozu, that there's nothing to unstake or claim", async () => {
+  it("shows the native stake at 0, and nothing under Unstake from Sozu that reads as its answer", async () => {
     withoutStake();
     await act(() =>
       sozu.store?.update((s) => ({
@@ -820,7 +819,7 @@ describe("Staking", () => {
     );
 
     expect(figures.slice(0, 3)).toStrictEqual([
-      "Staked natively 0 DUSK Nothing to unstake or claim",
+      "Staked natively 0 DUSK",
       "With Sozu 0.4999 DUSK 0.1621 stDUSK, rewards included",
       "Native rewards 0 DUSK",
     ]);
@@ -909,7 +908,7 @@ describe("Staking", () => {
       "false",
     );
     expect(textOf(container.querySelector(".staking__summary"))).toContain(
-      "Your stake couldn't be read again. These amounts may be out of date.",
+      "Stake couldn't be read.",
     );
     expect(textOf(container.querySelector(".staking__summary"))).not.toContain(
       "pending",
@@ -961,9 +960,9 @@ describe("Staking", () => {
       expect(
         page2.getByRole("heading", { name: "Native staking" }),
       ).toBeInTheDocument();
-      expect(page2.getByLabelText("Stake amount")).toHaveValue("");
+      expect(page2.getByLabelText("Amount")).toHaveValue("");
       expect(textOf(page2.container.querySelector(".native-stake__hint"))).toBe(
-        "Minimum 1,000 DUSK · Available 1,483 DUSK from your public balance",
+        "Minimum 1,000 DUSK · Available 1,483 DUSK (public)",
       );
       expect(container.querySelector(".native-stake__error")).toBeNull();
     });
@@ -973,7 +972,7 @@ describe("Staking", () => {
       withoutStake(1_483n);
 
       const { container, getByLabelText, getByRole } = render(Staking);
-      const amount = getByLabelText("Stake amount");
+      const amount = getByLabelText("Amount");
 
       await fireEvent.input(amount, { target: { value: "100" } });
 
@@ -981,12 +980,10 @@ describe("Staking", () => {
 
       expect(error).toHaveAttribute("role", "alert");
       expect(textOf(error)).toBe(
-        "The minimum stake is 1,000 DUSK. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
+        "The minimum stake is 1,000 DUSK. Under 1,000 DUSK? Stake with Sozu",
       );
       expect(
-        getByRole("link", {
-          name: "Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
-        }),
+        getByRole("link", { name: "Under 1,000 DUSK? Stake with Sozu" }),
       ).toHaveAttribute("href", "/some-base-path/dashboard/stake/?flow=liquid");
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -1008,25 +1005,25 @@ describe("Staking", () => {
 
       const { container, getByLabelText, queryByRole } = render(Staking);
 
-      expect(getByLabelText("Stake amount")).toHaveValue("");
+      expect(getByLabelText("Amount")).toHaveValue("");
       expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
       expect(textOf(container.querySelector(".native-stake__note"))).toBe(
-        "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later. Less than 1,000 DUSK? Use liquid staking (Sozu, third party)",
+        "Not enough for the 1,000 DUSK minimum and fees. Under 1,000 DUSK? Stake with Sozu",
       );
     });
 
-    it("says how much more an amount needs, with this fee and the fee to unstake later", async () => {
+    it("says how much an amount is short, fees included", async () => {
       open("?flow=native");
       withoutStake(1_483n);
 
       const { container, getByLabelText } = render(Staking);
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1483" },
       });
 
       expect(textOf(container.querySelector(".native-stake__error"))).toBe(
-        "That's 0.1 DUSK more than the public balance, with this fee and the fee to unstake later.",
+        "0.1 DUSK short, fees included.",
       );
     });
 
@@ -1038,7 +1035,7 @@ describe("Staking", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+      expect(getByLabelText("Amount")).toHaveValue("1482.9");
     });
   });
 
@@ -1071,19 +1068,19 @@ describe("Staking", () => {
 
     it.each(
       /** @type {const} */ ([
-        ["a native stake", "?flow=native", "stake", "Stake amount", "1000"],
+        ["a native stake", "?flow=native", "stake", "Amount", "1000"],
         [
           "a stake with Sozu",
           "?flow=liquid&action=stake",
           "liquid-stake",
-          "Stake amount",
+          "Amount",
           "100",
         ],
         [
           "an unstake from Sozu",
           "?flow=liquid&action=unstake",
           "liquid-unstake",
-          "Unstake amount",
+          "Amount",
           "100",
         ],
         ["a native unstake", "?flow=unstake", "unstake", "Amount", "100"],
@@ -1121,11 +1118,7 @@ describe("Staking", () => {
           await fireEvent.input(getByRole("textbox", { name: label }), {
             target: { value },
           });
-          await fireEvent.click(
-            getByRole("button", {
-              name: operation === "unstake" ? "Next" : "Review",
-            }),
-          );
+          await fireEvent.click(getByRole("button", { name: "Review" }));
 
           const { gasLimit } = getGasSettings(
             operation,
@@ -1135,7 +1128,7 @@ describe("Staking", () => {
 
           // On its Review.
           if (operation === "unstake") {
-            expect(textOf(container)).toContain("Network fee (at most)");
+            expect(textOf(container)).toContain("Fee up to");
           } else {
             expect(
               container.querySelector(".stake-flow--review"),
@@ -1247,7 +1240,7 @@ describe("Staking", () => {
     );
     expect(
       getByText(/^Available/, { selector: ".liquid-stake__hint" }),
-    ).toHaveTextContent("Available 171.9 DUSK from your public balance");
+    ).toHaveTextContent("Available 171.9 DUSK (public)");
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
 
     // The form read its position as it opened.
@@ -1273,18 +1266,18 @@ describe("Staking", () => {
 
     expect(sozu.load).toHaveBeenCalledWith();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
 
     // For what's left once testnet's 0.25% deposit fee is off it.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees.",
+      "You get about 32.4378 stDUSK (≈ 99.75 DUSK).",
     );
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
     // A stake's own gas: up to 5,000,000 at the node's price.
     expect(textOf(container.querySelector(".stake-flow__rows--total"))).toBe(
-      "Total Up to 100.005 DUSK",
+      "Total up to 100.005 DUSK",
     );
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
@@ -1300,8 +1293,8 @@ describe("Staking", () => {
   });
 
   it.each([
-    ["stake", "stakeWithSozu", "Stake amount", "Stake 100 DUSK with Sozu"],
-    ["unstake", "unstakeFromSozu", "Unstake amount", "Unstake 100 DUSK"],
+    ["stake", "stakeWithSozu", "Amount", "Stake 100 DUSK with Sozu"],
+    ["unstake", "unstakeFromSozu", "Amount", "Unstake 100 DUSK"],
   ])(
     "reads Sozu again after a %s's transaction",
     async (action, service, label, name) => {
@@ -1350,7 +1343,7 @@ describe("Staking", () => {
       .mockReturnValue(new Promise(() => {}));
     const { getByLabelText, getByRole } = render(Staking);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));

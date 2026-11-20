@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
-import { fullDateTime, shortAddress, timeLabel } from "$lib/activity/present";
+import { fullDateTime, timeLabel } from "$lib/activity/present";
 import styleRules from "$lib/dusk/test-helpers/styleRules";
 import { settingsStore } from "$lib/stores";
 
@@ -106,8 +106,8 @@ describe("HistoryView", () => {
     vi.useRealTimers();
   });
 
-  it("should say times are local, each with its own offset on hover, to the second, and keep them on phones", () => {
-    const { container, getByText } = render(HistoryView, {
+  it("should show times without a note on the zone, each with its own offset on hover, to the second, and keep them on phones", () => {
+    const { container, queryByText } = render(HistoryView, {
       locale: "en",
       state,
     });
@@ -115,10 +115,8 @@ describe("HistoryView", () => {
       container.querySelectorAll("td.history__col-time"),
     );
 
-    // Said once: "time" not twice.
-    expect(
-      getByText(/^Shown in your local time\./, { exact: false }),
-    ).toBeInTheDocument();
+    // No note on the time zone: times are the browser's own.
+    expect(queryByText(/local time/)).toBeNull();
     expect(container.querySelector("th.history__col-time")).toHaveTextContent(
       /^Time$/,
     );
@@ -133,8 +131,8 @@ describe("HistoryView", () => {
         meta.textContent?.replace(/\s+/g, " ").trim(),
       ),
     ).toStrictEqual([
-      `· ${timeLabel(WINTER, "en")} · Public`,
-      `· ${timeLabel(SUMMER, "en")} · Public`,
+      `· ${timeLabel(WINTER, "en")}`,
+      `· ${timeLabel(SUMMER, "en")}`,
     ]);
   });
 
@@ -187,7 +185,7 @@ describe("HistoryView", () => {
     history.whole.mockResolvedValue(whole);
     await fireEvent.click(getByRole("button", { name: "Export" }));
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" }),
+      getByRole("button", { name: "Staking rewards by year" }),
     );
     await vi.waitFor(() => expect(years()).toHaveTextContent("2 DUSK"));
 
@@ -201,13 +199,13 @@ describe("HistoryView", () => {
 
     history.whole.mockReturnValueOnce(late.promise);
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" }),
+      getByRole("button", { name: "Staking rewards by year" }),
     );
     await rerender({ account: own });
     late.resolve(whole);
     await vi.waitFor(() =>
       expect(
-        getByRole("button", { name: "Show staking rewards by year" }),
+        getByRole("button", { name: "Staking rewards by year" }),
       ).toBeEnabled(),
     );
 
@@ -515,11 +513,12 @@ describe("HistoryView", () => {
           memo.classList.contains("history__memo--theirs"),
         ]);
 
-      const urgent = `From ${shortAddress(STRANGER)} · not in your contacts“URGENT: wallet suspended - pay now to restore”`;
+      const urgent =
+        "Not a contact“URGENT: wallet suspended - pay now to restore”";
 
       expect(memos()).toStrictEqual([
         [urgent, true],
-        ["From sofiadesign.dusk · not in your contacts“Factura 71”", true],
+        ["Not a contact“Factura 71”", true],
         // A contact's: their memo, as the wallet's are.
         ["Dinner", false],
       ]);
@@ -529,10 +528,7 @@ describe("HistoryView", () => {
           container.querySelectorAll(".history__memo-from"),
           (from) => from.textContent,
         ),
-      ).toStrictEqual([
-        `From ${shortAddress(STRANGER)} · not in your contacts`,
-        "From sofiadesign.dusk · not in your contacts",
-      ]);
+      ).toStrictEqual(["Not a contact", "Not a contact"]);
 
       // Found by its words, as any memo is.
       await rerender({ query: "wallet suspended" });
@@ -543,7 +539,7 @@ describe("HistoryView", () => {
       await rerender({ query: "", selected: "f1".repeat(32) });
 
       expect(container.querySelector(".tx-detail__memo")).toHaveTextContent(
-        `From ${shortAddress(STRANGER)} · not in your contacts “URGENT: wallet suspended - pay now to restore”`,
+        "Not a contact “URGENT: wallet suspended - pay now to restore”",
       );
     } finally {
       removeContact(lucas.id);
@@ -723,7 +719,7 @@ describe("HistoryView", () => {
 
     expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
     expect(deposit.meta).toBeNull();
-    expect(deposit.when).toBe(`${timeLabel(WINTER, "en")} · Public`);
+    expect(deposit.when).toBe(timeLabel(WINTER, "en"));
     // Any other row keeps its time after its line.
     expect(sent.when).toBeUndefined();
     expect(sent.meta).not.toBeNull();

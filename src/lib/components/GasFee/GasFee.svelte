@@ -9,7 +9,7 @@
 </script>
 
 <div class="gas-fee">
-  <span>Network fee (at most)</span>
+  <span>Fee up to</span>
   <span class="gas-fee__amount">
     <span class="gas-fee__amount-value"
       >{formatFee(fee, language, { max: true })}</span

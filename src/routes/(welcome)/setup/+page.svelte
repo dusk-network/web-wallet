@@ -50,7 +50,7 @@
             href="/setup/create"
             variant={userId || offersElsewhere ? "tertiary" : "primary"}
             size={userId || offersElsewhere ? "small" : "default"}
-            text="Create new wallet"
+            text="Create wallet"
             icon={{ path: mdiWalletOutline }}
           />
           <AppAnchorButton
@@ -71,8 +71,7 @@
   <AppAnchor
     href="/build-manifest.json"
     rel="noopener noreferrer"
-    target="_blank"
-    >Web Wallet v{import.meta.env.APP_VERSION} ({commit})</AppAnchor
+    target="_blank">v{import.meta.env.APP_VERSION} · {commit}</AppAnchor
   >
 </footer>
 

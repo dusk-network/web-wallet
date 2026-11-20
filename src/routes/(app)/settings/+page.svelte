@@ -65,18 +65,17 @@
 
   // With one wallet, as before there were more.
   const RESET_ONE = {
-    body: "Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.",
-    button: "Reset Wallet",
-    confirm:
-      "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?",
+    body: "Removes this wallet, its contacts and settings from this browser. Only the recovery phrase brings it back.",
+    button: "Reset wallet",
+    confirm: "Reset this wallet? Only its recovery phrase brings it back.",
     heading: "Reset wallet",
   };
 
   const RESET_ALL = {
-    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+    body: "Removes every wallet, their contacts and settings from this browser. Only each one's recovery phrase brings it back.",
     button: "Reset all wallets",
     confirm:
-      "This removes every wallet from this browser. Confirm you've saved each recovery phrase before resetting. Proceed?",
+      "Reset all wallets? Only each one's recovery phrase brings it back.",
     heading: "Reset all wallets",
   };
 
@@ -615,25 +614,27 @@
     <article class="settings-group">
       <SectionHead>Support</SectionHead>
       <p>
-        Read the <Anchor
+        Help: <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
-          href="https://docs.dusk.network">Dusk Docs</Anchor
-        >, ask on
+          href="https://docs.dusk.network">Docs</Anchor
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
-        >, or report issues on
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"
           >GitHub</Anchor
-        >.
+        >
       </p>
       <p>
         <Anchor
@@ -665,7 +666,7 @@
           disabled={syncStatus.isInProgress}
           data-tooltip-disabled={!syncStatus.isInProgress}
           data-tooltip-id="main-tooltip"
-          data-tooltip-text="Not allowed to reset while syncing"
+          data-tooltip-text="Can't reset while syncing"
           data-tooltip-type="warning"
           on:click={handleResetWalletClick}
           text={reset.button}
@@ -683,11 +684,7 @@
     icon={{ path: mdiArrowLeft }}
     text="Back"
   />
-  <Button
-    on:click={() => lockWallets()}
-    variant="tertiary"
-    text={several ? "Lock" : "Lock Wallet"}
-  />
+  <Button on:click={() => lockWallets()} variant="tertiary" text="Lock" />
 </div>
 
 <style lang="postcss">

@@ -87,19 +87,27 @@
         href: "/setup",
         isAnchor: true,
       }}
-      nextButton={{ disabled: !agreementAccepted }}
+      nextButton={{
+        disabled: !agreementAccepted,
+        label: "Show my recovery phrase",
+      }}
     >
       <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
       <MnemonicPreSetup bind:isValid={agreementAccepted} />
     </WizardStep>
-    <WizardStep step={1} {key} showStepper={true}>
-      <h2 class="h1" slot="heading">Back up your recovery phrase</h2>
+    <WizardStep
+      step={1}
+      {key}
+      showStepper={true}
+      nextButton={{ disabled: false, label: "I wrote it down" }}
+    >
+      <h2 class="h1" slot="heading">Write down your recovery phrase</h2>
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <!-- Three of the words, as written down: checked, or for later, as
-      Settings checks them too, Skip for now quieter than Check and Try
-      again. Show my recovery words, after one that doesn't match, goes
-      back to the words. -->
+      Settings checks them too, Skip quieter than Check and Try again. Show
+      my recovery words, after one that doesn't match, goes back to the
+      words. -->
     <WizardStep
       bind:this={checkStep}
       step={2}
@@ -107,11 +115,11 @@
       showStepper={true}
       nextButton={{
         disabled: false,
-        label: areWordsChecked ? "Next" : "Skip for now",
+        label: areWordsChecked ? "Next" : "Skip",
         variant: areWordsChecked ? "primary" : "secondary",
       }}
     >
-      <h2 class="h1" slot="heading">Check your recovery words</h2>
+      <h2 class="h1" slot="heading">Check your recovery phrase</h2>
       <RecoveryWordsCheck
         on:checked={() => {
           areWordsChecked = true;
@@ -129,6 +137,7 @@
           await refreshLocalStoragePasswordInfo(mnemonicPhrase, password);
         },
         disabled: !isValidPassword,
+        label: showPasswordSetup ? "Save password" : "Next",
       }}
     >
       <h2 class="h1" slot="heading">Set a password</h2>
@@ -166,6 +175,7 @@
           }
         },
         disabled: false,
+        label: "Create wallet",
       }}
     >
       <h2 class="h1" slot="heading">Sync</h2>
@@ -182,9 +192,10 @@
           await goto(takePlace() ?? "/dashboard", { replaceState: true });
         },
         disabled: !isWalletOpen,
+        label: "Open wallet",
       }}
     >
-      <h2 class="h1" slot="heading">Welcome to Dusk</h2>
+      <h2 class="h1" slot="heading">Your wallet is ready</h2>
       {#if openError}
         <ErrorAlert
           description="Restore it with the recovery phrase you wrote down."

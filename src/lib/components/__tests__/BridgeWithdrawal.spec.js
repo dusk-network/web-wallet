@@ -80,6 +80,9 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
   trackWithdrawalTransaction: vi.fn(),
 }));
 
+/** Review's button, which names what it does and how much. */
+const BRIDGE_BUTTON = /^Bridge [\d.,]+ DUSK$/;
+
 describe("Bridge withdrawal", () => {
   const props = {
     evmDuskBalance: {
@@ -102,7 +105,7 @@ describe("Bridge withdrawal", () => {
   };
 
   beforeEach(() => {
-    // Send takes a click half a second after it shows: on this clock.
+    // Bridge takes a click half a second after it shows: on this clock.
     vi.useFakeTimers({ toFake: ["performance"] });
     setNodeNetwork(networks.testnet);
     mocks.sendTransaction.mockResolvedValue(`0x${"57".repeat(32)}`);
@@ -132,36 +135,36 @@ describe("Bridge withdrawal", () => {
     await fireEvent.input(rendered.getByRole("textbox"), {
       target: { value: "1" },
     });
-    await fireEvent.click(
-      rendered.getByRole("button", { name: "Review bridge" }),
-    );
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
+    await fireEvent.click(
+      rendered.getByRole("button", { name: BRIDGE_BUTTON }),
+    );
 
     return rendered;
   }
 
-  it("takes no click on Send for half a second once the review shows, so a double click on Review can't send", async () => {
+  it("takes no click on Bridge for half a second once the review shows, so a double click on Review can't send", async () => {
     const { getByRole } = render(Bridge, props);
 
     await fireEvent.click(getByRole("button", { name: "Swap From and To" }));
     await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
     await afterConfirmDelay();
 
-    // Review's second click lands where Send now is, and so does Enter.
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }), {
+    // Review's second click lands where Bridge now is, and so does Enter.
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await fireEvent.click(getByRole("button", { name: BRIDGE_BUTTON }));
+    await fireEvent.click(getByRole("button", { name: BRIDGE_BUTTON }), {
       detail: 0,
     });
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: BRIDGE_BUTTON }));
 
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
-    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(getByRole("button", { name: BRIDGE_BUTTON })).toBeEnabled();
 
     await vi.advanceTimersByTimeAsync(1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: BRIDGE_BUTTON }));
 
     await vi.waitFor(() =>
       expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
@@ -264,7 +267,7 @@ describe("Bridge withdrawal", () => {
 
     expect(await failureOf(unreached)).toStrictEqual([
       "Not sent",
-      "Couldn't reach the network. Nothing was sent and no fee was charged.",
+      "Couldn't reach the network. Not sent, no fee charged.",
     ]);
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
 
@@ -281,7 +284,7 @@ describe("Bridge withdrawal", () => {
 
     expect(await failureOf(rendered)).toStrictEqual([
       "Not confirmed",
-      "It may have reached the network. Check your EVM wallet's activity before you send it again.",
+      "It may have gone out. Check your EVM wallet's activity before sending again.",
     ]);
     expect(rendered.container).not.toHaveTextContent(/try again/i);
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
@@ -376,7 +379,7 @@ describe("Bridge withdrawal", () => {
 
       expect(await failureOf(rendered)).toStrictEqual([
         "Not sent",
-        "It waits for your password, so nothing was sent.",
+        "Needs your password.",
       ]);
       expect(rendered.getByRole("button", { name: "Try again" })).toBeVisible();
       expect(mocks.sendTransaction).not.toHaveBeenCalled();
@@ -394,8 +397,8 @@ describe("Bridge withdrawal", () => {
     );
 
     expect(await failureOf(await sendWithdrawal())).toStrictEqual([
-      "Bridging failed",
-      "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+      "Not sent",
+      "Balance too low for the amount and fee.",
     ]);
   });
 
@@ -405,8 +408,8 @@ describe("Bridge withdrawal", () => {
     );
 
     expect(await failureOf(await sendWithdrawal())).toStrictEqual([
-      "Bridging failed",
-      "It was declined in your EVM wallet, so nothing was sent.",
+      "Not sent",
+      "Declined in your EVM wallet.",
     ]);
   });
 });

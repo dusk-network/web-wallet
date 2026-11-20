@@ -335,11 +335,9 @@ describe("the password on big sends", () => {
       const { getByLabelText, getByRole, sending } = openDialog();
 
       expect(
-        getByRole("dialog", { name: "Enter your password" }),
-      ).toHaveTextContent("This is above the 1 DUSK you set in Settings.");
-      await vi.waitFor(() =>
-        expect(getByLabelText("Password you unlock with")).toHaveFocus(),
-      );
+        getByRole("dialog", { name: "Password for sends over 1 DUSK" }),
+      ).toBeInTheDocument();
+      await vi.waitFor(() => expect(getByLabelText("Password")).toHaveFocus());
 
       cancelSendPassword();
       await expect(sending).rejects.toBeInstanceOf(SendPasswordDeclinedError);
@@ -347,7 +345,7 @@ describe("the password on big sends", () => {
 
     it("says a wrong password, stays and forgets what was typed, and goes on with the right one", async () => {
       const { container, findByRole, getByLabelText, sending } = openDialog();
-      const field = getByLabelText("Password you unlock with");
+      const field = getByLabelText("Password");
 
       await fireEvent.input(field, { target: { value: "not the password" } });
       await fireEvent.submit(form(container));
@@ -404,7 +402,7 @@ describe("the password on big sends", () => {
 
     it("keeps the focus in it with Tab", async () => {
       const { getByLabelText, getByRole, sending } = openDialog();
-      const field = getByLabelText("Password you unlock with");
+      const field = getByLabelText("Password");
       const confirm = getByRole("button", { name: "Confirm" });
 
       confirm.focus();
@@ -429,9 +427,7 @@ describe("the password on big sends", () => {
     });
 
     expect(await findByText("Not sent")).toBeInTheDocument();
-    expect(
-      await findByText("It waits for your password, so nothing was sent."),
-    ).toBeInTheDocument();
+    expect(await findByText("Needs your password.")).toBeInTheDocument();
     expect(queryByText("Transaction failed")).toBeNull();
     expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });

@@ -302,7 +302,7 @@ describe("Setup", () => {
         );
 
         // A wallet made here leads: it works on any phone.
-        expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+        expect(getByRole("link", { name: "Create wallet" })).toHaveClass(
           "dusk-anchor-button--variant--primary",
         );
         expect(asked).toHaveTextContent(
@@ -376,7 +376,7 @@ describe("Setup", () => {
         expect(
           queryByRole("link", { name: "Open in the Dusk app" }),
         ).toBeNull();
-        expect(getByRole("link", { name: "Create new wallet" })).toHaveClass(
+        expect(getByRole("link", { name: "Create wallet" })).toHaveClass(
           "dusk-anchor-button--variant--primary",
         );
       });
@@ -482,7 +482,7 @@ describe("Setup", () => {
         getByRole("region", { name: "Payment request" }),
       ).not.toHaveTextContent("Create or restore");
 
-      for (const name of ["Create new wallet", "Restore wallet"]) {
+      for (const name of ["Create wallet", "Restore wallet"]) {
         expect(getByRole("link", { name })).toHaveClass(
           "dusk-anchor-button--variant--tertiary",
           "dusk-anchor-button--size--small",
@@ -536,9 +536,9 @@ describe("Setup", () => {
       expect(
         empty.getByRole("region", { name: "Payment request" }),
       ).toHaveTextContent("Create or restore a wallet to pay it.");
-      expect(
-        empty.getByRole("link", { name: "Create new wallet" }),
-      ).toHaveClass("dusk-anchor-button--variant--primary");
+      expect(empty.getByRole("link", { name: "Create wallet" })).toHaveClass(
+        "dusk-anchor-button--variant--primary",
+      );
       cleanup();
       cleanups.splice(0).forEach((stop) => stop());
 
@@ -640,9 +640,7 @@ describe("Setup", () => {
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
       "Dusk Web Wallet",
     );
-    expect(container.querySelector("footer")).toHaveTextContent(
-      "Web Wallet v0.1.5",
-    );
+    expect(container.querySelector("footer")).toHaveTextContent("v0.1.5 · any");
     expect(container.querySelector("css-doodle, img, canvas")).toBeNull();
   });
 
@@ -650,7 +648,7 @@ describe("Setup", () => {
     const { getByRole } = render(Setup, {});
 
     // The commit is the version SvelteKit has: the test's is "any".
-    const version = getByRole("link", { name: "Web Wallet v0.1.5 (any)" });
+    const version = getByRole("link", { name: "v0.1.5 · any" });
 
     expect(version).toHaveAttribute(
       "href",
@@ -661,7 +659,7 @@ describe("Setup", () => {
 
   it("should offer a first-time visitor to create or restore a wallet, and nothing to unlock", () => {
     const { getByRole, queryByRole } = render(Setup, {});
-    const create = getByRole("link", { name: "Create new wallet" });
+    const create = getByRole("link", { name: "Create wallet" });
 
     expect(create).toHaveClass("dusk-anchor-button--variant--primary");
     expect(create).toHaveClass("dusk-anchor-button--size--default");
@@ -680,7 +678,7 @@ describe("Setup", () => {
     expect(unlock).toHaveClass("dusk-anchor-button--variant--primary");
     expect(unlock).toHaveClass("dusk-anchor-button--size--default");
 
-    for (const name of ["Create new wallet", "Restore wallet"]) {
+    for (const name of ["Create wallet", "Restore wallet"]) {
       const other = getByRole("link", { name });
 
       expect(other).toHaveClass("dusk-anchor-button--variant--tertiary");

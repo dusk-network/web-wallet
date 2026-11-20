@@ -147,15 +147,13 @@ describe("checkAmount", () => {
   it("says what is wrong with an amount, in the words the page shows", () => {
     expect(check("")).toStrictEqual({ error: "", isMinimum: false, ok: false });
     expect(check("ten").error).toBe("Enter an amount such as 1000 or 1000.5.");
-    expect(check("0").error).toBe("Enter an amount greater than 0.");
+    expect(check("0").error).toBe("Enter more than 0.");
     expect(check("999")).toStrictEqual({
       error: "The minimum stake is 1,000 DUSK.",
       isMinimum: true,
       ok: false,
     });
-    expect(check("1483").error).toBe(
-      "That's 0.05 DUSK more than the public balance, with the network fee.",
-    );
+    expect(check("1483").error).toBe("0.05 DUSK short, fee included.");
     expect(check("1482.95")).toStrictEqual({
       error: "",
       isMinimum: false,
@@ -167,17 +165,17 @@ describe("checkAmount", () => {
     const keep = 50_000_000n;
 
     expect(check("1482.95", { keep }).error).toBe(
-      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later.",
+      "0.05 DUSK short, fees included.",
     );
     expect(check("1482.95", { hidden: true, keep }).error).toBe(
-      "That leaves too little for this fee and the fee to unstake later.",
+      "Too little left for the fees.",
     );
     expect(check("1482.9", { keep }).ok).toBe(true);
   });
 
   it("doesn't let an amount give away the balance while balances are hidden", () => {
     expect(check("1483", { hidden: true }).error).toBe(
-      "That leaves too little for the network fee.",
+      "Too little left for the fee.",
     );
     expect(check("1484", { hidden: true }).error).toBe("More than you have.");
   });
@@ -192,12 +190,12 @@ describe("checkAmount", () => {
       "Enter an amount such as 10 or 10.5.",
     );
     expect(check("5", { available: 0n, minimum: 0n, most }).error).toBe(
-      "The network fee is paid from the public balance, and it's empty: 0.05 DUSK short. Add that much to it first.",
+      "The fee comes from the public balance, which is empty: 0.05 DUSK short. Add that much to it first.",
     );
     expect(
       check("5", { available: 49_000_000n, minimum: 0n, most }).error,
     ).toBe(
-      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first.",
+      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first.",
     );
     // Lowering it is offered only where it can get that low.
     expect(
@@ -208,7 +206,7 @@ describe("checkAmount", () => {
         most,
       }).error,
     ).toBe(
-      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first.",
+      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first.",
     );
     expect(
       check("5", {
@@ -218,14 +216,12 @@ describe("checkAmount", () => {
         most,
       }).error,
     ).toBe(
-      "The public balance doesn't cover the network fee: 0.001 DUSK short. Add that much to it first, or lower the fee.",
+      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first, or lower the fee.",
     );
     expect(
       check("5", { available: 49_000_000n, hidden: true, minimum: 0n, most })
         .error,
-    ).toBe(
-      "The public balance doesn't cover the network fee: •••• DUSK short.",
-    );
+    ).toBe("Public balance doesn't cover the fee: •••• DUSK short.");
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
 
@@ -258,7 +254,7 @@ describe("NativeStake", () => {
     try {
       const { container, getByLabelText } = render(NativeStake, baseProps);
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1500" },
       });
 
@@ -281,7 +277,7 @@ describe("NativeStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("••••");
+      expect(getByLabelText("Amount")).toHaveValue("••••");
       expect(container.textContent).not.toContain("1,482.9");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -291,7 +287,7 @@ describe("NativeStake", () => {
       await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByLabelText("Amount")).toHaveValue("1000");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -310,9 +306,9 @@ describe("NativeStake", () => {
 
     expect(container).not.toHaveTextContent(/recovery phrase/i);
     expect(facts).toStrictEqual([
-      "Needs your own Dusk node Run a node",
-      "Rewards start in about 6 to 12 hours Unstake any time, with no waiting period.",
-      "If your node misses its turn Part of your stake gets locked. It's still yours, and unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost).",
+      "Needs your own node Run a node",
+      "Rewards start in 6–12 hours",
+      "Node misses a turn: part locked, unstaking returns it. Breaks the rules: part burned.",
     ]);
     // The docs on running one.
     expect(getByRole("link", { name: "Run a node" })).toHaveAttribute(
@@ -327,7 +323,7 @@ describe("NativeStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1200.5" },
     });
 
@@ -335,12 +331,7 @@ describe("NativeStake", () => {
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), (row) =>
         row.textContent?.replace(/\s+/g, " ").trim(),
       ),
-    ).toStrictEqual([
-      "Stake 1,200.5 DUSK",
-      "Rewards start In about 6 to 12 hours",
-      "Paid from Public balance",
-      "Total Up to 1,200.55 DUSK",
-    ]);
+    ).toStrictEqual(["Stake 1,200.5 DUSK", "Total up to 1,200.55 DUSK"]);
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
@@ -364,7 +355,7 @@ describe("NativeStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
 
@@ -373,11 +364,11 @@ describe("NativeStake", () => {
 
     expect(stake).toHaveTextContent("100 DUSK");
     expect(stake).toHaveClass("stake-flow__muted");
-    expect(total).toHaveTextContent("Up to 100.05 DUSK");
+    expect(total).toHaveTextContent(/^100\.05 DUSK$/);
     expect(total).toHaveClass("stake-flow__muted");
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
 
@@ -392,7 +383,7 @@ describe("NativeStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000,5" },
     });
 
@@ -408,7 +399,7 @@ describe("NativeStake", () => {
   it("asks which amount is meant of one that could be either of two, as Send does, with a button for each", async () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1,000" },
     });
 
@@ -416,7 +407,7 @@ describe("NativeStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "1000 DUSK" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    expect(getByLabelText("Amount")).toHaveValue("1000");
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
@@ -429,7 +420,7 @@ describe("NativeStake", () => {
     expect(getByRole("heading", { name: "Stake more" })).toBeInTheDocument();
     expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
     expect(container.querySelector(".native-stake__facts")).toHaveTextContent(
-      "10% of what you add is locked When your stake is already active. It's still yours, and unstaking returns it.",
+      "10% of what you add is locked When your stake is active. Unstaking returns it.",
     );
 
     await fireEvent.input(getByLabelText("Amount to add"), {
@@ -450,9 +441,9 @@ describe("NativeStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+    expect(getByLabelText("Amount")).toHaveValue("1482.9");
     expect(container).toHaveTextContent(
-      "Max keeps 0.1 DUSK: up to 0.05 for this fee and 0.05 to unstake later.",
+      "Max leaves 0.1 DUSK for this fee and unstaking.",
     );
     expect(getByRole("button", { name: "Max" })).toHaveAttribute(
       "title",
@@ -471,12 +462,12 @@ describe("NativeStake", () => {
     );
 
     // All but this stake's own fee: the most it took before.
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1482.95" },
     });
 
     expect(container.querySelector(".native-stake__error")).toHaveTextContent(
-      "That's 0.05 DUSK more than the public balance, with this fee and the fee to unstake later.",
+      "0.05 DUSK short, fees included.",
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
@@ -491,7 +482,7 @@ describe("NativeStake", () => {
     expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
     expect(getByRole("button", { name: "Max" })).toBeEnabled();
     expect(container.querySelector(".native-stake__note")).toHaveTextContent(
-      "Your public balance doesn't cover the 1,000 DUSK minimum, this fee and the fee to unstake later.",
+      "Not enough for the 1,000 DUSK minimum and fees.",
     );
   });
 
@@ -504,7 +495,7 @@ describe("NativeStake", () => {
 
     expect(review).toBeDisabled();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await afterConfirmDelay();
@@ -526,7 +517,7 @@ describe("NativeStake", () => {
     expect(container.querySelector(".stake-flow")).not.toHaveClass(
       "stake-flow--review",
     );
-    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    expect(getByLabelText("Amount")).toHaveValue("1000");
   });
 
   it("follows the browser's Back and Forward between the filled form and its review", async () => {
@@ -539,7 +530,7 @@ describe("NativeStake", () => {
         .querySelector(".stake-flow")
         ?.classList.contains("stake-flow--review");
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -551,7 +542,7 @@ describe("NativeStake", () => {
     await tick();
 
     expect(isReview()).toBe(false);
-    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    expect(getByLabelText("Amount")).toHaveValue("1000");
 
     // And at the review, as Forward does.
     historyAt({ stakeReview: true });
@@ -578,7 +569,7 @@ describe("NativeStake", () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
     const stake = () => getByRole("button", { name: "Stake 1,000 DUSK" });
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await afterConfirmDelay();
@@ -612,7 +603,7 @@ describe("NativeStake", () => {
         .mockResolvedValue(HASH);
       const view = render(NativeStake, { ...baseProps, execute });
 
-      await fireEvent.input(view.getByLabelText("Stake amount"), {
+      await fireEvent.input(view.getByLabelText("Amount"), {
         target: { value: "1000" },
       });
       await fireEvent.click(view.getByRole("button", { name: "Review" }));
@@ -642,7 +633,7 @@ describe("NativeStake", () => {
       expect(container.querySelector(".stake-flow")).toHaveClass(
         "stake-flow--review",
       );
-      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByLabelText("Amount")).toHaveValue("1000");
       expect(execute).toHaveBeenCalledOnce();
 
       await afterConfirmDelay();
@@ -665,7 +656,7 @@ describe("NativeStake", () => {
       expect(container.querySelector(".stake-flow")).not.toHaveClass(
         "stake-flow--review",
       );
-      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByLabelText("Amount")).toHaveValue("1000");
     });
 
     it("offers no Try again when it may have gone out", async () => {
@@ -674,7 +665,7 @@ describe("NativeStake", () => {
       );
 
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
-      expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+      expect(getByRole("link", { name: "Open Activity" })).toBeInTheDocument();
 
       historyAt({});
       await tick();
@@ -694,16 +685,16 @@ describe("NativeStake", () => {
         row.textContent?.replace(/\s+/g, " ").trim(),
       ).find((text) => text?.startsWith("Total"));
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 3n } });
 
-    expect(total()).toBe("Total Up to 1,000.05 DUSK");
+    expect(total()).toBe("Total up to 1,000.05 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
-    expect(total()).toBe("Total Up to 1,000.15 DUSK");
+    expect(total()).toBe("Total up to 1,000.15 DUSK");
   });
 });

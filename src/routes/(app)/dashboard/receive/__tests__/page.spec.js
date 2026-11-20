@@ -1360,13 +1360,13 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(said("Checking for payments…")).toBe(true);
-        expect(said("Nothing matching has come in.")).toBe(false);
+        expect(said("Not paid yet.")).toBe(false);
 
         // All of it read: nothing of it came in.
         history.flags?.set({ failed: false, reading: false });
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(said("Nothing matching has come in.")).toBe(true);
+        expect(said("Not paid yet.")).toBe(true);
       } finally {
         history.state?.set({ hasMore: false, rows: [] });
         history.flags?.set({ failed: false, reading: false });
@@ -1396,9 +1396,7 @@ describe("Receive", () => {
         render(Receive);
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Nothing matching has come in.",
-        );
+        expect(screen.getByRole("listitem")).toHaveTextContent("Not paid yet.");
 
         // Sent from another profile here, and seen to go out: the history
         // doesn't have it yet.
@@ -1458,9 +1456,7 @@ describe("Receive", () => {
 
         await vi.advanceTimersByTimeAsync(120_000);
 
-        expect(screen.getByRole("listitem")).toHaveTextContent(
-          "Nothing matching has come in.",
-        );
+        expect(screen.getByRole("listitem")).toHaveTextContent("Not paid yet.");
       } finally {
         forgetArrivals();
         history.state?.set({ hasMore: false, rows: [] });
@@ -1523,11 +1519,11 @@ describe("Receive", () => {
         ]),
       ).toStrictEqual([
         [
-          "See in History",
+          "See in Activity",
           `/some-base-path/dashboard/transactions/?tx=${"ab".repeat(32)}`,
         ],
         [
-          "See in History",
+          "See in Activity",
           `/some-base-path/dashboard/transactions/?tx=${"cd".repeat(32)}`,
         ],
         [
@@ -1795,11 +1791,11 @@ describe("Receive", () => {
       // What went back, and where to see it: on its way, with no time a
       // block's would change.
       expect(payments()).toHaveTextContent(
-        "Sent back 0.012 DUSK, on its way · See in History",
+        "Sent back 0.012 DUSK, on its way · See in Activity",
       );
       expect(
         screen.getByRole("link", {
-          name: /^See in History: what was sent back for the payment of/,
+          name: /^See in Activity: what was sent back for the payment of/,
         }),
       ).toHaveAttribute(
         "href",
@@ -1916,7 +1912,7 @@ describe("Receive", () => {
 
       // Its time first, as the payments' above it, once a block has it.
       expect(payments()).toHaveTextContent(
-        `${paidAt(at + 4000)}, sent back 0.012 DUSK · See in History`,
+        `${paidAt(at + 4000)}, sent back 0.012 DUSK · See in Activity`,
       );
       history.state?.set({ hasMore: false, rows: [] });
     });
@@ -2177,7 +2173,7 @@ describe("Receive", () => {
         expect(card(memo).querySelector(".requests__state")).toHaveTextContent(
           /^Waiting$/,
         );
-        expect(card(memo)).toHaveTextContent("Nothing matching has come in.");
+        expect(card(memo)).toHaveTextContent("Not paid yet.");
         expect(card(memo)).not.toHaveTextContent(/Check|Wi-Fi|F-2026-102/);
       }
 
@@ -2324,9 +2320,9 @@ describe("Receive", () => {
         `Asked ${inSentence(claimDay(at, "en"))}. Amount and memo match a payment ${inSentence(paidAt(at + 500))}.`,
       );
       expect(items[1]).toHaveTextContent("Waiting");
-      expect(items[1]).toHaveTextContent("Nothing matching has come in.");
+      expect(items[1]).toHaveTextContent("Not paid yet.");
       expect(
-        screen.getByRole("link", { name: "See in History" }),
+        screen.getByRole("link", { name: "See in Activity" }),
       ).toHaveAttribute(
         "href",
         expect.stringContaining(

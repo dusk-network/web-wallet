@@ -14,7 +14,7 @@
    *
    * Each box suggests recovery words as Import's do, from the wallet's own
    * list and from what's typed alone, never from the phrase, and marks a word
-   * that isn't one: "Not a recovery word". Enter, or a phone keyboard's Next,
+   * that isn't one: "Unknown word". Enter, or a phone keyboard's Next,
    * goes on to the next box, whether or not suggestions show, and never
    * checks: Check, and Enter in the last box, check only once every box
    * holds a recovery word, and a check half filled in says nothing.
@@ -105,15 +105,6 @@
 
   /** @type {Textbox[]} */
   const boxes = [];
-
-  /** @param {number[]} places */
-  const numbersOf = (places) =>
-    places.length === 1
-      ? `${places[0] + 1}`
-      : `${places
-          .slice(0, -1)
-          .map((place) => place + 1)
-          .join(", ")} and ${places[places.length - 1] + 1}`;
 
   /** Whether a box holds a recovery word, as typed. */
   const holdsWord = (/** @type {string} */ word) => isWord(word.trim());
@@ -303,9 +294,6 @@
     novalidate
     on:submit|preventDefault={check}
   >
-    <p class="recovery-check__lead">
-      Type words {numbersOf(asked)} as you wrote them down.
-    </p>
     {#if isHidden && !$touchOnly}
       <Button
         className="recovery-check__show-typed"
@@ -371,7 +359,7 @@
       <!-- Under the boxes: the thumb holding it hides none of them. -->
       <HoldToShow bind:held={isHeld} className="recovery-check__show-typed" />
     {/if}
-    <!-- The check's own button leads: Skip for now, where a flow has it,
+    <!-- The check's own button leads: Skip, where a flow has it,
       is quieter. -->
     <Button
       disabled={!typed.every(holdsWord)}
@@ -390,10 +378,6 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-  }
-
-  .recovery-check__lead {
-    margin: 0;
   }
 
   .recovery-check__words {

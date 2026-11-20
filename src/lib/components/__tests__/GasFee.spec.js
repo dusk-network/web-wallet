@@ -16,7 +16,7 @@ describe("GasFee", () => {
     const baseProps = { fee };
     const { container, getByText } = render(GasFee, baseProps);
 
-    expect(getByText("Network fee (at most)")).toBeInTheDocument();
+    expect(getByText("Fee up to")).toBeInTheDocument();
     expect(container.querySelector(".gas-fee__amount-value")?.textContent).toBe(
       formatFee(fee, settings.language, { max: true }),
     );

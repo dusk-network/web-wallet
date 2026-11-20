@@ -105,7 +105,7 @@
         <AppAnchorButton
           className="deposit-result__button"
           href={`/dashboard/transactions?tx=${transactionHash}`}
-          text="See in History"
+          text="See in Activity"
           variant="secondary"
         />
       {/if}
@@ -118,7 +118,7 @@
     {#if hasHistory && describe(error).outcomeUnknown}
       <AppAnchorButton
         href="/dashboard/transactions"
-        text="Open History"
+        text="Open Activity"
         variant="secondary"
       />
     {:else}

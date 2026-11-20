@@ -85,7 +85,7 @@ describe("Remove wallet", () => {
       ),
     ).toBeInTheDocument();
 
-    const password = getByLabelText("Password you unlock with");
+    const password = getByLabelText("Password");
     const remove = getByRole("button", { name: "Remove wallet" });
 
     expect(remove).toBeDisabled();

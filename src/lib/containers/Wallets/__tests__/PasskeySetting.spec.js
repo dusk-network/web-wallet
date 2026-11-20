@@ -46,7 +46,7 @@ describe("Settings: unlock with fingerprint or face", () => {
    */
   async function turnOnWith(view, password) {
     await fireEvent.click(await theSwitch(view));
-    await fireEvent.input(view.getByLabelText("Password you unlock with"), {
+    await fireEvent.input(view.getByLabelText("Password"), {
       target: { value: password },
     });
     await fireEvent.click(view.getByRole("button", { name: "Turn on" }));
@@ -145,7 +145,7 @@ describe("Settings: unlock with fingerprint or face", () => {
     await fireEvent.click(await theSwitch(view));
 
     await vi.waitFor(() => expect(vault.passkey()).toBeNull());
-    expect(view.queryByLabelText("Password you unlock with")).toBeNull();
+    expect(view.queryByLabelText("Password")).toBeNull();
     await expect(vault.check(PASSWORD)).resolves.toBeUndefined();
   });
 

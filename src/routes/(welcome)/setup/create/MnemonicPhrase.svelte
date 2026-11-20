@@ -41,9 +41,7 @@
 </script>
 
 <WarningCard heading="Keep it safe">
-  <p class="mnemonic-card__notice">
-    Please make sure to write your phrase down and save it in a secure location.
-  </p>
+  <p class="mnemonic-card__notice">On paper, in order.</p>
   <Words words={shown} />
   {#if $touchOnly}
     <HoldToShow bind:held={isHeld} className="mnemonic-card__show" />

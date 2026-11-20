@@ -106,9 +106,9 @@ export const shortAddress = (address) => shortenAddress(address);
 /**
  * A memo on a payment from an address that isn't one of the profiles here or
  * a contact, said as theirs (`@dusk-network/app-core/activity`'s
- * sendersMemo), with who it's from: "From " their .dusk name, else their
- * address, and " · not in your contacts", which a .dusk name doesn't change,
- * as anyone can register one. Null for any other memo.
+ * sendersMemo), marked "Not a contact", which a .dusk name doesn't change,
+ * as anyone can register one: the row names who it's from. Null for any
+ * other memo.
  *
  * @param {ActivityRow} row
  * @param {Parameters<typeof sendersMemo>[1]} among Who isn't a stranger
@@ -126,7 +126,7 @@ export function strangersMemo(row, among) {
     (row.counterparty ? shortAddress(row.counterparty) : "");
 
   return {
-    from: who ? `From ${who} · not in your contacts` : theirs.from,
+    from: who ? "Not a contact" : theirs.from,
     memo: theirs.memo,
   };
 }
@@ -375,7 +375,7 @@ const shownStatus = (row) =>
       : null;
 
 /** What a send whose answer never came says, in place of Sent. */
-export const NOT_CONFIRMED_YET = "Not confirmed yet";
+export const NOT_CONFIRMED_YET = "Not confirmed";
 
 /** What a send that went out after Don't send says, in place of Sent. */
 export const SENT_AFTER_DONT_SEND = "Sent after you chose not to send";

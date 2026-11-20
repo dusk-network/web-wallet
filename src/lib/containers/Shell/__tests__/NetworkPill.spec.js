@@ -128,9 +128,7 @@ describe("NetworkPill", () => {
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
       "Offline",
     );
-    expect(
-      getByText("Your balance may be out of date until you're back online."),
-    ).toBeInTheDocument();
+    expect(getByText("Balances may be out of date.")).toBeInTheDocument();
     // Nothing to try while offline: the sync starts once it's back.
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
 
@@ -174,7 +172,7 @@ describe("NetworkPill", () => {
       await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
       expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-        "Can't reach the network Your balance may be out of date. Try again",
+        "Can't reach the network Balances may be out of date. Try again",
       );
 
       // Something back, and it waits again.
@@ -437,7 +435,7 @@ describe("NetworkPill", () => {
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-      "Can't reach the network Your balance may be out of date. Try again",
+      "Can't reach the network Balances may be out of date. Try again",
     );
     expect(queryByText(/Failed to fetch/)).toBeNull();
 
@@ -589,7 +587,7 @@ describe("NetworkPill", () => {
       /^Dusk Testnet Sync failed/,
     );
     expect(getByText("The node is out of reach")).toBeInTheDocument();
-    expect(getByText("Your balance may be out of date.")).toBeInTheDocument();
+    expect(getByText("Balances may be out of date.")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 

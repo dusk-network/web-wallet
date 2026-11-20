@@ -118,7 +118,7 @@ describe("The ledger look", () => {
     expect(panel.getByRole("heading", { name: "Activity" })).toHaveClass(
       "section-head",
     );
-    expect(panel.getByRole("link", { name: "History" })).toHaveClass(
+    expect(panel.getByRole("link", { name: "See all" })).toHaveClass(
       "text-link",
     );
     // A day keeps sentence case, in Söhne.
@@ -155,7 +155,6 @@ describe("The ledger look", () => {
     const cards = render(ExplainerCards, {
       liquid: DUSK / 2n,
       locale: "en",
-      minimumStake: 1000n * DUSK,
       reward: 0n,
       shielded: 0n,
       staked: null,

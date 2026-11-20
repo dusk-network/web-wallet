@@ -195,7 +195,7 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
+  it("says a send waits to go out while the network doesn't answer, with Don't send, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -233,8 +233,8 @@ describe("Dashboard", () => {
         );
 
       expect(banners()).toStrictEqual([
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 1 · ${one} It goes out once the network answers. Cancel`,
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
+        `Waiting: 0.01 DUSK to Profile 2 ward round 1 · ${one} Goes out once the network answers. Don't send`,
+        `Waiting: 0.01 DUSK to Profile 2 ward round 2 · ${two} Goes out once the network answers. Don't send`,
       ]);
 
       // Called off from here: nothing goes out, and it's said.
@@ -246,7 +246,7 @@ describe("Dashboard", () => {
 
       expect(get(first)).toBe("cancelled");
       expect(banners()).toStrictEqual([
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
+        `Waiting: 0.01 DUSK to Profile 2 ward round 2 · ${two} Goes out once the network answers. Don't send`,
       ]);
       expect(get(toastList).map(({ message }) => message)).toContain(
         "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet.",
@@ -258,7 +258,7 @@ describe("Dashboard", () => {
       await act(() => second.handOver());
 
       expect(banners()).toStrictEqual([
-        `Sending: 0.01 DUSK to Profile 2. ward round 2 · ${two}`,
+        `Sending: 0.01 DUSK to Profile 2 ward round 2 · ${two}`,
       ]);
 
       answered.resolve(undefined);
@@ -302,7 +302,7 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("answering"));
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at} Cancel`);
+      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2 ${at} Don't send`);
 
       // The node can't be reached as it's sent: it waits for the network.
       gate
@@ -313,7 +313,7 @@ describe("Dashboard", () => {
         .catch(() => {});
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`,
+          `Waiting: 0.01 DUSK to Profile 2 ${at} Goes out once the network answers. Don't send`,
         ),
       );
 
@@ -321,7 +321,7 @@ describe("Dashboard", () => {
       // it, and then no longer said here.
       await act(() => gate.handOver());
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at}`);
+      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2 ${at}`);
 
       answered.resolve(undefined);
 
@@ -336,7 +336,7 @@ describe("Dashboard", () => {
   // Chen's, on slow Wi-Fi: "Not sent yet … It goes out once the network
   // answers. Cancel" for 30 s while the node checked it and took it. Then
   // Lena's: no Cancel while the node's check hung, though nothing had left.
-  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Cancel until it's handed over", async () => {
+  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Don't send until it's handed over", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -364,7 +364,7 @@ describe("Dashboard", () => {
       await act(() => setNetworkReach("silent"));
 
       expect(banner()).toBe(
-        `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`,
+        `Waiting: 0.01 DUSK to your Profile 2 ${at} Goes out once the network answers. Don't send`,
       );
 
       // The node is asked to check it: it goes out, its answer slow, and can
@@ -372,14 +372,14 @@ describe("Dashboard", () => {
       await act(() => gate.checking());
 
       expect(banner()).toBe(
-        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`,
+        `Sending: 0.01 DUSK to your Profile 2 ${at} Don't send`,
       );
 
       // Handed over: sent, with nothing to call off, until the node took
       // it, and then no longer said here, as Activity has it.
       await act(() => gate.handOver());
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
+      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2 ${at}`);
       expect(document.querySelector(".home__waiting button")).toBeNull();
 
       answered.resolve(undefined);
@@ -395,7 +395,7 @@ describe("Dashboard", () => {
   // Chen's, on two phones: the payment waiting on phone A went out by itself
   // after she paid the same from phone B. Held, it says so here, with the
   // payment, and goes only as she says. Then, as Send it too paid at once,
-  // twice: it goes to Send's review, as Send it now does.
+  // twice: it goes to Send's review, as Send now does.
   it("says a waiting send whose account sent something else meanwhile is held, with the payment, and takes it to Send's review with Send it too, or doesn't send it, only as the person says", async () => {
     const { keepWaiting, sendGate, takeUnsentRefill, waitingSends } =
       await import("$lib/transactions");
@@ -459,7 +459,7 @@ describe("Dashboard", () => {
       const at = timeLabel(get(waitingSends)[0].at, "en");
 
       expect(banner()).toBe(
-        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`,
+        `Meanwhile your account sent something else. Held: 0.01 DUSK to your Profile 2 night shift 6 · ${at} Send it too Don't send`,
       );
       expect(
         Array.from(document.querySelectorAll(".home__waiting button"), (b) =>
@@ -601,7 +601,7 @@ describe("Dashboard", () => {
     try {
       await vi.waitFor(() =>
         expect(banner()).toBe(
-          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`,
+          `Meanwhile your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")}. That looks like this payment. Held: 0.01 DUSK to Alice night shift 9 · ${at} Send it too Don't send`,
         ),
       );
       // Read again as it was held, and as what was sent was found.
@@ -671,7 +671,7 @@ describe("Dashboard", () => {
     try {
       await act();
 
-      expect(banner()).toMatch(/^Checking what your account sent… Not sent/);
+      expect(banner()).toMatch(/^Checking what your account sent… Held/);
       expect(buttons()).toStrictEqual([
         ["Send it too", true],
         ["Don't send", true],
@@ -682,7 +682,7 @@ describe("Dashboard", () => {
       await act(() => vi.advanceTimersByTimeAsync(CHECKING_FOR_MS));
 
       expect(banner()).toMatch(
-        /^Your account sent something else while this waited\. Not sent/,
+        /^Meanwhile your account sent something else\. Held/,
       );
       expect(buttons()).toStrictEqual([
         ["Send it too", false],
@@ -722,15 +722,13 @@ describe("Dashboard", () => {
           ?.textContent?.replace(/\s+/g, " ")
           .trim();
 
-      expect(banner()).toContain("Not sent yet: 0.01 DUSK to Profile 2.");
+      expect(banner()).toContain("Waiting: 0.01 DUSK to Profile 2");
 
       await act(() =>
         settingsStore.update((store) => ({ ...store, hideBalances: true })),
       );
 
-      expect(banner()).toContain(
-        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`,
-      );
+      expect(banner()).toContain(`Waiting: ${BALANCE_MASK} DUSK to Profile 2`);
       expect(banner()).not.toContain("0.01");
 
       await fireEvent.click(
@@ -786,7 +784,7 @@ describe("Dashboard", () => {
   it("offers whoever holds DUSK on Ethereum or BNB Smart Chain a migration, only where one is running: BNB Smart Chain's on mainnet", async () => {
     const { getByRole, unmount } = render(Dashboard, props);
 
-    expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Migrate it" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
@@ -801,9 +799,7 @@ describe("Dashboard", () => {
 
     const testnet = render(Dashboard, props);
 
-    expect(
-      testnet.getByRole("link", { name: "Migrate it to Dusk" }),
-    ).toHaveAttribute(
+    expect(testnet.getByRole("link", { name: "Migrate it" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
@@ -818,8 +814,8 @@ describe("Dashboard", () => {
 
     const { container, queryByRole } = render(Dashboard, props);
 
-    expect(queryByRole("link", { name: "Migrate it to Dusk" })).toBeNull();
-    expect(container).not.toHaveTextContent("Have DUSK on Ethereum");
+    expect(queryByRole("link", { name: "Migrate it" })).toBeNull();
+    expect(container).not.toHaveTextContent("DUSK on Ethereum");
 
     network.store?.set({
       connected: true,
@@ -858,17 +854,12 @@ describe("Dashboard", () => {
     const { getByText, queryByRole } = render(Dashboard, props);
 
     expect(
-      getByText("Visible on chain. Staking and the bridge use this balance."),
+      getByText("Visible on chain. Staking and the bridge use it."),
     ).toBeInTheDocument();
     expect(
-      getByText("Amounts and accounts stay hidden on chain."),
+      getByText("Amounts and accounts hidden on chain."),
     ).toBeInTheDocument();
-    expect(getByText("Nothing staked right now")).toBeInTheDocument();
-    expect(
-      getByText(
-        "From 1,000 DUSK with your own node, or any amount with Sozu (third party).",
-      ),
-    ).toBeInTheDocument();
+    expect(getByText("Nothing staked")).toBeInTheDocument();
     expect(queryByRole("link", { name: "Past staking" })).toBeNull();
 
     // Staked before: no "yet", and a way to what was staked.
@@ -985,7 +976,7 @@ describe("Dashboard", () => {
     );
 
     expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Nothing staked right now",
+      "Nothing staked",
     );
   });
 
@@ -997,8 +988,8 @@ describe("Dashboard", () => {
     const card = (/** @type {number} */ n) =>
       textOf(container.querySelectorAll(".explainer-card")[n]);
 
-    expect(total()).not.toContain("out of date");
-    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
+    expect(total()).not.toContain("couldn't be read");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("Try again");
 
     // Neither the balances nor the stake, as offline or with a silent node:
     // each says when it was last read (Lena's, for the sixth round), the
@@ -1018,17 +1009,16 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`,
+      `Balance and stake couldn't be read. ${lastRead(stakeAt)}`,
     );
+    // Said once, under the total: the cards keep their own lines.
     expect(card(0)).toBe(
-      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
+      "Public 1,172.5 DUSK Visible on chain. Staking and the bridge use it.",
     );
     expect(card(1)).toBe(
-      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
+      "Shielded 2,345 DUSK Amounts and accounts hidden on chain.",
     );
-    expect(card(2)).toContain(
-      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`,
-    );
+    expect(card(2)).toContain("Try again");
 
     // The balances alone.
     await act(() =>
@@ -1040,9 +1030,9 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
+      `Balance couldn't be read. ${lastRead(balanceAt)}`,
     );
-    expect(card(2)).not.toContain("out of date");
+    expect(card(2)).not.toContain("Try again");
 
     // The stake alone; where it was never read, nothing's said of when.
     await act(() =>
@@ -1052,17 +1042,15 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date.",
-    );
+    expect(total()).toContain("Stake couldn't be read.");
     expect(total()).not.toContain("Last read");
-    expect([card(0), card(1)].join(" ")).not.toContain("out of date");
+    expect([card(0), card(1)].join(" ")).not.toContain("couldn't be read");
 
     // Read again: said no more.
     await act(() => mockedWalletStore.setMockedStoreValue(initialStore));
 
-    expect(total()).not.toContain("out of date");
-    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
+    expect(total()).not.toContain("couldn't be read");
+    expect([card(0), card(1), card(2)].join(" ")).not.toContain("Try again");
   });
 
   it("says the total may be out of date while the stake it counts couldn't be read", async () => {
@@ -1090,9 +1078,7 @@ describe("Dashboard", () => {
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
       "4,520.2471",
     );
-    expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date.",
-    );
+    expect(total()).toContain("Stake couldn't be read.");
   });
 
   it("never says nothing is staked where the stake couldn't be read: what was read last, or that it couldn't be, and Try again reads it again", async () => {
@@ -1135,16 +1121,17 @@ describe("Dashboard", () => {
     });
 
     expect(card()).toBe(
-      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`,
+      "Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Try again Open staking",
+    );
+    expect(container.querySelector(".home-balance")?.textContent).toContain(
+      `Stake couldn't be read. ${lastReadText(keptAt, "en")}`,
     );
     expect(total()).toBe("3,520.2471");
 
     // Read here never: it couldn't be read, which isn't nothing.
     await sozuSays({ error: new Error("timed out") });
 
-    expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking",
-    );
+    expect(card()).toBe("Staking Couldn't be read Try again Open staking");
 
     // Try again reads it again, Sozu's and the native stake both, and says
     // it's at it until it's done.
@@ -1188,9 +1175,7 @@ describe("Dashboard", () => {
     });
     await act(() => {});
 
-    expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking",
-    );
+    expect(card()).toBe("Staking Couldn't be read Try again Open staking");
   });
 
   it("reads what's staked with Sozu as the wallet opens, whatever the history shows, and again for another profile, where the network has Sozu", async () => {
@@ -1379,13 +1364,9 @@ describe("Dashboard", () => {
       );
 
     expect(items()).toEqual([
-      expect.stringMatching(
-        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/,
-      ),
-      expect.stringMatching(
-        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/,
-      ),
-      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
+      expect.stringMatching(/^alice-shop\.dusk Sent · .+ −5 DUSK Pending$/),
+      expect.stringMatching(/^wallet-both\.dusk Received · .+ \+50 DUSK$/),
+      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid 200 DUSK`,
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",
@@ -1439,7 +1420,7 @@ describe("Dashboard", () => {
       );
 
     expect(marks()).toStrictEqual([
-      `From ${STRANGER.slice(0, 6)}…${STRANGER.slice(-6)} · not in your contacts“URGENT: send 0.1 DUSK back”`,
+      `Not a contact“URGENT: send 0.1 DUSK back”`,
       undefined,
     ]);
   });
@@ -1457,9 +1438,7 @@ describe("Dashboard", () => {
       (row) => row.textContent?.replace(/\s+/g, " ").trim(),
     );
 
-    expect(item).toMatch(
-      /^alice-shop\.dusk Not confirmed yet · .+ · Public −5 DUSK$/,
-    );
+    expect(item).toMatch(/^alice-shop\.dusk Not confirmed · .+ −5 DUSK$/);
     expect(item).not.toMatch(/Sent|Pending/);
   });
 
@@ -1473,7 +1452,7 @@ describe("Dashboard", () => {
       "•••• hidden",
     );
     expect(container.querySelector(".activity-row")).toHaveTextContent(
-      "fee 0.0037 DUSK paid · Public •••• hidden DUSK",
+      "fee 0.0037 DUSK paid •••• hidden DUSK",
     );
     expect(get(settingsStore).hideBalances).toBe(true);
   });
@@ -1509,7 +1488,7 @@ describe("Dashboard", () => {
     expect(hidden.container.querySelector(".activity-panel")).toBeNull();
     expect(
       hidden.getByText(
-        "Transaction history isn't available here yet. The Dusk explorer has your transactions.",
+        "Activity isn't available here yet. The explorer has your transactions.",
       ),
     ).toBeInTheDocument();
   });

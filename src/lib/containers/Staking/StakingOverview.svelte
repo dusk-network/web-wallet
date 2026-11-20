@@ -198,7 +198,6 @@
     {
       label: hasLiquid ? "Staked natively" : "Staked",
       lux: staked,
-      sub: hasNative ? undefined : "Nothing to unstake or claim",
     },
     ...(hasLiquid && position
       ? [
@@ -210,11 +209,7 @@
         ]
       : []),
     { label: hasLiquid ? "Native rewards" : "Rewards", lux: stakeInfo.reward },
-    {
-      label: "Available to stake",
-      lux: publicBalance,
-      sub: "From your public balance",
-    },
+    { label: "Available (public)", lux: publicBalance },
   ];
   // Unstake and Claim show once there is something natively staked.
   $: hasNative = staked > 0n || stakeInfo.reward > 0n;
@@ -240,9 +235,7 @@
                     ><BalanceValue {...amountOf(figure.lux)} /></span
                   > DUSK</span
                 >
-                {#if figure.sub}
-                  <span class="staking__sub">{figure.sub}</span>
-                {:else if figure.stDusk !== undefined}
+                {#if figure.stDusk !== undefined}
                   <span class="staking__sub"
                     ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
                     included</span
@@ -290,10 +283,7 @@
         <p class="staking__note">A staking transaction is pending.</p>
       {:else if stale || stakeReadFailed}
         <p class="staking__note">
-          Your stake couldn't be read again. These amounts may be out of date. {lastReadText(
-            stakeReadAt,
-            locale,
-          )}
+          Stake couldn't be read. {lastReadText(stakeReadAt, locale)}
         </p>
       {/if}
 
@@ -301,8 +291,8 @@
         <div class="staking__note staking__note--retry">
           <p>
             {hasLiquid
-              ? `Your stake with Sozu couldn't be read just now. It may be out of date. ${lastReadText(sozu.readAt ?? sozu.kept?.at, locale)}`.trim()
-              : "Your stake with Sozu couldn't be read."}
+              ? `Your Sozu stake couldn't be read. ${lastReadText(sozu.readAt ?? sozu.kept?.at, locale)}`.trim()
+              : "Your Sozu stake couldn't be read."}
           </p>
           <Button
             disabled={sozu.loading}
@@ -398,7 +388,7 @@
         <tr>
           <th scope="row">Node</th>
           <td data-way="Native staking">
-            Needs your own Dusk node<br />
+            Your own node<br />
             <a
               class="compare__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
@@ -420,7 +410,7 @@
                   : ", estimated across the network"}. Not promised.</span
               >
             {/if}
-            Start in about 6 to 12 hours
+            Starts in 6–12 hours
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
@@ -433,11 +423,10 @@
                 >
               {/if}
               {#if rate}
-                You get stDUSK. Each is worth {formatDusk(rate, locale)} DUSK now.
-                It usually rises with rewards, but can fall with a penalty.
+                stDUSK, {formatDusk(rate, locale)} DUSK each now. It can fall with
+                a penalty.
               {:else}
-                You get stDUSK, a token for your share of Sozu's pool. Its worth
-                usually rises with rewards, but can fall with a penalty.
+                stDUSK, your share of Sozu's pool. It can fall with a penalty.
               {/if}
             </td>
           {/if}
@@ -445,31 +434,29 @@
         {#if sozu.available && fees}
           <tr>
             <th scope="row">Fees</th>
-            <td data-way="Native staking">Network fee only</td>
+            <td data-way="Native staking">Network fee</td>
             <td data-way="Liquid staking (Sozu, third party)">
-              Sozu keeps {feePercent(fees.reward, locale)} of rewards · {feePercent(
+              {feePercent(fees.reward, locale)} of rewards · {feePercent(
                 fees.deposit,
                 locale,
-              )} on deposits · no unstake fee
+              )} of deposits
             </td>
           </tr>
         {/if}
         <tr>
           <th scope="row">Unstake</th>
-          <td data-way="Native staking">Any time, with no waiting period</td>
+          <td data-way="Native staking">Any time</td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              The DUSK comes back in the same transaction. No Sozu fee, no
-              waiting.
+              Any time, no fee
             </td>
           {/if}
         </tr>
         <tr>
-          <th scope="row">If it goes wrong</th>
+          <th scope="row">Risk</th>
           <td data-way="Native staking">
-            If your node misses its turn, part of your stake gets locked. It's
-            still yours, and unstaking returns it. If the node breaks the rules,
-            part of the stake can be burned (lost).
+            Node misses a turn: part locked, unstaking returns it. Breaks the
+            rules: part burned.
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
@@ -511,8 +498,7 @@
     {:else}
       <SectionHead>Staking activity</SectionHead>
       <p class="staking__reason">
-        Transaction history isn't available here yet. The Dusk explorer has your
-        transactions.
+        Activity isn't available here yet. The explorer has your transactions.
       </p>
     {/if}
   </aside>

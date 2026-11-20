@@ -39,25 +39,19 @@ describe("How a route is doing", () => {
       lastPayout: { amount: LUX, at: NOW - 12 * 60_000, block: 1, hash: "a" },
     };
 
-    it("says it's paying out, with the last payout, where the chains say", () => {
-      expect(statusLine(status(paid), at)).toStrictEqual({
-        text: "Paying out. Last payout 12 minutes ago.",
-        warn: false,
-      });
-      expect(statusLine(status(), at)?.text).toBe("Paying out.");
+    it("says nothing of a route paying out as it should, its last payout aside", () => {
+      expect(statusLine(status(paid), at)).toBeNull();
+      expect(statusLine(status(), at)).toBeNull();
     });
 
-    it("says it's late as something to know, and what it pays on claim as no wait at all", () => {
+    it("says it's late as something to know, and nothing of what it pays on claim, no wait at all", () => {
       expect(statusLine(status({ ...paid, paying: "late" }), at)).toStrictEqual(
         {
           text: "Payouts are running late. Last payout 12 minutes ago.",
           warn: true,
         },
       );
-      expect(statusLine(status({ paying: "on-claim" }), at)).toStrictEqual({
-        text: "It pays when you claim it.",
-        warn: false,
-      });
+      expect(statusLine(status({ paying: "on-claim" }), at)).toBeNull();
     });
 
     it("says a quiet route's last payout, or how far it looked", () => {
@@ -75,11 +69,8 @@ describe("How a route is doing", () => {
       );
     });
 
-    it("says unknown as not knowing, never as a problem", () => {
-      expect(statusLine(status({ paying: "unknown" }), at)).toStrictEqual({
-        text: "Last payout not known right now.",
-        warn: false,
-      });
+    it("says nothing where it doesn't know, never a problem", () => {
+      expect(statusLine(status({ paying: "unknown" }), at)).toBeNull();
     });
 
     it("says nothing with nothing read, or for a route that isn't running, which its card says", () => {
@@ -90,23 +81,23 @@ describe("How a route is doing", () => {
     it("says what it can pay where a balance limits it, and warns of an amount past it", () => {
       const balance = status({ canPay: 5n * LUX, limit: "balance" });
 
-      expect(statusLine(balance, at)?.text).toBe(
-        "Paying out. It can pay up to 5 DUSK.",
-      );
+      expect(statusLine(balance, at)?.text).toBe("Can pay up to 5 DUSK.");
       expect(statusLine(balance, { ...at, amountLux: 5n * LUX })?.warn).toBe(
         false,
       );
       expect(statusLine(balance, { ...at, amountLux: 6n * LUX })).toStrictEqual(
         {
-          text: "Paying out. It can pay up to 5 DUSK now, less than you're sending, so yours may wait.",
+          text: "Can pay up to 5 DUSK now, less than you're sending: yours may wait.",
           warn: true,
         },
       );
       // What's minted as it's paid has no such limit.
       expect(
-        statusLine(status({ canPay: 5n * LUX }), { ...at, amountLux: 6n * LUX })
-          ?.text,
-      ).toBe("Paying out.");
+        statusLine(status({ canPay: 5n * LUX }), {
+          ...at,
+          amountLux: 6n * LUX,
+        }),
+      ).toBeNull();
     });
   });
 

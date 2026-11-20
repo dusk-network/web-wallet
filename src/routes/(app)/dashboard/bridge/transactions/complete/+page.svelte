@@ -30,7 +30,7 @@
         <br />
         <AnchorButton
           href={duskExplorerTx(hash)}
-          text="View in Dusk explorer"
+          text="View in explorer"
           rel="noopener noreferrer"
           target="_blank"
         />

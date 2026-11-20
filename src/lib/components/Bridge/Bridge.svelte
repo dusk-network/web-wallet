@@ -426,7 +426,7 @@
     // Sent: what's wrong with it from here doesn't say it wasn't.
     if (typeof hash !== "string") {
       throw outcomeUnknown(
-        new Error("The DuskDS transaction did not return a hash."),
+        new Error("The Dusk transaction did not return a hash."),
       );
     }
 
@@ -439,7 +439,7 @@
 
     if (!remembered) {
       throw outcomeUnknown(
-        new Error("The DuskDS transaction returned an invalid hash."),
+        new Error("The Dusk transaction returned an invalid hash."),
       );
     }
 
@@ -733,7 +733,7 @@
             }
           : isDepositing && !isGasValid
             ? { label: "Check the network fee", ready: false }
-            : { label: "Review bridge", ready: true };
+            : { label: "Review", ready: true };
 
   // A review needs its EVM wallet: without one, back to the form, which
   // offers to connect it.
@@ -747,7 +747,7 @@
   $: depositLine = routeLineOf(depositTime, [
     `fee up to ${formatFee(fee, language, { max: true })} DUSK`,
   ]);
-  $: withdrawalLine = routeLineOf(withdrawalTime, ["three steps"]);
+  $: withdrawalLine = routeLineOf(withdrawalTime, ["send, prove, claim"]);
   $: routeLine = isDepositing ? depositLine : withdrawalLine;
   $: fromChoices = fromChoicesOf(list, originNetwork, $nodeNetwork);
   $: toChoices = toChoicesOf(
@@ -871,7 +871,7 @@
       </div>
       <div class="swap-foot">
         <span id="bridge-balance-label"
-          >{isWithdrawing ? "DuskEVM balance:" : "Public balance:"}</span
+          >{isWithdrawing ? "DuskEVM" : "Public"}</span
         >
         <span class="swap-foot__value">
           <span id="bridge-balance">
@@ -886,7 +886,7 @@
                 value={formatDusk(evmLux(evmDuskBalance), language)}
               /> DUSK
             {:else}
-              {isConnected ? "checking" : "connect a wallet to see it"}
+              {isConnected ? "checking" : "connect a wallet"}
             {/if}
           </span>
           <button
@@ -899,9 +899,7 @@
       </div>
       {#if isWithdrawing && evmAddress}
         <p class="swap-recipient">
-          from your DuskEVM account <b title={evmAddress}
-            >{shortenAddress(evmAddress)}</b
-          >
+          From <b title={evmAddress}>{shortenAddress(evmAddress)}</b>
           ·
           <button
             aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
@@ -925,11 +923,11 @@
         <p class="swap-error" role="alert">{problem}</p>
       {:else if leavesTooLittle}
         <p class="swap-error" role="status">
-          That leaves too little {keepForLater.why}.
+          Too little left {keepForLater.why}.
         </p>
       {:else if isDepositing && keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - totalDepositLux === keepForLater.lux}
         <p class="swap-note">
-          Max keeps {hideBalances
+          Max leaves {hideBalances
             ? "the fee"
             : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
           {keepForLater.why}.
@@ -937,9 +935,9 @@
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing
-            ? "Your public balance must cover the amount and the fee."
+            ? "Not enough for the amount and fee."
             : evmDuskBalance
-              ? "Your DuskEVM balance must cover the amount and its gas."
+              ? "Not enough on DuskEVM for the amount and gas."
               : "Checking your DuskEVM balance…"}
         </p>
       {/if}
@@ -989,12 +987,10 @@
         {/if}
       </div>
       {#if isWithdrawing}
-        <p class="swap-recipient">to your public balance on Dusk</p>
+        <p class="swap-recipient">To your public balance</p>
       {:else if evmAddress}
         <p class="swap-recipient">
-          to your DuskEVM account <b title={evmAddress}
-            >{shortenAddress(evmAddress)}</b
-          >
+          To <b title={evmAddress}>{shortenAddress(evmAddress)}</b>
           ·
           <button
             aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
@@ -1009,7 +1005,7 @@
     <details class="swap-route">
       <summary
         ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
-          ><span>{routeLine}</span>{#if route}<RouteStatusLine
+          ><span>{routeLine}</span>{#if route && !isDepositing}<RouteStatusLine
               {amountLux}
               {route}
             />{/if}</span
@@ -1086,10 +1082,15 @@
         <div>
           <dt>From</dt>
           <dd>
-            <span>{isDepositing ? "Your public account" : "DuskEVM"}</span>
-            <FullAddress
-              address={(isDepositing ? unshieldedAddress : address) ?? ""}
-            />
+            <!-- Your own: shortened. Where it pays out is in full. -->
+            <span>{isDepositing ? "Public account" : "DuskEVM"}</span>
+            <span
+              class="bridge-review__address"
+              title={(isDepositing ? unshieldedAddress : address) ?? ""}
+              >{shortenAddress(
+                (isDepositing ? unshieldedAddress : address) ?? "",
+              )}</span
+            >
           </dd>
         </div>
         <div>
@@ -1101,34 +1102,39 @@
             />
           </dd>
         </div>
-        {#if isDepositing && depositContract}
-          <div>
-            <dt>Contract</dt>
-            <dd>
-              <span
-                >{contractLabel(depositContract, networkName) ||
-                  "DuskEVM bridge"}</span
-              >
-              <span class="bridge-review__address" title={depositContract}
-                >{shortenAddress(depositContract)}</span
-              >
-            </dd>
-          </div>
-        {/if}
       </dl>
+      {#if isDepositing && depositContract}
+        <details class="bridge-review__details">
+          <summary>Details</summary>
+          <dl class="bridge-review__ends">
+            <div>
+              <dt>Contract</dt>
+              <dd>
+                <span
+                  >{contractLabel(depositContract, networkName) ||
+                    "DuskEVM bridge"}</span
+                >
+                <span class="bridge-review__address" title={depositContract}
+                  >{shortenAddress(depositContract)}</span
+                >
+              </dd>
+            </div>
+          </dl>
+        </details>
+      {/if}
       {#if isDepositing}
         <ReviewAmount
-          label="Network fee (at most)"
+          label="Fee up to"
           value={formatFee(fee, language, { max: true })}
         />
         <ReviewAmount
-          label="Total (at most)"
+          label="Total up to"
           value={formatTotal(totalDepositLux, unshieldedBalance, language)}
         />
       {:else}
         {#if withdrawalFeeWei !== null}
           <ReviewAmount
-            label="Network fee (about)"
+            label="Fee on DuskEVM, about"
             value={formatFee(
               withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
               language,
@@ -1136,7 +1142,7 @@
           />
         {/if}
         <Banner title={withdrawalNext} variant="info">
-          <p>Each step on Dusk takes a small fee from your public balance.</p>
+          <p>Plus a small fee for each step on Dusk.</p>
         </Banner>
       {/if}
       <div class="bridge-review__actions">
@@ -1151,7 +1157,7 @@
           disabled={isNextButtonDisabled || !isConnected}
           icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
           on:click={send}
-          text="Send"
+          text={`Bridge ${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
           variant="primary"
         />
       </div>
@@ -1172,7 +1178,7 @@
           describeFailure(error, { checkFirst: CHECK_EVM_WALLET_FIRST })}
         errorMessage="Bridging failed"
         {operation}
-        pendingMessage="Processing transaction"
+        pendingMessage="Sending"
         successMessage="Withdrawal sent"
       >
         <svelte:fragment slot="success-content" let:result={hash}>
@@ -1181,7 +1187,7 @@
           {#if hash}
             <AnchorButton
               href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-              text="View in Dusk explorer"
+              text="View in explorer"
               rel="noopener noreferrer"
               target="_blank"
             />
@@ -1257,6 +1263,14 @@
     font-family: var(--mono-font-family, monospace);
     font-size: 0.8125rem;
     overflow-wrap: anywhere;
+  }
+
+  /* The contract a deposit calls, for whoever checks it: closed. */
+  .bridge-review__details summary {
+    color: var(--calm-muted);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
   .bridge-review__actions {

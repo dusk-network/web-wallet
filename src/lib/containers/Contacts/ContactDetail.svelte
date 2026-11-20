@@ -316,7 +316,7 @@
     <header class="contact-detail__activity-header">
       <SectionHead level={3}>Activity</SectionHead>
       <a class="text-link" href={resolve("/dashboard/transactions/")}
-        >History <Icon path={mdiChevronRight} /></a
+        >See all <Icon path={mdiChevronRight} /></a
       >
     </header>
     {#if activity.length}

@@ -316,7 +316,7 @@
       />
       <Button
         disabled={!isValid || isTaken}
-        text="Save contact"
+        text="Save"
         type="submit"
         variant="primary"
       />

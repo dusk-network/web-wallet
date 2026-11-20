@@ -1,13 +1,10 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { mdiCubeOutline } from "@mdi/js";
-
-  import { Button, ErrorAlert } from "$lib/dusk/components";
+  import { Button, Card, ErrorAlert } from "$lib/dusk/components";
   import { logout } from "$lib/navigation";
 
   import { SyncBar } from "$lib/components";
-  import IconHeadingCard from "$lib/containers/Cards/IconHeadingCard.svelte";
 
   import { walletStore } from "$lib/stores";
 
@@ -36,28 +33,28 @@
   $: isValid = isDone;
 </script>
 
-<IconHeadingCard icons={[mdiCubeOutline]} heading="Network sync">
+<Card>
   {#if isDone}
-    <span>Sync completed!</span>
+    <span>Sync completed</span>
   {:else if syncStatus.error && !syncStatus.isInProgress}
     <ErrorAlert error={syncStatus.error} summary="Sync failed" />
     <Button
-      text="Retry synchronization"
+      text="Try again"
       on:click={() => walletStore.sync(fromBlock).catch(() => {})}
     />
     <Button
-      text="Lock wallet and exit"
+      text="Lock and exit"
       variant="tertiary"
       on:click={() => logout(false)}
     />
   {:else if !syncStarted || (syncStatus.isInProgress && !syncStatus.progress)}
-    <span>Syncing...</span>
+    <span>Syncing…</span>
   {:else if syncStatus.isInProgress}
-    <span>Syncing... <b>{(syncStatus.progress * 100).toFixed(0)}%</b></span>
+    <span>Syncing… <b>{(syncStatus.progress * 100).toFixed(0)}%</b></span>
     <SyncBar
       from={syncStatus.from}
       last={syncStatus.last}
       progress={syncStatus.progress}
     />
   {/if}
-</IconHeadingCard>
+</Card>

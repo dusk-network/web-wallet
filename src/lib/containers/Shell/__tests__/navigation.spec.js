@@ -3,15 +3,15 @@ import { describe, expect, it } from "vitest";
 import { appPath, pageName, shellTabs, tabOf } from "../navigation";
 
 describe("shell navigation", () => {
-  it("lists Home, History and Contacts, and Staking when staking is on", () => {
+  it("lists Home, Activity and Contacts, and Staking when staking is on", () => {
     expect(shellTabs({ stake: false }).map((tab) => tab.label)).toEqual([
       "Home",
-      "History",
+      "Activity",
       "Contacts",
     ]);
     expect(shellTabs({ stake: true }).map((tab) => tab.label)).toEqual([
       "Home",
-      "History",
+      "Activity",
       "Staking",
       "Contacts",
     ]);
@@ -35,7 +35,7 @@ describe("shell navigation", () => {
 describe("pageName", () => {
   it("should name each page, as its title says it, and no welcome page", () => {
     expect(pageName("/dashboard")).toBe("Home");
-    expect(pageName("/dashboard/transactions/")).toBe("History");
+    expect(pageName("/dashboard/transactions/")).toBe("Activity");
     expect(pageName("/dashboard/send")).toBe("Send");
     expect(pageName("/settings")).toBe("Settings");
     expect(pageName("/setup")).toBe("");

@@ -17,7 +17,7 @@
 <p class="arrival-notice">
   {#if $arrivalNoticeState === "offer"}
     <button on:click={chooseArrivalNotice} type="button"
-      >Tell me when it arrives</button
+      >Notify me when it arrives</button
     >
     {noticeWords("offer")}
   {:else}

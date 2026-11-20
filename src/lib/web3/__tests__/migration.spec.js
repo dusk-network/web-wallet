@@ -69,7 +69,8 @@ describe("migrate", () => {
 
     expect(await failureOf(send)).toStrictEqual({
       canRetry: true,
-      sentence: "It was declined in your EVM wallet, so nothing was sent.",
+      heading: "Not sent",
+      sentence: "Declined in your EVM wallet.",
     });
 
     vi.mocked(simulateContract).mockRejectedValue(new Error("It reverted."));
@@ -164,8 +165,8 @@ describe("what an EVM wallet's error proves", () => {
   ])("says nothing went out for a revert: %s", async (_, answer) => {
     expect(await failureFrom(wrapped(answer))).toStrictEqual({
       canRetry: true,
-      sentence:
-        "The network would refuse it, so nothing was sent. See Details for why.",
+      heading: "Not sent",
+      sentence: "The network would refuse it. See Details.",
     });
   });
 
@@ -185,8 +186,8 @@ describe("what an EVM wallet's error proves", () => {
     async (_, error) => {
       expect(await failureFrom(error)).toStrictEqual({
         canRetry: true,
-        sentence:
-          "Your EVM wallet isn't on this account or network, so nothing was sent. Check it and try again.",
+        heading: "Not sent",
+        sentence: "Your EVM wallet isn't on this account or network. Check it.",
       });
     },
   );
@@ -198,8 +199,8 @@ describe("what an EVM wallet's error proves", () => {
       ),
     ).toStrictEqual({
       canRetry: true,
-      sentence:
-        "Your EVM wallet refused it, so nothing was sent. See Details for why.",
+      heading: "Not sent",
+      sentence: "Your EVM wallet refused it. See Details.",
     });
     expect(
       await failureFrom(
@@ -207,7 +208,8 @@ describe("what an EVM wallet's error proves", () => {
       ),
     ).toStrictEqual({
       canRetry: true,
-      sentence: "It was declined in your EVM wallet, so nothing was sent.",
+      heading: "Not sent",
+      sentence: "Declined in your EVM wallet.",
     });
   });
 

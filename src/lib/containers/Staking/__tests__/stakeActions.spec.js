@@ -91,7 +91,7 @@ describe("stakeActions", () => {
       canClaim: false,
       canUnstake: false,
       reasons: [
-        "The network fee is paid from the public balance, and it's empty: 0.05 DUSK short. Add that much to it first.",
+        "The fee comes from the public balance, which is empty: 0.05 DUSK short. Add that much to it first.",
       ],
     });
     expect(
@@ -102,7 +102,7 @@ describe("stakeActions", () => {
         staked: 1_000n * DUSK,
       }).reasons,
     ).toStrictEqual([
-      "The public balance doesn't cover the network fee: 0.01 DUSK short. Add that much to it first.",
+      "Public balance doesn't cover the fee: 0.01 DUSK short. Add that much to it first.",
     ]);
     expect(
       stakeActions({
@@ -112,8 +112,6 @@ describe("stakeActions", () => {
         reward: DUSK,
         staked: 1_000n * DUSK,
       }).reasons,
-    ).toStrictEqual([
-      "The public balance doesn't cover the network fee: •••• DUSK short.",
-    ]);
+    ).toStrictEqual(["Public balance doesn't cover the fee: •••• DUSK short."]);
   });
 });

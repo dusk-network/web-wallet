@@ -92,13 +92,13 @@ describe("GasControls", () => {
 
     await fireInput(limitInput, 9);
 
-    expect(getByText("The minimum is 10.")).toBeInTheDocument();
+    expect(getByText("Minimum 10")).toBeInTheDocument();
     expect(limitInput).toHaveAttribute("aria-invalid", "true");
-    expect(limitInput).toHaveAccessibleDescription("The minimum is 10.");
+    expect(limitInput).toHaveAccessibleDescription("Minimum 10");
 
     await fireInput(limitInput, 101);
 
-    expect(queryByText("The minimum is 10.")).toBeNull();
+    expect(queryByText("Minimum 10")).toBeNull();
     expect(limitInput).toHaveAccessibleDescription("The maximum is 100.");
 
     await fireInput(limitInput, 50);
@@ -113,7 +113,7 @@ describe("GasControls", () => {
 
     await fireInput(priceInput, 0);
 
-    expect(priceInput).toHaveAccessibleDescription("The minimum is 1 LUX.");
+    expect(priceInput).toHaveAccessibleDescription("Minimum 1 LUX");
 
     await fireInput(priceInput, 21);
 

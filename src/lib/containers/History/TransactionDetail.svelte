@@ -160,6 +160,9 @@
     contactName = "";
   }
 
+  /** A bridge's reference: an EVM address, or a transaction ID. */
+  const BRIDGE_REF = /^0x(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
+
   /**
    * An address or hash in full, its first and last six characters set
    * apart, and the last six never split across lines.
@@ -255,7 +258,7 @@
     }
 
     if (withdrawal.reprove) {
-      return "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.";
+      return "Proof rejected. Prove it again on Dusk.";
     }
 
     const text = claimText(withdrawal.claim, (ms) => fullDateTime(ms, lang));
@@ -330,11 +333,15 @@
               : row.status === "executed"
                 ? { icon: mdiCheck, text: "Completed" }
                 : { icon: mdiTimerSand, text: "Checking the outcome…" };
-  // Sent to whom once it's known it went out: one not confirmed yet only
-  // names whom it's to.
+  // What happened, once: whom with is the row under it. One not confirmed
+  // yet only names whom it's to.
   $: headline =
     p.titleIsAddress || p.icon === "sent" || p.icon === "received"
-      ? `${row.direction === "in" ? "Received from" : p.status === "unknown" ? "To" : "Sent to"} ${p.title}`
+      ? row.direction === "in"
+        ? "Received"
+        : p.status === "unknown"
+          ? `To ${p.title}`
+          : "Sent"
       : p.title;
   $: counterpartyLabel = row.direction === "in" ? "From" : "To";
   $: duskName = row.counterpartyName ?? row.toName;
@@ -500,12 +507,9 @@
             {:else if walletName}
               <span class="tx-detail__name">{walletName}</span>
             {/if}
-            <span class="tx-detail__code"
-              >{#each [parts(target)] as [head, middle, tail] (tail)}<b
-                  >{head}</b
-                ><span class="tx-detail__middle">{middle}</span><b
-                  class="tx-detail__tail">{tail}</b
-                >{/each}</span
+            <!-- Shortened: whole under Details, and as copied. -->
+            <span class="tx-detail__code" title={String(target)}
+              >{shortenAddress(String(target))}</span
             >
             <CopyButton
               className="tx-detail__copy"
@@ -557,7 +561,7 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="tx-detail__note" role="alert">
-                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Looks like {duskNameIn(contactName) || "a .dusk name"}.
                     Choose another name.
                   </p>
                 {:else if contactNameIssue}
@@ -575,9 +579,6 @@
                     />
                   {/if}
                 {/if}
-                <p class="tx-detail__note">
-                  Saved only in this wallet, on this device.
-                </p>
               </form>
             {/if}
           </dd>
@@ -662,8 +663,12 @@
       </div>
       {#if row.memo}
         {@const theirs = strangersMemo(row, memoAmong)}
+        <!-- A bridge's reference is an EVM address or transaction ID, not
+          a message: said so, shortened, whole on hover. -->
+        {@const ref =
+          p.icon === "bridge" && BRIDGE_REF.test(row.memo) ? row.memo : ""}
         <div>
-          <dt>Memo</dt>
+          <dt>{ref ? "Bridge ref" : "Memo"}</dt>
           <!-- Anyone can send a memo, and hidden characters would show it out
             of order, as "exe.png" for "gnp.exe". A stranger's is theirs: who
             it came from first, then their words, in quotes, muted, in the
@@ -673,13 +678,15 @@
               <span class="tx-detail__memo-from">{theirs.from}</span>
               “<MemoText text={theirs.memo} />”
             </dd>
+          {:else if ref}
+            <dd class="tx-detail__memo" title={ref}>{shortenAddress(ref)}</dd>
           {:else}
             <dd class="tx-detail__memo"><MemoText text={row.memo} /></dd>
           {/if}
         </div>
       {/if}
       <div>
-        <dt>Network fee paid</dt>
+        <dt>Fee</dt>
         <dd>
           {#if row.fee !== null}
             <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
@@ -690,34 +697,48 @@
           {/if}
         </dd>
       </div>
-      <div class="tx-detail__wide">
-        <dt>Transaction ID</dt>
-        <dd class="tx-detail__id">
-          <span class="tx-detail__code"
-            >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
-                >{head}</b
-              ><span class="tx-detail__middle">{middle}</span><b
-                class="tx-detail__tail">{tail}</b
-              >{/each}</span
-          >
-          <CopyButton
-            className="tx-detail__copy"
-            name="transaction ID"
-            text="Copy"
-            value={row.hash}
-          />
-        </dd>
-      </div>
     </dl>
 
     <details class="tx-detail__tech">
       <summary
-        >Technical details<Icon
+        >Details<Icon
           className="section-chevron"
           path={mdiChevronDown}
         /></summary
       >
       <dl class="tx-detail__list tx-detail__list--tech">
+        <div class="tx-detail__wide">
+          <dt>Transaction ID</dt>
+          <dd class="tx-detail__id">
+            <span class="tx-detail__code"
+              >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
+                  >{head}</b
+                ><span class="tx-detail__middle">{middle}</span><b
+                  class="tx-detail__tail">{tail}</b
+                >{/each}</span
+            >
+            <CopyButton
+              className="tx-detail__copy"
+              name="transaction ID"
+              text="Copy"
+              value={row.hash}
+            />
+          </dd>
+        </div>
+        {#if target && p.icon !== "shield"}
+          <div class="tx-detail__wide">
+            <dt>{counterpartyLabel}</dt>
+            <dd class="tx-detail__id">
+              <span class="tx-detail__code"
+                >{#each [parts(String(target))] as [head, middle, tail] (tail)}<b
+                    >{head}</b
+                  ><span class="tx-detail__middle">{middle}</span><b
+                    class="tx-detail__tail">{tail}</b
+                  >{/each}</span
+              >
+            </dd>
+          </div>
+        {/if}
         {#if contract}
           <div class="tx-detail__wide">
             <dt>Contract</dt>
@@ -812,7 +833,7 @@
         icon={{ path: mdiOpenInNew, position: "after" }}
         rel="noopener noreferrer"
         target="_blank"
-        text="View in Dusk explorer"
+        text="View in explorer"
         variant="secondary"
       />
       {#if canSendAgain}

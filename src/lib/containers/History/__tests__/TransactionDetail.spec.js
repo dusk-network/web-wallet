@@ -105,7 +105,7 @@ const show = (shown, extra = {}, props = {}) =>
   });
 
 /**
- * The text of the details' list, and of Technical details.
+ * The text of the details' list, and of Details.
  *
  * @param {HTMLElement} container
  */
@@ -138,7 +138,7 @@ describe("TransactionDetail", () => {
     expect(mainList(container)).toMatch(/Date.*\d{1,2}:33:12/);
   });
 
-  it("should show with a chevron that Technical details opens", () => {
+  it("should show with a chevron that Details opens", () => {
     const { container } = show(row({}));
 
     expect(
@@ -146,7 +146,7 @@ describe("TransactionDetail", () => {
     ).toBeInTheDocument();
   });
 
-  it("should say which .dusk name a registration registered, with Dusk Domains' contract under Technical details only", () => {
+  it("should say which .dusk name a registration registered, with Dusk Domains' contract under Details only", () => {
     setNodeNetwork(networks.testnet);
 
     const { container, getByText } = show(
@@ -171,7 +171,7 @@ describe("TransactionDetail", () => {
     expect(techList(container)).toContain(STORE);
   });
 
-  it("should say to the lux the stDUSK a stake with Sozu got, and the rate, from the facts the export reads, with Sozu's contract under Technical details", async () => {
+  it("should say to the lux the stDUSK a stake with Sozu got, and the rate, from the facts the export reads, with Sozu's contract under Details", async () => {
     const loadSozuFact = vi.fn(async () => ({
       amount: 500_000_000n,
       fee: 1_250_000n,
@@ -250,7 +250,7 @@ describe("TransactionDetail", () => {
 
     expect(getByText("DuskEVM address")).toBeTruthy();
     expect(container.textContent).toContain(EVM);
-    // The bridge's contract only under Technical details.
+    // The bridge's contract only under Details.
     expect(mainList(container)).not.toContain(BRIDGE);
     expect(techList(container)).toContain(BRIDGE);
   });
@@ -303,9 +303,7 @@ describe("TransactionDetail", () => {
 
     expect(again.getByText("Proof rejected · prove it again")).toBeTruthy();
     expect(
-      again.getByText(
-        "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.",
-      ),
+      again.getByText("Proof rejected. Prove it again on Dusk."),
     ).toBeTruthy();
     expect(again.queryByText(/Claim from/)).toBeNull();
 
@@ -387,7 +385,7 @@ describe("TransactionDetail", () => {
     expect(container.textContent).toContain(store.slice(-6));
   });
 
-  it("should name a profile of another wallet here as the wallets do, in its headline and its To, and never offer to save it as a contact", () => {
+  it("should name a profile of another wallet here as the wallets do, in its To, and never offer to save it as a contact", () => {
     const sent = row({
       amount: "10000000",
       contractId: undefined,
@@ -396,7 +394,7 @@ describe("TransactionDetail", () => {
     });
     const { container, getByText, queryByRole } = show(sent, { walletNames });
 
-    expect(getByText("Sent to Wallet 2 · Profile 1")).toBeInTheDocument();
+    expect(getByText("Sent")).toBeInTheDocument();
     expect(mainList(container)).toMatch(/To\s*Wallet 2 · Profile 1\s*qxwSid/);
     expect(queryByRole("button", { name: "Save to contacts" })).toBeNull();
   });
@@ -417,7 +415,7 @@ describe("TransactionDetail", () => {
     const { container, getByText } = show(unconfirmed, { walletNames });
 
     expect(getByText("To Wallet 2 · Profile 1")).toBeInTheDocument();
-    expect(getByText("Not confirmed yet")).toBeInTheDocument();
+    expect(getByText("Not confirmed")).toBeInTheDocument();
     expect(container).not.toHaveTextContent(/Sent to|Pending|Completed/);
   });
 
@@ -457,9 +455,7 @@ describe("TransactionDetail", () => {
 
     expect(getByText("From BNB Smart Chain")).toBeInTheDocument();
     expect(mainList(container)).toMatch(/From\s*BSC bridge/);
-    expect(mainList(container)).toMatch(
-      /Network fee paid\s*Paid by the sender/,
-    );
+    expect(mainList(container)).toMatch(/Fee\s*Paid by the sender/);
   });
 
   it("should keep a failed transaction's error from reordering what's read: its contract can write anything", () => {
@@ -473,15 +469,15 @@ describe("TransactionDetail", () => {
     );
   });
 
-  it("should give the fee paid to the last digit, in its list and under Technical details", () => {
+  it("should give the fee paid to the last digit, in its list and under Details", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(mainList(container)).toMatch(/Network fee paid\s*0\.00441901 DUSK/);
+    expect(mainList(container)).toMatch(/Fee\s*0\.00441901 DUSK/);
     expect(techList(container)).toMatch(/^.*\bFee paid\s+0\.00441901 DUSK/);
     expect(techList(container)).not.toContain("exactly");
   });
 
-  it("should say under Technical details the gas used of its limit, its price and the fee paid, as the other apps do", () => {
+  it("should say under Details the gas used of its limit, its price and the fee paid, as the other apps do", () => {
     const { container } = show(
       row({ gasLimit: "2500000", gasPrice: "1", gasSpent: "1853542" }),
     );
@@ -563,7 +559,7 @@ describe("TransactionDetail", () => {
     });
   });
 
-  it("should show the fee, and hide it with the balances, here and under Technical details", () => {
+  it("should show the fee, and hide it with the balances, here and under Details", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
     expect(shown.container.textContent).toContain("0.001856398");
@@ -576,7 +572,7 @@ describe("TransactionDetail", () => {
         row({ amount: "1000000000", feePaid: "1856398" }),
       );
 
-      expect(container.textContent).toContain("Network fee paid");
+      expect(mainList(container)).toMatch(/\bFee\b/);
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));

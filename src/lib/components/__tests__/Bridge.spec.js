@@ -177,9 +177,11 @@ describe("Bridge", () => {
 
     /** @param {import("@testing-library/svelte").RenderResult<any>} view */
     async function sendDeposit({ getByRole }) {
-      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await fireEvent.click(
+        getByRole("button", { name: /^Bridge [\d.,]+ DUSK$/ }),
+      );
     }
 
     beforeEach(async () => {
@@ -280,8 +282,8 @@ describe("Bridge", () => {
     const { getByLabelText, getByRole, getByText } = render(Bridge, baseProps);
     const amount = getByLabelText("Amount");
 
-    expect(amount).toHaveAccessibleDescription("Public balance: 1,000 DUSK");
-    expect(getByText("Public balance:")).toBeInTheDocument();
+    expect(amount).toHaveAccessibleDescription("Public 1,000 DUSK");
+    expect(getByText("Public")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
@@ -304,20 +306,20 @@ describe("Bridge", () => {
     // The public balance, past the deposit's fee and what's kept.
     expect(amount).toHaveValue("999.92");
     expect(
-      getByText("Max keeps 0.06 DUSK to claim your withdrawal."),
+      getByText("Max leaves 0.06 DUSK to claim your withdrawal."),
     ).toBeInTheDocument();
-    expect(queryByText(/too little/)).toBeNull();
+    expect(queryByText(/Too little/)).toBeNull();
 
     await fireEvent.input(amount, { target: { value: "999.95" } });
 
     expect(
-      getByText("That leaves too little to claim your withdrawal."),
+      getByText("Too little left to claim your withdrawal."),
     ).toBeInTheDocument();
-    expect(queryByText(/^Max keeps/)).toBeNull();
+    expect(queryByText(/^Max leaves/)).toBeNull();
 
     await fireEvent.input(amount, { target: { value: "999.9" } });
 
-    expect(queryByText(/too little|^Max keeps/)).toBeNull();
+    expect(queryByText(/Too little|^Max leaves/)).toBeNull();
   });
 
   it("should leave room for a withdrawal's fee when using it all", async () => {
@@ -326,7 +328,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(getByLabelText("Amount")).toHaveAccessibleDescription(
-      "DuskEVM balance: 3 DUSK",
+      "DuskEVM 3 DUSK",
     );
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
@@ -389,7 +391,9 @@ describe("Bridge", () => {
     await fireEvent.click(swap);
 
     expect(getDirection(container)).toStrictEqual(["duskEvm", "duskDs"]);
-    expect(getByText("DuskEVM balance:")).toBeInTheDocument();
+    expect(
+      getByText("DuskEVM", { selector: "#bridge-balance-label" }),
+    ).toBeInTheDocument();
 
     await fireEvent.click(swap);
 
@@ -403,9 +407,7 @@ describe("Bridge", () => {
     });
 
     expect(change).toHaveTextContent("Change");
-    expect(change.parentElement).toHaveTextContent(
-      "to your DuskEVM account 0x2222…2222 · Change",
-    );
+    expect(change.parentElement).toHaveTextContent("To 0x2222…2222 · Change");
 
     await fireEvent.click(change);
 
@@ -417,12 +419,12 @@ describe("Bridge", () => {
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     await vi.waitFor(() =>
       expect(getReviewAmounts(container)).toStrictEqual([
         ["Amount", "2.5 DUSK"],
-        ["Network fee (about)", "0.0014 DUSK"],
+        ["Fee on DuskEVM, about", "0.0014 DUSK"],
       ]),
     );
     expect(
@@ -431,9 +433,7 @@ describe("Bridge", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      getByText(
-        "Each step on Dusk takes a small fee from your public balance.",
-      ),
+      getByText("Plus a small fee for each step on Dusk."),
     ).toBeInTheDocument();
   });
 
@@ -441,12 +441,12 @@ describe("Bridge", () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
       ["Amount", "2.5 DUSK"],
-      ["Network fee (at most)", "0.02 DUSK"],
-      ["Total (at most)", "2.52 DUSK"],
+      ["Fee up to", "0.02 DUSK"],
+      ["Total up to", "2.52 DUSK"],
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
@@ -457,6 +457,10 @@ describe("Bridge", () => {
         (row) => row.textContent?.replace(/\s+/g, " ").trim(),
       ).at(-1),
     ).toBe("Contract DuskEVM bridge 2257e5…a1b31d");
+    // Under Details, closed: the summary leaves it out.
+    expect(
+      container.querySelector(".bridge-review__details:not([open]) summary"),
+    ).toHaveTextContent("Details");
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {
@@ -465,10 +469,10 @@ describe("Bridge", () => {
 
     await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
-      "Network fee (at most)",
+      "Fee up to",
       "0.06 DUSK",
     ]);
 
@@ -476,7 +480,7 @@ describe("Bridge", () => {
     await rerender({ gasSettings: { gasLimit, gasPrice: 5n } });
 
     expect(getReviewAmounts(container)[1]).toStrictEqual([
-      "Network fee (at most)",
+      "Fee up to",
       "0.06 DUSK",
     ]);
   });
@@ -501,7 +505,7 @@ describe("Bridge", () => {
       await tick();
     };
     const feeOf = (/** @type {bigint} */ gas) => [
-      "Network fee (about)",
+      "Fee on DuskEVM, about",
       `${formatFee((gas * evmGasPrice) / 1_000_000_000n, "en")} DUSK`,
     ];
 
@@ -509,9 +513,9 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
 
     // The same amount reviewed twice: the first estimate comes back last.
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     estimates[1].resolve(200_000n);
     await settle();
     estimates[0].resolve(100_000n);
@@ -521,7 +525,7 @@ describe("Bridge", () => {
 
     // Another profile while the estimate runs: the fee isn't its.
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ unshieldedAccount: {} });
     estimates[2].resolve(300_000n);
     await settle();
@@ -539,7 +543,7 @@ describe("Bridge", () => {
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([["Amount", "2.5 DUSK"]]);
   });
@@ -555,17 +559,17 @@ describe("Bridge", () => {
         foot.textContent?.replace(/\s+/g, " ").trim(),
       ),
     ).toStrictEqual([
-      "Public balance: •••• hidden DUSK Max",
+      "Public •••• hidden DUSK Max",
       "You receive + •••• hidden DUSK on its way",
     ]);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewAmounts(container)).toStrictEqual([
       ["Amount", "2.5 DUSK"],
-      ["Network fee (at most)", "0.02 DUSK"],
-      ["Total (at most)", "2.52 DUSK"],
+      ["Fee up to", "0.02 DUSK"],
+      ["Total up to", "2.52 DUSK"],
     ]);
   });
 
@@ -600,7 +604,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(container.querySelector(".swap-route summary")).toHaveTextContent(
-      "~7 days · three steps",
+      "~7 days · send, prove, claim",
     );
   });
 
@@ -614,12 +618,12 @@ describe("Bridge", () => {
 
     expect(getByRole("button", { name: "Not enough DUSK" })).toBeDisabled();
     expect(getByRole("alert")).toHaveTextContent(
-      "Your public balance must cover the amount and the fee.",
+      "Not enough for the amount and fee.",
     );
 
     await fireEvent.input(amount, { target: { value: "2.5" } });
 
-    expect(getByRole("button", { name: "Review bridge" })).toBeEnabled();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
   it("should pick the networks from lists, as the network's routes go", async () => {
@@ -646,17 +650,13 @@ describe("Bridge", () => {
     ).toBeInTheDocument();
   });
 
-  it("should say how the route is doing under it, as not knowing when that can't be read, and offer the route all the same", async () => {
+  it("should say nothing under a deposit's route, nor that its status can't be read, and offer the route all the same", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
-    await vi.waitFor(() =>
-      expect(container.querySelector(".swap-route__status")).toHaveTextContent(
-        "Last payout not known right now.",
-      ),
-    );
-    expect(
-      container.querySelector(".swap-route__status--warn"),
-    ).not.toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    expect(container.querySelector(".swap-route__status")).toBeNull();
     expect(getByRole("button", { name: /Connect|Review|Enter/ })).toBeVisible();
   });
 
@@ -695,15 +695,15 @@ describe("Bridge", () => {
 
     await withdraw(container);
 
-    expect(summary()).toBe("~7 days · three steps");
+    expect(summary()).toBe("~7 days · send, prove, claim");
     expect(await notes()).toStrictEqual([
       "BNB BSC test chain No route from DuskEVM",
-      "Dusk ~7 days · three steps",
+      "Dusk ~7 days · send, prove, claim",
       "EVM DuskEVM It's where it comes from",
     ]);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(
       getByText(
@@ -735,10 +735,10 @@ describe("Bridge", () => {
 
     await withdraw(container);
 
-    expect(summary()).toBe("Three steps");
+    expect(summary()).toBe("Send, prove, claim");
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "1" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getByText("Prove it on Dusk, then claim it.")).toBeInTheDocument();
   });
@@ -747,16 +747,18 @@ describe("Bridge", () => {
     const { getByRole, queryByRole } = render(Bridge, baseProps);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(
+      getByRole("button", { name: /^Bridge [\d.,]+ DUSK$/ }),
+    ).toBeEnabled();
 
     /** @type {import("svelte/store").Writable<any>} */ (account).set({
       isConnected: false,
     });
     await tick();
 
-    expect(queryByRole("button", { name: "Send" })).toBeNull();
+    expect(queryByRole("button", { name: /^Bridge [\d.,]+ DUSK$/ })).toBeNull();
     expect(
       getByRole("button", { name: "Connect a DuskEVM wallet" }),
     ).toBeEnabled();

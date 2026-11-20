@@ -108,10 +108,6 @@
 <section class="change-password">
   <header class="change-password__header">
     <h1 use:pageTitle>Change password</h1>
-    <p class="change-password__lead">
-      Every wallet in this browser then opens with the new password. Your
-      recovery phrases stay the same.
-    </p>
   </header>
   <form
     class="change-password__form"
@@ -183,7 +179,6 @@
         on:input={() => {
           againError = "";
         }}
-        placeholder="The same password again"
         type="password"
       />
       {#if againError}
@@ -203,7 +198,7 @@
     />
   </form>
   <p class="change-password__note">
-    Your other open tabs lock. Unlock them with the new password.
+    For every wallet in this browser. Other open tabs lock.
   </p>
   <div class="change-password__actions">
     <AppAnchorButton
@@ -237,7 +232,6 @@
       }
     }
 
-    &__lead,
     &__note {
       color: var(--calm-muted);
     }

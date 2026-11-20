@@ -71,7 +71,7 @@ export const startsNoWord = (typed) =>
   lettersIn(typed) >= 2 && !wordSuggestions(typed, wordlist, 1).length;
 
 /** What a box whose word isn't a recovery word says, under it. */
-export const NOT_A_WORD = "Not a recovery word";
+export const NOT_A_WORD = "Unknown word";
 
 /**
  * Whether a box is marked as it's typed in, for what's typed now; said to
