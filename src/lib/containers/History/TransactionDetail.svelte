@@ -776,14 +776,6 @@
             <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
           </div>
         {/if}
-        {#if row.fee !== null}
-          <div>
-            <dt>Fee paid</dt>
-            <dd>
-              <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
-            </dd>
-          </div>
-        {/if}
         {#if nonce !== null}
           <div>
             <dt>Nonce</dt>

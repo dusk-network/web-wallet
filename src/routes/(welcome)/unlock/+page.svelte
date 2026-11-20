@@ -15,12 +15,7 @@
     PasskeyGoneError,
   } from "$lib/errors";
 
-  import {
-    AppAnchor,
-    AppAnchorButton,
-    Banner,
-    MnemonicInput,
-  } from "$lib/components";
+  import { AppAnchorButton, Banner, MnemonicInput } from "$lib/components";
   import { IconHeadingCard } from "$lib/containers/Cards";
 
   import PaymentAsked from "../PaymentAsked.svelte";
@@ -281,7 +276,6 @@
             name={modeLabel}
             aria-label={modeLabel}
             aria-invalid={error instanceof InvalidPasswordError}
-            placeholder={modeLabel}
             required
             type="password"
             autocomplete="current-password"
@@ -302,13 +296,8 @@
           />
         {/if}
         {#if error instanceof InvalidPasswordError}
-          <Banner role="alert" title="Wrong password." variant="error">
-            <p>
-              Forgot it? <AppAnchor className="text-link" href="/setup/restore"
-                >Restore with your recovery phrase</AppAnchor
-              >.
-            </p>
-          </Banner>
+          <!-- Forgot password?, under Unlock, is the way back in. -->
+          <Banner role="alert" title="Wrong password." variant="error" />
         {:else if error}
           <Banner
             title={error.name.replace(/(\w)([A-Z])/g, "$1 $2")}

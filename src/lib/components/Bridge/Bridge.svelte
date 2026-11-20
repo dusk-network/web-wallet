@@ -793,7 +793,7 @@
 
 <SwapCard label="Bridge">
   <div class="swap-top" slot="top">
-    <nav aria-label="Bridge and activity" class="swap-tabs">
+    <nav aria-label="Bridge and transfers" class="swap-tabs">
       <a
         aria-current="page"
         class="swap-tab"
@@ -802,7 +802,7 @@
           restarts += 1;
         }}>Bridge</a
       >
-      <a class="swap-tab" href={resolve(withdrawalStatusHref())}>Activity</a>
+      <a class="swap-tab" href={resolve(withdrawalStatusHref())}>Transfers</a>
     </nav>
   </div>
 
@@ -1021,20 +1021,12 @@
       <dl>
         {#if isDepositing}
           <div>
-            <dt>Steps</dt>
-            <dd>One, in this wallet</dd>
-          </div>
-          <div>
             <dt>Leaves your public balance</dt>
             <dd>
               up to {formatFee(totalDepositLux, language, { max: true })} DUSK
             </dd>
           </div>
         {:else}
-          <div>
-            <dt>Steps</dt>
-            <dd>Send on DuskEVM, then prove and claim on Dusk</dd>
-          </div>
           <div>
             <dt>Network fees</dt>
             <dd>
@@ -1278,5 +1270,14 @@
     grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
     margin-top: 0.25rem;
+  }
+
+  /* A long amount wraps in its button: nothing runs off a phone's screen. */
+  .bridge-review__actions > :global(*) {
+    min-width: 0;
+  }
+
+  .bridge-review__actions :global(.dusk-button > span) {
+    white-space: normal;
   }
 </style>

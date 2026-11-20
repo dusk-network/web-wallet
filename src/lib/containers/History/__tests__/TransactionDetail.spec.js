@@ -534,11 +534,11 @@ describe("TransactionDetail", () => {
     );
   });
 
-  it("should give the fee paid to the last digit, in its list and under Technical details", () => {
+  it("should give the fee paid to the last digit, in its list, once: Details doesn't repeat it", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(textOf(field(container, /fee/i))).toBe("0.00441901 DUSK");
-    expect(textOf(field(container, /fee/i, "tech"))).toBe("0.00441901 DUSK");
+    expect(textOf(field(container, /^fee$/i))).toBe("0.00441901 DUSK");
+    expect(field(container, /fee/i, "tech")).toBeNull();
   });
 
   it("should say under Technical details the gas used of its limit", () => {
@@ -609,13 +609,11 @@ describe("TransactionDetail", () => {
     });
   });
 
-  it("should show the fee, and hide it with the balances, here and under Technical details", () => {
+  it("should show the fee once, and hide it with the balances", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
-    expect(textOf(field(shown.container, /fee/i))).toBe("0.001856398 DUSK");
-    expect(textOf(field(shown.container, /fee/i, "tech"))).toBe(
-      "0.001856398 DUSK",
-    );
+    expect(textOf(field(shown.container, /^fee$/i))).toBe("0.001856398 DUSK");
+    expect(field(shown.container, /fee/i, "tech")).toBeNull();
     cleanup();
 
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
@@ -625,9 +623,8 @@ describe("TransactionDetail", () => {
         row({ amount: "1000000000", feePaid: "1856398" }),
       );
 
-      // Its rows stay, without the figure.
-      expect(field(container, /fee/i)).not.toBeNull();
-      expect(field(container, /fee/i, "tech")).not.toBeNull();
+      // Its row stays, without the figure.
+      expect(field(container, /^fee$/i)).not.toBeNull();
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));

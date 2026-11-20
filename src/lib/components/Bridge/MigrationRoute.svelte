@@ -741,12 +741,7 @@
     hasOpenApproval &&
     amountLux > 0n &&
     /** @type {bigint} */ (openApproval) >= amountLux * WEI_PER_LUX;
-  $: routeLine = [
-    timeText,
-    isCovered
-      ? `migrate, in your ${chainName} wallet`
-      : `allow spending, then migrate, in your ${chainName} wallet`,
-  ]
+  $: routeLine = [timeText, isCovered ? "" : "approve, then migrate"]
     .filter(Boolean)
     .join(" · ")
     .replace(/^./, (first) => first.toUpperCase());
@@ -872,7 +867,7 @@
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
     <div class="swap-foot">
-      <span id="migration-balance-label">Balance on {chainName}:</span>
+      <span id="migration-balance-label">Balance:</span>
       <span class="swap-foot__value">
         <span id="migration-balance">
           {#if !isConnected}
@@ -989,14 +984,6 @@
     >
     <dl>
       <div>
-        <dt>Steps</dt>
-        <dd>
-          {isCovered
-            ? `Migrate, in your ${chainName} wallet: your allowance covers it`
-            : `Allow spending, if needed, then migrate, in your ${chainName} wallet`}
-        </dd>
-      </div>
-      <div>
         <dt>Network fees</dt>
         <dd>On {chainName}, as your wallet shows. No bridge fee</dd>
       </div>
@@ -1043,17 +1030,12 @@
           <FullAddress address={recipient} />
         </dd>
       </div>
-      <div>
-        <dt>Steps</dt>
-        <dd>
-          {approved === undefined
-            ? "Checking what the contract may take…"
-            : approved
-              ? "Migrate, in your wallet"
-              : "Allow spending, then migrate, in your wallet"}
-        </dd>
-      </div>
-      {#if approved === false}
+      {#if approved === undefined}
+        <div>
+          <dt>Allowance</dt>
+          <dd>Checking what the contract may take…</dd>
+        </div>
+      {:else if approved === false}
         <div>
           <dt>Allowance</dt>
           <dd>
@@ -1148,9 +1130,13 @@
           disabled={approved === undefined || !isConnected}
           icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
           on:click={send}
-          text={`${approved === false ? "Allow spending" : "Migrate"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} ${unit}`}
+          text={`${approved === false ? "Approve" : "Migrate"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
           variant="primary"
         />
+        {#if approved === false}
+          <!-- Two wallet steps: this is the first, the migration the second. -->
+          <span class="route-review__step">1 of 2</span>
+        {/if}
       {:else}
         <Button
           disabled={!primary.ready}
@@ -1189,12 +1175,10 @@
         </dd>
       </div>
       <div>
-        <dt>Steps</dt>
-        <dd>Revoke, in your wallet: nothing moves</dd>
-      </div>
-      <div>
         <dt>After it</dt>
-        <dd>The migration contract can take no {unit} from this wallet.</dd>
+        <dd>
+          The migration contract can take no {unit} from this wallet. Nothing moves.
+        </dd>
       </div>
       <div>
         <dt>Fee</dt>
@@ -1281,10 +1265,12 @@
       errorMessage="The migration didn't go through"
       {operation}
       pendingMessage={sending === "approving"
-        ? "Allow spending in your wallet"
+        ? "Approve in your wallet (1 of 2)"
         : sending === "confirming"
           ? `Waiting for ${chainName}…`
-          : "Migrate in your wallet"}
+          : approved === false
+            ? "Migrate in your wallet (2 of 2)"
+            : "Migrate in your wallet"}
       successMessage={sentHeading}
     >
       <svelte:fragment slot="success-content" let:result={hash}>
@@ -1303,7 +1289,7 @@
         {#if canGoBack}
           <Button
             on:click={review}
-            text={isApprovalShort ? "Allow again" : "Try again"}
+            text={isApprovalShort ? "Approve again" : "Try again"}
             variant="primary"
           />
         {/if}
@@ -1416,5 +1402,22 @@
     grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
     margin-top: 0.25rem;
+  }
+
+  /* A long amount wraps in its button: nothing runs off a phone's screen. */
+  .route-review__actions > :global(*) {
+    min-width: 0;
+  }
+
+  .route-review__actions :global(.dusk-button > span) {
+    white-space: normal;
+  }
+
+  /* Which of the two wallet steps the button is, under it. */
+  .route-review__step {
+    grid-column: 2;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
+    text-align: center;
   }
 </style>

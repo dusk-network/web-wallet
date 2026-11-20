@@ -494,10 +494,6 @@
     >
     <dl>
       <div>
-        <dt>Steps</dt>
-        <dd>One, in this wallet</dd>
-      </div>
-      <div>
         <dt>Bridge fee</dt>
         <dd>
           {formatDuskExact(route.feeLux, language)} DUSK, from the amount
@@ -763,5 +759,14 @@
     grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
     margin-top: 0.25rem;
+  }
+
+  /* A long amount wraps in its button: nothing runs off a phone's screen. */
+  .route-review__actions > :global(*) {
+    min-width: 0;
+  }
+
+  .route-review__actions :global(.dusk-button > span) {
+    white-space: normal;
   }
 </style>

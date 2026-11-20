@@ -931,12 +931,12 @@
 
 <SwapCard label="Bridge activity" wide>
   <div class="swap-top" slot="top">
-    <nav aria-label="Bridge and activity" class="swap-tabs">
+    <nav aria-label="Bridge and transfers" class="swap-tabs">
       <a class="swap-tab" href={resolve("/dashboard/bridge/")}>Bridge</a>
       <a
         aria-current="page"
         class="swap-tab"
-        href={resolve("/dashboard/bridge/transactions/")}>Activity</a
+        href={resolve("/dashboard/bridge/transactions/")}>Transfers</a
       >
     </nav>
   </div>

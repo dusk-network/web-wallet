@@ -96,6 +96,6 @@
 />
 <AppAnchorButton
   href={`/dashboard/bridge/transactions?tx=${hash}`}
-  text={outcome?.heading ? "View in activity" : "Track in activity"}
+  text={outcome?.heading ? "View in Transfers" : "Track in Transfers"}
   variant="tertiary"
 />

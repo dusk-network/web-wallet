@@ -16,15 +16,6 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
-/**
- * Matches `value` whole: not inside a longer figure, so "1 LUX" matches
- * neither "11 LUX" nor "0.1 LUX".
- *
- * @param {string} value As the page writes it, as "20,000,000 gas"
- */
-const wholeFigure = (value) =>
-  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
-
 describe("GasSettings", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
@@ -60,16 +51,15 @@ describe("GasSettings", () => {
 
     await fireEvent.click(getByRole("button", { name: "Edit" }));
 
-    // Exactly, then the gas limit and the price that make it.
+    // Exactly, said as the most: one figure, never a typical fee beside it.
     const exact = container.querySelector(".gas-settings__exact");
 
-    // The most it can cost, said as the most.
-    const most = container.querySelector(".gas-settings__most");
-
-    expect(most).toHaveTextContent(wholeFigure("0.002151569 DUSK"));
-    expect(most).toHaveTextContent(/at most/i);
-    expect(exact).toHaveTextContent(wholeFigure("20,000,000 gas"));
-    expect(exact).toHaveTextContent(wholeFigure("1 LUX"));
+    expect(exact?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "0.002151569 DUSK at most: pays only for the gas used.",
+    );
+    // The gas limit and the price that make it, in their own fields.
+    expect(getByRole("textbox", { name: "Gas limit" })).toHaveValue("20000000");
+    expect(getByRole("textbox", { name: "Gas price (LUX)" })).toHaveValue("1");
   });
 
   it("says the network is busy while it asks more than the price, the default stopped at its ceiling, until it's raised to what it asks", async () => {

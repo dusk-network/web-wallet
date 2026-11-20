@@ -1075,10 +1075,6 @@
             <dd>No unstake fee</dd>
           </div>
         {/if}
-        <div>
-          <dt>Fee paid from</dt>
-          <dd>Public balance</dd>
-        </div>
       </dl>
       <GasSettings
         fee={maxGasFee}

@@ -410,10 +410,6 @@
             <dd>In about 6–12 hours</dd>
           </div>
         {/if}
-        <div>
-          <dt>Paid from</dt>
-          <dd>Public balance</dd>
-        </div>
       </dl>
       <GasSettings
         fee={maxGasFee}

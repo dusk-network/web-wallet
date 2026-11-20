@@ -364,7 +364,7 @@
       <p class="transaction-status__what">{what}</p>
     {/if}
     {#if !hash}
-      <p>The wallet updates automatically.</p>
+      <!-- Its title says it: no line that the wallet updates by itself. -->
     {:else if notSent}
       <p>
         {refusal && !isDropped ? `${refusal} ` : ""}If it still arrives, it

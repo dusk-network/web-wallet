@@ -9,7 +9,6 @@
   } from "$lib/contracts";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
-  import { createNumberFormatter } from "$lib/dusk/number";
   import { gasPriceStore, settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
@@ -35,7 +34,6 @@
   let isExpanded = false;
 
   $: ({ language } = $settingsStore);
-  $: formatGas = createNumberFormatter(language);
   // The network asks more than the default goes to: one under what it asks
   // may wait, as said, until the price is raised.
   $: ({ busy, median } = $gasPriceRule);
@@ -83,14 +81,12 @@
   {#if isExpanded}
     <div class="gas-settings" transition:section={{ open: isExpanded }}>
       <!-- What the fee pays for: the gas that makes it. -->
-      <!-- Under Edit: the most it can cost, exactly, then the gas. -->
+      <!-- Under Edit: the most it can cost, exactly; the gas limit and price
+        that make it are the fields under it. -->
       <p class="gas-settings__exact">
         <span class="gas-settings__most"
           >{formatDuskExact(fee, language)} DUSK at most</span
-        >: pays only for the gas used, up to {formatGas(limit)} gas at {formatGas(
-          price,
-        )}
-        LUX each.
+        >: pays only for the gas used.
       </p>
       <GasControls
         on:gasSettings

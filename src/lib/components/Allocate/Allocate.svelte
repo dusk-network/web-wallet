@@ -427,10 +427,6 @@
           label="Total up to"
           value={formatFee(amount + fee, language, { max: true })}
         />
-        <Banner
-          title={`Fee from your ${isShielding ? "public" : "shielded"} balance.`}
-          variant="info"
-        />
       </div>
     </WizardStep>
     <WizardStep bind:this={resultStep} step={2} {key} showNavigation={false}>

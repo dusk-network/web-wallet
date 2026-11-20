@@ -234,6 +234,7 @@
 
 <article class="settings-group profile-names">
   <SectionHead>Profiles</SectionHead>
+  <p class="profile-names__note">Names stay on this device.</p>
   <ul class="profile-names__list">
     {#each profiles as profile, i (profile)}
       <li class="profile-names__profile">
@@ -297,6 +298,12 @@
 </article>
 
 <style lang="postcss">
+  .profile-names__note {
+    margin: 0;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+  }
+
   .profile-names__list {
     display: flex;
     flex-direction: column;

@@ -29,11 +29,10 @@ const EVM = "0x2222222222222222222222222222222222222222";
 const SEND = /^Bridge (?:[\d.,]+|••••) DUSK$/;
 
 /**
- * A migration review's button, named for its step: the allowance first
+ * A migration review's button, named for its step: the approval first
  * where it needs one, then the migration, each with its amount.
  */
-const MIGRATE =
-  /^(?:Allow spending|Migrate) (?:[\d.,]+|••••) (?:BEP20|ERC20) DUSK$/;
+const MIGRATE = /^(?:Approve|Migrate) (?:[\d.,]+|••••) DUSK$/;
 const DUSK = 1_000_000_000n;
 const ACCOUNT =
   "zTsZq814KfWUAQujzjBchbMEvqA1FiKBUakMCtAc2zCa74h9YVz4a2roYwS7LHDHeBwS1aap4f3GYhQBrxroYgsBcE4FJdkUbvpSD5LVXY6JRXNgMXgk6ckTPJUFKoHybff";
@@ -206,6 +205,15 @@ const fieldOf = (container, label) =>
       label.test(term.textContent?.trim() ?? ""),
     )?.nextElementSibling ?? null
   );
+
+/**
+ * Which of two wallet steps the review's button is, as it says: "1 of 2",
+ * or null with one step.
+ *
+ * @param {ParentNode} container
+ */
+const stepOf = (container) =>
+  container.querySelector(".route-review__step")?.textContent?.trim() ?? null;
 
 /**
  * The full address a review row gives, as shown.
@@ -442,9 +450,8 @@ describe("the Bridge card's routes to and from other chains", () => {
     );
     expect(addressOf(container, /^from$/i)).toBe(EVM);
     expect(addressOf(container, /^to$/i)).toBe(ACCOUNT);
-    expect(fieldOf(container, /^steps$/i)).toHaveTextContent(
-      /\ballow spending\b/i,
-    );
+    expect(getByRole("button", { name: "Approve 2.5 DUSK" })).toBeEnabled();
+    expect(stepOf(container)).toBe("1 of 2");
 
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: MIGRATE }));
@@ -472,6 +479,51 @@ describe("the Bridge card's routes to and from other chains", () => {
     ).toMatchObject([
       { amountLux: String(2_500_000_000n), hash: `0x${"bb".repeat(32)}` },
     ]);
+  });
+
+  it("says which of its two wallet steps it waits on: the approval, then the migration", async () => {
+    const approval = Promise.withResolvers();
+    const migrating = Promise.withResolvers();
+
+    mocks.getBalanceOfCoin.mockResolvedValue(5n * DUSK * DUSK);
+    mocks.allowance.mockResolvedValue(0n);
+    mocks.approve.mockReturnValue(approval.promise);
+    mocks.migrate.mockReturnValue(migrating.promise);
+    mocks.waitForTransactionReceipt.mockResolvedValue({ status: "success" });
+    connect({ address: EVM, chainId: 1 });
+
+    const { container, findByRole, getByRole } = render(Bridge, {
+      ...props,
+      linkedRoute: "ethereum-to-dusk",
+    });
+    /** What the screen waits on, as it says it. */
+    const waiting = () =>
+      container
+        .querySelector(".dusk-suspense__pending-message")
+        ?.textContent?.trim();
+
+    await fireEvent.input(
+      await findByRole("textbox", { name: "Amount, in ERC20 DUSK" }),
+      { target: { value: "1" } },
+    );
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+    await fireEvent.click(
+      await findByRole("button", { name: "Approve 1 DUSK" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(waiting()).toBe("Approve in your wallet (1 of 2)"),
+    );
+
+    approval.resolve(`0x${"aa".repeat(32)}`);
+
+    await vi.waitFor(() =>
+      expect(waiting()).toBe("Migrate in your wallet (2 of 2)"),
+    );
+
+    migrating.resolve(`0x${"bb".repeat(32)}`);
+    await vi.waitFor(() => expect(waiting()).toBeUndefined());
   });
 
   it("migrates without an approval when the contract may take the amount already", async () => {
@@ -789,13 +841,14 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(approval).toHaveTextContent(/\bstays after this\b/i);
       expect(approval).not.toHaveTextContent(/none of it/i);
       expect(approval).not.toHaveTextContent(/\d/);
-      // One step, to migrate: no approval asked.
-      expect(fieldOf(unlimited.container, /^steps$/i)).toHaveTextContent(
-        /\bmigrate\b/i,
-      );
-      expect(fieldOf(unlimited.container, /^steps$/i)).not.toHaveTextContent(
-        /\bapprove\b/i,
-      );
+      // One step, to migrate: no approval asked, and no step count.
+      expect(
+        unlimited.getByRole("button", { name: "Migrate 1 DUSK" }),
+      ).toBeEnabled();
+      expect(
+        unlimited.queryByRole("button", { name: /^Approve\b/ }),
+      ).toBeNull();
+      expect(stepOf(unlimited.container)).toBeNull();
     });
 
     it("finishes on the review with what the approval still lets go, which says it's approved already", async () => {
@@ -820,11 +873,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
       expect(approval).toHaveTextContent(/none of it stays after this/i);
       expect(approval).not.toHaveTextContent(/\d BEP20 DUSK stays after this/);
-      // One step, to migrate: no approval asked.
-      expect(fieldOf(container, /^steps$/i)).toHaveTextContent(/\bmigrate\b/i);
-      expect(fieldOf(container, /^steps$/i)).not.toHaveTextContent(
-        /\ballow spending\b/i,
-      );
+      // One step, to migrate: no approval asked, and no step count.
+      expect(getByRole("button", { name: "Migrate 0.5 DUSK" })).toBeEnabled();
+      expect(stepOf(container)).toBeNull();
 
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: MIGRATE }));
@@ -903,12 +954,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       // exactly this amount, not the earlier one.
       const approval = fieldOf(container, /^allowance$/i);
 
-      expect(fieldOf(container, /^steps$/i)).toHaveTextContent(
-        /\ballow spending\b/i,
-      );
-      expect(fieldOf(container, /^steps$/i)).not.toHaveTextContent(
-        /do not allow|don't allow|no allowance/i,
-      );
+      expect(getByRole("button", { name: "Approve 1 DUSK" })).toBeEnabled();
+      expect(stepOf(container)).toBe("1 of 2");
       expect(approval).toHaveTextContent(/exactly this amount/i);
       expect(approval).not.toHaveTextContent(/from before/i);
     });
@@ -979,7 +1026,9 @@ describe("the Bridge card's routes to and from other chains", () => {
           ),
         );
         // Revoking moves nothing.
-        expect(fieldOf(review, /^steps$/i)).toHaveTextContent(/nothing moves/i);
+        expect(fieldOf(review, /^after it$/i)).toHaveTextContent(
+          /\bnothing moves\b/i,
+        );
         expect(mocks.getRevokeFee).toHaveBeenCalledWith({
           chainId: 56,
           migrationContract: BSC_CONTRACT,
@@ -1976,7 +2025,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(failure.sentence).not.toMatch(/may have/i);
 
         await fireEvent.click(
-          await findByRole("button", { name: "Allow again" }),
+          await findByRole("button", { name: "Approve again" }),
         );
 
         // The review again, with nothing more sent.
@@ -2006,7 +2055,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         const again = await findByRole("button", { name: "Try again" });
 
-        expect(queryByRole("button", { name: "Allow again" })).toBeNull();
+        expect(queryByRole("button", { name: "Approve again" })).toBeNull();
 
         await fireEvent.click(again);
 
@@ -2030,7 +2079,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         await fireEvent.click(getByRole("button", { name: MIGRATE }));
 
         expect(
-          await findByRole("button", { name: "Allow again" }),
+          await findByRole("button", { name: "Approve again" }),
         ).toBeInTheDocument();
       });
 
@@ -2053,7 +2102,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(failure.sentence).toMatch(/may have gone out/i);
         expect(failure.sentence).toMatch(/check your EVM wallet/i);
         expect(failure.sentence).not.toMatch(/nothing was sent/i);
-        expect(queryByRole("button", { name: "Allow again" })).toBeNull();
+        expect(queryByRole("button", { name: "Approve again" })).toBeNull();
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
       });
 
