@@ -357,7 +357,7 @@
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
     <div class="swap-foot">
-      <span id="service-balance-label">Public</span>
+      <span id="service-balance-label">Public balance:</span>
       <span class="swap-foot__value">
         <span id="service-balance"
           ><BalanceValue
@@ -459,7 +459,8 @@
     </div>
     {#if isConnected && address}
       <p class="swap-recipient">
-        To <b title={address}>{shortenAddress(address)}</b>
+        To your {chainName} account
+        <b title={address}>{shortenAddress(address)}</b>
         ·
         <button
           aria-label={`${chainName} account ${address}: disconnect or change wallet`}
@@ -562,11 +563,8 @@
       <div>
         <dt>From</dt>
         <dd>
-          <!-- Your own: shortened. Where it pays out is in full. -->
           <span>Public account</span>
-          <span class="route-review__address" title={unshieldedAddress}
-            >{shortenAddress(unshieldedAddress)}</span
-          >
+          <FullAddress address={unshieldedAddress} />
         </dd>
       </div>
       <div>
@@ -733,13 +731,6 @@
     margin: 0;
     color: var(--calm-muted);
     font-size: 0.875rem;
-  }
-
-  .route-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
   }
 
   .route-review__ends {

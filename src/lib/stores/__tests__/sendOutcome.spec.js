@@ -704,7 +704,7 @@ describe("A send that fails", () => {
       expect(rendered.getByRole("status")).toHaveTextContent(
         "Meanwhile your account sent something else.",
       );
-      expect(rendered.getByText("Held")).toBeInTheDocument();
+      expect(rendered.getByText("Held: not sent yet")).toBeInTheDocument();
       expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
       // The hold's own Don't send, beside Send it too: no other way off.
       expect(

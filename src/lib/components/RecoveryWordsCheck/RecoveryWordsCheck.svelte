@@ -359,7 +359,7 @@
       <!-- Under the boxes: the thumb holding it hides none of them. -->
       <HoldToShow bind:held={isHeld} className="recovery-check__show-typed" />
     {/if}
-    <!-- The check's own button leads: Skip, where a flow has it,
+    <!-- The check's own button leads: Skip for now, where a flow has it,
       is quieter. -->
     <Button
       disabled={!typed.every(holdsWord)}

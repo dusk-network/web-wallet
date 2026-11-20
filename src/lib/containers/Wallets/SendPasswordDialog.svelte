@@ -116,6 +116,7 @@
         $settingsStore.language,
       )} DUSK
     </h2>
+    <p class="send-password__why">You set this limit in Settings.</p>
     <UnlockPasswordField
       bind:error
       bind:this={field}
@@ -170,6 +171,11 @@
   .send-password__title {
     font-size: 1.125rem;
     font-weight: 500;
+  }
+
+  .send-password__why {
+    color: var(--calm-muted);
+    font-size: 0.875rem;
   }
 
   .send-password__actions {

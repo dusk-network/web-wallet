@@ -143,22 +143,14 @@ describe("LiquidStake", () => {
       "target",
       "_blank",
     );
-    // The Staking page compares the ways to stake: none of that here.
-    expect(
-      textOf(container.querySelector(".liquid-stake__facts")),
-    ).not.toContain("Any amount, no node needed");
-    // What stDUSK is, for whoever asks: under Details, closed.
-    const details = /** @type {HTMLDetailsElement} */ (
-      container.querySelector(".liquid-stake__details")
+    // What stDUSK is, in view: nothing folded away.
+    expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
+      "Any amount, no node needed You get stDUSK, a token for your share of Sozu's pool.",
     );
-
-    expect(details.open).toBe(false);
-    expect(textOf(details)).toContain(
-      "stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees.",
-    );
+    expect(container.querySelector(".liquid-stake details")).toBeNull();
     // Sozu's fees, as its substrate gives them, and none to unstake.
     expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
-      "Fees: 0.25% of deposits · 15% of rewards · no unstake fee",
+      "Sozu's fees: 0.25% of deposits · 15% of rewards · no unstake fee",
     );
     // Its contract isn't one of the facts: it's under the fee's Edit.
     expect(textOf(container.querySelector(".liquid-stake__facts"))).not.toMatch(
@@ -179,15 +171,16 @@ describe("LiquidStake", () => {
     // For what's left once Sozu's 0.25% deposit fee is off it, and what
     // that's worth now.
     expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK (≈ 99.75 DUSK).",
+      "You get about 32.4378 stDUSK, worth about 99.75 DUSK now. Its DUSK value follows Sozu's pool, its rewards and its fees.",
     );
-    // What the form and the Staking page say already isn't said again.
     expect(
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf),
     ).toStrictEqual([
       "Stake with Sozu 100 DUSK",
       "You get about 32.4378 stDUSK",
-      "Deposit fee, not refunded 0.25 DUSK",
+      "Deposit fee, not refunded 0.25% · 0.25 DUSK",
+      "Getting it back Unstake any time: no Sozu fee, no waiting",
+      "Fee paid from Public balance",
       "Total up to 100.005 DUSK",
     ]);
     // No line about what a failed call is charged.
@@ -292,13 +285,13 @@ describe("LiquidStake", () => {
       await typed(getByLabelText);
 
       expect(depositFeeRow(container)).toBe(
-        "Deposit fee, not refunded 0.25 DUSK",
+        "Deposit fee, not refunded 0.25% · 0.25 DUSK",
       );
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(depositFeeRow(container)).toBe(
-        "Deposit fee, not refunded 0.25 DUSK",
+        "Deposit fee, not refunded 0.25% · 0.25 DUSK",
       );
       // Said once, in its row: no line of its own by the button.
       expect(container.querySelector(".stake-flow__final")).toBeNull();
@@ -314,7 +307,7 @@ describe("LiquidStake", () => {
         await fireEvent.click(hidden.getByRole("button", { name: "Review" }));
 
         expect(depositFeeRow(hidden.container)).toBe(
-          "Deposit fee, not refunded •••• hidden DUSK",
+          "Deposit fee, not refunded 0.25% · •••• hidden DUSK",
         );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -448,7 +441,7 @@ describe("LiquidStake", () => {
           container.querySelectorAll(".stake-flow__rows > div"),
           textOf,
         ).find((row) => row?.startsWith("Deposit fee")),
-      ).toBe("Deposit fee, not refunded •••• hidden DUSK");
+      ).toBe("Deposit fee, not refunded 0.25% · •••• hidden DUSK");
       // Its rate, which gives nothing away, stays with Sozu's fees.
       expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
         "0.25% of deposits",
@@ -741,10 +734,12 @@ describe("LiquidStake", () => {
       return fee;
     };
 
-    expect(await rows(FEES)).toBe("Deposit fee, not refunded 0.0025 DUSK");
+    expect(await rows(FEES)).toBe(
+      "Deposit fee, not refunded 0.25% · 0.0025 DUSK",
+    );
     expect(
       await rows({ ...FEES, deposit: { denominator: 100n, numerator: 1n } }),
-    ).toBe("Deposit fee, not refunded 0.01 DUSK");
+    ).toBe("Deposit fee, not refunded 1% · 0.01 DUSK");
     expect(await rows(null)).toBe(
       "Deposit fee, not refunded Taken from the deposit",
     );
@@ -763,7 +758,9 @@ describe("LiquidStake", () => {
         return textOf(container.querySelector(".liquid-stake__error"));
       };
 
-      expect(await error("172")).toBe("Too little left for the fees.");
+      expect(await error("172")).toBe(
+        "Too little left for this fee and the fee to unstake later.",
+      );
       expect(await error("999")).toBe("More than you have.");
       expect(textOf(container)).not.toMatch(/\d DUSK more/);
     } finally {
@@ -817,7 +814,7 @@ describe("LiquidStake", () => {
     });
 
     expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-      "0.015 DUSK short, fees included.",
+      "0.015 DUSK short in the public balance, with this fee and the fee to unstake later.",
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -842,7 +839,7 @@ describe("LiquidStake", () => {
       // 1 DUSK, less 0.005 for this stake and 0.01 for the unstake.
       expect(getByLabelText("Amount")).toHaveValue("0.985");
       expect(container).toHaveTextContent(
-        "Max leaves 0.015 DUSK for this fee and unstaking.",
+        "Max leaves 0.015 DUSK: up to 0.005 for this fee and 0.01 to unstake later.",
       );
       expect(getByRole("button", { name: "Max" })).toHaveAttribute(
         "title",
@@ -889,7 +886,7 @@ describe("LiquidStake", () => {
       });
 
       expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "0.01 DUSK short, fees included.",
+        "0.01 DUSK short in the public balance, with this fee and the fee to unstake later.",
       );
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
@@ -1246,10 +1243,8 @@ describe("LiquidStake", () => {
               tipHeight: 1_000_000n,
             },
           });
-          // The line of what the rate is made of, under Details.
-          const line = textOf(
-            container.querySelector(".liquid-stake__details"),
-          );
+          // The line of what the rate is made of, under the rate.
+          const line = textOf(container.querySelector(".liquid-stake__facts"));
 
           expect(line?.replace(/\s/g, " ")).toContain(staked);
           expect(line).not.toMatch(/[\u0900-\u097f]/);
@@ -1271,14 +1266,10 @@ describe("LiquidStake", () => {
       });
       const facts = textOf(container.querySelector(".liquid-stake__facts"));
 
-      expect(facts).toContain(
-        "About 20% a year after Sozu's 15%. Not promised.",
-      );
-      // What it's made of, for whoever asks: under Details.
-      expect(facts).not.toMatch(/DUSK a block to stakers/);
-      expect(textOf(container.querySelector(".liquid-stake__details"))).toMatch(
-        /DUSK a block to stakers.*Less Sozu's 15%/,
-      );
+      // The rate, and what it's made of under it, in view.
+      expect(facts).toContain("About 20% a year. Not promised.");
+      expect(facts).toMatch(/DUSK a block to stakers.*Less Sozu's 15%/);
+      expect(container.querySelector(".liquid-stake details")).toBeNull();
 
       await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
@@ -1286,7 +1277,9 @@ describe("LiquidStake", () => {
 
       expect(
         textOf(container.querySelector(".liquid-stake__estimate")),
-      ).toMatch(/About 20\.\d+ DUSK a year at today's rate\.$/);
+      ).toMatch(
+        /About 20\.\d+ DUSK in rewards a year at today's rate, after Sozu's share and the deposit fee\.$/,
+      );
     });
 
     it("gives the rate, its line and a year's rewards from how stDUSK grew lately, once that's read", async () => {
@@ -1313,12 +1306,7 @@ describe("LiquidStake", () => {
       });
 
       expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
-        "About 40% a year after Sozu's 15%. Not promised.",
-      );
-      expect(
-        textOf(container.querySelector(".liquid-stake__details")),
-      ).toContain(
-        "stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share.",
+        "About 40% a year. Not promised. stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share.",
       );
 
       await fireEvent.input(getByLabelText("Amount"), {
@@ -1327,7 +1315,7 @@ describe("LiquidStake", () => {
 
       expect(
         textOf(container.querySelector(".liquid-stake__estimate")),
-      ).toMatch(/About 39\.\d+ DUSK a year at today's rate/);
+      ).toMatch(/About 39\.\d+ DUSK in rewards a year at today's rate/);
     });
 
     it("says nothing of the rate before it's read", () => {
@@ -1359,11 +1347,15 @@ describe("LiquidStake", () => {
       "aria-selected",
       "true",
     );
-    // The unstake tab is about getting it back: no pitch for staking, and
-    // that Sozu pays it out at once, free, is said once, in the summary.
-    expect(container.querySelector(".liquid-stake__estimate")).toBeNull();
-    expect(container.querySelector(".liquid-stake__facts")).toBeNull();
-    expect(container.querySelector(".liquid-stake__details")).toBeNull();
+    // How it comes back, and the same facts as the stake tab: nothing
+    // folded away.
+    expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
+      "Back in the same transaction: no Sozu fee, no waiting.",
+    );
+    expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
+      "Any amount, no node needed",
+    );
+    expect(container.querySelector(".liquid-stake details")).toBeNull();
 
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "16" },
@@ -1380,7 +1372,9 @@ describe("LiquidStake", () => {
       Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf),
     ).toStrictEqual([
       "Unstake from Sozu 15 DUSK",
-      "Back to Your public balance, no fee",
+      "Back to Your public balance, in the same transaction",
+      "Sozu's fee No unstake fee",
+      "Fee paid from Public balance",
       // What comes back, its fee apart (Lena's: "Total up to" for money
       // coming back).
       "You receive About 15 DUSK",
@@ -1613,19 +1607,19 @@ describe("LiquidStake", () => {
       {
         next: statusWith({}, RAISED),
         pool: POOL,
-        shows: "Deposit fee, not refunded 1 DUSK",
+        shows: "Deposit fee, not refunded 1% · 1 DUSK",
         what: "the deposit fee",
       },
       {
         next: statusWith({}, FEES, OPEN, NEW_POOL),
         pool: NEW_POOL,
-        shows: "Deposit fee, not refunded 0.25 DUSK",
+        shows: "Deposit fee, not refunded 0.25% · 0.25 DUSK",
         what: "the pool",
       },
       {
         next: statusWith({}, FEES, { ...OPEN, synchronization: true }),
         pool: POOL,
-        shows: "Deposit fee, not refunded 0.25 DUSK",
+        shows: "Deposit fee, not refunded 0.25% · 0.25 DUSK",
         what: "the switches: the pool synchronizes now",
       },
     ])(

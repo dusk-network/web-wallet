@@ -67,17 +67,18 @@
 
   // With one wallet, as before there were more.
   const RESET_ONE = {
-    body: "Removes this wallet, its contacts and settings from this browser. Only the recovery phrase brings it back.",
+    body: "Clears the cache, settings, contacts and connected EVM wallets from this browser, not your funds. Only your recovery phrase restores access, so keep it stored securely.",
     button: "Reset wallet",
-    confirm: "Reset this wallet? Only its recovery phrase brings it back.",
+    confirm:
+      "Confirm you've saved your recovery phrase: only it restores access. Reset?",
     heading: "Reset wallet",
   };
 
   const RESET_ALL = {
-    body: "Removes every wallet, their contacts and settings from this browser. Only each one's recovery phrase brings it back.",
+    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. Only each wallet's recovery phrase gets you back in.",
     button: "Reset all wallets",
     confirm:
-      "Reset all wallets? Only each one's recovery phrase brings it back.",
+      "Confirm you've saved each recovery phrase: only they get you back in. Reset all wallets?",
     heading: "Reset all wallets",
   };
 
@@ -632,27 +633,25 @@
     <article class="settings-group">
       <SectionHead>Support</SectionHead>
       <p>
-        Help: <Anchor
+        Read the <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://docs.dusk.network">Docs</Anchor
-        >
-        ·
+        >, ask on
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
-        >
-        ·
+        > or report issues on
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"
           >GitHub</Anchor
-        >
+        >.
       </p>
       <p>
         <Anchor

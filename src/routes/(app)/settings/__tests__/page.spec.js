@@ -475,6 +475,10 @@ describe("Settings", () => {
       await fireEvent.click(resetButton);
 
       expect(confirmSpy).toHaveBeenCalledTimes(1);
+      // It asks whether the recovery phrase is saved: only it restores access.
+      expect(confirmSpy).toHaveBeenCalledWith(
+        "Confirm you've saved your recovery phrase: only it restores access. Reset?",
+      );
       expect(clearDataSpy).toHaveBeenCalledTimes(1);
 
       await resetDone();
@@ -562,7 +566,7 @@ describe("Settings", () => {
 
       expect(
         getByText(
-          "Removes this wallet, its contacts and settings from this browser. Only the recovery phrase brings it back.",
+          "Clears the cache, settings, contacts and connected EVM wallets from this browser, not your funds. Only your recovery phrase restores access, so keep it stored securely.",
         ),
       ).toBeInTheDocument();
 

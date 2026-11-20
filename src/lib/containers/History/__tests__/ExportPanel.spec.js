@@ -99,7 +99,7 @@ describe("Export's network fees of migrations", () => {
     files.make.mockReturnValueOnce(made.promise);
     render(ExportPanel, props);
 
-    expect(said()).toBe("Checking migration fees…");
+    expect(said()).toBe("Reading migrations' network fees…");
     expect(files.make).toHaveBeenCalledWith(
       expect.objectContaining({
         choices: expect.objectContaining({ period: "all" }),
@@ -134,7 +134,7 @@ describe("Export's network fees of migrations", () => {
     });
 
     await vi.waitFor(() =>
-      expect(said()).toBe("No migration fees in the file."),
+      expect(said()).toBe("No migration network fees in the file."),
     );
 
     // Back to all of it, whose migration's chain doesn't answer now.
@@ -200,7 +200,7 @@ describe("Export's network fees of migrations", () => {
     render(ExportPanel, props);
 
     await vi.waitFor(() =>
-      expect(said()).toBe("Couldn't check migration fees."),
+      expect(said()).toBe("Couldn't read migrations' network fees."),
     );
   });
 });

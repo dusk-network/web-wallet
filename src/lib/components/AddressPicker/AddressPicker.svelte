@@ -508,8 +508,10 @@
         <span class="address-picker__profile-header">
           {profileNameAt(profileNames, profiles.indexOf(profile))}
           {#if profile === currentProfile}
-            <span aria-hidden="true" class="address-picker__current-indicator"
-              >✓</span
+            <span class="address-picker__current-indicator"
+              ><span aria-hidden="true">✓</span><span class="sr-only"
+                >Current</span
+              ></span
             >
           {/if}
         </span>

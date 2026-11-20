@@ -587,7 +587,10 @@ describe("AddressPicker", () => {
           shortenAddress(account),
         ]);
         expect(accountLine).toHaveAttribute("title", account);
-        expect(item).toHaveAccessibleName(`Profile ${index + 1} ${account}`);
+        // The check marks the current one; a screen reader says Current.
+        expect(item).toHaveAccessibleName(
+          `Profile ${index + 1}${index === 0 ? " Current" : ""} ${account}`,
+        );
       });
 
       // The profiles' shielded addresses are left to their copy buttons.
@@ -952,7 +955,9 @@ describe("AddressPicker", () => {
         "Profile 1 ✓",
         shortenAddress(firstAccount),
       ]);
-      expect(firstItem).toHaveAccessibleName(`Profile 1 ${firstAccount}`);
+      expect(firstItem).toHaveAccessibleName(
+        `Profile 1 Current ${firstAccount}`,
+      );
       expect(
         container.querySelectorAll(".address-picker__address-name"),
       ).toHaveLength(1);

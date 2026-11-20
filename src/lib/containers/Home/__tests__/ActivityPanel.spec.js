@@ -56,8 +56,8 @@ describe("ActivityPanel", () => {
     localStorage.clear();
   });
 
-  it("should show days in sentence case, with no note on the time zone", () => {
-    const { getByRole, queryByText } = render(ActivityPanel, {
+  it("should say once that times are local, over days in sentence case", () => {
+    const { getAllByText, getByRole } = render(ActivityPanel, {
       locale: "en",
       state: {
         complete: true,
@@ -69,7 +69,10 @@ describe("ActivityPanel", () => {
       },
     });
 
-    expect(queryByText(/local time/)).toBeNull();
+    expect(getAllByText(/local time/)).toHaveLength(1);
+    expect(getAllByText(/local time/)[0]).toHaveTextContent(
+      /^In your local time$/,
+    );
     expect(getByRole("heading", { level: 3, name: "Today" })).toHaveTextContent(
       /^Today$/,
     );
@@ -187,7 +190,7 @@ describe("ActivityPanel", () => {
     );
 
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatch(/^Bridge · [^·]+$/);
+    expect(lines[0]).toMatch(/^Bridge · .+ · Public$/);
     expect(lines[0]).not.toContain("claim");
     expect(lines[1]).toMatch(/^Claim from about /);
   });

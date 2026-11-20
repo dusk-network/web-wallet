@@ -367,7 +367,8 @@
       <p>The wallet updates automatically.</p>
     {:else if notSent}
       <p>
-        {refusal && !isDropped ? `${refusal} ` : ""}It may still arrive.
+        {refusal && !isDropped ? `${refusal} ` : ""}If it still arrives, it
+        shows here.
       </p>
     {:else if isOnItsWay}
       <p>Usually under a minute.</p>
@@ -464,7 +465,7 @@
         href={`/explorer/transactions/transaction?id=${hash}`}
         rel="noopener noreferrer"
         target="_blank"
-        text="View in explorer"
+        text="View in Dusk explorer"
       />
     {/if}
     {#if status === "late" && !notSent && !isOnItsWay}

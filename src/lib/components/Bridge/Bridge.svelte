@@ -871,7 +871,7 @@
       </div>
       <div class="swap-foot">
         <span id="bridge-balance-label"
-          >{isWithdrawing ? "DuskEVM" : "Public"}</span
+          >{isWithdrawing ? "DuskEVM balance:" : "Public balance:"}</span
         >
         <span class="swap-foot__value">
           <span id="bridge-balance">
@@ -899,7 +899,9 @@
       </div>
       {#if isWithdrawing && evmAddress}
         <p class="swap-recipient">
-          From <b title={evmAddress}>{shortenAddress(evmAddress)}</b>
+          From your DuskEVM account <b title={evmAddress}
+            >{shortenAddress(evmAddress)}</b
+          >
           ·
           <button
             aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
@@ -935,7 +937,7 @@
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing
-            ? "Not enough for the amount and fee."
+            ? "Not enough public balance for the amount and fee."
             : evmDuskBalance
               ? "Not enough on DuskEVM for the amount and gas."
               : "Checking your DuskEVM balance…"}
@@ -990,7 +992,9 @@
         <p class="swap-recipient">To your public balance</p>
       {:else if evmAddress}
         <p class="swap-recipient">
-          To <b title={evmAddress}>{shortenAddress(evmAddress)}</b>
+          To your DuskEVM account <b title={evmAddress}
+            >{shortenAddress(evmAddress)}</b
+          >
           ·
           <button
             aria-label={`DuskEVM account ${evmAddress}: disconnect or change wallet`}
@@ -1005,7 +1009,7 @@
     <details class="swap-route">
       <summary
         ><Icon path={mdiClockOutline} /><span class="swap-route__sum"
-          ><span>{routeLine}</span>{#if route && !isDepositing}<RouteStatusLine
+          ><span>{routeLine}</span>{#if route}<RouteStatusLine
               {amountLux}
               {route}
             />{/if}</span
@@ -1082,15 +1086,10 @@
         <div>
           <dt>From</dt>
           <dd>
-            <!-- Your own: shortened. Where it pays out is in full. -->
             <span>{isDepositing ? "Public account" : "DuskEVM"}</span>
-            <span
-              class="bridge-review__address"
-              title={(isDepositing ? unshieldedAddress : address) ?? ""}
-              >{shortenAddress(
-                (isDepositing ? unshieldedAddress : address) ?? "",
-              )}</span
-            >
+            <FullAddress
+              address={(isDepositing ? unshieldedAddress : address) ?? ""}
+            />
           </dd>
         </div>
         <div>
@@ -1102,26 +1101,21 @@
             />
           </dd>
         </div>
+        {#if isDepositing && depositContract}
+          <div>
+            <dt>Contract</dt>
+            <dd>
+              <span
+                >{contractLabel(depositContract, networkName) ||
+                  "DuskEVM bridge"}</span
+              >
+              <span class="bridge-review__address" title={depositContract}
+                >{shortenAddress(depositContract)}</span
+              >
+            </dd>
+          </div>
+        {/if}
       </dl>
-      {#if isDepositing && depositContract}
-        <details class="bridge-review__details">
-          <summary>Details</summary>
-          <dl class="bridge-review__ends">
-            <div>
-              <dt>Contract</dt>
-              <dd>
-                <span
-                  >{contractLabel(depositContract, networkName) ||
-                    "DuskEVM bridge"}</span
-                >
-                <span class="bridge-review__address" title={depositContract}
-                  >{shortenAddress(depositContract)}</span
-                >
-              </dd>
-            </div>
-          </dl>
-        </details>
-      {/if}
       {#if isDepositing}
         <ReviewAmount
           label="Fee up to"
@@ -1142,7 +1136,7 @@
           />
         {/if}
         <Banner title={withdrawalNext} variant="info">
-          <p>Plus a small fee for each step on Dusk.</p>
+          <p>Each step on Dusk takes a small fee from your public balance.</p>
         </Banner>
       {/if}
       <div class="bridge-review__actions">
@@ -1187,7 +1181,7 @@
           {#if hash}
             <AnchorButton
               href={`${duskEvm.blockExplorers.default.url}/tx/${hash}`}
-              text="View in explorer"
+              text="View in Dusk explorer"
               rel="noopener noreferrer"
               target="_blank"
             />
@@ -1263,14 +1257,6 @@
     font-family: var(--mono-font-family, monospace);
     font-size: 0.8125rem;
     overflow-wrap: anywhere;
-  }
-
-  /* The contract a deposit calls, for whoever checks it: closed. */
-  .bridge-review__details summary {
-    color: var(--calm-muted);
-    cursor: pointer;
-    font-size: 0.8125rem;
-    font-weight: 500;
   }
 
   .bridge-review__actions {

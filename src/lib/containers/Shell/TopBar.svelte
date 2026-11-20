@@ -117,7 +117,7 @@
       type="button"
     >
       <Icon path={mdiMagnify} />
-      <span class="top-bar__search-text">Search</span>
+      <span class="top-bar__search-text">Search names, addresses, amounts</span>
       <kbd class="top-bar__kbd">Ctrl K</kbd>
     </button>
 

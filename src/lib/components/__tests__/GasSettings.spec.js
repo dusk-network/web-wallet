@@ -46,7 +46,7 @@ describe("GasSettings", () => {
     await fireEvent.click(next);
   });
 
-  it("says what the fee pays for, before the gas that makes it, the fee rounded up beside Edit", async () => {
+  it("gives the most it can cost first, exactly and in DUSK, with what at most means, before the gas that makes it", async () => {
     const { container, getByRole, getByText, queryByText } = render(
       GasSettings,
       {
@@ -66,7 +66,7 @@ describe("GasSettings", () => {
     );
 
     expect(line.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Pays only for the gas used: up to 20,000,000 gas at 1 LUX.",
+      "0.002151569 DUSK at most: pays only for the gas used, up to 20,000,000 gas at 1 LUX each.",
     );
     // Before the gas fields.
     expect(

@@ -32,13 +32,13 @@
   >
     {#if many}
       <p>
-        This removes them, with their settings and contacts. To get them back
-        you need each one's recovery phrase.
+        This removes them, with their settings and contacts. Your funds stay on
+        Dusk. To get them back you need each one's recovery phrase.
       </p>
     {:else}
       <p>
-        This removes it, with its settings and contacts. To get it back you need
-        its recovery phrase.
+        This removes it, with its settings and contacts. Your DUSK stays on the
+        network. To get it back you need its recovery phrase.
       </p>
     {/if}
     <div class="actions">

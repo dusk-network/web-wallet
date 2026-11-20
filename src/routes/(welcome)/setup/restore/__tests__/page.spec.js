@@ -91,7 +91,7 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "This removes it, with its settings and contacts. To get it back you need its recovery phrase.",
+        "This removes it, with its settings and contacts. Your DUSK stays on the network. To get it back you need its recovery phrase.",
       ),
     ).toBeInTheDocument();
     expect(back).toHaveAttribute("href", expect.stringMatching(/\/setup$/));
@@ -119,7 +119,7 @@ describe("Restore", async () => {
 
     expect(
       getByText(
-        "This removes them, with their settings and contacts. To get them back you need each one's recovery phrase.",
+        "This removes them, with their settings and contacts. Your funds stay on Dusk. To get them back you need each one's recovery phrase.",
       ),
     ).toBeInTheDocument();
 
@@ -141,7 +141,7 @@ describe("Restore", async () => {
 
     expect(
       await findByText(
-        "This removes them, with their settings and contacts. To get them back you need each one's recovery phrase.",
+        "This removes them, with their settings and contacts. Your funds stay on Dusk. To get them back you need each one's recovery phrase.",
       ),
     ).toBeInTheDocument();
 
@@ -347,6 +347,11 @@ describe("Restore", async () => {
     expect(
       advanced.contains(getByRole("switch", { name: "Start from block" })),
     ).toBe(true);
+    // Why the block matters, beside it: faster, but a wrong one costs.
+    expect(advanced).toHaveTextContent("A later block syncs faster.");
+    expect(advanced).toHaveTextContent(
+      "A wrong one can mean a wrong balance or missing transactions. More in our documentation.",
+    );
     expect(getByRole("button", { name: "Start sync" })).toBeEnabled();
   });
 
@@ -424,7 +429,7 @@ describe("Restore", async () => {
 
     expect(field).toHaveValue("");
     expect(field).toHaveAccessibleDescription(
-      "Your wallet's first block, or earlier. Too late hides payments. Not sure? Leave it off.",
+      "Your wallet's first block, or earlier. Not sure? Leave it off.",
     );
     expect(nextButton).toBeDisabled();
 

@@ -158,9 +158,6 @@
   // One not confirmed yet says so in its line, in place of Sent.
   const STATUS_WORDS = { pending: "Pending" };
 
-  /** A bridge's reference: an EVM address, or a transaction ID. */
-  const BRIDGE_REF = /^0x(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
-
   /** Whether Export's panel shows. */
   let isExportOpen = false;
 
@@ -301,6 +298,7 @@
         {shieldedAddress}
       />
     {/if}
+    <p class="history__note">In your local time.</p>
     {#if incomplete}
       <p class="history__incomplete" role="status">
         {incompleteText}
@@ -439,10 +437,8 @@
                             class="history__phone-meta"
                             >{time === null
                               ? ""
-                              : ` · ${timeLabel(time, locale)}`}{p.privacy ===
-                            "Shielded"
-                              ? " · Shielded"
-                              : ""}</span
+                              : ` · ${timeLabel(time, locale)}`}
+                            · {p.privacy}</span
                           >{/if}</span
                       >
                       {#if p.note}
@@ -450,12 +446,6 @@
                       {/if}
                       {#if row.memo}
                         {@const theirs = strangersMemo(row, memoAmong)}
-                        <!-- A bridge's reference is an EVM address or
-                          transaction ID: shortened, whole on hover. -->
-                        {@const ref =
-                          p.icon === "bridge" && BRIDGE_REF.test(row.memo)
-                            ? row.memo
-                            : ""}
                         <!-- A stranger's memo is theirs: who it came from
                           first, then their words, in quotes, muted, in the
                           same size. -->
@@ -467,9 +457,7 @@
                             >“<MemoText
                               inline
                               text={theirs.memo}
-                            />”{:else if ref}<span title={ref}
-                              >{shortAddress(ref)}</span
-                            >{:else}<MemoText
+                            />”{:else}<MemoText
                               inline
                               text={row.memo}
                             />{/if}</span
@@ -477,12 +465,9 @@
                       {/if}
                       {#if isDeposit}
                         <span class="history__when"
-                          >{[
-                            time === null ? "" : timeLabel(time, locale),
-                            p.privacy === "Shielded" ? p.privacy : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}</span
+                          >{time === null
+                            ? p.privacy
+                            : `${timeLabel(time, locale)} · ${p.privacy}`}</span
                         >
                       {/if}
                     </span>
@@ -590,6 +575,12 @@
     font-weight: 500;
     letter-spacing: -0.01em;
     line-height: 1.15;
+  }
+
+  .history__note {
+    margin-top: 0.375rem;
+    color: var(--calm-muted);
+    font-size: 0.8125rem;
   }
 
   .history__incomplete {

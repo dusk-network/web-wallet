@@ -1,7 +1,8 @@
 <svelte:options immutable={true} />
 
 <script>
-  import { CopyField } from "$lib/components";
+  import { AppAnchor, CopyField } from "$lib/components";
+  import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { Card } from "$lib/dusk/components";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { settingsStore } from "$lib/stores";
@@ -22,7 +23,15 @@
         displayValue={numberFormatter(currentBlockHeight)}
         rawValue={String(currentBlockHeight)}
       />
-      <small>Restore from this block to sync faster.</small>
+      <small>
+        Restore from this block to sync faster. Settings shows it too, under
+        Advanced. More in our <AppAnchor
+          className="text-link"
+          href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
+          rel="noopener noreferrer"
+          target="_blank">documentation</AppAnchor
+        >.
+      </small>
     </div>
   </details>
 </Card>

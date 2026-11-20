@@ -379,11 +379,11 @@
   $: feesSaid = !feesKey
     ? ""
     : fees.key !== feesKey
-      ? "Checking migration fees…"
+      ? "Reading migrations' network fees…"
       : fees.made
         ? migrationFeeWords(fees.made, { saved: false }).join(" ") ||
-          "No migration fees in the file."
-        : "Couldn't check migration fees.";
+          "No migration network fees in the file."
+        : "Couldn't read migrations' network fees.";
 
   /**
    * Whether a period is one: both days, for dates.

@@ -386,11 +386,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: "Allow spending 2.5 BEP20 DUSK" }),
     ).toBeEnabled();
     expect(container).toHaveTextContent(
-      "Allow spending of exactly this amount, then migrate, in your wallet",
+      "Allow spending, then migrate, in your wallet",
     );
-    // Its own account shortened; where it pays out, in full.
+    // Both accounts in full.
     expect(container).toHaveTextContent(
-      `Amount 2.5 DUSK From BNB Smart Chain 0x2222…2222 To Your public account ${ACCOUNT}`,
+      `Amount 2.5 DUSK From BNB Smart Chain ${EVM} To Your public account ${ACCOUNT}`,
     );
 
     await afterConfirmDelay();
@@ -742,7 +742,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         { target: { value: "0.5" } },
       );
 
-      expect(steps()).toContain("migrate, in your wallet");
+      expect(steps()).toContain("migrate, in your BNB Smart Chain wallet");
       expect(steps()).not.toMatch(/approve|allow spending/i);
 
       await fireEvent.input(
@@ -750,7 +750,9 @@ describe("the Bridge card's routes to and from other chains", () => {
         { target: { value: "0.6" } },
       );
 
-      expect(steps()).toContain("allow spending, then migrate, in your wallet");
+      expect(steps()).toContain(
+        "allow spending, then migrate, in your BNB Smart Chain wallet",
+      );
     });
 
     it("offers to add DUSK to a wallet that holds none of it yet, on the way back's form", async () => {
@@ -945,13 +947,16 @@ describe("the Bridge card's routes to and from other chains", () => {
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await vi.waitFor(() =>
         expect(container).toHaveTextContent(
-          "Allow spending of exactly this amount, then migrate, in your wallet",
+          "Allow spending, then migrate, in your wallet",
         ),
       );
 
       expect(
         getByRole("button", { name: "Allow spending 1 BEP20 DUSK" }),
       ).toBeInTheDocument();
+      expect(container).toHaveTextContent(
+        "The migration contract may take exactly this amount.",
+      );
       expect(container).not.toHaveTextContent("Covered by an allowance");
     });
 
@@ -1758,19 +1763,15 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       const { container, findByText } = await reviewMigration();
 
-      await findByText(
-        "Allow spending of exactly this amount, then migrate, in your wallet",
-      );
+      await findByText("Allow spending, then migrate, in your wallet");
 
       const contract = /** @type {any} */ (
         networks.mainnet.routes.migrations.find((m) => m.chain === "ethereum")
       ).contract;
 
-      // One line for both steps: the allowance is for this amount alone.
       expect(container).toHaveTextContent(
-        "Steps Allow spending of exactly this amount, then migrate, in your wallet",
+        "Allowance The migration contract may take exactly this amount. Nothing moves yet.",
       );
-      expect(container).not.toHaveTextContent("Nothing moves yet");
 
       // One click away, for whoever checks them against the wallet.
       const check = /** @type {HTMLDetailsElement} */ (
@@ -1864,7 +1865,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       await findByRole("button", { name: MIGRATE_BUTTON });
       await vi.waitFor(() =>
         expect(container).toHaveTextContent(
-          "Fee As your wallet shows · no bridge fee",
+          "Fee On Ethereum, as your wallet shows · no bridge fee",
         ),
       );
     });
@@ -2235,7 +2236,7 @@ describe("the Bridge card's routes to and from other chains", () => {
         ).toBeInTheDocument();
         await vi.waitFor(() =>
           expect(container).toHaveTextContent(
-            "Allow spending of exactly this amount, then migrate, in your wallet",
+            "Allow spending, then migrate, in your wallet",
           ),
         );
         expect(mocks.migrate).toHaveBeenCalledOnce();

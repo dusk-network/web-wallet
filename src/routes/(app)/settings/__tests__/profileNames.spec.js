@@ -162,6 +162,10 @@ describe("Settings › Profiles", () => {
 
     const settings = render(Settings);
 
+    // That the names stay on this device, said once, over the list.
+    expect(
+      settings.getByRole("heading", { name: "Names on this device" }),
+    ).toBeInTheDocument();
     expect(
       settings
         .getByRole("textbox", { name: "Profile 1 name" })
@@ -181,7 +185,9 @@ describe("Settings › Profiles", () => {
     // Not a label its number says already: shown on narrow screens too.
     expect(pillName).not.toHaveClass("address-picker__compact-name--label");
     expect(pill).toHaveAccessibleName("Profile: Savings jar");
-    expect(listed()).toEqual([["Wallet 1", ["Savings jar ✓", "Spending"]]]);
+    expect(listed()).toEqual([
+      ["Wallet 1", ["Savings jar ✓Current", "Spending"]],
+    ]);
   });
 
   it("shows a verified .dusk name in the pill over the name given here, and both in the switcher", async () => {
@@ -197,7 +203,7 @@ describe("Settings › Profiles", () => {
 
     expect(pillName).toHaveTextContent("alice.dusk");
     expect(pill).toHaveAccessibleName("Profile: alice.dusk (Savings)");
-    expect(listed()).toEqual([["Wallet 1", ["Savings ✓", "Profile 2"]]]);
+    expect(listed()).toEqual([["Wallet 1", ["Savings ✓Current", "Profile 2"]]]);
     expect(
       bar.container.querySelector(".address-picker__address-name"),
     ).toHaveTextContent("alice.dusk");
@@ -647,7 +653,7 @@ describe("Settings › Profiles", () => {
     expect(switcher.pillName).toHaveTextContent("Profile 1");
     expect(switcher.listed()).toEqual([
       ["Wallet 1", ["Savings", "Profile 2"]],
-      ["Wallet 2", ["Profile 1 ✓", "Travel"]],
+      ["Wallet 2", ["Profile 1 ✓Current", "Travel"]],
     ]);
     cleanup();
 
@@ -668,7 +674,7 @@ describe("Settings › Profiles", () => {
 
     expect(switcher.listed()).toEqual([
       ["Wallet 1", ["Savings", "Profile 2"]],
-      ["Wallet 2", ["Profile 1 ✓", "Profile 2"]],
+      ["Wallet 2", ["Profile 1 ✓Current", "Profile 2"]],
     ]);
   });
 

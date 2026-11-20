@@ -74,7 +74,7 @@
     if (await dontSendHandedOver(send)) {
       toast(
         "info",
-        `Not sent yet: ${whatOf(send, hideBalances)}. It may still arrive.`,
+        `Not sent yet: ${whatOf(send, hideBalances)}. If it still arrives, it shows here.`,
         mdiCheck,
       );
     }
@@ -250,7 +250,7 @@
         {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
         {formatTime(send.at, { locale: language || undefined })}
       </p>
-      <p>{why ? `${why} ` : ""}It may still arrive.</p>
+      <p>{why ? `${why} ` : ""}If it still arrives, it shows here.</p>
       <div class="unsent-send__actions">
         <Button
           on:click={() => sendAgainNow(send)}
@@ -340,6 +340,8 @@
         {#if told.same}
           <p>{told.same}</p>
         {/if}
+      {:else}
+        <p>Nothing left your wallet.</p>
       {/if}
       <!-- Off while what its account sent is read: the answer may be that
         it's this same payment. -->

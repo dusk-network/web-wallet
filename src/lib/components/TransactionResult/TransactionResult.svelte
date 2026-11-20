@@ -200,7 +200,7 @@
     {/if}
     <span class="dusk-suspense__pending-message"
       >{$gateAsks
-        ? "Held"
+        ? "Held: not sent yet"
         : isWaiting && gate && !isHandedOver
           ? "Waiting"
           : "Sending"}</span

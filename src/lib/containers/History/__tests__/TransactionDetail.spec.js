@@ -303,7 +303,9 @@ describe("TransactionDetail", () => {
 
     expect(again.getByText("Proof rejected · prove it again")).toBeTruthy();
     expect(
-      again.getByText("Proof rejected. Prove it again on Dusk."),
+      again.getByText(
+        "Proof rejected: it can't be claimed. Prove it again on Dusk.",
+      ),
     ).toBeTruthy();
     expect(again.queryByText(/Claim from/)).toBeNull();
 

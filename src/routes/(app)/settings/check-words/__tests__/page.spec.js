@@ -76,7 +76,7 @@ describe("Check recovery phrase", () => {
 
     expect(askedIn(container)).toStrictEqual([]);
 
-    await fireEvent.input(getByLabelText("Password"), {
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: "not the password" },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -92,7 +92,7 @@ describe("Check recovery phrase", () => {
     const { container, getByLabelText, getByRole, getByText } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password"), {
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -116,7 +116,7 @@ describe("Check recovery phrase", () => {
     const { container, getByLabelText, getByRole, getByText, queryByRole } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password"), {
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -203,7 +203,7 @@ describe("Check recovery phrase", () => {
       const { container, getByLabelText, getByRole, queryByRole } =
         render(CheckWords);
 
-      await fireEvent.input(getByLabelText("Password"), {
+      await fireEvent.input(getByLabelText("Password you unlock with"), {
         target: { value: PASSWORD },
       });
       await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -229,7 +229,7 @@ describe("Check recovery phrase", () => {
     const { container, getByLabelText, getByRole, queryByRole } =
       render(CheckWords);
 
-    await fireEvent.input(getByLabelText("Password"), {
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -335,7 +335,7 @@ describe("Check recovery phrase", () => {
         new RegExp(`\\b${word}\\b`).test(container.textContent ?? ""),
       );
 
-    await fireEvent.input(getByLabelText("Password"), {
+    await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
     await fireEvent.click(getByRole("button", { name: "Next" }));
@@ -410,7 +410,7 @@ describe("Check recovery phrase", () => {
       getByRole("button", { name: "Show my recovery words" }),
     );
 
-    const password = getByLabelText("Password");
+    const password = getByLabelText("Password you unlock with");
 
     expect(password).toHaveValue("");
     await vi.waitFor(() => expect(document.activeElement).toBe(password));

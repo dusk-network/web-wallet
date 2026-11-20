@@ -42,7 +42,7 @@
 
 <!-- Above the words: whoever sees the screen sees the phrase. -->
 <WarningCard heading="Make sure no one can see your screen.">
-  <p class="mnemonic-card__notice">On paper, in order.</p>
+  <p class="mnemonic-card__notice">On paper, in order, kept offline.</p>
   <Words words={shown} />
   {#if $touchOnly}
     <HoldToShow bind:held={isHeld} className="mnemonic-card__show" />

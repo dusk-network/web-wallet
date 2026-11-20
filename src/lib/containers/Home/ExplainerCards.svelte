@@ -26,11 +26,17 @@
   /** @type {bigint} */
   export let reward;
 
+  /** @type {bigint} */
+  export let minimumStake;
+
   /** Whether the history holds staking: an empty stake then isn't "yet". */
   export let hasPastStaking = false;
 
   /** What is staked with Sozu, as far as known. */
   export let liquid = 0n;
+
+  /** Whether this network has Sozu, for staking any amount. */
+  export let sozuAvailable = false;
 
   export let stakeEnabled = true;
 
@@ -144,6 +150,12 @@
       {:else}
         <p class="explainer-card__value explainer-card__value--text">
           Nothing staked
+        </p>
+        <p class="explainer-card__text">
+          From {formatDusk(minimumStake, locale)}
+          DUSK with your own node{sozuAvailable
+            ? ", or any amount with Sozu (third party)"
+            : ""}.
         </p>
         {#if hasPastStaking}
           <a

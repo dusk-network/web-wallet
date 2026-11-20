@@ -224,7 +224,7 @@
   $: typedAmount = amount ?? 0n;
   $: isTypedOff = Boolean(check.error);
   $: minimumText = formatDusk(minimumStake, language);
-  $: liquidText = `Under ${minimumText} DUSK? Stake with Sozu`;
+  $: liquidText = `Under ${minimumText} DUSK? Stake with Sozu (liquid staking, third party)`;
 </script>
 
 {#if sent}
@@ -307,7 +307,8 @@
         <p class="native-stake__hint">
           Max leaves {formatFee(maxGasFee + unstakeFee, language, {
             max: true,
-          })} DUSK for this fee and unstaking.
+          })} DUSK: up to {formatFee(maxGasFee, language, { max: true })} for this
+          fee and {formatFee(unstakeFee, language, { max: true })} to unstake later.
         </p>
       {/if}
       <div id="{id}-error">
@@ -336,7 +337,10 @@
           </div>
         {:else if isBelowMinimum && !amountText}
           <div class="native-stake__note">
-            <p>Not enough for the {minimumText} DUSK minimum and fees.</p>
+            <p>
+              Not enough public balance for the {minimumText} DUSK minimum, this fee
+              and the fee to unstake later.
+            </p>
             {#if liquidHref}
               <a class="native-stake__link text-link" href={resolve(liquidHref)}
                 >{liquidText}</a
@@ -365,7 +369,8 @@
       <li>
         <Icon path={mdiClockOutline} />
         <div>
-          <p class="native-stake__fact">Rewards start in 6–12 hours</p>
+          <p class="native-stake__fact">Rewards start in about 6–12 hours</p>
+          <p>Unstake any time, no waiting period.</p>
         </div>
       </li>
       {#if hasStake}
@@ -380,9 +385,10 @@
       <li>
         <Icon path={mdiAlertCircleOutline} />
         <div>
-          <p class="native-stake__fact">
-            Node misses a turn: part locked, unstaking returns it. Breaks the
-            rules: part burned.
+          <p class="native-stake__fact">If your node misses its turn</p>
+          <p>
+            Part of your stake gets locked; unstaking returns it. If the node
+            breaks the rules, part of the stake can be burned (lost).
           </p>
         </div>
       </li>
@@ -398,6 +404,16 @@
               value={formatDuskExact(typedAmount, language)}
             /> DUSK
           </dd>
+        </div>
+        {#if !hasStake}
+          <div>
+            <dt>Rewards start</dt>
+            <dd>In about 6–12 hours</dd>
+          </div>
+        {/if}
+        <div>
+          <dt>Paid from</dt>
+          <dd>Public balance</dd>
         </div>
       </dl>
       <GasSettings

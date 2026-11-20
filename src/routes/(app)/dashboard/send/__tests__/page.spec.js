@@ -399,9 +399,11 @@ describe("Send page", () => {
 
     await vi.waitFor(() =>
       expect(container.querySelector(".send__card-title")).toHaveTextContent(
-        /^alice\.dusk \(this profile\)$/,
+        /^alice\.dusk points to a shielded address$/,
       ),
     );
+    // It's this profile's own: said in a warning of its own.
+    expect(await findByText("This is your own address.")).toBeInTheDocument();
     expect(available(container)).toHaveTextContent(/\(shielded\)$/);
 
     await enter("bob.dusk");

@@ -35,6 +35,14 @@ const {
   pendingDepositAmountLux: vi.fn(() => 0n),
 }));
 
+// A route's status as the bridge reads it: unreachable, unless a test says.
+const { bridgeStatus } = vi.hoisted(() => ({ bridgeStatus: vi.fn() }));
+
+vi.mock("@dusk-network/app-core/bridge", async (importOriginal) => ({
+  .../** @type {object} */ (await importOriginal()),
+  bridgeStatus,
+}));
+
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
   estimateGas,
@@ -147,6 +155,7 @@ describe("Bridge", () => {
   beforeEach(() => {
     // A testnet node: Dusk and DuskEVM, both ways.
     setNodeNetwork(networks.testnet);
+    bridgeStatus.mockRejectedValue(new Error("unreachable"));
     estimateGas.mockResolvedValue(withdrawalGas);
     getGasPrice.mockResolvedValue(evmGasPrice);
     setTimes(TESTNET_TIMES);
@@ -282,8 +291,8 @@ describe("Bridge", () => {
     const { getByLabelText, getByRole, getByText } = render(Bridge, baseProps);
     const amount = getByLabelText("Amount");
 
-    expect(amount).toHaveAccessibleDescription("Public 1,000 DUSK");
-    expect(getByText("Public")).toBeInTheDocument();
+    expect(amount).toHaveAccessibleDescription("Public balance: 1,000 DUSK");
+    expect(getByText("Public balance:")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
@@ -328,7 +337,7 @@ describe("Bridge", () => {
     await withdraw(container);
 
     expect(getByLabelText("Amount")).toHaveAccessibleDescription(
-      "DuskEVM 3 DUSK",
+      "DuskEVM balance: 3 DUSK",
     );
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
@@ -391,9 +400,7 @@ describe("Bridge", () => {
     await fireEvent.click(swap);
 
     expect(getDirection(container)).toStrictEqual(["duskEvm", "duskDs"]);
-    expect(
-      getByText("DuskEVM", { selector: "#bridge-balance-label" }),
-    ).toBeInTheDocument();
+    expect(getByText("DuskEVM balance:")).toBeInTheDocument();
 
     await fireEvent.click(swap);
 
@@ -407,7 +414,9 @@ describe("Bridge", () => {
     });
 
     expect(change).toHaveTextContent("Change");
-    expect(change.parentElement).toHaveTextContent("To 0x2222…2222 · Change");
+    expect(change.parentElement).toHaveTextContent(
+      "To your DuskEVM account 0x2222…2222 · Change",
+    );
 
     await fireEvent.click(change);
 
@@ -433,7 +442,9 @@ describe("Bridge", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      getByText("Plus a small fee for each step on Dusk."),
+      getByText(
+        "Each step on Dusk takes a small fee from your public balance.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -450,17 +461,17 @@ describe("Bridge", () => {
     ]);
     expect(container.querySelector("dt .dusk-icon")).toBeNull();
     expect(container.querySelector(".gas-fee")).toBeNull();
-    // The contract it calls, as the network's file names it.
-    expect(
-      Array.from(
-        container.querySelectorAll(".bridge-review__ends > div"),
-        (row) => row.textContent?.replace(/\s+/g, " ").trim(),
-      ).at(-1),
-    ).toBe("Contract DuskEVM bridge 2257e5…a1b31d");
-    // Under Details, closed: the summary leaves it out.
-    expect(
-      container.querySelector(".bridge-review__details:not([open]) summary"),
-    ).toHaveTextContent("Details");
+    const rows = Array.from(
+      container.querySelectorAll(".bridge-review__ends > div"),
+      (row) => row.textContent?.replace(/\s+/g, " ").trim(),
+    );
+
+    // Your public account in full, as on every review.
+    expect(rows[0]).toContain(PAID);
+    // The contract it calls, as the network's file names it, in the rows:
+    // nothing folded away.
+    expect(rows.at(-1)).toBe("Contract DuskEVM bridge 2257e5…a1b31d");
+    expect(container.querySelector(".bridge-review details")).toBeNull();
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {
@@ -559,7 +570,7 @@ describe("Bridge", () => {
         foot.textContent?.replace(/\s+/g, " ").trim(),
       ),
     ).toStrictEqual([
-      "Public •••• hidden DUSK Max",
+      "Public balance: •••• hidden DUSK Max",
       "You receive + •••• hidden DUSK on its way",
     ]);
 
@@ -618,7 +629,7 @@ describe("Bridge", () => {
 
     expect(getByRole("button", { name: "Not enough DUSK" })).toBeDisabled();
     expect(getByRole("alert")).toHaveTextContent(
-      "Not enough for the amount and fee.",
+      "Not enough public balance for the amount and fee.",
     );
 
     await fireEvent.input(amount, { target: { value: "2.5" } });
@@ -650,13 +661,17 @@ describe("Bridge", () => {
     ).toBeInTheDocument();
   });
 
-  it("should say nothing under a deposit's route, nor that its status can't be read, and offer the route all the same", async () => {
+  it("should say how a deposit's route is doing under it, as not knowing when that can't be read, and offer the route all the same", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await tick();
-
-    expect(container.querySelector(".swap-route__status")).toBeNull();
+    await vi.waitFor(() =>
+      expect(container.querySelector(".swap-route__status")).toHaveTextContent(
+        "Last payout not known right now.",
+      ),
+    );
+    expect(
+      container.querySelector(".swap-route__status--warn"),
+    ).not.toBeInTheDocument();
     expect(getByRole("button", { name: /Connect|Review|Enter/ })).toBeVisible();
   });
 
@@ -762,5 +777,30 @@ describe("Bridge", () => {
     expect(
       getByRole("button", { name: "Connect a DuskEVM wallet" }),
     ).toBeEnabled();
+  });
+
+  // Last: the route keeps what it read for a while, and a later test would
+  // read this one's.
+  it("should warn under a deposit's route, while depositing, that its payouts are running late", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // Past what it read before: the route is read again.
+    vi.setSystemTime(Date.now() + 24 * 60 * 60_000);
+    bridgeStatus.mockResolvedValue({
+      canPay: null,
+      lastPayout: null,
+      limit: "mints",
+      paying: "late",
+      readSince: null,
+    });
+
+    const { container } = render(Bridge, baseProps);
+
+    await vi.waitFor(() =>
+      expect(
+        container.querySelector(".swap-route__status--warn"),
+      ).toHaveTextContent("Payouts are running late."),
+    );
+
+    vi.useRealTimers();
   });
 });

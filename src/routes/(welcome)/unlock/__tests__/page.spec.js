@@ -641,9 +641,14 @@ describe("Unlock Wallet", async () => {
       );
 
       expect(openSpy).not.toHaveBeenCalled();
-      expect(errorElement).toHaveTextContent(/^Wrong password\.$/);
+      // How to get back in, in the error itself, as on main.
+      expect(errorElement).toHaveTextContent(
+        "Wrong password. Forgot it? Restore with your recovery phrase.",
+      );
       expect(
-        within(container).getByRole("link", { name: "Forgot password?" }),
+        within(/** @type {HTMLElement} */ (errorElement)).getByRole("link", {
+          name: "Restore with your recovery phrase",
+        }),
       ).toHaveAttribute("href", expect.stringMatching(/\/setup\/restore$/));
       expect(textInput).toHaveFocus();
       expect(selectedText).toBe(textInput.value);

@@ -47,6 +47,7 @@
   iconPath={mdiKeyOutline}
   bind:isToggled
 >
+  <p>Store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}
     className="password-input"
@@ -83,12 +84,12 @@
   </div>
 </ToggleableCard>
 
-{#if !isToggled}
-  <Banner
-    title="Without a password you type your recovery phrase at every unlock, which exposes it."
-    variant="info"
-  />
-{/if}
+<Banner title="A password is recommended." variant="info">
+  <p>
+    Without one, you type your full recovery phrase at every unlock, which could
+    expose it.
+  </p>
+</Banner>
 
 <style lang="postcss">
   /* Under a field, as the wallet's hints are. */

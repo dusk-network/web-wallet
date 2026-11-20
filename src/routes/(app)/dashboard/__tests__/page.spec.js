@@ -782,9 +782,14 @@ describe("Dashboard", () => {
   });
 
   it("offers whoever holds DUSK on Ethereum or BNB Smart Chain a migration, only where one is running: BNB Smart Chain's on mainnet", async () => {
-    const { getByRole, unmount } = render(Dashboard, props);
+    const mainnet = render(Dashboard, props);
+    const { getByRole, unmount } = mainnet;
 
-    expect(getByRole("link", { name: "Migrate it" })).toHaveAttribute(
+    // The chain by its own name, and where the DUSK goes.
+    expect(mainnet.container).toHaveTextContent(
+      "DUSK on Ethereum or BNB Smart Chain? Migrate it to Dusk",
+    );
+    expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
@@ -799,7 +804,9 @@ describe("Dashboard", () => {
 
     const testnet = render(Dashboard, props);
 
-    expect(testnet.getByRole("link", { name: "Migrate it" })).toHaveAttribute(
+    expect(
+      testnet.getByRole("link", { name: "Migrate it to Dusk" }),
+    ).toHaveAttribute(
       "href",
       "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
     );
@@ -814,7 +821,7 @@ describe("Dashboard", () => {
 
     const { container, queryByRole } = render(Dashboard, props);
 
-    expect(queryByRole("link", { name: "Migrate it" })).toBeNull();
+    expect(queryByRole("link", { name: "Migrate it to Dusk" })).toBeNull();
     expect(container).not.toHaveTextContent("DUSK on Ethereum");
 
     network.store?.set({
@@ -860,6 +867,13 @@ describe("Dashboard", () => {
       getByText("Amounts and accounts hidden on chain."),
     ).toBeInTheDocument();
     expect(getByText("Nothing staked")).toBeInTheDocument();
+    // How to stake, as on main: from the minimum with a node, or any
+    // amount with Sozu.
+    expect(
+      getByText(
+        "From 1,000 DUSK with your own node, or any amount with Sozu (third party).",
+      ),
+    ).toBeInTheDocument();
     expect(queryByRole("link", { name: "Past staking" })).toBeNull();
 
     // Staked before: no "yet", and a way to what was staked.
@@ -1009,7 +1023,7 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      `Balance and stake couldn't be read. ${lastRead(stakeAt)}`,
+      `Balance and stake couldn't be read. This total may be out of date. ${lastRead(stakeAt)}`,
     );
     // Said once, under the total: the cards keep their own lines.
     expect(card(0)).toBe(
@@ -1030,7 +1044,7 @@ describe("Dashboard", () => {
     );
 
     expect(total()).toContain(
-      `Balance couldn't be read. ${lastRead(balanceAt)}`,
+      `Balance couldn't be read. This may be out of date. ${lastRead(balanceAt)}`,
     );
     expect(card(2)).not.toContain("Try again");
 
@@ -1042,7 +1056,9 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(total()).toContain("Stake couldn't be read.");
+    expect(total()).toContain(
+      "Stake couldn't be read. This total may be out of date.",
+    );
     expect(total()).not.toContain("Last read");
     expect([card(0), card(1)].join(" ")).not.toContain("couldn't be read");
 
@@ -1078,7 +1094,9 @@ describe("Dashboard", () => {
     expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
       "4,520.2471",
     );
-    expect(total()).toContain("Stake couldn't be read.");
+    expect(total()).toContain(
+      "Stake couldn't be read. This total may be out of date.",
+    );
   });
 
   it("never says nothing is staked where the stake couldn't be read: what was read last, or that it couldn't be, and Try again reads it again", async () => {
@@ -1124,7 +1142,7 @@ describe("Dashboard", () => {
       "Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Try again Open staking",
     );
     expect(container.querySelector(".home-balance")?.textContent).toContain(
-      `Stake couldn't be read. ${lastReadText(keptAt, "en")}`,
+      `Stake couldn't be read. This total may be out of date. ${lastReadText(keptAt, "en")}`,
     );
     expect(total()).toBe("3,520.2471");
 
@@ -1364,9 +1382,13 @@ describe("Dashboard", () => {
       );
 
     expect(items()).toEqual([
-      expect.stringMatching(/^alice-shop\.dusk Sent · .+ −5 DUSK Pending$/),
-      expect.stringMatching(/^wallet-both\.dusk Received · .+ \+50 DUSK$/),
-      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid 200 DUSK`,
+      expect.stringMatching(
+        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/,
+      ),
+      expect.stringMatching(
+        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/,
+      ),
+      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",
@@ -1452,7 +1474,7 @@ describe("Dashboard", () => {
       "•••• hidden",
     );
     expect(container.querySelector(".activity-row")).toHaveTextContent(
-      "fee 0.0037 DUSK paid •••• hidden DUSK",
+      "fee 0.0037 DUSK paid · Public •••• hidden DUSK",
     );
     expect(get(settingsStore).hideBalances).toBe(true);
   });

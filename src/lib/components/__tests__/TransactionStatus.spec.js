@@ -84,10 +84,9 @@ describe("TransactionStatus", () => {
     ).toBeInTheDocument();
     expect(getByText("Fee up to")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
-    expect(getByRole("link", { name: "View in explorer" })).toHaveAttribute(
-      "href",
-      `/explorer/transactions/transaction?id=${hash}`,
-    );
+    expect(
+      getByRole("link", { name: "View in Dusk explorer" }),
+    ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
   });
 
   it("should say while it's being sent that it waits for the network, offline or where the network doesn't answer, and that it has left the wallet", async () => {
@@ -427,7 +426,7 @@ describe("TransactionStatus", () => {
       await act(() => following.resolve(null));
 
       expect(getByRole("status")).toHaveTextContent(
-        "Not sent yet 0.01 DUSK to your Profile 2 It may still arrive.",
+        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it shows here.",
       );
 
       // A block took it: found, and kept no more.

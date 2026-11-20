@@ -337,7 +337,9 @@ describe("the password on big sends", () => {
       expect(
         getByRole("dialog", { name: "Password for sends over 1 DUSK" }),
       ).toBeInTheDocument();
-      await vi.waitFor(() => expect(getByLabelText("Password")).toHaveFocus());
+      await vi.waitFor(() =>
+        expect(getByLabelText("Password you unlock with")).toHaveFocus(),
+      );
 
       cancelSendPassword();
       await expect(sending).rejects.toBeInstanceOf(SendPasswordDeclinedError);
@@ -345,7 +347,7 @@ describe("the password on big sends", () => {
 
     it("says a wrong password, stays and forgets what was typed, and goes on with the right one", async () => {
       const { container, findByRole, getByLabelText, sending } = openDialog();
-      const field = getByLabelText("Password");
+      const field = getByLabelText("Password you unlock with");
 
       await fireEvent.input(field, { target: { value: "not the password" } });
       await fireEvent.submit(form(container));
@@ -402,7 +404,7 @@ describe("the password on big sends", () => {
 
     it("keeps the focus in it with Tab", async () => {
       const { getByLabelText, getByRole, sending } = openDialog();
-      const field = getByLabelText("Password");
+      const field = getByLabelText("Password you unlock with");
       const confirm = getByRole("button", { name: "Confirm" });
 
       confirm.focus();

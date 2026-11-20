@@ -17,7 +17,7 @@
   <Agreement
     name="mnemonic_agreement_one"
     bind:checked={agreementOneChecked}
-    label="Lose it and you lose the wallet. Dusk can't restore it."
+    label="Lose the phrase and you lose the wallet and its funds. Dusk doesn't keep it and can't restore it."
   />
   <Agreement
     name="mnemonic_agreement_two"

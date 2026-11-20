@@ -357,10 +357,9 @@ describe("History", () => {
     expect(
       detail.querySelector(".tx-detail__id .tx-detail__tail"),
     ).toHaveTextContent(SENT.slice(-6));
-    expect(getByRole("link", { name: "View in explorer" })).toHaveAttribute(
-      "href",
-      `/explorer/transactions/transaction?id=${SENT}`,
-    );
+    expect(
+      getByRole("link", { name: "View in Dusk explorer" }),
+    ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${SENT}`);
     expect(getByRole("link", { name: "Send again" })).toHaveAttribute(
       "href",
       `/some-base-path/dashboard/send?to=${ALICE}`,
@@ -745,7 +744,7 @@ describe("History", () => {
               .querySelector(".export-panel__evm .export-panel__note")
               ?.textContent?.trim() ?? "";
 
-          expect(said).toMatch(/^(?!Checking)./);
+          expect(said).toMatch(/^(?!Reading)./);
         });
 
         return said;

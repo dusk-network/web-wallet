@@ -283,7 +283,10 @@
         <p class="staking__note">A staking transaction is pending.</p>
       {:else if stale || stakeReadFailed}
         <p class="staking__note">
-          Stake couldn't be read. {lastReadText(stakeReadAt, locale)}
+          Stake couldn't be read. These amounts may be out of date. {lastReadText(
+            stakeReadAt,
+            locale,
+          )}
         </p>
       {/if}
 
@@ -291,7 +294,7 @@
         <div class="staking__note staking__note--retry">
           <p>
             {hasLiquid
-              ? `Your Sozu stake couldn't be read. ${lastReadText(sozu.readAt ?? sozu.kept?.at, locale)}`.trim()
+              ? `Your Sozu stake couldn't be read. It may be out of date. ${lastReadText(sozu.readAt ?? sozu.kept?.at, locale)}`.trim()
               : "Your Sozu stake couldn't be read."}
           </p>
           <Button
@@ -388,7 +391,7 @@
         <tr>
           <th scope="row">Node</th>
           <td data-way="Native staking">
-            Your own node<br />
+            Needs your own node<br />
             <a
               class="compare__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
@@ -410,7 +413,7 @@
                   : ", estimated across the network"}. Not promised.</span
               >
             {/if}
-            Starts in 6–12 hours
+            Starts in about 6–12 hours
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
@@ -423,10 +426,11 @@
                 >
               {/if}
               {#if rate}
-                stDUSK, {formatDusk(rate, locale)} DUSK each now. It can fall with
-                a penalty.
+                stDUSK, {formatDusk(rate, locale)} DUSK each now. It usually rises
+                with rewards, but can fall with a penalty.
               {:else}
-                stDUSK, your share of Sozu's pool. It can fall with a penalty.
+                stDUSK, your share of Sozu's pool. It usually rises with
+                rewards, but can fall with a penalty.
               {/if}
             </td>
           {/if}
@@ -434,29 +438,30 @@
         {#if sozu.available && fees}
           <tr>
             <th scope="row">Fees</th>
-            <td data-way="Native staking">Network fee</td>
+            <td data-way="Native staking">Network fee only</td>
             <td data-way="Liquid staking (Sozu, third party)">
               {feePercent(fees.reward, locale)} of rewards · {feePercent(
                 fees.deposit,
                 locale,
-              )} of deposits
+              )} of deposits · no unstake fee
             </td>
           </tr>
         {/if}
         <tr>
           <th scope="row">Unstake</th>
-          <td data-way="Native staking">Any time</td>
+          <td data-way="Native staking">Any time, no waiting period</td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              Any time, no fee
+              Any time, in the same transaction: no Sozu fee, no waiting
             </td>
           {/if}
         </tr>
         <tr>
           <th scope="row">Risk</th>
           <td data-way="Native staking">
-            Node misses a turn: part locked, unstaking returns it. Breaks the
-            rules: part burned.
+            If your node misses its turn, part of your stake gets locked;
+            unstaking returns it. If the node breaks the rules, part can be
+            burned (lost).
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">

@@ -105,9 +105,9 @@
       <MnemonicPhrase bind:mnemonicPhrase />
     </WizardStep>
     <!-- Three of the words, as written down: checked, or for later, as
-      Settings checks them too, Skip quieter than Check and Try again. Show
-      my recovery words, after one that doesn't match, goes back to the
-      words. -->
+      Settings checks them too, Skip for now quieter than Check and Try
+      again. Show my recovery words, after one that doesn't match, goes
+      back to the words. -->
     <WizardStep
       bind:this={checkStep}
       step={2}
@@ -115,7 +115,7 @@
       showStepper={true}
       nextButton={{
         disabled: false,
-        label: areWordsChecked ? "Next" : "Skip",
+        label: areWordsChecked ? "Next" : "Skip for now",
         variant: areWordsChecked ? "primary" : "secondary",
       }}
     >

@@ -392,7 +392,7 @@
       {/if}
       <p class="receive__reveal">
         {addressType === "account"
-          ? "Public: anyone can see this account's balance and payments."
+          ? "Public: anyone with this account, or a name that points to it, can see its balance and every public payment."
           : "Shielded: amount and receiver hidden on chain. The payer sees what they send."}
       </p>
       {#await name then shownName}

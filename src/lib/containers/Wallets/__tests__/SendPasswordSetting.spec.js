@@ -34,7 +34,7 @@ describe("the password on big sends, in Settings", () => {
    * @param {string} password
    */
   const enterPassword = ({ getByLabelText }, password) =>
-    fireEvent.input(getByLabelText("Password"), {
+    fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: password },
     });
 
@@ -51,7 +51,7 @@ describe("the password on big sends, in Settings", () => {
     expect(
       getByRole("switch", { name: "Password for big sends" }),
     ).toHaveAttribute("aria-checked", "false");
-    expect(queryByLabelText("Password")).toBeNull();
+    expect(queryByLabelText("Password you unlock with")).toBeNull();
   });
 
   it("turns on for the amount typed, once the password is checked against the vault", async () => {
@@ -81,7 +81,7 @@ describe("the password on big sends, in Settings", () => {
         "Sends, stakes, shielding and the bridge above 1,000.5 DUSK, network fee included.",
       ),
     ).toBeInTheDocument();
-    expect(view.queryByLabelText("Password")).toBeNull();
+    expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     // The password goes with the form.
     expect(
       localStorage.getItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-send-password`),

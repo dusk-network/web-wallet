@@ -128,7 +128,9 @@ describe("NetworkPill", () => {
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
       "Offline",
     );
-    expect(getByText("Balances may be out of date.")).toBeInTheDocument();
+    expect(
+      getByText("Balance may be out of date until you're back online."),
+    ).toBeInTheDocument();
     // Nothing to try while offline: the sync starts once it's back.
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
 
@@ -172,7 +174,7 @@ describe("NetworkPill", () => {
       await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
       expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-        "Can't reach the network Balances may be out of date. Try again",
+        "Can't reach the network Balance may be out of date. Try again",
       );
 
       // Something back, and it waits again.
@@ -435,7 +437,7 @@ describe("NetworkPill", () => {
     await fireEvent.click(getByRole("button", { name: /testnet/i }));
 
     expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
-      "Can't reach the network Balances may be out of date. Try again",
+      "Can't reach the network Balance may be out of date. Try again",
     );
     expect(queryByText(/Failed to fetch/)).toBeNull();
 
@@ -577,6 +579,26 @@ describe("NetworkPill", () => {
     expect(container.querySelector(".sync-bar")).toBeTruthy();
   });
 
+  it("says the balance may be out of date beside when it was last read", async () => {
+    const { getByRole } = render(NetworkPill);
+
+    await act(() =>
+      mockedWalletStore.setMockedStoreValue({
+        ...initialState,
+        balanceReadAt: Date.now() - 60_000,
+        syncStatus: {
+          ...initialState.syncStatus,
+          error: new Error("The node is out of reach"),
+        },
+      }),
+    );
+    await fireEvent.click(getByRole("button", { name: /testnet/i }));
+
+    expect(getByRole("dialog", { name: "Network" })).toHaveTextContent(
+      /Balance may be out of date\. Last read .+\./,
+    );
+  });
+
   it("says a sync failed, why, and tries again", async () => {
     const { getByRole, getByText } = render(NetworkPill);
 
@@ -587,7 +609,7 @@ describe("NetworkPill", () => {
       /^Dusk Testnet Sync failed/,
     );
     expect(getByText("The node is out of reach")).toBeInTheDocument();
-    expect(getByText("Balances may be out of date.")).toBeInTheDocument();
+    expect(getByText("Balance may be out of date.")).toBeInTheDocument();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 

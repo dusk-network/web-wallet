@@ -96,6 +96,7 @@
     balanceReadAt,
     balanceReadFailed,
     currentProfile,
+    minimumStake,
     stakeInfo,
     stakeReadAt,
     stakeReadFailed,
@@ -327,11 +328,11 @@
 
     {#if isEnabled("bridge") && migration}
       <p class="home__note">
-        DUSK on Ethereum or BNB Chain?
+        DUSK on Ethereum or BNB Smart Chain?
         <a
           class="text-link tap-link"
           href={resolve(`/dashboard/bridge/?route=${migration.id}`)}
-          >Migrate it</a
+          >Migrate it to Dusk</a
         >
       </p>
     {/if}
@@ -342,9 +343,11 @@
       {hasPastStaking}
       {liquid}
       locale={language}
+      {minimumStake}
       onRetry={readStakeAgain}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
+      sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
       {stakeReading}
       {stakeUnread}

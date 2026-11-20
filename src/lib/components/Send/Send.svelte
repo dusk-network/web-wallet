@@ -643,7 +643,7 @@
     if (amount > available) {
       return hidden
         ? "More than you have."
-        : `More than you have (${formatDusk(available, locale)} DUSK).`;
+        : `More than your ${formatDuskExact(available, locale)} DUSK.`;
     }
 
     if (amount <= maxSpendable) {
@@ -1710,7 +1710,7 @@
    * @param {string} name
    */
   const yourProfile = (name) =>
-    /^Profile \d/.test(name) ? name : `Your profile ${name}`;
+    /^Profile \d/.test(name) ? `Your ${name}` : `Your profile ${name}`;
 
   $: isNameTyped = sendToAddress && !recipientName && !addressInfo.isValid;
 
@@ -1806,10 +1806,10 @@
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress,
   );
-  // "Profile 2", where it goes by its number; a name stands on its own.
-  $: ownLabel = own?.label ?? "";
-  // Said on the card of an address this profile sends from: its own.
-  $: selfMark = addressInfo.isSelfReferential ? " (this profile)" : "";
+  // "Your Profile 2", where it goes by its number; a name stands on its own.
+  $: ownLabel = /^Profile \d/.test(own?.label ?? "")
+    ? `Your ${own?.label}`
+    : (own?.label ?? "");
   // A profile of a wallet kept here, as the From line names its own: on the
   // card, the To line and the Done screen, after a contact or a `.dusk` name
   // entered.
@@ -1949,17 +1949,14 @@
    * @param {ActivityRow} row
    * @param {Parameters<typeof paymentOf>[1]} known
    */
-  const sentBefore = (row, known) => {
-    const same = row.memo?.trim()
-      ? "same amount, recipient and memo"
-      : "same amount and recipient";
-
-    return row.status === "unknown"
-      ? `Not confirmed: ${same}. It may have gone out.`
-      : row.status === "executed" && row.time !== null
-        ? `Sent ${paidInSentence(row.time, known.locale)}: ${same}.`
-        : `On its way: ${same}.`;
-  };
+  const sentBefore = (row, known) =>
+    row.status === "unknown"
+      ? `Not confirmed: ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}. It may have gone out.`
+      : `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
+          row.status === "executed" && row.time !== null
+            ? ` ${paidInSentence(row.time, known.locale)}.`
+            : ". It's on its way."
+        }`;
 
   /**
    * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
@@ -2145,15 +2142,13 @@
               isRecipientChecked = true;
               pasted = event.clipboardData?.getData("text") ?? "";
             }}
-            placeholder="Account, .dusk name or link"
+            placeholder="Account, .dusk name or payment link"
             spellcheck="false"
             type="text"
           />
           {#if recipientName && nameLookup?.[nameAddressType]}
             <span class="send__verified"
-              ><Icon path={mdiCheckCircleOutline} /><span class="sr-only"
-                >Name found</span
-              ></span
+              ><Icon path={mdiCheckCircleOutline} />Name found</span
             >
           {/if}
           <!-- With a camera, which ScanQR looks for without asking for
@@ -2379,12 +2374,16 @@
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
-                {shownName}
+                {shownName} points to {isChoice
+                  ? "two addresses"
+                  : isShielded
+                    ? "a shielded address"
+                    : "a public account"}
               {:else if walletAccount}
                 {walletAccount}
               {:else}
                 {isShielded ? "A shielded address" : "A public account"}
-              {/if}{selfMark}
+              {/if}
             </p>
 
             {#if isChoice}
@@ -2448,11 +2447,8 @@
               </div>
             {/if}
 
-            <!-- Shortened here: whole at Review, and as copied. -->
             <p class="send__card-address">
-              <span class="send__summary-code" title={recipientAddress}
-                >{shortenAddress(recipientAddress)}</span
-              >
+              <FullAddress address={recipientAddress} />
             </p>
             {#if isNameUnpayable}
               <p class="send__name-hint">
@@ -2541,6 +2537,9 @@
                     />
                   {/if}
                 {/if}
+                <p class="send__hint">
+                  Saved only in this wallet, on this device.
+                </p>
               </form>
             {/if}
           </div>
@@ -2560,6 +2559,9 @@
           on:scan={(event) =>
             takeRecipient(event.detail, sendToAddress, { keep: false })}
         />
+        {#if addressInfo.isSelfReferential}
+          <Banner variant="warning" title="This is your own address." />
+        {/if}
         {#if isSendingToBep20Bridge}
           <Banner variant="info" title="BEP20 bridge address">
             <p>In the memo, enter the EVM address that receives the tokens.</p>
@@ -2831,7 +2833,7 @@
         <Banner
           className="send__again"
           role="alert"
-          title={`Already waiting to go out: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
+          title={`Same send already waiting to go out: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
           variant="warning"
         />
       {:else if madeAgain && madeAgain.time !== null}

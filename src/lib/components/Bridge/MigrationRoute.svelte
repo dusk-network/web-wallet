@@ -744,8 +744,8 @@
   $: routeLine = [
     timeText,
     isCovered
-      ? "migrate, in your wallet"
-      : "allow spending, then migrate, in your wallet",
+      ? `migrate, in your ${chainName} wallet`
+      : `allow spending, then migrate, in your ${chainName} wallet`,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -872,13 +872,13 @@
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
     <div class="swap-foot">
-      <span id="migration-balance-label">Balance</span>
+      <span id="migration-balance-label">Balance on {chainName}:</span>
       <span class="swap-foot__value">
         <span id="migration-balance">
           {#if !isConnected}
             connect a wallet
           {:else if balanceLux === undefined}
-            {$isAskingToSwitch ? "checking" : `on ${chainName}`}
+            {$isAskingToSwitch ? "checking" : "switch network to see it"}
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}
@@ -1032,11 +1032,8 @@
       <div>
         <dt>From</dt>
         <dd>
-          <!-- Your own: shortened. Where it pays out is in full. -->
           <span>{chainName}</span>
-          <span class="route-review__address" title={address ?? ""}
-            >{shortenAddress(address ?? "")}</span
-          >
+          <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
@@ -1053,10 +1050,18 @@
             ? "Checking what the contract may take…"
             : approved
               ? "Migrate, in your wallet"
-              : "Allow spending of exactly this amount, then migrate, in your wallet"}
+              : "Allow spending, then migrate, in your wallet"}
         </dd>
       </div>
-      {#if approved}
+      {#if approved === false}
+        <div>
+          <dt>Allowance</dt>
+          <dd>
+            The migration contract may take exactly this amount. Nothing moves
+            yet.
+          </dd>
+        </div>
+      {:else if approved}
         <div>
           <dt>Allowance</dt>
           <dd>
@@ -1087,7 +1092,7 @@
             ? feeEstimate
               ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)}) · no bridge fee`
               : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
-            : `As your wallet shows · no bridge fee`}
+            : `On ${chainName}, as your wallet shows · no bridge fee`}
         </dd>
       </div>
       {#if timeText}
@@ -1198,7 +1203,7 @@
             ? revokeFees.fee
               ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)})`
               : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for it`
-            : "As your wallet shows"}
+            : `On ${chainName}, as your wallet shows`}
         </dd>
       </div>
     </dl>
@@ -1379,13 +1384,6 @@
     margin: 0;
     font-size: 1.125rem;
     font-weight: 600;
-  }
-
-  .route-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
   }
 
   .route-review__ends {

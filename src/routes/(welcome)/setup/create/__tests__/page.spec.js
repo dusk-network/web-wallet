@@ -173,7 +173,9 @@ describe("Create", async () => {
     const { getByRole, getByText } = render(Create, baseOptions);
 
     expect(
-      getByText("Your keys stay in this browser. Dusk can't recover them."),
+      getByText(
+        "Your keys stay in this browser, and only you hold them: Dusk can't recover them.",
+      ),
     ).toBeInTheDocument();
     expect(
       getByText("No analytics. The DUSK price comes from CoinGecko."),
@@ -188,11 +190,9 @@ describe("Create", async () => {
     );
   });
 
-  it("should call it the recovery phrase, warn that anyone with its words can take the DUSK, and say how to check it", async () => {
-    const { container, getByLabelText, getByRole, getAllByRole } = render(
-      Create,
-      baseOptions,
-    );
+  it("should call it the recovery phrase, warn that anyone with its words can take the DUSK, say to keep it offline, and say how to check it", async () => {
+    const { container, getByLabelText, getByRole, getAllByRole, getByText } =
+      render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
 
@@ -202,7 +202,9 @@ describe("Create", async () => {
     expect(agreementStep).toMatch(/my recovery phrase/);
     expect(agreementStep).not.toMatch(/mnemonic/i);
     expect(
-      getByLabelText("Lose it and you lose the wallet. Dusk can't restore it."),
+      getByLabelText(
+        "Lose the phrase and you lose the wallet and its funds. Dusk doesn't keep it and can't restore it.",
+      ),
     ).toHaveAttribute("type", "checkbox");
     expect(
       getByLabelText(
@@ -215,6 +217,10 @@ describe("Create", async () => {
     await fireEvent.click(
       getByRole("button", { name: "Show my recovery phrase" }),
     );
+
+    // Where to keep it, above the words: as main's "a secure location".
+    expect(getByText("On paper, in order, kept offline.")).toBeInTheDocument();
+
     await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
@@ -489,7 +495,7 @@ describe("Create", async () => {
 
   // Then Nandini's and Amélie's: one word wrong, or three made up, put all
   // twelve on screen. A check is not a reveal.
-  it("asks for three of the words as written down, with Check, and Skip until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {
+  it("asks for three of the words as written down, with Check, and Skip for now until they match, saying no more than that one doesn't, and going back to the words only on its own ask", async () => {
     const { container, getAllByRole, getByRole, getByText, queryByRole } =
       render(Create, baseOptions);
 
@@ -524,12 +530,12 @@ describe("Create", async () => {
       expect(box).toHaveAttribute("spellcheck", "false");
     }
 
-    expect(getByRole("button", { name: "Skip" })).toBeEnabled();
-    // Amélie's: Skip was the big black button, Check a pale one.
+    expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+    // Amélie's: Skip for now was the big black button, Check a pale one.
     expect(getByRole("button", { name: "Check" })).toHaveClass(
       "dusk-button--variant--primary",
     );
-    expect(getByRole("button", { name: "Skip" })).toHaveClass(
+    expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
       "dusk-button--variant--secondary",
     );
 
@@ -558,12 +564,12 @@ describe("Create", async () => {
       expect(wordsShown()).toStrictEqual([]);
       expect(container.querySelector(".dusk-words")).toBeNull();
       expect(boxesShown()).toStrictEqual([]);
-      expect(getByRole("button", { name: "Skip" })).toBeEnabled();
-      // Try again leads, Skip quieter.
+      expect(getByRole("button", { name: "Skip for now" })).toBeEnabled();
+      // Try again leads, Skip for now quieter.
       expect(getByRole("button", { name: "Try again" })).toHaveClass(
         "dusk-button--variant--primary",
       );
-      expect(getByRole("button", { name: "Skip" })).toHaveClass(
+      expect(getByRole("button", { name: "Skip for now" })).toHaveClass(
         "dusk-button--variant--secondary",
       );
 
@@ -655,7 +661,7 @@ describe("Create", async () => {
     ).toHaveLength(3);
   });
 
-  it("goes on past the check with Skip, the words never checked", async () => {
+  it("goes on past the check with Skip for now, the words never checked", async () => {
     const { getAllByRole, getByRole } = render(Create, baseOptions);
 
     await fireEvent.click(getByRole("button", { name: "Accept" }));
@@ -665,7 +671,7 @@ describe("Create", async () => {
       getByRole("button", { name: "Show my recovery phrase" }),
     );
     await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
-    await fireEvent.click(getByRole("button", { name: "Skip" }));
+    await fireEvent.click(getByRole("button", { name: "Skip for now" }));
 
     expect(getByRole("heading", { level: 2 })).toHaveTextContent(
       "Set a password",
