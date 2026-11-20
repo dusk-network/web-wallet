@@ -230,13 +230,14 @@ describe("A transfer's amounts, as its details say them", () => {
     });
     const lines = linesOf(failed, { rows: history, steps: new Map() });
 
-    // Not what it would have paid: it received nothing.
-    expect(lines).toMatchObject({
+    // Not what it would have paid: it received nothing, and these lines
+    // alone, with no payout still to come.
+    expect(lines).toStrictEqual({
+      "Bridge fee": "1 DUSK",
       "Network fee": "0.001859281 DUSK",
       Received: "0 BEP20 DUSK",
       Sent: "3.053082083 DUSK",
     });
-    expect(lines).not.toHaveProperty(["You receive"]);
   });
 
   it("gives a deposit, and a withdrawal with what its proof and claim paid on Dusk", () => {

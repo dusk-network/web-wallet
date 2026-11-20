@@ -103,7 +103,13 @@ describe("How a route is doing", () => {
       // 5 DUSK, never 15, 0.5 or a negative 5 DUSK.
       const upTo5 = /(?<![\d.,\u2212+-])5 DUSK(?!\d)/;
 
+      /** The DUSK figures a line gives, each whole. */
+      const figures = (/** @type {string | undefined} */ text) =>
+        text?.match(/[\d.,]+ DUSK/g);
+
       expect(statusLine(balance, at)?.text).toMatch(upTo5);
+      // And no other: not "up to 1 DUSK (previously 5 DUSK)".
+      expect(figures(statusLine(balance, at)?.text)).toStrictEqual(["5 DUSK"]);
       expect(statusLine(balance, { ...at, amountLux: 5n * LUX })?.warn).toBe(
         false,
       );
@@ -113,6 +119,9 @@ describe("How a route is doing", () => {
           warn: true,
         },
       );
+      expect(
+        figures(statusLine(balance, { ...at, amountLux: 6n * LUX })?.text),
+      ).toStrictEqual(["5 DUSK"]);
       // What's minted as it's paid has no such limit.
       expect(
         statusLine(status({ canPay: 5n * LUX }), {

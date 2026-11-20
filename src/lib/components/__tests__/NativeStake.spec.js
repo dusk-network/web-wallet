@@ -94,17 +94,6 @@ const totalOf = (container) =>
 /** What a send that failed came to, as its heading says it. */
 const failureOf = () => document.querySelector(".dusk-error-alert__summary");
 
-/**
- * The figures a text shows, each as its digits alone, however it's grouped:
- * "1,482.9", "1482.9" and "1 482,9" are all "14829".
- *
- * @param {string | null | undefined} text
- */
-const figuresIn = (text) =>
-  (text ?? "")
-    .match(/[0-9](?:[0-9.,']|\s(?=[0-9]))*/g)
-    ?.map((figure) => figure.replace(/[^0-9]/g, "")) ?? [];
-
 /** What a send on its way says it is. */
 const goingOf = () => document.querySelector(".transaction-status__what");
 
@@ -340,12 +329,34 @@ describe("NativeStake", () => {
 
       /**
        * The figures shown anywhere on the form that give away what Max filled
-       * in, 1,482.9, or the 1,483 balance it's from, however they're grouped.
+       * in, 1,482.9, or the 1,483 balance it's from: exact, grouped or not, or
+       * rounded, as 1,482 or 1,483. Each figure is read both ways it can be
+       * meant: its last mark a decimal point, or every mark a grouping.
        */
       const giveAways = () =>
-        figuresIn(container.textContent).filter(
-          (digits) => digits.includes("14829") || digits.includes("1483"),
-        );
+        (
+          container.textContent?.match(/[0-9](?:[0-9.,']|\s(?=[0-9]))*/g) ?? []
+        ).filter((figure) => {
+          const digits = figure.replace(/[^0-9.,]/g, "");
+          const mark = Math.max(
+            digits.lastIndexOf("."),
+            digits.lastIndexOf(","),
+          );
+          const read = [Number(digits.replace(/[.,]/g, ""))];
+
+          if (mark >= 0) {
+            read.push(
+              Number(
+                `${digits.slice(0, mark).replace(/[.,]/g, "")}.${digits.slice(mark + 1)}`,
+              ),
+            );
+          }
+
+          return read.some(
+            (value) =>
+              Math.abs(value - 1482.9) < 1 || Math.abs(value - 1483) < 1,
+          );
+        });
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 

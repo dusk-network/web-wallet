@@ -584,14 +584,18 @@ describe("TransactionResult", () => {
         container.querySelector(".transaction-status__title")?.textContent,
       ).toBe("Failed");
 
-      // The fee charged, in its own row: not the most it could have cost
-      // (0.0025 DUSK), and never "no fee".
-      const fee = Array.from(
+      // The fee charged, in its one fee row: not beside the most it could have
+      // cost (0.0025 DUSK), and never "no fee".
+      const fees = Array.from(
         container.querySelectorAll(".transaction-status__details dt"),
-      ).find((term) => /fee/i.test(term.textContent ?? ""));
+      ).filter((term) => /fee/i.test(term.textContent ?? ""));
 
-      expect(fee?.textContent).not.toMatch(/at most|up to/i);
-      expect(fee?.nextElementSibling).toHaveTextContent(/^0\.001234567 DUSK$/);
+      expect(fees).toHaveLength(1);
+      expect(fees[0].textContent).not.toMatch(/at most|up to/i);
+      expect(fees[0].nextElementSibling).toHaveTextContent(
+        /^0\.001234567 DUSK$/,
+      );
+      expect(container).not.toHaveTextContent(/0\.0025\b/);
       expect(container).not.toHaveTextContent(/\bno (network )?fee\b/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });

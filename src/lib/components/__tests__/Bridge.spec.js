@@ -466,11 +466,12 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    // The amount, and the network fee and the total, each at most.
+    // The amount, and the network fee and the total, each at most, each
+    // under its own label.
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
-    expect(amountOf(container, /fee/i)).toBe("0.02 DUSK");
-    expect(amountOf(container, /total/i)).toBe("2.52 DUSK");
-    expect(termOf(container, /fee/i)).toMatch(/\bat most\b/i);
+    expect(amountOf(container, /^network fee\b/i)).toBe("0.02 DUSK");
+    expect(amountOf(container, /^total\b/i)).toBe("2.52 DUSK");
+    expect(termOf(container, /fee/i)).toBe("Network fee (at most)");
     expect(termOf(container, /total/i)).toMatch(/\bat most\b/i);
     // From this public account to the connected DuskEVM account, through the
     // contract the network's file names, shown shortened.
@@ -542,6 +543,8 @@ describe("Bridge", () => {
 
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
     expect(amountOf(container, /fee/i)).toBeUndefined();
+    // With no fee, no total.
+    expect(amountOf(container, /total/i)).toBeUndefined();
   });
 
   it("should show only the amount when reviewing a withdrawal whose fee can't be estimated", async () => {
@@ -558,6 +561,8 @@ describe("Bridge", () => {
 
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
     expect(amountOf(container, /fee/i)).toBeUndefined();
+    // With no fee, no total.
+    expect(amountOf(container, /total/i)).toBeUndefined();
   });
 
   it("should hide the public balance and the deposit on its way while balances are hidden, but not the Review amounts", async () => {

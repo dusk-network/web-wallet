@@ -74,6 +74,11 @@ describe("Setup", () => {
           "sofia.dusk 25z9o6…5Etftt",
         ),
       );
+      // And whole in its tooltip, the browser's own: the account it pays.
+      expect(to.querySelector(".payment-asked__code")).toHaveAttribute(
+        "title",
+        TO,
+      );
     });
 
     it("should show a .dusk name it pays whole, and where it points, or that it isn't registered, as one that looks like it does", async () => {

@@ -2767,6 +2767,10 @@ describe("Send", () => {
           ?.textContent?.replace(/\s+/g, " ")
           .trim(),
       ).toBe("0.02 DUSK");
+      // Said as the most it costs.
+      expect(
+        container.querySelector(".send__summary .gas-fee"),
+      ).toHaveTextContent(/\b(at most|up to)\b/i);
       expect(container.querySelector(".send__visible")).toBeNull();
 
       // Sending is for the review.
