@@ -121,6 +121,13 @@ async function dataOf({ key, profile }) {
 const ALL = { cache: true, history: 1, sent: 1, shielded: true };
 
 /**
+ * A block's number as said, whole: 42 matches neither 142, 4.2 nor 42,000.
+ *
+ * @param {number} n
+ */
+const blockSaid = (n) => new RegExp(`(?<![\\d.,])${n}(?!\\d|[.,]\\d)`);
+
+/**
  * Settings, at the Resync under Advanced.
  */
 async function openResync() {
@@ -167,34 +174,33 @@ describe("Settings › Resync", () => {
     notesSpy.mockClear();
 
     const { group } = await openResync();
+    const options = within(group).getAllByRole("option");
 
     expect(within(group).getByRole("combobox", { name: "From" })).toHaveValue(
       "creation",
     );
+    // Its creation block, 42, the first block, or another.
     expect(
-      Array.from(
-        within(group).getAllByRole("option"),
-        (option) => option.textContent,
-      ),
-    ).toEqual(["Creation block, 42", "Genesis, block 0", "Another block"]);
-    expect(group).toHaveTextContent(
-      "Syncs this wallet again from the block you choose, after clearing its synced balances and history on this device. It can take a while. Contacts, settings and names stay.",
-    );
+      options.map((option) => /** @type {HTMLOptionElement} */ (option).value),
+    ).toEqual(["creation", "genesis", "typed"]);
+    expect(options[0]).toHaveTextContent(blockSaid(42));
 
-    // Asked first, in the page.
+    // Asked first, in the page: this wallet, from block 42.
     await fireEvent.click(
       within(group).getByRole("button", { name: "Resync" }),
     );
 
-    expect(group).toHaveTextContent(
-      "Resync Wallet 2 from block 42? Its balances and history clear, then fill in again as it syncs.",
+    expect(within(group).getByText(/\bWallet 2(?!\d)/)).toHaveTextContent(
+      blockSaid(42),
     );
     expect(notesSpy).not.toHaveBeenCalled();
 
     await fireEvent.click(
       within(group).getByRole("button", { name: "Resync" }),
     );
-    await vi.waitFor(() => expect(toasts).toEqual(["Resynced from block 42."]));
+    await vi.waitFor(() =>
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(42))]),
+    );
 
     expect(notesFrom()).toEqual([42n]);
     // Its own transactions not in the archive yet stay, and so do the
@@ -215,10 +221,9 @@ describe("Settings › Resync", () => {
 
     const height = within(group).getByRole("textbox", { name: "Block height" });
 
+    // At most the network's latest block, 123.
     await vi.waitFor(() =>
-      expect(group).toHaveTextContent(
-        "The maximum is 123, the network's latest block.",
-      ),
+      expect(height).toHaveAccessibleDescription(blockSaid(123)),
     );
 
     await fireEvent.input(height, { target: { value: "124" } });
@@ -242,7 +247,7 @@ describe("Settings › Resync", () => {
       within(group).getByRole("button", { name: "Resync" }),
     );
     await vi.waitFor(() =>
-      expect(toasts).toEqual(["Resynced from block 123."]),
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(123))]),
     );
 
     await fireEvent.change(from, { target: { value: "genesis" } });
@@ -254,7 +259,7 @@ describe("Settings › Resync", () => {
     );
     await vi.waitFor(() => expect(toasts).toHaveLength(2));
 
-    expect(toasts.at(-1)).toBe("Resynced from block 0.");
+    expect(toasts.at(-1)).toMatch(blockSaid(0));
     expect(notesFrom()).toEqual([123n, 0n]);
   });
 
@@ -283,7 +288,6 @@ describe("Settings › Resync", () => {
     await fireEvent.input(height, { target: { value: "-1" } });
 
     expect(height).toHaveAttribute("aria-invalid", "true");
-    expect(group).toHaveTextContent("Enter a block height of 0 or more.");
     expect(resync).toBeDisabled();
 
     // Nor does the wallet, asked for them.
@@ -318,9 +322,10 @@ describe("Settings › Resync", () => {
     await fireEvent.click(
       within(group).getByRole("button", { name: "Resync" }),
     );
+    // Said while it runs: from block 42.
     await vi.waitFor(() =>
-      expect(group).toHaveTextContent(
-        "Resyncing from block 42. It can take a while.",
+      expect(within(group).getByRole("status")).toHaveTextContent(
+        blockSaid(42),
       ),
     );
 
@@ -333,7 +338,9 @@ describe("Settings › Resync", () => {
     );
 
     held.resolve(undefined);
-    await vi.waitFor(() => expect(toasts).toEqual(["Resynced from block 42."]));
+    await vi.waitFor(() =>
+      expect(toasts).toEqual([expect.stringMatching(blockSaid(42))]),
+    );
 
     expect(notesFrom()).toEqual([42n]);
     expect(

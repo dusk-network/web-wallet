@@ -32,8 +32,8 @@
   >
     {#if many}
       <p>
-        This removes them, with their settings and contacts. Your funds stay on
-        Dusk. To get them back you need each one's recovery phrase.
+        This removes every wallet, with its settings and contacts. Your funds
+        stay on Dusk. To get them back you need each one's recovery phrase.
       </p>
     {:else}
       <p>

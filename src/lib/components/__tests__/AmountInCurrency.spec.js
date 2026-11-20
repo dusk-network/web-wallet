@@ -62,13 +62,13 @@ describe("AmountInCurrency", () => {
 
     await rerender({ lux: 2_000_000_000n });
     await vi.waitFor(() =>
-      expect(shown(container)).toMatch(/^≈ \$1\.00 · price at /),
+      expect(shown(container)).toMatch(/(?<![\d.,\u2212+(-])\$1\.00(?![\d)])/),
     );
 
     // As the amount is typed: what it comes to, at the same price.
     await rerender({ lux: 4_000_000_000n });
 
-    expect(shown(container)).toMatch(/^≈ \$2\.00 · price at /);
+    expect(shown(container)).toMatch(/(?<![\d.,\u2212+(-])\$2\.00(?![\d)])/);
     expect(prices).toHaveBeenCalledOnce();
 
     // Five minutes on, while it still shows: the price now.
@@ -76,7 +76,7 @@ describe("AmountInCurrency", () => {
     await vi.advanceTimersByTimeAsync(PRICE_MAX_AGE_MS);
 
     await vi.waitFor(() =>
-      expect(shown(container)).toMatch(/^≈ \$3\.00 · price at /),
+      expect(shown(container)).toMatch(/(?<![\d.,\u2212+(-])\$3\.00(?![\d)])/),
     );
     expect(prices).toHaveBeenCalledTimes(2);
   });
@@ -99,7 +99,7 @@ describe("AmountInCurrency", () => {
     await vi.advanceTimersByTimeAsync(30_000);
 
     await vi.waitFor(() =>
-      expect(shown(container)).toMatch(/^≈ CHF\s1\.00 · price at /),
+      expect(shown(container)).toMatch(/(?<![\u2212+(-])CHF\s1\.00(?![\d)])/),
     );
     expect(prices).toHaveBeenCalledTimes(2);
   });

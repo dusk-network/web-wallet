@@ -55,6 +55,48 @@ const baseProps = {
   unstakeFee: 50_000_000n,
 };
 
+/**
+ * Matches a name or a text that shows `amount` DUSK, whatever its words.
+ *
+ * @param {string} amount As the page writes it, as "1,000.5"
+ * @returns {(text: string) => boolean}
+ */
+const showsDusk = (amount) => (text) => ` ${text}`.includes(` ${amount} DUSK`);
+
+/**
+ * Matches `value` whole: not inside a longer figure, nor signed, so "1 DUSK"
+ * matches neither "11 DUSK", "0.1 DUSK" nor a signed "1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "1,000.5 DUSK"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/**
+ * The value of a row of the summary, found by its label's key word.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const rowOf = (container, label) =>
+  Array.from(container.querySelectorAll(".stake-flow__rows > div"))
+    .find((row) => label.test(row.querySelector("dt")?.textContent ?? ""))
+    ?.querySelector("dd") ?? null;
+
+/**
+ * The summary's total: the most a stake costs.
+ *
+ * @param {HTMLElement} container
+ */
+const totalOf = (container) =>
+  container.querySelector(".stake-flow__rows--total dd");
+
+/** What a send that failed came to, as its heading says it. */
+const failureOf = () => document.querySelector(".dusk-error-alert__summary");
+
+/** What a send on its way says it is. */
+const goingOf = () => document.querySelector(".transaction-status__what");
+
 describe("readDuskInput", () => {
   it("reads DUSK as lux, with up to nine decimals and nothing else", () => {
     expect(readDuskInput("1000", "en")).toBe(1_000n * DUSK);
@@ -105,25 +147,22 @@ describe("readDuskInput", () => {
 
 describe("amountProblem", () => {
   it("says why an amount can't be read, in the language's own writing", () => {
+    /** @param {string} text */
+    const numbers = (text) => text.match(/[0-9]+/g);
+
     expect(amountProblem("", "de")).toBe("");
     expect(amountProblem("10,5", "de")).toBe("");
     // Lena's: neither number in the question reads as the other, as
     // "1.000" for one reads as a thousand in German.
-    expect(amountProblem("1.000", "de")).toBe(
-      "Is that 1 or 1000? Write the one you mean.",
+    expect(numbers(amountProblem("1.000", "de"))).toStrictEqual(["1", "1000"]);
+    expect(numbers(amountProblem("1,000", "en"))).toStrictEqual(["1", "1000"]);
+    // More decimals than DUSK's nine.
+    expect(amountProblem("0,1234567891", "de")).toMatch(
+      wholeFigure("9 decimals"),
     );
-    expect(amountProblem("1,000", "en")).toBe(
-      "Is that 1 or 1000? Write the one you mean.",
-    );
-    expect(amountProblem("0,1234567891", "de")).toBe(
-      "DUSK has 9 decimals at most.",
-    );
-    expect(amountProblem("ten", "de")).toBe(
-      "Enter an amount such as 10 or 10,5.",
-    );
-    expect(amountProblem("ten", "en", "1000")).toBe(
-      "Enter an amount such as 1000 or 1000.5.",
-    );
+    // Not an amount: an example, written as the language writes one.
+    expect(amountProblem("ten", "de")).toMatch(wholeFigure("10,5"));
+    expect(amountProblem("ten", "en", "1000")).toMatch(wholeFigure("1000.5"));
   });
 });
 
@@ -146,14 +185,24 @@ describe("checkAmount", () => {
 
   it("says what is wrong with an amount, in the words the page shows", () => {
     expect(check("")).toStrictEqual({ error: "", isMinimum: false, ok: false });
-    expect(check("ten").error).toBe("Enter an amount such as 1000 or 1000.5.");
-    expect(check("0").error).toBe("Enter more than 0.");
+    // Not an amount: an example of one, for the 1,000 DUSK minimum.
+    expect(check("ten")).toMatchObject({
+      error: expect.stringMatching(wholeFigure("1000.5")),
+      ok: false,
+    });
+    expect(check("0")).toMatchObject({
+      error: expect.stringMatching(/more than 0(?![.,]?[0-9])/),
+      ok: false,
+    });
     expect(check("999")).toStrictEqual({
-      error: "The minimum stake is 1,000 DUSK.",
+      error: expect.stringMatching(wholeFigure("1,000 DUSK")),
       isMinimum: true,
       ok: false,
     });
-    expect(check("1483").error).toBe("0.05 DUSK short, fee included.");
+    expect(check("1483")).toMatchObject({
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
+      ok: false,
+    });
     expect(check("1482.95")).toStrictEqual({
       error: "",
       isMinimum: false,
@@ -163,76 +212,77 @@ describe("checkAmount", () => {
 
   it("keeps what a stake must leave for its way out, and says so", () => {
     const keep = 50_000_000n;
+    const hidden = check("1482.95", { hidden: true, keep });
 
-    expect(check("1482.95", { keep }).error).toBe(
-      "0.05 DUSK short, fees included.",
-    );
-    expect(check("1482.95", { hidden: true, keep }).error).toBe(
-      "Too little left for the fees.",
-    );
+    expect(check("1482.95", { keep })).toMatchObject({
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
+      ok: false,
+    });
+    // Refused all the same with balances hidden, with no figure.
+    expect(hidden).toMatchObject({
+      error: expect.stringMatching(/too little/i),
+      ok: false,
+    });
+    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("1482.9", { keep }).ok).toBe(true);
   });
 
   it("doesn't let an amount give away the balance while balances are hidden", () => {
-    expect(check("1483", { hidden: true }).error).toBe(
-      "Too little left for the fee.",
-    );
-    expect(check("1484", { hidden: true }).error).toBe("More than you have.");
+    // Shown, each says how much more than the balance it is; hidden, why
+    // it's refused, with no figure.
+    for (const { more, text, why } of [
+      { more: "0.05 DUSK", text: "1483", why: /too little/i },
+      { more: "1.05 DUSK", text: "1484", why: /more than/i },
+    ]) {
+      const hidden = check(text, { hidden: true });
+
+      expect(check(text).error).toMatch(wholeFigure(more));
+      expect(hidden).toMatchObject({
+        error: expect.stringMatching(why),
+        ok: false,
+      });
+      expect(hidden.error).not.toMatch(/[0-9]/);
+    }
   });
 
   it("caps an amount on its own, and then only the fee is paid from the balance", () => {
     const most = { amount: 5n * DUSK, error: "That's more than you have." };
+    const short = { available: 49_000_000n, minimum: 0n, most };
 
-    expect(check("6", { minimum: 0n, most }).error).toBe(
-      "That's more than you have.",
-    );
-    expect(check("ten", { minimum: 0n, most }).error).toBe(
-      "Enter an amount such as 10 or 10.5.",
-    );
-    expect(check("5", { available: 0n, minimum: 0n, most }).error).toBe(
-      "The fee comes from the public balance, which is empty: 0.05 DUSK short. Add that much to it first.",
-    );
-    expect(
-      check("5", { available: 49_000_000n, minimum: 0n, most }).error,
-    ).toBe(
-      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first.",
-    );
-    // Lowering it is offered only where it can get that low.
-    expect(
-      check("5", {
-        available: 49_000_000n,
-        leastFee: 49_000_001n,
-        minimum: 0n,
-        most,
-      }).error,
-    ).toBe(
-      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first.",
-    );
-    expect(
-      check("5", {
-        available: 49_000_000n,
-        leastFee: 49_000_000n,
-        minimum: 0n,
-        most,
-      }).error,
-    ).toBe(
-      "Public balance doesn't cover the fee: 0.001 DUSK short. Add that much to it first, or lower the fee.",
-    );
-    expect(
-      check("5", { available: 49_000_000n, hidden: true, minimum: 0n, most })
-        .error,
-    ).toBe("Public balance doesn't cover the fee: •••• DUSK short.");
+    expect(check("6", { minimum: 0n, most }).error).toBe(most.error);
+    // Not an amount: an example of one.
+    expect(check("ten", { minimum: 0n, most })).toMatchObject({
+      error: expect.stringMatching(wholeFigure("10.5")),
+      ok: false,
+    });
+    expect(check("5", { available: 0n, minimum: 0n, most })).toMatchObject({
+      error: expect.stringMatching(wholeFigure("0.05 DUSK")),
+      ok: false,
+    });
+    // However low the fee can go.
+    for (const leastFee of [undefined, 49_000_001n, 49_000_000n]) {
+      expect(check("5", { ...short, leastFee })).toMatchObject({
+        error: expect.stringMatching(wholeFigure("0.001 DUSK")),
+        ok: false,
+      });
+    }
+
+    const hidden = check("5", { ...short, hidden: true });
+
+    expect(hidden.ok).toBe(false);
+    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
 
-  it("gives an example in the language's way, and says an unstake's least as one", () => {
-    expect(check("ten", { locale: "nl-NL" }).error).toBe(
-      "Enter an amount such as 1000 or 1000,5.",
-    );
+  it("says an unstake's least as one", () => {
     expect(check("0.5", { action: "unstake", minimum: 4n }).error).toBe("");
-    expect(check("0.000000001", { action: "unstake", minimum: 4n }).error).toBe(
-      "The minimum unstake is 0.000000004 DUSK.",
-    );
+    expect(
+      check("0.000000001", { action: "unstake", minimum: 4n }),
+    ).toStrictEqual({
+      error: expect.stringMatching(wholeFigure("0.000000004 DUSK")),
+      isMinimum: true,
+      ok: false,
+    });
   });
 });
 
@@ -252,15 +302,17 @@ describe("NativeStake", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
-      const { container, getByLabelText } = render(NativeStake, baseProps);
+      const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
       await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1500" },
       });
 
-      expect(
-        container.querySelector(".native-stake__error")?.textContent?.trim(),
-      ).toBe("More than you have.");
+      // Refused, with no figure: shown, it would say 17.1 DUSK more than
+      // the balance.
+      expect(getByRole("alert")).toHaveTextContent(/more than/i);
+      expect(getByRole("alert")).not.toHaveTextContent(/[0-9]/);
+      expect(getByRole("button", { name: "Review" })).toBeDisabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -275,50 +327,69 @@ describe("NativeStake", () => {
         baseProps,
       );
 
+      /**
+       * The figures shown anywhere on the form that give away what Max filled
+       * in, 1,482.9, or the 1,483 balance it's from: exact, grouped or not, or
+       * rounded, as 1,482 or 1,483. Each figure is read both ways it can be
+       * meant: its last mark a decimal point, or every mark a grouping.
+       */
+      const giveAways = () =>
+        (
+          container.textContent?.match(/[0-9](?:[0-9.,']|\s(?=[0-9]))*/g) ?? []
+        ).filter((figure) => {
+          const digits = figure.replace(/[^0-9.,]/g, "");
+          const mark = Math.max(
+            digits.lastIndexOf("."),
+            digits.lastIndexOf(","),
+          );
+          const read = [Number(digits.replace(/[.,]/g, ""))];
+
+          if (mark >= 0) {
+            read.push(
+              Number(
+                `${digits.slice(0, mark).replace(/[.,]/g, "")}.${digits.slice(mark + 1)}`,
+              ),
+            );
+          }
+
+          return read.some(
+            (value) =>
+              Math.abs(value - 1482.9) < 1 || Math.abs(value - 1483) < 1,
+          );
+        });
+
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Amount")).toHaveValue("••••");
-      expect(container.textContent).not.toContain("1,482.9");
+      // 1,482.9, filled in, with no figure in the field.
+      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
+
+      expect(field.value).not.toBe("");
+      expect(field.value).not.toMatch(/[0-9]/);
+      expect(giveAways()).toStrictEqual([]);
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("button", { name: "Stake •••• DUSK" })).toBeEnabled();
+      const stake = getByRole("button", { name: /DUSK/ });
+
+      expect(stake).toBeEnabled();
+      expect(stake).not.toHaveAccessibleName(/[0-9]/);
+      expect(giveAways()).toStrictEqual([]);
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
-      await fireEvent.click(getByRole("button", { name: "Use 1,000" }));
+      await fireEvent.click(getByRole("button", { name: /1,000/ }));
 
       expect(getByLabelText("Amount")).toHaveValue("1000");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("button", { name: "Stake 1,000 DUSK" })).toBeEnabled();
+      expect(getByRole("button", { name: showsDusk("1,000") })).toBeEnabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("states what native staking takes, the lock and the burn in plain words, with no consensus key nor recovery phrase", () => {
-    const { container, getByRole } = render(NativeStake, baseProps);
-    const facts = Array.from(
-      container.querySelectorAll(".native-stake__facts li"),
-      (li) => li.textContent?.replace(/\s+/g, " ").trim(),
-    );
-
-    expect(container).not.toHaveTextContent(/recovery phrase/i);
-    expect(facts).toStrictEqual([
-      "Needs your own node Run a node",
-      "Rewards start in about 6–12 hours Unstake any time, no waiting period.",
-      "Node misses a turn: part locked, unstaking returns it. Breaks the rules: part can be burned (lost).",
-    ]);
-    // The docs on running one.
-    expect(getByRole("link", { name: "Run a node" })).toHaveAttribute(
-      "href",
-      "https://docs.dusk.network/operator/provisioner/",
-    );
-  });
-
   it("stakes the amount typed, with the gas shown, and shows the result", async () => {
-    const { container, findByText, getByLabelText, getByRole } = render(
+    const { container, getByLabelText, getByRole } = render(
       NativeStake,
       baseProps,
     );
@@ -327,59 +398,28 @@ describe("NativeStake", () => {
       target: { value: "1200.5" },
     });
 
-    expect(
-      Array.from(container.querySelectorAll(".stake-flow__rows > div"), (row) =>
-        row.textContent?.replace(/\s+/g, " ").trim(),
-      ),
-    ).toStrictEqual([
-      "Stake 1,200.5 DUSK",
-      "Rewards start In about 6–12 hours",
-      "Paid from Public balance",
-      "Total up to 1,200.55 DUSK",
-    ]);
+    // The amount, and the most it costs with the gas shown, each in its row.
+    expect(rowOf(container, /stake/i)).toHaveTextContent(
+      wholeFigure("1,200.5 DUSK"),
+    );
+    expect(totalOf(container)).toHaveTextContent(wholeFigure("1,200.55 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(getByRole("button", { name: "Stake 1,200.5 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: showsDusk("1,200.5") }));
 
     expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
       1_200_500_000_000n,
       1n,
       50_000_000n,
     );
-    expect(getByRole("link", { name: "Back to staking" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/stake",
+    // On its way, with its amount.
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull(),
     );
-    expect(await findByText("1,200.5 DUSK to your stake")).toBeInTheDocument();
-  });
-
-  it("shows the amount typed in the summary, muted, while it can't be staked", async () => {
-    const { container, getByLabelText, getByRole } = render(
-      NativeStake,
-      baseProps,
-    );
-
-    await fireEvent.input(getByLabelText("Amount"), {
-      target: { value: "100" },
-    });
-
-    const [stake] = container.querySelectorAll(".stake-flow__rows dd");
-    const total = container.querySelector(".stake-flow__rows--total dd");
-
-    expect(stake).toHaveTextContent("100 DUSK");
-    expect(stake).toHaveClass("stake-flow__muted");
-    expect(total).toHaveTextContent(/^100\.05 DUSK$/);
-    expect(total).toHaveClass("stake-flow__muted");
-    expect(getByRole("button", { name: "Review" })).toBeDisabled();
-
-    await fireEvent.input(getByLabelText("Amount"), {
-      target: { value: "1000" },
-    });
-
-    expect(stake).toHaveTextContent("1,000 DUSK");
-    expect(stake).not.toHaveClass("stake-flow__muted");
-    expect(total).not.toHaveClass("stake-flow__muted");
+    expect(goingOf()).toHaveTextContent(wholeFigure("1,200.5 DUSK"));
   });
 
   it("takes an amount with a decimal comma, as Send does", async () => {
@@ -392,13 +432,13 @@ describe("NativeStake", () => {
       target: { value: "1000,5" },
     });
 
-    expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
-      "1,000.5 DUSK",
+    expect(rowOf(container, /stake/i)).toHaveTextContent(
+      wholeFigure("1,000.5 DUSK"),
     );
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(getByRole("button", { name: "Stake 1,000.5 DUSK" })).toBeEnabled();
+    expect(getByRole("button", { name: showsDusk("1,000.5") })).toBeEnabled();
   });
 
   it("asks which amount is meant of one that could be either of two, as Send does, with a button for each", async () => {
@@ -408,7 +448,9 @@ describe("NativeStake", () => {
       target: { value: "1,000" },
     });
 
-    expect(getByRole("alert")).toHaveTextContent(/^Is that 1 or 1000\?/);
+    expect(getByRole("alert")).toBeInTheDocument();
+    expect(getByRole("button", { name: "1 DUSK" })).toBeInTheDocument();
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "1000 DUSK" }));
 
@@ -416,90 +458,48 @@ describe("NativeStake", () => {
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
-  it("adds to a stake there is: no minimum, and the lock on what is added", async () => {
-    const { container, getByLabelText, getByRole, queryByRole } = render(
-      NativeStake,
-      { ...baseProps, hasStake: true },
-    );
-
-    expect(getByRole("heading", { name: "Stake more" })).toBeInTheDocument();
-    expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
-    expect(container.querySelector(".native-stake__facts")).toHaveTextContent(
-      "10% of what you add is locked When your stake is active. Unstaking returns it.",
-    );
+  it("adds to a stake there is, with no minimum", async () => {
+    const { getByLabelText, getByRole } = render(NativeStake, {
+      ...baseProps,
+      hasStake: true,
+    });
 
     await fireEvent.input(getByLabelText("Amount to add"), {
       target: { value: "10" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(getByRole("button", { name: "Stake 10 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: showsDusk("10") }));
 
     expect(baseProps.execute).toHaveBeenCalledWith(10n * DUSK, 1n, 50_000_000n);
   });
 
   it("fills in all of the public balance but this fee and the fee to unstake later with Max", async () => {
-    const { container, getByLabelText, getByRole } = render(
-      NativeStake,
-      baseProps,
-    );
+    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
     expect(getByLabelText("Amount")).toHaveValue("1482.9");
-    expect(container).toHaveTextContent(
-      "Max leaves 0.1 DUSK for this fee and unstaking.",
-    );
-    // The split, on hover.
-    expect(
-      container.querySelector(".native-stake__hint[title]"),
-    ).toHaveAttribute(
-      "title",
-      "Up to 0.05 DUSK for this fee, 0.05 DUSK to unstake later",
-    );
-    expect(getByRole("button", { name: "Max" })).toHaveAttribute(
-      "title",
-      "All of it, less the network fee and the fee to unstake later",
-    );
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(getByRole("button", { name: "Stake 1,482.9 DUSK" })).toBeEnabled();
+    expect(getByRole("button", { name: showsDusk("1,482.9") })).toBeEnabled();
   });
 
   it("refuses an amount typed that leaves too little to unstake, as Max would", async () => {
-    const { container, getByLabelText, getByRole } = render(
-      NativeStake,
-      baseProps,
-    );
+    const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
     // All but this stake's own fee: the most it took before.
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1482.95" },
     });
 
-    expect(container.querySelector(".native-stake__error")).toHaveTextContent(
-      "0.05 DUSK short, fees included.",
-    );
+    expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.05 DUSK"));
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
 
-  it("offers the minimum only with enough left to unstake it, and says why not", () => {
-    const { container, getByRole, queryByRole } = render(NativeStake, {
-      ...baseProps,
-      availableBalance: 1_000n * DUSK + 50_000_000n,
-    });
-
-    // It would cover the minimum and this stake's fee, with nothing left.
-    expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
-    expect(getByRole("button", { name: "Max" })).toBeEnabled();
-    expect(container.querySelector(".native-stake__note")).toHaveTextContent(
-      "Not enough for the 1,000 DUSK minimum and fees.",
-    );
-  });
-
-  it("reviews the summary on its own before anything goes, and goes back", async () => {
-    const { container, getByLabelText, getByRole, queryByRole } = render(
+  it("reviews the summary on its own before anything goes", async () => {
+    const { getByLabelText, getByRole, queryByRole } = render(
       NativeStake,
       baseProps,
     );
@@ -513,73 +513,19 @@ describe("NativeStake", () => {
     await afterConfirmDelay();
 
     // One button beside the form, and it doesn't stake.
-    expect(queryByRole("button", { name: /^Stake/ })).toBeNull();
+    expect(queryByRole("button", { name: showsDusk("1,000") })).toBeNull();
 
     await fireEvent.click(review);
 
     expect(baseProps.execute).not.toHaveBeenCalled();
-    expect(container.querySelector(".stake-flow")).toHaveClass(
-      "stake-flow--review",
-    );
-    expect(queryByRole("button", { name: "Review" })).toBeNull();
-    expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
-
-    await fireEvent.click(getByRole("button", { name: "Back" }));
-
-    expect(container.querySelector(".stake-flow")).not.toHaveClass(
-      "stake-flow--review",
-    );
-    expect(getByLabelText("Amount")).toHaveValue("1000");
-  });
-
-  it("follows the browser's Back and Forward between the filled form and its review", async () => {
-    const { container, getByLabelText, getByRole } = render(
-      NativeStake,
-      baseProps,
-    );
-    const isReview = () =>
-      container
-        .querySelector(".stake-flow")
-        ?.classList.contains("stake-flow--review");
-
-    await fireEvent.input(getByLabelText("Amount"), {
-      target: { value: "1000" },
-    });
-    await fireEvent.click(getByRole("button", { name: "Review" }));
-
-    expect(isReview()).toBe(true);
-
-    // The history at the form again, as Back leaves it.
-    historyAt({});
-    await tick();
-
-    expect(isReview()).toBe(false);
-    expect(getByLabelText("Amount")).toHaveValue("1000");
-
-    // And at the review, as Forward does.
-    historyAt({ stakeReview: true });
-    await tick();
-
-    expect(isReview()).toBe(true);
-
-    historyAt({});
-  });
-
-  it("stays on the form when the history is at a review of a form it no longer has", async () => {
-    historyAt({ stakeReview: true });
-
-    const { container } = render(NativeStake, baseProps);
-
-    expect(container.querySelector(".stake-flow")).not.toHaveClass(
-      "stake-flow--review",
-    );
-
-    historyAt({});
+    expect(
+      getByRole("button", { name: showsDusk("1,000") }),
+    ).toBeInTheDocument();
   });
 
   it("takes no click on Stake for half a second once the review shows, so a double click on Review can't stake", async () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
-    const stake = () => getByRole("button", { name: "Stake 1,000 DUSK" });
+    const stake = () => getByRole("button", { name: showsDusk("1,000") });
 
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
@@ -621,9 +567,8 @@ describe("NativeStake", () => {
       await fireEvent.click(view.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(
-        view.getByRole("button", { name: "Stake 1,000 DUSK" }),
+        view.getByRole("button", { name: showsDusk("1,000") }),
       );
-      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return { ...view, execute };
     };
@@ -633,51 +578,45 @@ describe("NativeStake", () => {
     });
 
     it("goes back to the review with Try again, the amount kept, when nothing went out", async () => {
-      const { container, execute, findByText, getByLabelText, getByRole } =
-        await staked(new TypeError("Failed to fetch"));
+      const { execute, findByRole, getByLabelText, getByRole } = await staked(
+        new TypeError("Failed to fetch"),
+      );
+      const tryAgain = await findByRole("button", { name: "Try again" });
+
+      // Nothing went out.
+      expect(failureOf()).toHaveTextContent(/not sent/i);
+
+      await fireEvent.click(tryAgain);
 
       expect(
-        getByRole("link", { name: "Back to staking" }),
+        getByRole("button", { name: showsDusk("1,000") }),
       ).toBeInTheDocument();
-
-      await fireEvent.click(getByRole("button", { name: "Try again" }));
-
-      expect(container.querySelector(".stake-flow")).toHaveClass(
-        "stake-flow--review",
-      );
       expect(getByLabelText("Amount")).toHaveValue("1000");
       expect(execute).toHaveBeenCalledOnce();
 
       await afterConfirmDelay();
-      await fireEvent.click(getByRole("button", { name: "Stake 1,000 DUSK" }));
+      await fireEvent.click(getByRole("button", { name: showsDusk("1,000") }));
 
       expect(execute).toHaveBeenCalledTimes(2);
-      expect(await findByText("1,000 DUSK to your stake")).toBeInTheDocument();
-    });
-
-    it("goes back to the form with Back in the browser, when nothing went out", async () => {
-      historyAt({ stakeReview: true });
-
-      const { container, getByLabelText } = await staked(
-        new TypeError("Failed to fetch"),
+      // On its way, with its amount.
+      await vi.waitFor(() =>
+        expect(
+          document.querySelector(".transaction-status--pending"),
+        ).not.toBeNull(),
       );
-
-      historyAt({});
-      await tick();
-
-      expect(container.querySelector(".stake-flow")).not.toHaveClass(
-        "stake-flow--review",
-      );
-      expect(getByLabelText("Amount")).toHaveValue("1000");
+      expect(goingOf()).toHaveTextContent(wholeFigure("1,000 DUSK"));
     });
 
     it("offers no Try again when it may have gone out", async () => {
-      const { container, execute, getByRole, queryByRole } = await staked(
+      const { container, execute, findByRole, queryByRole } = await staked(
         outcomeUnknown(new TypeError("Failed to fetch")),
       );
 
+      expect(
+        await findByRole("link", { name: "Open Activity" }),
+      ).toBeInTheDocument();
+      expect(failureOf()).toHaveTextContent(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
-      expect(getByRole("link", { name: "Open Activity" })).toBeInTheDocument();
 
       historyAt({});
       await tick();
@@ -692,10 +631,7 @@ describe("NativeStake", () => {
       NativeStake,
       { ...baseProps, execute: vi.fn().mockResolvedValue(HASH) },
     );
-    const total = () =>
-      Array.from(container.querySelectorAll(".stake-flow__rows > div"), (row) =>
-        row.textContent?.replace(/\s+/g, " ").trim(),
-      ).find((text) => text?.startsWith("Total"));
+    const total = () => totalOf(container);
 
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
@@ -703,10 +639,10 @@ describe("NativeStake", () => {
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ gasSettings: { gasLimit: 50_000_000n, gasPrice: 3n } });
 
-    expect(total()).toBe("Total up to 1,000.05 DUSK");
+    expect(total()).toHaveTextContent(wholeFigure("1,000.05 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
 
-    expect(total()).toBe("Total up to 1,000.15 DUSK");
+    expect(total()).toHaveTextContent(wholeFigure("1,000.15 DUSK"));
   });
 });

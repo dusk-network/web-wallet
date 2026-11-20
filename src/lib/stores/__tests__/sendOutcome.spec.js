@@ -17,7 +17,6 @@ import {
   ShieldTransfer,
   Transfer,
 } from "@dusk/w3sper";
-import { mdiCloseThick, mdiTimerSand } from "@mdi/js";
 
 import { TransactionResult } from "$lib/components";
 import { timeLabel } from "$lib/activity/present";
@@ -136,42 +135,66 @@ describe("A send that fails", () => {
   }
 
   /**
-   * What the result screen says: a failure, or how the transaction that may
-   * have gone out is getting on.
+   * What the result screen says: how the transaction that may have gone out
+   * is getting on, where it's followed (pending, late, completed or failed;
+   * none where it failed before it went out), what it says of it, its status
+   * or why it failed, and whether it offers to try again.
    *
    * @param {HTMLElement} container
    */
   function shown(container) {
-    const alert = container.querySelector(".dusk-error-alert");
-    const status = container.querySelector(".transaction-status__summary");
-
     return {
-      heading: alert
-        ? alert.querySelector(".dusk-error-alert__summary")?.textContent
-        : status?.querySelector(".transaction-status__title")?.textContent,
-      sentence: alert
-        ? alert.querySelector(".dusk-error-alert__description")?.textContent
-        : status?.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim(),
-      icon: (alert ?? status)?.querySelector("svg path")?.getAttribute("d"),
-      links: [...container.querySelectorAll("a")]
-        .filter((a) => !a.closest(".transaction-status"))
-        .map((a) => [a.textContent?.trim(), a.getAttribute("href")]),
+      following: container
+        .querySelector(".transaction-status")
+        ?.className.match(
+          /transaction-status--(completed|failed|late|pending)/,
+        )?.[1],
       offersRetry: [...container.querySelectorAll("button")].some(
         (button) => button.textContent?.trim() === "Try again",
       ),
+      says: container
+        .querySelector(".transaction-status__summary, .dusk-error-alert")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim(),
       text: container.textContent ?? "",
     };
   }
 
+  /**
+   * Text that names each of `values`, in any order, whatever its words: a
+   * string whole, so `4,321` is never found in `14,321`; a regex as the key
+   * phrase of a state; and `{ not }` as what it never says.
+   *
+   * @param {...(string | RegExp | { not: RegExp })} values
+   */
+  const naming = (...values) =>
+    new RegExp(
+      `^${values
+        .map((value) =>
+          typeof value === "string"
+            ? `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`
+            : value instanceof RegExp
+              ? `(?=.*(?${value.flags.includes("i") ? "i" : ""}:${value.source}))`
+              : `(?!.*(?${value.not.flags.includes("i") ? "i" : ""}:${value.not.source}))`,
+        )
+        .join("")}`,
+    );
+
+  /** @param {...(string | RegExp | { not: RegExp })} values */
+  const saying = (...values) => expect.stringMatching(naming(...values));
+
+  /** Nothing has left the wallet: it waits for the network to go out. */
+  const WAITS = naming(/nothing has left/i, { not: /may have/i });
+
   it("says to try again before the node was asked to broadcast it, and after, that it may have gone out and to wait for it, never to send it again", async () => {
     executeUntil("preverify", new TypeError("Failed to fetch"));
 
+    // Nothing went out: nothing to follow, said so, and it can be tried
+    // again.
     expect(await shieldResult()).toMatchObject({
-      heading: "Not sent",
-      icon: mdiCloseThick,
-      links: [["Home", "/some-base-path/dashboard"]],
+      following: undefined,
       offersRetry: true,
-      sentence: "Couldn't reach the network. Not sent, no fee charged.",
+      says: saying(/\bnot sent\b(?! yet)/i),
     });
     cleanup();
 
@@ -179,23 +202,16 @@ describe("A send that fails", () => {
 
     const result = await shieldResult();
 
+    // It may have: the transaction built is followed, said not confirmed as
+    // it may have reached the network, and nothing on the screen says it
+    // failed, or to try again.
     expect(result).toMatchObject({
-      heading: "Not confirmed",
+      following: "pending",
       offersRetry: false,
-      sentence: "It may have gone out: wait here before sending it again.",
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
-    // Nothing on the screen says it failed, or to try again.
     expect(result.text).not.toMatch(/try again|transaction failed/i);
-    // Not a cross: it's the transaction built, followed, and in History.
-    expect(result.icon).toBe(mdiTimerSand);
     expect(follow.spy).toHaveBeenCalledWith(built.hash, expect.anything());
-    expect(result.links).toStrictEqual([
-      [
-        "See in Activity",
-        `/some-base-path/dashboard/transactions?tx=${built.hash}`,
-      ],
-      ["Home", "/some-base-path/dashboard"],
-    ]);
   });
 
   it("says where it waits that the network isn't answering: that nothing left the wallet before the node was asked to broadcast it, and after, to wait for it", async () => {
@@ -252,20 +268,17 @@ describe("A send that fails", () => {
 
       const before = waiting();
 
-      expect(before.getByText("Sending")).toBeInTheDocument();
-      expect(before.container).not.toHaveTextContent("isn't answering");
+      // Said only once the network doesn't answer.
+      expect(before.queryByRole("status")).toBeNull();
 
+      // Before the node was asked to broadcast it: nothing has left.
       await act(() => setNetworkReach("silent"));
 
-      expect(before.getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet.",
-      );
+      expect(before.getByRole("status")).toHaveTextContent(WAITS);
 
       await act(() => setNetworkReach("offline"));
 
-      expect(before.getByRole("status")).toHaveTextContent(
-        "Offline. Nothing has left your wallet yet.",
-      );
+      expect(before.getByRole("status")).toHaveTextContent(WAITS);
       cleanup();
       // It's over before the next goes out, in its turn.
       await vi.waitFor(() => expect(executeSpy).toHaveBeenCalledOnce());
@@ -277,9 +290,10 @@ describe("A send that fails", () => {
 
       const after = waiting();
 
+      // After, on the same network: it may have reached it, to wait for.
       await vi.waitFor(() =>
         expect(after.getByRole("status")).toHaveTextContent(
-          "The network isn't answering. It may have gone out: wait here before sending it again.",
+          naming(/may have gone out/i, { not: /nothing has left/i }),
         ),
       );
     } finally {
@@ -289,7 +303,7 @@ describe("A send that fails", () => {
     }
   });
 
-  it("calls off a send that waits, at once, says nothing was sent, offers Don't send and Home while the network doesn't answer, and never sends it, though the network answers after", async () => {
+  it("calls off a send that waits, at once, with Cancel while the network doesn't answer, says nothing was sent, and never sends it, though the network answers after", async () => {
     const { SendCancelledError, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const synced = Promise.withResolvers();
@@ -317,12 +331,10 @@ describe("A send that fails", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      expect(rendered.getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet. Goes out once the network answers.",
-      );
-      expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
+      expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
 
-      // Cancel: it stops at once, with nothing sent.
+      // Don't send: it stops at once, with nothing sent, said so: it can be
+      // tried again.
       await act(() =>
         rendered.getByRole("button", { name: "Don't send" }).click(),
       );
@@ -330,13 +342,11 @@ describe("A send that fails", () => {
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
-          heading: "Not sent",
-          sentence: "Nothing left your wallet.",
+          following: undefined,
+          offersRetry: true,
+          says: saying(/nothing left/i),
         }),
       );
-      expect(
-        rendered.getByRole("button", { name: "Try again" }),
-      ).toBeInTheDocument();
 
       // The network answers after all: nothing goes to it.
       synced.resolve(undefined);
@@ -375,7 +385,7 @@ describe("A send that fails", () => {
   /** The browser says it's back online. */
   const backOnline = () => act(() => window.dispatchEvent(new Event("online")));
 
-  it("waits for the network where a send that can still be called off couldn't reach it, offline, says so with Don't send and Home, and sends it once, once the network answers", async () => {
+  it("waits for the network where a send that can still be called off couldn't reach it, offline, says so with Cancel, and sends it once, once the network answers", async () => {
     const { broadcastsAsked } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const asked = get(broadcastsAsked);
@@ -417,17 +427,13 @@ describe("A send that fails", () => {
 
       await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
 
+      // Said, with Cancel; never that it wasn't sent, failed, or to try
+      // again.
       const waiting = () => {
-        expect(rendered.getByRole("status")).toHaveTextContent(
-          "Offline. Nothing has left your wallet yet. Goes out once the network answers.",
-        );
+        expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
         expect(
           rendered.getByRole("button", { name: "Don't send" }),
         ).toBeInTheDocument();
-        expect(rendered.getByRole("link", { name: "Home" })).toHaveAttribute(
-          "href",
-          "/some-base-path/dashboard",
-        );
         expect(rendered.container).not.toHaveTextContent(
           /not sent|failed|try again/i,
         );
@@ -467,7 +473,10 @@ describe("A send that fails", () => {
       expect(get(broadcastsAsked)).toBe(asked + 1);
       expect(get(gate)).toBe("handed-over");
       expect(get(gate.waitsForNetwork)).toBe(false);
-      expect(shown(rendered.container).heading).toBe("Sending…");
+      expect(shown(rendered.container)).toMatchObject({
+        following: "pending",
+        says: saying(/sending/i, { not: /not confirmed|not sent/i }),
+      });
     } finally {
       setNetworkReach("answering");
       answers.mockResolvedValue(123n);
@@ -702,11 +711,12 @@ describe("A send that fails", () => {
         to: 20_001n,
       });
       expect(rendered.getByRole("status")).toHaveTextContent(
-        "Meanwhile your account sent something else.",
+        /your account sent/i,
       );
-      expect(rendered.getByText("Held: not sent yet")).toBeInTheDocument();
-      expect(rendered.getByRole("link", { name: "Home" })).toBeInTheDocument();
-      // The hold's own Don't send, beside Send it too: no other way off.
+      expect(
+        rendered.getByRole("button", { name: "Don't send" }),
+      ).toBeInTheDocument();
+      // The hold's own, the only way off: no other Don't send beside it.
       expect(
         rendered.getAllByRole("button", { name: "Don't send" }),
       ).toHaveLength(1);
@@ -728,7 +738,10 @@ describe("A send that fails", () => {
       expect(executeSpy).toHaveBeenCalledOnce();
       expect(get(broadcastsAsked)).toBe(asked + 1);
       expect(get(gate.asking)).toBe(false);
-      expect(shown(rendered.container).heading).toBe("Sending…");
+      expect(shown(rendered.container)).toMatchObject({
+        following: "pending",
+        says: saying(/sending/i, { not: /not confirmed|not sent/i }),
+      });
     } finally {
       restore();
     }
@@ -749,8 +762,9 @@ describe("A send that fails", () => {
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
-          heading: "Not sent",
-          sentence: "Nothing left your wallet.",
+          following: undefined,
+          offersRetry: true,
+          says: saying(/nothing left/i),
         }),
       );
       expect(executeSpy).not.toHaveBeenCalled();
@@ -1050,9 +1064,9 @@ describe("A send that fails", () => {
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
         expect(shown(rendered.container)).toMatchObject({
-          heading: "Not sent",
+          following: undefined,
           offersRetry: true,
-          sentence: "Nothing left your wallet.",
+          says: saying(/nothing left/i),
         }),
       );
 
@@ -1078,10 +1092,11 @@ describe("A send that fails", () => {
 
     found.resolve({ blockHeight: 4321n, error: null, fee: 2n, timestamp: at });
 
+    // Sent: when, and in which block.
     await vi.waitFor(() =>
       expect(shown(rendered.container)).toMatchObject({
-        heading: `Sent at ${timeLabel(at, "en", { seconds: true })}`,
-        sentence: "In block 4,321.",
+        following: "completed",
+        says: saying(timeLabel(at, "en", { seconds: true }), "4,321"),
       }),
     );
     cleanup();
@@ -1102,13 +1117,13 @@ describe("A send that fails", () => {
 
     await vi.waitFor(() =>
       expect(shown(second.rendered.container)).toMatchObject({
-        heading: "Failed",
-        sentence: "The fee was charged.",
+        following: "failed",
+        says: saying(/fee was charged/i),
       }),
     );
   });
 
-  it("says a refusal the node gave as it was asked to broadcast it is one, with the way home", async () => {
+  it("says a refusal the node gave as it was asked to broadcast it is one: nothing went out, and it can be tried again", async () => {
     executeUntil(
       "propagate",
       new Error(
@@ -1117,21 +1132,19 @@ describe("A send that fails", () => {
     );
 
     expect(await shieldResult()).toMatchObject({
-      heading: "Not sent",
-      icon: mdiCloseThick,
-      links: [["Home", "/some-base-path/dashboard"]],
+      following: undefined,
       offersRetry: true,
+      says: saying(/\bnot sent\b(?! yet)/i, { not: /may have/i }),
     });
   });
 
-  it("follows it where there's no History too, and leads Home", async () => {
+  it("follows it where there's no History too, never offering to send it again", async () => {
     executeUntil("propagate", new TypeError("Failed to fetch"));
 
     expect(await shieldResult(false)).toMatchObject({
-      heading: "Not confirmed",
-      links: [["Home", "/some-base-path/dashboard"]],
+      following: "pending",
       offersRetry: false,
-      sentence: "It may have gone out: wait here before sending it again.",
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
   });
 
@@ -1143,9 +1156,9 @@ describe("A send that fails", () => {
     ).mockRejectedValueOnce(new Error("The quota has been exceeded."));
 
     expect(await shieldResult()).toMatchObject({
-      heading: "Not confirmed",
+      following: "pending",
       offersRetry: false,
-      sentence: "It may have gone out: wait here before sending it again.",
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
   });
 
@@ -1173,10 +1186,9 @@ describe("A send that fails", () => {
 
     await vi.waitFor(() =>
       expect(shown(rendered.container)).toMatchObject({
-        heading: "Not confirmed",
+        following: "late",
         offersRetry: false,
-        sentence:
-          "Not in a block yet. Check the explorer before sending it again.",
+        says: saying(/not confirmed/i, { not: /nothing (was sent|left)/i }),
       }),
     );
 

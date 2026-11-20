@@ -39,22 +39,22 @@ const REFUSED = [
   // The node's reasons for refusing it, where the wallet knows them.
   [
     /gas price lower than (the )?minimum/i,
-    "The gas price is under the network's minimum.",
+    "The gas price is under the network's minimum. Raise it and try again.",
   ],
   [
     /gas limit lower than (the )?minimum/i,
-    "The gas limit is under the network's minimum.",
+    "The gas limit is under the network's minimum. Raise it and try again.",
   ],
   [
     /value spent (larger than account holds|will overflow)/i,
-    "Balance too low for the amount and fee.",
+    "Balance too low for the amount and fee. Lower the amount and try again.",
   ],
 
   // What pays for it doesn't cover it, as the wallet finds before it sends
   // it: its shielded notes, or the EVM wallet's balance for a withdrawal.
   [
     /InsufficientFundsError|insufficient (funds|balance)/i,
-    "Balance too low for the amount and fee.",
+    "Balance too low for the amount and fee. Lower the amount and try again.",
   ],
 
   // Its signature or proof, as the node checks them.

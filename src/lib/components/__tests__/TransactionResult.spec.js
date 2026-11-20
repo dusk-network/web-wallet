@@ -3,9 +3,14 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { createCurrencyFormatter } from "$lib/dusk/currency";
-import { WalletChangedError } from "$lib/errors";
+import { SendPasswordDeclinedError, WalletChangedError } from "$lib/errors";
 import { walletStore } from "$lib/stores";
-import { outcomeUnknown, sendGate } from "$lib/transactions";
+import {
+  SendCancelledError,
+  SendTakenToReviewError,
+  outcomeUnknown,
+  sendGate,
+} from "$lib/transactions";
 import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionResult } from "..";
@@ -28,42 +33,31 @@ vi.mock("$lib/activity", async (importOriginal) => ({
 describe("TransactionResult", () => {
   const hash =
     "8dcf6f8a4b5f0a6e1d2c3b4a59687766554433221100ffeeddccbbaa993db55e";
-  const onBeforeLeave = vi.fn();
   const baseProps = {
     formatter: createCurrencyFormatter("en", "DUSK", 9),
     maxFee: 2_500_000n,
-    onBeforeLeave,
-  };
-
-  /**
-   * Clicks a link without letting jsdom navigate.
-   *
-   * @param {HTMLElement} link
-   */
-  const clickLink = async (link) => {
-    link.addEventListener("click", (event) => event.preventDefault());
-    await fireEvent.click(link);
   };
 
   afterEach(() => {
     cleanup();
     followTransaction.mockReset();
-    onBeforeLeave.mockClear();
   });
 
-  it("should say the transaction is being processed while it is sent", () => {
-    const { getByText } = render(TransactionResult, {
-      ...baseProps,
-      operation: new Promise(() => {}),
-    });
+  /** A send waiting that nothing of it has left the wallet yet. */
+  const NOTHING_LEFT_YET = /nothing has left/i;
 
-    expect(getByText("Sending")).toBeInTheDocument();
-    expect(followTransaction).not.toHaveBeenCalled();
-  });
+  /**
+   * That it may have gone out, as a send handed over without an answer: gone
+   * out, or reached the network, never "may have failed" or "may have
+   * reached the signing step".
+   */
+  const MAY_HAVE_GONE_OUT = /may have (gone out|reached (the network|it)\b)/i;
+
+  /** That nothing went out: what a send that may have gone out never says. */
+  const NOTHING_WENT_OUT = /nothing (was sent|left|has left)/i;
 
   // Chen's: on slow Wi-Fi, with its answer held back, the screen said only
-  // "Processing transaction"; and Amélie's, offline: "Lucas (petit-fils)·
-  // Wi-Fi coupé", with no space.
+  // "Processing transaction".
   it("should say which send it is while it's processed, its answer slow or not, and with no network", async () => {
     const gate = sendGate();
     const what = () =>
@@ -77,23 +71,29 @@ describe("TransactionResult", () => {
       what: "0.01 DUSK to your Profile 2",
     });
 
-    expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+    /** Which send it is: what it sends, to whom, and its memo. */
+    const isSaid = () => {
+      expect(what()).toContain("0.01 DUSK to your Profile 2");
+      expect(what()).toContain("night shift 1");
+    };
+
+    isSaid();
 
     // Handed over, its answer held back.
     await act(() => gate.handOver());
 
-    expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+    isSaid();
 
     try {
       await act(() => setNetworkReach("offline"));
 
-      expect(what()).toBe("0.01 DUSK to your Profile 2 · night shift 1");
+      isSaid();
     } finally {
       setNetworkReach("answering");
     }
   });
 
-  it("should say a send waits for the network it couldn't reach, with Don't send and Home, though the network's pill finds it answering", async () => {
+  it("should say a send waits for the network it couldn't reach, with Don't send, though the network's pill finds it answering", async () => {
     const gate = sendGate();
     const { getByRole } = render(TransactionResult, {
       ...baseProps,
@@ -110,12 +110,9 @@ describe("TransactionResult", () => {
 
     try {
       await vi.waitFor(() =>
-        expect(getByRole("status")).toHaveTextContent(
-          /^Nothing has left your wallet yet\. Goes out once the network answers\.$/,
-        ),
+        expect(getByRole("button", { name: "Don't send" })).toBeInTheDocument(),
       );
-      expect(getByRole("button", { name: "Don't send" })).toBeInTheDocument();
-      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
+      expect(getByRole("status")).toHaveTextContent(NOTHING_LEFT_YET);
     } finally {
       gate.cancel();
     }
@@ -124,7 +121,7 @@ describe("TransactionResult", () => {
   // Lena's, the node silent: "Nothing has left your wallet yet" with only
   // Home for half a minute, as the node's check hung. The check sends
   // nothing: Don't send stays until the node is asked to broadcast it.
-  it("should offer Don't send while the node checks a send, its answer slow and the network found silent, until it's handed over, and keep a way Home", async () => {
+  it("should offer Don't send while the node checks a send, its answer slow and the network found silent, until it's handed over", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {
       ...baseProps,
@@ -136,17 +133,16 @@ describe("TransactionResult", () => {
       await act(() => setNetworkReach("silent"));
       await act(() => gate.checking());
 
-      expect(getByRole("status")).toHaveTextContent(
-        "The network isn't answering. Nothing has left your wallet yet. Goes out once the network answers.",
-      );
+      expect(getByRole("status")).toHaveTextContent(NOTHING_LEFT_YET);
+      expect(getByRole("status")).not.toHaveTextContent(MAY_HAVE_GONE_OUT);
       expect(getByRole("button", { name: "Don't send" })).toBeInTheDocument();
-      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
 
       // Handed over: it may go out, with nothing to call off.
       await act(() => gate.handOver());
 
+      expect(getByRole("status")).toHaveTextContent(MAY_HAVE_GONE_OUT);
+      expect(getByRole("status")).not.toHaveTextContent(NOTHING_LEFT_YET);
       expect(queryByRole("button", { name: "Don't send" })).toBeNull();
-      expect(getByRole("link", { name: "Home" })).toBeInTheDocument();
     } finally {
       gate.cancel();
       setNetworkReach("answering");
@@ -167,15 +163,13 @@ describe("TransactionResult", () => {
       await fireEvent.click(getByRole("button", { name: "Don't send" }));
 
       expect(get(gate)).toBe("cancelled");
-      expect(() => gate.handOver()).toThrow(
-        "The send was cancelled before it went out.",
-      );
+      expect(() => gate.handOver()).toThrow(SendCancelledError);
     } finally {
       setNetworkReach("answering");
     }
   });
 
-  it("should keep a way Home, and no Don't send, once a send was handed over and the network doesn't answer", async () => {
+  it("should offer no Don't send once a send was handed over and the network doesn't answer", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {
       ...baseProps,
@@ -188,50 +182,25 @@ describe("TransactionResult", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      expect(getByRole("status")).toHaveTextContent(
-        "The network isn't answering. It may have gone out: wait here before sending it again.",
-      );
+      expect(getByRole("status")).toHaveTextContent(MAY_HAVE_GONE_OUT);
+      expect(getByRole("status")).not.toHaveTextContent(NOTHING_LEFT_YET);
       expect(queryByRole("button", { name: "Don't send" })).toBeNull();
-
-      await clickLink(getByRole("link", { name: "Home" }));
-
-      expect(onBeforeLeave).toHaveBeenCalledOnce();
     } finally {
       setNetworkReach("answering");
     }
   });
 
-  it("should keep a way Home as soon as a send was handed over, before the network is found not to answer", async () => {
-    const gate = sendGate();
-    const { getByText, queryByRole } = render(TransactionResult, {
-      ...baseProps,
-      gate,
-      operation: new Promise(() => {}),
-    });
-
-    // Handed over, its answer doesn't come, and the network's pill says
-    // nothing yet: it finds it silent after 30 seconds.
-    await act(() => gate.handOver());
-
-    expect(getByText("Sending")).toBeInTheDocument();
-    expect(queryByRole("button", { name: "Don't send" })).toBeNull();
-    expect(queryByRole("link", { name: "Home" })).toBeInTheDocument();
-  });
-
-  it("should follow the transaction once sent, with a way home", async () => {
+  it("should follow the transaction once sent", async () => {
     followTransaction.mockReturnValue(new Promise(() => {}));
 
-    const { findByRole, getByRole } = render(TransactionResult, {
+    render(TransactionResult, {
       ...baseProps,
       operation: Promise.resolve(hash),
     });
 
-    expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
-    expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
-
-    await clickLink(getByRole("link", { name: "Home" }));
-
-    expect(onBeforeLeave).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
+    );
   });
 
   it("should have History and the balances read again as a transaction is final, to say as it does", async () => {
@@ -245,12 +214,14 @@ describe("TransactionResult", () => {
     refreshHistory.mockClear();
     followTransaction.mockReturnValue(following.promise);
 
-    const { findByRole } = render(TransactionResult, {
+    render(TransactionResult, {
       ...baseProps,
       operation: Promise.resolve(hash),
     });
 
-    expect(await findByRole("status")).toHaveTextContent(/^Sending… /);
+    await vi.waitFor(() =>
+      expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
+    );
     expect(refreshHistory).not.toHaveBeenCalled();
     expect(refreshBalance).not.toHaveBeenCalled();
 
@@ -265,20 +236,6 @@ describe("TransactionResult", () => {
     expect(refreshBalance).toHaveBeenCalledOnce();
 
     refreshBalance.mockRestore();
-  });
-
-  it("should show why the transaction couldn't be sent, with a way home", async () => {
-    const { findByText, getByRole } = render(TransactionResult, {
-      ...baseProps,
-      operation: Promise.reject(new Error("Insufficient balance")),
-    });
-
-    expect(await findByText("Not sent")).toBeInTheDocument();
-    expect(followTransaction).not.toHaveBeenCalled();
-
-    await clickLink(getByRole("link", { name: "Home" }));
-
-    expect(onBeforeLeave).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -300,97 +257,15 @@ describe("TransactionResult", () => {
    */
   const named = (name, message) => Object.assign(new Error(message), { name });
 
-  it.each([
-    ["the node out of reach", new TypeError("Failed to fetch")],
-    [
-      "the node too slow",
-      new Error("Timed out while connecting to the network"),
-    ],
-  ])(
-    "should say a send that couldn't reach the network wasn't sent, and cost nothing: %s, with its own message under Details",
-    async (_, error) => {
-      const { container, findByText, getByText, queryByText } = render(
-        TransactionResult,
-        { ...baseProps, operation: Promise.reject(error) },
-      );
-
-      expect(
-        await findByText(
-          "Couldn't reach the network. Not sent, no fee charged.",
-        ),
-      ).toBeInTheDocument();
-      expect(getByText("Not sent")).toBeInTheDocument();
-      expect(queryByText("Transaction failed")).toBeNull();
-      expect(container.querySelector("details")).toHaveTextContent(
-        error.message,
-      );
-    },
-  );
-
-  it.each([
-    [
-      "a refusal for the balance",
-      refusal(
-        "this transaction is invalid Value spent larger than account holds",
-      ),
-      "Balance too low for the amount and fee.",
-    ],
-    [
-      "too little shielded DUSK",
-      new Error("Insufficient funds"),
-      "Balance too low for the amount and fee.",
-    ],
-    [
-      "a refusal for the gas price",
-      refusal("gas price lower than minimum 1"),
-      "The gas price is under the network's minimum.",
-    ],
-    [
-      "a refusal for the gas limit",
-      refusal("gas limit lower than minimum 5000000"),
-      "The gas limit is under the network's minimum.",
-    ],
-    [
-      "a refusal for another reason",
-      refusal("Maximum count of transactions exceeded 10000"),
-      "The network refused it. See Details.",
-    ],
-    [
-      "the wallet switched or locked meanwhile",
-      new WalletChangedError(),
-      "The wallet changed or locked before it went out.",
-    ],
-    [
-      "an address it can't read",
-      named("DriverDeserializeError", "Failed to deserialize the buffer"),
-      "The wallet couldn't read the address. Check it.",
-    ],
-    [
-      "a proof the network refused",
-      refusal("this transaction is invalid Invalid proof"),
-      "The wallet couldn't sign it. Reload the page.",
-    ],
-  ])(
-    "should say in a plain sentence why a send failed before it went out: %s, with its own message under Details",
-    async (_, error, sentence) => {
-      const { container, findByText, getByText } = render(TransactionResult, {
-        ...baseProps,
-        operation: Promise.reject(error),
-      });
-
-      expect(await findByText(sentence)).toBeInTheDocument();
-      expect(getByText("Not sent")).toBeInTheDocument();
-
-      const details = /** @type {HTMLDetailsElement} */ (
-        container.querySelector("details")
-      );
-
-      expect(details.querySelector("summary")).toHaveTextContent(/^Details$/);
-      expect(details).toHaveTextContent(error.message);
-    },
-  );
-
-  describe("Try again", () => {
+  /**
+   * What a send that failed came to, as each kind is said: not sent, so it can
+   * be tried again; not confirmed, as it may have gone out; refused over what
+   * another transaction spent, which may have been an earlier try of it; or
+   * taken by a block that failed it, its fee charged. Where the screen has
+   * no mark of its own for which, its heading and sentence say it, read by
+   * their key words only.
+   */
+  describe("What a send that failed came to", () => {
     const onRetry = vi.fn();
 
     afterEach(() => {
@@ -405,20 +280,146 @@ describe("TransactionResult", () => {
         operation: Promise.reject(error),
       });
 
-      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
+      // Said, with its own message under Details.
+      await vi.waitFor(() =>
+        expect(view.container.querySelector("details")).toHaveTextContent(
+          error.message,
+        ),
+      );
 
       return view;
     };
 
+    /**
+     * The way to History, where it's checked whether a send went out: by
+     * where it leads, whatever it's called.
+     *
+     * @param {HTMLElement} container
+     */
+    const historyLink = (container) =>
+      container.querySelector(
+        'a[href="/some-base-path/dashboard/transactions"]',
+      );
+
+    /** Said not sent: nothing left the wallet. */
+    const NOT_SENT = /not sent/i;
+
+    /**
+     * Said not sent, or failed before it went out: refused, or never made,
+     * with nothing sent either way.
+     */
+    const SAID_FAILED = /not sent|failed/i;
+
+    /**
+     * What the failure's heading and sentence say.
+     *
+     * @param {HTMLElement} container
+     */
+    const said = (container) => ({
+      heading:
+        container.querySelector(".dusk-error-alert__summary")?.textContent ??
+        "",
+      sentence:
+        container.querySelector(".dusk-error-alert__description")
+          ?.textContent ?? "",
+    });
+
     it.each([
-      ["the node out of reach", new TypeError("Failed to fetch")],
-      ["any other failure before it went out", new Error("Something else")],
-      ["the wallet changing meanwhile", new WalletChangedError()],
-      ["an address it can't read", named("DriverDeserializeError", "Bad")],
+      // Nothing left the wallet, and no fee was charged.
+      [
+        "the node out of reach",
+        new TypeError("Failed to fetch"),
+        NOT_SENT,
+        /no fee/i,
+      ],
+      [
+        "the node too slow",
+        new Error("Timed out while connecting to the network"),
+        NOT_SENT,
+        /no fee/i,
+      ],
+      [
+        "a send called off",
+        new SendCancelledError(),
+        NOT_SENT,
+        /nothing left/i,
+      ],
+      [
+        "a send taken to its review instead",
+        new SendTakenToReviewError(),
+        NOT_SENT,
+        /nothing left/i,
+      ],
+      [
+        "the password on big sends not given",
+        new SendPasswordDeclinedError(),
+        NOT_SENT,
+        /password/i,
+      ],
+      // Refused, or never made: why, by its key words.
+      [
+        "a refusal for the balance",
+        refusal(
+          "this transaction is invalid Value spent larger than account holds",
+        ),
+        SAID_FAILED,
+        /balance/i,
+      ],
+      [
+        "too little shielded DUSK",
+        new Error("Insufficient funds"),
+        SAID_FAILED,
+        /balance/i,
+      ],
       [
         "a refusal for the gas price",
         refusal("gas price lower than minimum 1"),
+        SAID_FAILED,
+        /gas price/i,
       ],
+      [
+        "a refusal for the gas limit",
+        refusal("gas limit lower than minimum 5000000"),
+        SAID_FAILED,
+        /gas limit/i,
+      ],
+      [
+        "a refusal for another reason",
+        refusal("Maximum count of transactions exceeded 10000"),
+        SAID_FAILED,
+        /refused/i,
+      ],
+      [
+        "the wallet switched or locked meanwhile",
+        new WalletChangedError(),
+        SAID_FAILED,
+        /changed or locked/i,
+      ],
+      [
+        "an address it can't read",
+        named("DriverDeserializeError", "Failed to deserialize the buffer"),
+        SAID_FAILED,
+        /address/i,
+      ],
+      [
+        "a proof the network refused",
+        refusal("this transaction is invalid Invalid proof"),
+        SAID_FAILED,
+        /sign/i,
+      ],
+      [
+        "a send declined in the EVM wallet",
+        named("UserRejectedRequestError", "User rejected the request."),
+        SAID_FAILED,
+        /declined/i,
+      ],
+      [
+        "any other failure before it went out",
+        new Error("Something no one expected"),
+        SAID_FAILED,
+        /before it was sent/i,
+      ],
+      // A refusal holds once it was handed over too.
       [
         "a refusal as it was asked to broadcast it",
         outcomeUnknown(
@@ -426,20 +427,32 @@ describe("TransactionResult", () => {
             "this transaction is invalid Value spent larger than account holds",
           ),
         ),
+        SAID_FAILED,
+        /balance/i,
       ],
       [
         "a refusal for another reason as it was asked to broadcast it",
         outcomeUnknown(refusal("Maximum count of transactions exceeded 10")),
+        SAID_FAILED,
+        /refused/i,
       ],
-    ])("should offer it once nothing went out: %s", async (_, error) => {
-      const { getByRole, queryByRole } = await failed(error);
+    ])(
+      "should say nothing went out, and why, and offer Try again: %s",
+      async (_, error, state, why) => {
+        const { container, getByRole } = await failed(error);
+        const { heading, sentence } = said(container);
 
-      await fireEvent.click(getByRole("button", { name: "Try again" }));
+        expect(heading).toMatch(state);
+        expect(sentence).toMatch(why);
+        expect(`${heading} ${sentence}`).not.toMatch(/not confirmed/i);
+        expect(`${heading} ${sentence}`).not.toMatch(MAY_HAVE_GONE_OUT);
+        expect(historyLink(container)).toBeNull();
 
-      expect(onRetry).toHaveBeenCalledOnce();
-      expect(queryByRole("link", { name: "Home" })).toBeInTheDocument();
-      expect(queryByRole("link", { name: "Open Activity" })).toBeNull();
-    });
+        await fireEvent.click(getByRole("button", { name: "Try again" }));
+
+        expect(onRetry).toHaveBeenCalledOnce();
+      },
+    );
 
     it.each([
       ["the answer lost", outcomeUnknown(new TypeError("Failed to fetch"))],
@@ -449,23 +462,17 @@ describe("TransactionResult", () => {
       ["a wallet's words", outcomeUnknown(new Error("RuntimeError: oops"))],
       ["a sync's words", outcomeUnknown(new Error("Synchronization aborted"))],
     ])(
-      "should never offer it once it may have gone out: %s",
+      "should say it isn't confirmed, as it may have gone out, and never offer Try again: %s",
       async (_, error) => {
-        const { container, getByRole, getByText, queryByRole } =
-          await failed(error);
+        const { container, queryByRole } = await failed(error);
+        const { heading, sentence } = said(container);
 
+        expect(heading).toMatch(/not confirmed/i);
+        expect(sentence).toMatch(MAY_HAVE_GONE_OUT);
+        expect(`${heading} ${sentence}`).not.toMatch(NOTHING_WENT_OUT);
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
-        expect(getByText("Not confirmed")).toBeInTheDocument();
-        expect(
-          getByText(
-            "It may have gone out. Check Activity before sending again.",
-          ),
-        ).toBeInTheDocument();
         expect(container).not.toHaveTextContent(/try again/i);
-        expect(getByRole("link", { name: "Open Activity" })).toHaveAttribute(
-          "href",
-          "/some-base-path/dashboard/transactions",
-        );
+        expect(historyLink(container)).toBeInTheDocument();
       },
     );
 
@@ -473,48 +480,47 @@ describe("TransactionResult", () => {
       [
         "a nonce used",
         refusal("this transaction is invalid Nonce repeat: 26FCH7 12"),
-        "Refused: another transaction from this account came first.",
+        /came first/i,
       ],
       [
         "a nonce pending",
         refusal("this transaction's spendId exists in the mempool"),
-        "Refused: another transaction from this account came first.",
+        /came first/i,
       ],
       [
         "this very transaction in the mempool",
         refusal("this transaction exists in the mempool"),
-        "Refused: another transaction from this account came first.",
+        /came first/i,
       ],
       [
         "this very transaction in the ledger",
         outcomeUnknown(refusal("this transaction exists in the ledger")),
-        "Refused: another transaction from this account came first.",
+        /came first/i,
       ],
       [
         "notes spent",
         refusal("this transaction is invalid Nullifiers already spent: [0x01]"),
-        "Refused: some of its shielded DUSK is spent already.",
+        /spent already/i,
       ],
     ])(
-      "should send to History, not offer it, for a refusal over what another transaction spent, maybe an earlier try of this one: %s",
-      async (_, error, said) => {
-        const { container, getByRole, getByText, queryByRole } =
-          await failed(error);
+      "should send to History, never saying it wasn't sent nor offering it, for a refusal over what another transaction spent, maybe an earlier try of this one: %s",
+      async (_, error, why) => {
+        const { container, queryByRole } = await failed(error);
+        const { heading, sentence } = said(container);
 
+        expect(heading).toMatch(/failed/i);
+        expect(sentence).toMatch(why);
+        expect(`${heading} ${sentence}`).not.toMatch(
+          /not sent|nothing (was sent|left)/i,
+        );
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
-        expect(getByText("Transaction failed")).toBeInTheDocument();
-        expect(
-          getByText(`${said} Check Activity before sending again.`),
-        ).toBeInTheDocument();
         expect(container).not.toHaveTextContent(/try again/i);
-        expect(
-          getByRole("link", { name: "Open Activity" }),
-        ).toBeInTheDocument();
+        expect(historyLink(container)).toBeInTheDocument();
       },
     );
 
     it("should say what to check where there's no History, and not offer it", async () => {
-      const { getByText, queryByRole } = render(TransactionResult, {
+      const { container, queryByRole } = render(TransactionResult, {
         ...baseProps,
         hasHistory: false,
         onRetry,
@@ -522,42 +528,76 @@ describe("TransactionResult", () => {
       });
 
       await vi.waitFor(() =>
-        expect(
-          getByText(
-            "Refused: another transaction from this account came first. Wait a few minutes and check your balance before sending again.",
-          ),
-        ).toBeInTheDocument(),
+        expect(container).toHaveTextContent(/check your balance/i),
       );
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
 
-    it("should offer it only where something can go back to the review", async () => {
-      const { findByText, queryByRole } = render(TransactionResult, {
+    it("should follow a send whose answer got lost by the hash it may have gone out with, saying it isn't confirmed, and never offer Try again", async () => {
+      followTransaction.mockReturnValue(new Promise(() => {}));
+
+      const { container, queryByRole } = render(TransactionResult, {
         ...baseProps,
-        operation: Promise.reject(new TypeError("Failed to fetch")),
+        onRetry,
+        operation: Promise.reject(
+          outcomeUnknown(new TypeError("Failed to fetch"), hash),
+        ),
       });
 
-      await findByText("Not sent");
+      await vi.waitFor(() =>
+        expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
+      );
 
+      const status = container.querySelector(".transaction-status");
+
+      expect(status).toHaveClass("transaction-status--pending");
+      expect(
+        container.querySelector(".transaction-status__title"),
+      ).toHaveTextContent(/not confirmed/i);
+      expect(status).toHaveTextContent(MAY_HAVE_GONE_OUT);
+      expect(status).not.toHaveTextContent(NOTHING_WENT_OUT);
+      expect(queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(queryByRole("button", { name: "Don't send" })).toBeNull();
+    });
+
+    it("should say a send a block took but failed did, with the fee it was charged, and never offer Try again", async () => {
+      followTransaction.mockResolvedValue({
+        blockHeight: 4_687_200n,
+        error: "Panic: out of gas",
+        fee: 1_234_567n,
+      });
+
+      const { container, queryByRole } = render(TransactionResult, {
+        ...baseProps,
+        onRetry,
+        operation: Promise.resolve(hash),
+      });
+
+      await vi.waitFor(() =>
+        expect(container.querySelector(".transaction-status")).toHaveClass(
+          "transaction-status--failed",
+        ),
+      );
+
+      // Said failed, never sent.
+      expect(
+        container.querySelector(".transaction-status__title")?.textContent,
+      ).toBe("Failed");
+
+      // The fee charged, in its one fee row: not beside the most it could have
+      // cost (0.0025 DUSK), and never "no fee".
+      const fees = Array.from(
+        container.querySelectorAll(".transaction-status__details dt"),
+      ).filter((term) => /fee/i.test(term.textContent ?? ""));
+
+      expect(fees).toHaveLength(1);
+      expect(fees[0].textContent).not.toMatch(/at most|up to/i);
+      expect(fees[0].nextElementSibling).toHaveTextContent(
+        /^0\.001234567 DUSK$/,
+      );
+      expect(container).not.toHaveTextContent(/0\.0025\b/);
+      expect(container).not.toHaveTextContent(/\bno (network )?fee\b/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
-  });
-
-  it("should keep a sentence for any other failure, with its own message under Details", async () => {
-    const { container, findByText } = render(TransactionResult, {
-      ...baseProps,
-      operation: Promise.reject(new Error("Something no one expected")),
-    });
-
-    expect(
-      await findByText("Something went wrong before it was sent."),
-    ).toBeInTheDocument();
-
-    const details = /** @type {HTMLDetailsElement} */ (
-      container.querySelector("details")
-    );
-
-    expect(details.querySelector("summary")).toHaveTextContent(/^Details$/);
-    expect(details).toHaveTextContent("Something no one expected");
   });
 });

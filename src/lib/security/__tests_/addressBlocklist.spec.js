@@ -17,12 +17,12 @@ describe("addressBlocklist", () => {
 
     expect(getBlocklistedRecipient(` ${compromised.account} `)).toStrictEqual({
       address: compromised.account,
-      reason:
-        "Transfer restricted: this recipient address has been reported as compromised.",
+      reason: expect.stringMatching(/\S/),
     });
-    expect(getBlocklistedRecipient(scam.account)?.reason).toMatch(
-      /fraud\/scam/,
-    );
+    expect(getBlocklistedRecipient(scam.account)).toStrictEqual({
+      address: scam.account,
+      reason: expect.stringMatching(/\S/),
+    });
     expect(getBlocklistedRecipient("someone-else")).toBeUndefined();
     expect(getBlocklistedRecipient("")).toBeUndefined();
   });

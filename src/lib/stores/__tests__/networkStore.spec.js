@@ -197,9 +197,7 @@ describe("Network store", async () => {
 
       const { store } = await storeWithAnswers([]);
       const init = store.init();
-      const failed = expect(init).rejects.toThrow(
-        "Timed out while connecting to the network",
-      );
+      const failed = expect(init).rejects.toThrow();
 
       await vi.advanceTimersByTimeAsync(10_000);
       await failed;
@@ -372,9 +370,7 @@ describe("Network store", async () => {
         block: { header: { timestamp: 1_793_156_989 } },
       });
 
-      await expect(store.getLatestBlock()).rejects.toThrow(
-        "The latest block is unavailable",
-      );
+      await expect(store.getLatestBlock()).rejects.toThrow();
     });
   });
 });

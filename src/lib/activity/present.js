@@ -106,9 +106,10 @@ export const shortAddress = (address) => shortenAddress(address);
 /**
  * A memo on a payment from an address that isn't one of the profiles here or
  * a contact, said as theirs (`@dusk-network/app-core/activity`'s
- * sendersMemo), marked "Not a contact", which a .dusk name doesn't change,
- * as anyone can register one: the row names who it's from. Null for any
- * other memo.
+ * sendersMemo), with who it's from first, so a long memo can't cut it off:
+ * "From " their .dusk name, else their address, and " · not a contact",
+ * which a .dusk name doesn't change, as anyone can register one. Null for
+ * any other memo.
  *
  * @param {ActivityRow} row
  * @param {Parameters<typeof sendersMemo>[1]} among Who isn't a stranger
@@ -126,7 +127,7 @@ export function strangersMemo(row, among) {
     (row.counterparty ? shortAddress(row.counterparty) : "");
 
   return {
-    from: who ? "Not a contact" : theirs.from,
+    from: who ? `From ${who} · not a contact` : theirs.from,
     memo: theirs.memo,
   };
 }

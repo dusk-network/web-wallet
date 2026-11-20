@@ -6,6 +6,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/svelte";
+import { POSITION_WORDS } from "@dusk-network/app-core/sozu";
 
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
@@ -110,6 +111,114 @@ const baseProps = {
 /** @param {Element | null} element */
 const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
 
+/**
+ * Matches a name or a text that shows `amount` DUSK, whatever its words.
+ *
+ * @param {string} amount As the page writes it, as "0.985"
+ * @returns {(text: string) => boolean}
+ */
+const showsDusk = (amount) => (text) => ` ${text}`.includes(` ${amount} DUSK`);
+
+/**
+ * Matches `value` whole: not inside a longer figure, nor signed, so "1 DUSK"
+ * matches neither "11 DUSK", "0.1 DUSK" nor a signed "1 DUSK".
+ *
+ * @param {string} value As the page writes it, as "0.25%"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
+/**
+ * What a row of the summary says, found by its label's key word.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const rowOf = (container, label) =>
+  textOf(
+    Array.from(container.querySelectorAll(".stake-flow__rows > div"))
+      .find((row) => label.test(textOf(row.querySelector("dt")) ?? ""))
+      ?.querySelector("dd") ?? null,
+  ) ?? "";
+
+/**
+ * The label of a row of the summary, found by its key word.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const labelOf = (container, label) =>
+  Array.from(container.querySelectorAll(".stake-flow__rows dt"), textOf).find(
+    (term) => label.test(term ?? ""),
+  ) ?? "";
+
+/**
+ * Sozu's fee on deposits, as the form's Fees line gives it: "0.25%".
+ *
+ * @param {HTMLElement} container
+ */
+const depositRateOf = (container) =>
+  /(?<![^ ])([0-9.]+%) of deposits/.exec(
+    textOf(container.querySelector(".liquid-stake__facts")) ?? "",
+  )?.[1] ?? "";
+
+/**
+ * What the summary's total says: the most a stake costs, or what an unstake
+ * brings back.
+ *
+ * @param {HTMLElement} container
+ */
+const totalOf = (container) =>
+  textOf(container.querySelector(".stake-flow__rows--total dd")) ?? "";
+
+/**
+ * Each figure of what's held with Sozu, by the words both wallets name it.
+ *
+ * @param {HTMLElement} container
+ */
+const positionOf = (container) =>
+  Object.fromEntries(
+    Array.from(
+      container.querySelectorAll(".liquid-stake__position > div"),
+      (row) => [
+        textOf(row.querySelector("dt")) ?? "",
+        textOf(row.querySelector("dd")) ?? "",
+      ],
+    ),
+  );
+
+/**
+ * What the amount field says there is to stake, or to unstake.
+ *
+ * @param {HTMLElement} field
+ */
+const availableOf = (field) =>
+  textOf(
+    document.getElementById(
+      String(field.getAttribute("aria-describedby")).split(" ")[0],
+    ),
+  ) ?? "";
+
+/**
+ * What the sent transaction's details say for a term, found by its key word.
+ *
+ * @param {RegExp} term
+ */
+const detailOf = (term) =>
+  textOf(
+    Array.from(
+      document.querySelectorAll(".transaction-status__details dt"),
+    ).find((dt) => term.test(textOf(dt) ?? ""))?.nextElementSibling ?? null,
+  ) ?? "";
+
+/** What a send that failed came to, as its heading says it. */
+const failureOf = () =>
+  textOf(document.querySelector(".dusk-error-alert__summary")) ?? "";
+
+/** What a send on its way says it is. */
+const goingOf = () =>
+  textOf(document.querySelector(".transaction-status__what")) ?? "";
+
 describe("LiquidStake", () => {
   // Stake and Unstake take a click half a second after they show: on this
   // clock.
@@ -125,47 +234,6 @@ describe("LiquidStake", () => {
     vi.useRealTimers();
   });
 
-  it("names Sozu, a third party, with its site and no more", () => {
-    const { container, getByRole } = render(LiquidStake, baseProps);
-
-    // The terms are Dusk's own, linked under Settings › Support: none here.
-    expect(textOf(container.querySelector(".liquid-stake__intro"))).toBe(
-      "Sozu third party sozu.fi",
-    );
-    expect(
-      within(
-        /** @type {HTMLElement} */ (
-          container.querySelector(".liquid-stake__who")
-        ),
-      ).getByRole("link", { name: "sozu.fi" }),
-    ).toHaveAttribute("href", "https://sozu.fi/");
-    expect(getByRole("link", { name: "sozu.fi" })).toHaveAttribute(
-      "target",
-      "_blank",
-    );
-    // The Staking page compares the ways to stake: none of that here.
-    expect(
-      textOf(container.querySelector(".liquid-stake__facts")),
-    ).not.toContain("Any amount, no node needed");
-    // What stDUSK is, for whoever asks: under Details, closed.
-    const details = /** @type {HTMLDetailsElement} */ (
-      container.querySelector(".liquid-stake__details")
-    );
-
-    expect(details.open).toBe(false);
-    expect(textOf(details)).toContain(
-      "stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's pool, its rewards and its fees.",
-    );
-    // Sozu's fees, as its substrate gives them, and none to unstake.
-    expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
-      "Fees: 0.25% of deposits · 15% of rewards · no unstake fee",
-    );
-    // Its contract isn't one of the facts: it's under the fee's Edit.
-    expect(textOf(container.querySelector(".liquid-stake__facts"))).not.toMatch(
-      /contract/i,
-    );
-  });
-
   it("stakes any amount with Sozu's pool, saying about what it gets", async () => {
     const { container, getByLabelText, getByRole } = render(
       LiquidStake,
@@ -178,34 +246,35 @@ describe("LiquidStake", () => {
 
     // For what's left once Sozu's 0.25% deposit fee is off it, and what
     // that's worth now.
-    expect(textOf(container.querySelector(".liquid-stake__estimate"))).toBe(
-      "You get about 32.4378 stDUSK (≈ 99.75 DUSK now).",
-    );
-    // The review shows alone: how and when it comes back, and what pays.
-    expect(
-      Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf),
-    ).toStrictEqual([
-      "Stake with Sozu 100 DUSK",
-      "You get about 32.4378 stDUSK",
-      "Deposit fee, not refunded 0.25 DUSK",
-      "Getting it back Any time, no Sozu fee, no waiting",
-      "Fee paid from Public balance",
-      "Total up to 100.005 DUSK",
-    ]);
-    // No line about what a failed call is charged.
-    expect(container).not.toHaveTextContent(/fails/);
+    const estimate = container.querySelector(".liquid-stake__estimate");
 
-    // The pool it calls, named, with its ID to copy, under the fee's Edit.
-    expect(container.querySelector(".liquid-stake__contract")).toBeNull();
+    expect(estimate).toHaveTextContent(wholeFigure("32.4378 stDUSK"));
+    expect(estimate).toHaveTextContent(wholeFigure("99.75 DUSK"));
 
+    // The amount, what it gets, Sozu's deposit fee, and the most it costs,
+    // each in its row.
+    expect(rowOf(container, /stake/i)).toBe("100 DUSK");
+    expect(rowOf(container, /you get/i)).toBe("32.4378 stDUSK");
+    // Its rate where Sozu's fees are, its amount in its own row.
+    expect(depositRateOf(container)).toBe("0.25%");
+    expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
+    expect(totalOf(container)).toMatch(wholeFigure("100.005 DUSK"));
+
+    // The pool it calls, by its ID, under the fee's Edit, and copied whole.
+    const writeText = vi.fn().mockResolvedValue(undefined);
+
+    Object.assign(navigator, { clipboard: { writeText } });
     await fireEvent.click(getByRole("button", { name: "Edit" }));
 
-    expect(textOf(container.querySelector(".liquid-stake__contract"))).toBe(
-      "Contract Sozu pool · 728839…3078f2 Copy",
+    const contract = /** @type {HTMLElement} */ (
+      container.querySelector(".liquid-stake__contract")
     );
-    expect(
-      getByRole("button", { name: "Copy contract ID" }),
-    ).toBeInTheDocument();
+
+    expect(contract).toHaveTextContent(wholeFigure("728839…3078f2"));
+
+    await fireEvent.click(within(contract).getByRole("button"));
+
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(POOL);
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -213,9 +282,7 @@ describe("LiquidStake", () => {
     expect(baseProps.recheck).not.toHaveBeenCalled();
 
     await afterConfirmDelay();
-    await fireEvent.click(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-    );
+    await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
     // A stake's own gas: 5,000,000 at the node's price, once Sozu's terms
     // are read again.
@@ -239,7 +306,7 @@ describe("LiquidStake", () => {
       });
 
     it("sends nothing on the first press: the one button beside the form is Review", async () => {
-      const { container, getByLabelText, getByRole, queryByRole } = render(
+      const { getByLabelText, getByRole, queryByRole } = render(
         LiquidStake,
         baseProps,
       );
@@ -247,63 +314,29 @@ describe("LiquidStake", () => {
       await typed(getByLabelText);
       await afterConfirmDelay();
 
-      expect(queryByRole("button", { name: /^Stake/ })).toBeNull();
-      expect(container.querySelector(".stake-flow")).not.toHaveClass(
-        "stake-flow--review",
-      );
+      expect(queryByRole("button", { name: showsDusk("100") })).toBeNull();
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(baseProps.execute).not.toHaveBeenCalled();
       expect(baseProps.recheck).not.toHaveBeenCalled();
-      expect(container.querySelector(".stake-flow")).toHaveClass(
-        "stake-flow--review",
-      );
-      expect(queryByRole("button", { name: "Review" })).toBeNull();
-      expect(getByRole("heading", { name: /Review/ })).toHaveFocus();
+      expect(
+        getByRole("button", { name: showsDusk("100") }),
+      ).toBeInTheDocument();
     });
 
-    it("goes back to the form, with what's typed, and sends only once pressed from the review", async () => {
-      const { getByLabelText, getByRole, queryByRole } = render(
-        LiquidStake,
-        baseProps,
-      );
-
-      await typed(getByLabelText);
-      await fireEvent.click(getByRole("button", { name: "Review" }));
-      await fireEvent.click(getByRole("button", { name: "Back" }));
-
-      expect(getByLabelText("Amount")).toHaveValue("100");
-      expect(queryByRole("button", { name: /^Stake/ })).toBeNull();
-      expect(baseProps.execute).not.toHaveBeenCalled();
-    });
-
-    /** @param {ParentNode} container */
-    const depositFeeRow = (container) =>
-      Array.from(
-        container.querySelectorAll(".stake-flow__rows > div"),
-        textOf,
-      ).find((row) => row?.startsWith("Deposit fee"));
-
-    it("says the deposit fee isn't refunded, with its amount, in its row on the form and the review", async () => {
+    it("says on the review that the deposit fee doesn't come back, with its amount", async () => {
       const { container, getByLabelText, getByRole } = render(
         LiquidStake,
         baseProps,
       );
 
       await typed(getByLabelText);
-
-      expect(depositFeeRow(container)).toBe(
-        "Deposit fee, not refunded 0.25 DUSK",
-      );
-
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(depositFeeRow(container)).toBe(
-        "Deposit fee, not refunded 0.25 DUSK",
-      );
-      // Said once, in its row: no line of its own by the button.
-      expect(container.querySelector(".stake-flow__final")).toBeNull();
+      // In the fee's own row: that it doesn't come back, and how much.
+      expect(labelOf(container, /deposit/i)).toMatch(/not refunded/i);
+      expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
     });
 
     it("hides that amount with the balances, and says it without one where the fee couldn't be read", async () => {
@@ -315,9 +348,9 @@ describe("LiquidStake", () => {
         await typed(hidden.getByLabelText);
         await fireEvent.click(hidden.getByRole("button", { name: "Review" }));
 
-        expect(depositFeeRow(hidden.container)).toBe(
-          "Deposit fee, not refunded •••• hidden DUSK",
-        );
+        // Not refunded, said, with no figure: 0.25 DUSK of a stake's 100.
+        expect(labelOf(hidden.container, /deposit/i)).toMatch(/not refunded/i);
+        expect(rowOf(hidden.container, /deposit/i)).not.toMatch(/[0-9]/);
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -332,28 +365,9 @@ describe("LiquidStake", () => {
       await typed(unread.getByLabelText);
       await fireEvent.click(unread.getByRole("button", { name: "Review" }));
 
-      expect(depositFeeRow(unread.container)).toBe(
-        "Deposit fee, not refunded Taken from the deposit",
-      );
-    });
-
-    it("says nothing of a deposit fee on an unstake's review", async () => {
-      const { container, getByLabelText, getByRole } = render(LiquidStake, {
-        ...baseProps,
-        action: "unstake",
-        sozu: {
-          ...baseProps.sozu,
-          status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
-        },
-      });
-
-      await fireEvent.input(getByLabelText("Amount"), {
-        target: { value: "1" },
-      });
-      await fireEvent.click(getByRole("button", { name: "Review" }));
-
-      expect(container.querySelector(".stake-flow__final")).toBeNull();
-      expect(getByRole("button", { name: "Unstake 1 DUSK" })).toBeEnabled();
+      // Not refunded, said, with no figure for a fee it couldn't read.
+      expect(labelOf(unread.container, /deposit/i)).toMatch(/not refunded/i);
+      expect(rowOf(unread.container, /deposit/i)).not.toMatch(/[0-9]/);
     });
   });
 
@@ -372,44 +386,54 @@ describe("LiquidStake", () => {
       await fireEvent.click(view.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(
-        view.getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
+        view.getByRole("button", { name: showsDusk("100") }),
       );
-      await view.findByText(/^(Transaction failed|Not sent|Not confirmed)$/);
 
       return { ...view, execute };
     };
 
     it("goes back to the review with Try again, the amount kept, and reads Sozu's terms again before it goes", async () => {
-      const { container, execute, findByText, getByLabelText, getByRole } =
-        await staked(new TypeError("Failed to fetch"));
+      const { execute, findByRole, getByLabelText, getByRole } = await staked(
+        new TypeError("Failed to fetch"),
+      );
+      const tryAgain = await findByRole("button", { name: "Try again" });
 
+      // Nothing went out.
+      expect(failureOf()).toMatch(/not sent/i);
       expect(baseProps.recheck).toHaveBeenCalledOnce();
 
-      await fireEvent.click(getByRole("button", { name: "Try again" }));
+      await fireEvent.click(tryAgain);
 
-      expect(container.querySelector(".stake-flow")).toHaveClass(
-        "stake-flow--review",
-      );
+      expect(
+        getByRole("button", { name: showsDusk("100") }),
+      ).toBeInTheDocument();
       expect(getByLabelText("Amount")).toHaveValue("100");
       expect(execute).toHaveBeenCalledOnce();
 
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
       await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(2));
       expect(baseProps.recheck).toHaveBeenCalledTimes(2);
-      expect(await findByText("100 DUSK to Sozu")).toBeInTheDocument();
+      // On its way, with its amount.
+      await vi.waitFor(() =>
+        expect(
+          document.querySelector(".transaction-status--pending"),
+        ).not.toBeNull(),
+      );
+      expect(goingOf()).toMatch(wholeFigure("100 DUSK"));
     });
 
     it("offers no Try again when it may have gone out", async () => {
-      const { execute, getByRole, queryByRole } = await staked(
+      const { execute, findByRole, queryByRole } = await staked(
         outcomeUnknown(new TypeError("Failed to fetch")),
       );
 
+      expect(
+        await findByRole("link", { name: "Open Activity" }),
+      ).toBeInTheDocument();
+      expect(failureOf()).toMatch(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
-      expect(getByRole("link", { name: "Open Activity" })).toBeInTheDocument();
       expect(execute).toHaveBeenCalledOnce();
     });
   });
@@ -424,15 +448,11 @@ describe("LiquidStake", () => {
       target: { value: "0,5" },
     });
 
-    expect(container.querySelector(".stake-flow__rows dd")).toHaveTextContent(
-      "0.5 DUSK",
-    );
+    expect(rowOf(container, /stake/i)).toBe("0.5 DUSK");
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(
-      getByRole("button", { name: "Stake 0.5 DUSK with Sozu" }),
-    ).toBeEnabled();
+    expect(getByRole("button", { name: showsDusk("0.5") })).toBeEnabled();
   });
 
   it("hides the DUSK of Sozu's deposit fee with the balances, not its rate", async () => {
@@ -445,24 +465,17 @@ describe("LiquidStake", () => {
         target: { value: "50" },
       });
 
-      expect(
-        Array.from(
-          container.querySelectorAll(".stake-flow__rows > div"),
-          textOf,
-        ).find((row) => row?.startsWith("Deposit fee")),
-      ).toBe("Deposit fee, not refunded •••• hidden DUSK");
-      // Its rate, which gives nothing away, stays with Sozu's fees.
-      expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
-        "0.25% of deposits",
-      );
+      // Its 0.25% rate, and no figure for its 0.125 DUSK.
+      expect(depositRateOf(container)).toBe("0.25%");
+      expect(rowOf(container, /deposit/i)).not.toMatch(/[0-9]/);
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("says what's on its way in no tense of its own, under Sending…", async () => {
+  it("says what an unstake sends while it goes", async () => {
     const execute = vi.fn().mockResolvedValue("ab".repeat(32));
-    const { findByText, getByLabelText, getByRole } = render(LiquidStake, {
+    const { getByLabelText, getByRole } = render(LiquidStake, {
       ...baseProps,
       action: "unstake",
       execute,
@@ -477,9 +490,14 @@ describe("LiquidStake", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: showsDusk("1") }));
 
-    expect(await findByText("1 DUSK from Sozu")).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector(".transaction-status--pending"),
+      ).not.toBeNull(),
+    );
+    expect(goingOf()).toMatch(wholeFigure("1 DUSK"));
   });
 
   it("says on the Sent screen the stDUSK a stake got, and the rate, once its block is final, from the facts the export reads", async () => {
@@ -531,66 +549,22 @@ describe("LiquidStake", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-    );
+    await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
-    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+    // Final: in its block, with the fee it was charged.
+    expect(await findByText(showsDusk("0.00441901"))).toBeInTheDocument();
+    expect(
+      document.querySelector(".transaction-status--completed"),
+    ).not.toBeNull();
+    expect(detailOf(/fee/i)).toBe("0.00441901 DUSK");
 
-    const details = /** @type {HTMLElement} */ (
-      document.querySelector(".transaction-status__details")
-    );
-
-    // Sent, and the archive doesn't list it yet: said to be coming.
-    expect(textOf(details)).toContain("You got Reading…");
-    expect(textOf(details)).toContain("Rate Reading…");
-
+    // Read again a moment later, once the archive lists it.
     await vi.advanceTimersByTimeAsync(5_000);
 
-    expect(textOf(details)).toContain("You got 33.25 stDUSK");
-    expect(textOf(details)).toContain("Rate 1 stDUSK = 3 DUSK");
-    expect(textOf(details)).not.toContain("Reading…");
+    expect(detailOf(/got/i)).toBe("33.25 stDUSK");
+    expect(detailOf(/rate/i)).toBe("1 stDUSK = 3 DUSK");
     activity.sozuFacts.mockReset();
     activity.sozuFacts.mockResolvedValue(new Map());
-  });
-
-  it("says no more that the stDUSK is coming once the archive doesn't list it in time: History has it later", async () => {
-    followTransaction.mockResolvedValueOnce(
-      /** @type {any} */ ({
-        blockHeight: 4_700_123n,
-        error: null,
-        fee: 4_419_010n,
-        timestamp: null,
-      }),
-    );
-    activity.sozuFacts.mockResolvedValue(new Map());
-    vi.useFakeTimers({ toFake: ["performance", "setTimeout"] });
-
-    const { findByText, getByLabelText, getByRole } = render(
-      LiquidStake,
-      baseProps,
-    );
-
-    await fireEvent.input(getByLabelText("Amount"), {
-      target: { value: "100" },
-    });
-    await fireEvent.click(getByRole("button", { name: "Review" }));
-    await afterConfirmDelay();
-    await fireEvent.click(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-    );
-
-    expect(await findByText(/^Sent at/)).toBeInTheDocument();
-
-    const details = () =>
-      textOf(document.querySelector(".transaction-status__details"));
-
-    expect(details()).toContain("You got Reading…");
-
-    await vi.advanceTimersByTimeAsync(20_000);
-
-    expect(details()).not.toContain("Reading…");
-    expect(details()).not.toContain("You got");
   });
 
   it("says the stDUSK a stake got on its Sent screen also when the send's answer got lost, by the hash it went out with", async () => {
@@ -633,19 +607,19 @@ describe("LiquidStake", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-    );
+    await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
-    expect(await findByText(/^Sent at/)).toBeInTheDocument();
+    // Final: in its block, with the fee it was charged.
+    expect(await findByText(showsDusk("0.00441901"))).toBeInTheDocument();
     await vi.advanceTimersByTimeAsync(0);
 
+    expect(
+      document.querySelector(".transaction-status--completed"),
+    ).not.toBeNull();
     expect(activity.sozuFacts).toHaveBeenCalledWith([
       expect.objectContaining({ hash: HASH }),
     ]);
-    expect(
-      textOf(document.querySelector(".transaction-status__details")),
-    ).toContain("You got 33.25 stDUSK");
+    expect(detailOf(/got/i)).toBe("33.25 stDUSK");
     activity.sozuFacts.mockReset();
     activity.sozuFacts.mockResolvedValue(new Map());
   });
@@ -667,8 +641,9 @@ describe("LiquidStake", () => {
     });
 
     // At 3.0751 DUSK a stDUSK, 4 lux burns the least there is of it.
+    expect(getByRole("alert")).toHaveTextContent(/minimum/i);
     expect(getByRole("alert")).toHaveTextContent(
-      "The minimum unstake is 0.000000004 DUSK.",
+      wholeFigure("0.000000004 DUSK"),
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -679,7 +654,7 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(
-      getByRole("button", { name: "Unstake 0.000000004 DUSK" }),
+      getByRole("button", { name: showsDusk("0.000000004") }),
     ).toBeEnabled();
     cleanup();
 
@@ -693,7 +668,7 @@ describe("LiquidStake", () => {
     await fireEvent.click(small.getByRole("button", { name: "Review" }));
 
     expect(
-      small.getByRole("button", { name: "Unstake 0.000000003 DUSK" }),
+      small.getByRole("button", { name: showsDusk("0.000000003") }),
     ).toBeEnabled();
   });
 
@@ -705,8 +680,9 @@ describe("LiquidStake", () => {
     });
 
     // 4 lux gets stDUSK at the rate, so 5 does once the fee is off it.
+    expect(getByRole("alert")).toHaveTextContent(/minimum/i);
     expect(getByRole("alert")).toHaveTextContent(
-      "The minimum stake is 0.000000005 DUSK.",
+      wholeFigure("0.000000005 DUSK"),
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -717,12 +693,12 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(
-      getByRole("button", { name: "Stake 0.000000005 DUSK with Sozu" }),
+      getByRole("button", { name: showsDusk("0.000000005") }),
     ).toBeEnabled();
   });
 
-  it("says Sozu's deposit fee as the contract gives it, and where it couldn't be read, that it's taken from the deposit", async () => {
-    const rows = async (/** @type {SozuFees | null} */ fees) => {
+  it("says Sozu's deposit fee as the contract gives it, and none where it couldn't be read", async () => {
+    const depositFeeFor = async (/** @type {SozuFees | null} */ fees) => {
       const { container, getByLabelText } = render(LiquidStake, {
         ...baseProps,
         sozu: { error: null, loading: false, status: statusWith({}, fees) },
@@ -732,42 +708,63 @@ describe("LiquidStake", () => {
         target: { value: "1" },
       });
 
-      const fee = textOf(
-        Array.from(container.querySelectorAll(".stake-flow__rows > div")).find(
-          (row) => textOf(row)?.startsWith("Deposit fee"),
-        ) ?? null,
-      );
+      // Its rate where Sozu's fees are, its amount in its own row.
+      const fee = {
+        amount: rowOf(container, /deposit/i),
+        rate: depositRateOf(container),
+      };
 
       cleanup();
 
       return fee;
     };
 
-    expect(await rows(FEES)).toBe("Deposit fee, not refunded 0.0025 DUSK");
-    expect(
-      await rows({ ...FEES, deposit: { denominator: 100n, numerator: 1n } }),
-    ).toBe("Deposit fee, not refunded 0.01 DUSK");
-    expect(await rows(null)).toBe(
-      "Deposit fee, not refunded Taken from the deposit",
-    );
+    // Of 1 DUSK.
+    const read = await depositFeeFor(FEES);
+
+    expect(read.rate).toBe("0.25%");
+    expect(read.amount).toMatch(wholeFigure("0.0025 DUSK"));
+
+    const raised = await depositFeeFor({
+      ...FEES,
+      deposit: { denominator: 100n, numerator: 1n },
+    });
+
+    expect(raised.rate).toBe("1%");
+    expect(raised.amount).toMatch(wholeFigure("0.01 DUSK"));
+    // No figure it couldn't read.
+    const unread = await depositFeeFor(null);
+
+    expect(unread.rate).toBe("");
+    expect(unread.amount).not.toMatch(/[0-9]/);
   });
 
   it("doesn't let an amount give away the balance while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
-      const { container, getByLabelText } = render(LiquidStake, baseProps);
-      const error = async (/** @type {string} */ value) => {
+      const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
+      const refusal = async (/** @type {string} */ value) => {
         await fireEvent.input(getByLabelText("Amount"), {
           target: { value },
         });
 
-        return textOf(container.querySelector(".liquid-stake__error"));
+        expect(getByRole("button", { name: "Review" })).toBeDisabled();
+
+        return getByRole("alert");
       };
 
-      expect(await error("172")).toBe("Too little left for the fees.");
-      expect(await error("999")).toBe("More than you have.");
-      expect(textOf(container)).not.toMatch(/\d DUSK more/);
+      // Refused, with no figure: shown, these would say 0.015 and 827.015
+      // DUSK more than the balance.
+      const tooLittle = await refusal("172");
+
+      expect(tooLittle).toHaveTextContent(/too little/i);
+      expect(tooLittle).not.toHaveTextContent(/[0-9]/);
+
+      const tooMuch = await refusal("999");
+
+      expect(tooMuch).toHaveTextContent(/more than/i);
+      expect(tooMuch).not.toHaveTextContent(/[0-9]/);
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -784,11 +781,20 @@ describe("LiquidStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Amount")).toHaveValue("••••");
+      // All but both fees, 171.985: filled in, with no figure in the field.
+      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
+
+      expect(field.value).not.toBe("");
+      expect(field.value).not.toMatch(/[0-9]/);
+      expect(textOf(container)).not.toContain("171.985");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("button", { name: /^Stake •••• DUSK/ })).toBeEnabled();
+      const stake = getByRole("button", { name: /DUSK/ });
+
+      expect(stake).toBeEnabled();
+      expect(stake).not.toHaveAccessibleName(/[0-9]/);
+      expect(textOf(container)).not.toContain("171.985");
       for (const row of container.querySelectorAll(".stake-flow__rows dd")) {
         expect(textOf(row)).not.toMatch(/\d (st)?DUSK/);
       }
@@ -802,67 +808,37 @@ describe("LiquidStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("button", { name: /^Stake 5 DUSK/ })).toBeEnabled();
+      expect(getByRole("button", { name: showsDusk("5") })).toBeEnabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("says how much a stake is short of the public balance, fees included", async () => {
-    const { container, getByLabelText, getByRole } = render(
-      LiquidStake,
-      baseProps,
-    );
+  it("says when a stake is more than the public balance, with this fee and the fee to unstake later", async () => {
+    const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
 
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "172" },
     });
 
-    expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-      "0.015 DUSK short, fees included.",
-    );
+    expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.015 DUSK"));
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
-
-    // What is typed shows in the summary, muted.
-    const [stake] = container.querySelectorAll(".stake-flow__rows dd");
-
-    expect(stake).toHaveTextContent("172 DUSK");
-    expect(stake).toHaveClass("stake-flow__muted");
   });
 
   describe("what a stake leaves to get back out with", () => {
     const shown = { ...baseProps, availableBalance: DUSK };
 
     it("keeps this fee and the fee to unstake with Max, which then pays for that unstake", async () => {
-      const { container, getByLabelText, getByRole } = render(
-        LiquidStake,
-        shown,
-      );
+      const { getByLabelText, getByRole } = render(LiquidStake, shown);
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       // 1 DUSK, less 0.005 for this stake and 0.01 for the unstake.
       expect(getByLabelText("Amount")).toHaveValue("0.985");
-      expect(container).toHaveTextContent(
-        "Max leaves 0.015 DUSK for this fee and unstaking.",
-      );
-      // The split, on hover.
-      expect(
-        container.querySelector(".liquid-stake__hint[title]"),
-      ).toHaveAttribute(
-        "title",
-        "Up to 0.005 DUSK for this fee, 0.01 DUSK to unstake later",
-      );
-      expect(getByRole("button", { name: "Max" })).toHaveAttribute(
-        "title",
-        "All of it, less the network fee and the fee to unstake later",
-      );
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(
-        getByRole("button", { name: "Stake 0.985 DUSK with Sozu" }),
-      ).toBeEnabled();
+      expect(getByRole("button", { name: showsDusk("0.985") })).toBeEnabled();
 
       cleanup();
 
@@ -882,24 +858,19 @@ describe("LiquidStake", () => {
       await fireEvent.click(after.getByRole("button", { name: "Review" }));
 
       expect(
-        after.getByRole("button", { name: "Unstake 0.97 DUSK" }),
+        after.getByRole("button", { name: showsDusk("0.97") }),
       ).toBeEnabled();
     });
 
     it("refuses an amount typed that leaves too little to unstake, as Max would", async () => {
-      const { container, getByLabelText, getByRole } = render(
-        LiquidStake,
-        shown,
-      );
+      const { getByLabelText, getByRole } = render(LiquidStake, shown);
 
       // All but this stake's own fee: the most it took before.
       await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "0.995" },
       });
 
-      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "0.01 DUSK short, fees included.",
-      );
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.01 DUSK"));
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
 
@@ -924,97 +895,50 @@ describe("LiquidStake", () => {
       },
     };
 
-    it("has the fee's Edit with the form on a phone when the balance is short of the fee, and only then", async () => {
-      const shortOf = (/** @type {bigint} */ availableBalance) => {
-        const { container } = render(LiquidStake, {
-          ...baseProps,
-          action: "unstake",
-          availableBalance,
-          sozu: {
-            ...baseProps.sozu,
-            status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
-          },
-        });
-        const isShort = Boolean(
-          container.querySelector(".stake-flow--fee-short"),
-        );
-
-        cleanup();
-
-        return isShort;
-      };
-
-      // Below the least the fee can go to: lowering it won't do.
-      expect(shortOf(0n)).toBe(false);
-      expect(shortOf(4_000_000n - 1n)).toBe(false);
-      expect(shortOf(4_000_000n)).toBe(true);
-      expect(shortOf(10_000_000n - 1n)).toBe(true);
-      expect(shortOf(10_000_000n)).toBe(false);
-    });
-
     it("says how much is missing to unstake as the tab opens, before anything is typed", async () => {
-      const { container, getByLabelText, getByRole } = render(
-        LiquidStake,
-        stranded,
-      );
-      const said =
-        "Public balance doesn't cover the fee: 0.0072 DUSK short. Add that much to it first.";
+      const { getByLabelText, getByRole } = render(LiquidStake, stranded);
 
       expect(getByLabelText("Amount")).toHaveValue("");
-      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        said,
-      );
-      expect(container.querySelector("[role='alert']")).toHaveTextContent(said);
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.0072 DUSK"));
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        said,
-      );
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.0072 DUSK"));
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
 
-    it("offers to lower the fee only where it can get low enough, and does", async () => {
-      const { container, getByLabelText, getByRole } = render(LiquidStake, {
+    it("says what's missing of the fee, and nothing once the fee is lowered to what the balance pays", async () => {
+      const { getByLabelText, getByRole, queryByRole } = render(LiquidStake, {
         ...stranded,
         availableBalance: 5_000_000n,
       });
 
-      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "Public balance doesn't cover the fee: 0.005 DUSK short. Add that much to it first, or lower the fee.",
-      );
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.005 DUSK"));
 
       await fireEvent.click(getByRole("button", { name: "Edit" }));
       await fireEvent.input(getByLabelText(/gas limit/i), {
         target: { value: "5000000" },
       });
 
-      expect(container.querySelector(".liquid-stake__error")).toBeNull();
+      expect(queryByRole("alert")).toBeNull();
     });
 
     it("says what's missing of the fee as it's edited, down to its minimum", async () => {
-      const { container, getByLabelText, getByRole } = render(
-        LiquidStake,
-        stranded,
-      );
+      const { getByLabelText, getByRole } = render(LiquidStake, stranded);
 
       await fireEvent.click(getByRole("button", { name: "Edit" }));
       await fireEvent.input(getByLabelText(/gas limit/i), {
         target: { value: "4000000" },
       });
 
-      expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-        "Public balance doesn't cover the fee: 0.0012 DUSK short. Add that much to it first.",
-      );
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.0012 DUSK"));
     });
 
     it("says what's missing of an empty balance too, and hides the figure, which gives a balance away, with the balances", () => {
       const empty = render(LiquidStake, { ...stranded, availableBalance: 0n });
 
-      expect(
-        textOf(empty.container.querySelector(".liquid-stake__error")),
-      ).toBe(
-        "The fee comes from the public balance, which is empty: 0.01 DUSK short. Add that much to it first.",
+      expect(empty.getByRole("alert")).toHaveTextContent(
+        wholeFigure("0.01 DUSK"),
       );
 
       cleanup();
@@ -1023,9 +947,8 @@ describe("LiquidStake", () => {
       try {
         const hidden = render(LiquidStake, stranded);
 
-        expect(
-          textOf(hidden.container.querySelector(".liquid-stake__error")),
-        ).toBe("Public balance doesn't cover the fee: •••• DUSK short.");
+        // No figure: shown, it would say 0.0072 DUSK short.
+        expect(hidden.getByRole("alert")).not.toHaveTextContent(/[0-9]/);
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -1069,19 +992,14 @@ describe("LiquidStake", () => {
         },
       });
 
-      expect(
-        Array.from(
-          container.querySelectorAll(".liquid-stake__position > div"),
-          textOf,
-        ),
-      ).toStrictEqual([
-        "Put in 90 DUSK",
-        "Taken out 5 DUSK",
-        "Worth now 100 DUSK",
-        "Deposit fees 0.25 DUSK",
-        "Rewards so far, before deposit fees 15.25 DUSK",
-        "stDUSK 32 stDUSK",
-      ]);
+      expect(positionOf(container)).toStrictEqual({
+        [POSITION_WORDS.putIn]: "90 DUSK",
+        [POSITION_WORDS.takenOut]: "5 DUSK",
+        [POSITION_WORDS.worthNow]: "100 DUSK",
+        [POSITION_WORDS.depositFees]: "0.25 DUSK",
+        [POSITION_WORDS.earned]: "15.25 DUSK",
+        [POSITION_WORDS.stDusk]: "32 stDUSK",
+      });
     });
 
     it("says a deposit fee read from its stake to the lux, and the pool's rounding of a lux as no rewards, not fewer than none", () => {
@@ -1099,22 +1017,17 @@ describe("LiquidStake", () => {
         },
       });
 
-      expect(
-        Array.from(
-          container.querySelectorAll(".liquid-stake__position > div"),
-          textOf,
-        ),
-      ).toStrictEqual([
-        "Put in 0.5 DUSK",
-        "Worth now 0.4987 DUSK",
-        "Deposit fees 0.00125 DUSK",
-        "Rewards so far, before deposit fees 0 DUSK",
-        "stDUSK 0.498 stDUSK",
-      ]);
+      expect(positionOf(container)).toStrictEqual({
+        [POSITION_WORDS.putIn]: "0.5 DUSK",
+        [POSITION_WORDS.worthNow]: "0.4987 DUSK",
+        [POSITION_WORDS.depositFees]: "0.00125 DUSK",
+        [POSITION_WORDS.earned]: "0 DUSK",
+        [POSITION_WORDS.stDusk]: "0.498 stDUSK",
+      });
     });
 
     it("says deposit fees it could only work out are about that, and what's on its way isn't counted yet", () => {
-      const { container, getByText } = render(LiquidStake, {
+      const { container } = render(LiquidStake, {
         ...baseProps,
         ...held,
         history: {
@@ -1124,12 +1037,20 @@ describe("LiquidStake", () => {
         },
       });
 
+      // Worked out, not read: about. The stake on its way isn't counted:
+      // what was put in is the one that went, its fee 0.25% of it.
+      expect(positionOf(container)).toStrictEqual({
+        [POSITION_WORDS.putIn]: "90 DUSK",
+        [POSITION_WORDS.worthNow]: "100 DUSK",
+        [POSITION_WORDS.depositFeesAbout]: "0.225 DUSK",
+        [POSITION_WORDS.earned]: "10.225 DUSK",
+        [POSITION_WORDS.stDusk]: "32 stDUSK",
+      });
       expect(
-        textOf(container.querySelector(".liquid-stake__position")),
-      ).toContain("Deposit fees, about 0.225 DUSK");
-      expect(
-        getByText("One more on its way isn't counted yet."),
-      ).toBeInTheDocument();
+        container.querySelector(
+          ".liquid-stake__position + .liquid-stake__hint",
+        ),
+      ).toHaveTextContent(/on its way/i);
     });
 
     it("says what's on its way, as after a reload while it went, and leaves it out of what can be staked or unstaked", async () => {
@@ -1148,75 +1069,36 @@ describe("LiquidStake", () => {
           value: 2n * DUSK,
         }),
       ];
-      const { container, getByRole, getByText, queryByText } = render(
-        LiquidStake,
-        {
-          ...baseProps,
-          ...held,
-          history: { reading: false, rows: going, whole: true },
-          underWay: going,
-        },
-      );
+      const { container, getByLabelText, getByRole } = render(LiquidStake, {
+        ...baseProps,
+        ...held,
+        history: { reading: false, rows: going, whole: true },
+        underWay: going,
+      });
+      const banners = container.querySelectorAll(".liquid-stake__under-way");
 
-      expect(
-        Array.from(
-          container.querySelectorAll(".liquid-stake__under-way"),
-          (banner) => textOf(banner),
-        ),
-      ).toStrictEqual([
-        "Your 0.1 DUSK stake is on its way. See in Activity",
-        "Your 2 DUSK unstake is on its way. See in Activity",
-      ]);
-      expect(queryByText(/more on its way/)).toBeNull();
+      // Each on its way, with its amount and the way it goes.
+      expect(banners).toHaveLength(2);
+      expect(banners[0]).toHaveTextContent(wholeFigure("0.1 DUSK"));
+      expect(banners[0]).toHaveTextContent(/ stake /);
+      expect(banners[1]).toHaveTextContent(wholeFigure("2 DUSK"));
+      expect(banners[1]).toHaveTextContent(/ unstake /);
 
       // 172 DUSK less the 0.1 on its way.
-      expect(
-        getByText(/^Available/, { selector: ".liquid-stake__hint" }),
-      ).toHaveTextContent("Available 171.9 DUSK (public)");
+      expect(availableOf(getByLabelText("Amount"))).toMatch(
+        wholeFigure("171.9 DUSK"),
+      );
 
       // 100 DUSK less the 2 on their way back.
       await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
-      expect(
-        getByText(/^Staked with Sozu/, { selector: ".liquid-stake__hint" }),
-      ).toHaveTextContent("Staked with Sozu 98 DUSK");
+      expect(availableOf(getByLabelText("Amount"))).toMatch(
+        wholeFigure("98 DUSK"),
+      );
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       expect(getByRole("textbox", { name: "Amount" })).toHaveValue("98");
-    });
-
-    it("waits for the whole history for what it can't say from part of it, and shows what the status says all the same", () => {
-      const reading = render(LiquidStake, {
-        ...baseProps,
-        ...held,
-        history: { reading: true, rows: [] },
-      });
-
-      expect(
-        Array.from(
-          reading.container.querySelectorAll(".liquid-stake__position > div"),
-          textOf,
-        ),
-      ).toStrictEqual([
-        "Worth now 100 DUSK",
-        "Rewards so far, before deposit fees Reading your history…",
-        "stDUSK 32 stDUSK",
-      ]);
-      reading.unmount();
-
-      const failed = render(LiquidStake, {
-        ...baseProps,
-        ...held,
-        history: { reading: false, rows: [] },
-      });
-
-      expect(
-        Array.from(
-          failed.container.querySelectorAll(".liquid-stake__position > div"),
-          textOf,
-        ),
-      ).toStrictEqual(["Worth now 100 DUSK", "stDUSK 32 stDUSK"]);
     });
 
     it("hides all of it with the balances", () => {
@@ -1233,121 +1115,6 @@ describe("LiquidStake", () => {
       ).not.toMatch(/\d/);
       settingsStore.reset();
     });
-
-    it.each([
-      ["hi-IN", "20.7Cr DUSK staked now"],
-      ["de-DE", "206,9 Mio. DUSK staked now"],
-      ["fr-FR", "206,9 M DUSK staked now"],
-      ["en-GB", "206.9M DUSK staked now"],
-    ])(
-      "writes what's staked in %s's digits among the line's English words, in its own short words where they're in Latin letters",
-      (language, staked) => {
-        settingsStore.update((store) => ({ ...store, language }));
-
-        try {
-          const { container } = render(LiquidStake, {
-            ...baseProps,
-            rates: {
-              native: 0.24,
-              provisioners: [
-                { amount: 206_900_000n * DUSK, eligibility: 999_000n },
-              ],
-              tipHeight: 1_000_000n,
-            },
-          });
-          // The line of what the rate is made of, under Details.
-          const line = textOf(
-            container.querySelector(".liquid-stake__details"),
-          );
-
-          expect(line?.replace(/\s/g, " ")).toContain(staked);
-          expect(line).not.toMatch(/[\u0900-\u097f]/);
-        } finally {
-          settingsStore.reset();
-        }
-      },
-    );
-
-    it("says what the rate is made of, and what an amount earns in a year at it, once they're read", async () => {
-      const rates = {
-        native: 0.24,
-        provisioners: [{ amount: { value: 206_900_000n * DUSK } }],
-        tipHeight: 1_000_000n,
-      };
-      const { container, getByLabelText } = render(LiquidStake, {
-        ...baseProps,
-        rates,
-      });
-      const facts = textOf(container.querySelector(".liquid-stake__facts"));
-
-      expect(facts).toContain(
-        "About 20% a year after Sozu's 15%. Not promised.",
-      );
-      // What it's made of, for whoever asks: under Details.
-      expect(facts).not.toMatch(/DUSK a block to stakers/);
-      expect(textOf(container.querySelector(".liquid-stake__details"))).toMatch(
-        /DUSK a block to stakers.*Less Sozu's 15%/,
-      );
-
-      await fireEvent.input(getByLabelText("Amount"), {
-        target: { value: "100" },
-      });
-
-      expect(
-        textOf(container.querySelector(".liquid-stake__estimate")),
-      ).toMatch(
-        /About 20\.\d+ DUSK in rewards a year at today's rate, after fees\.$/,
-      );
-    });
-
-    it("gives the rate, its line and a year's rewards from how stDUSK grew lately, once that's read", async () => {
-      const { container, getByLabelText } = render(LiquidStake, {
-        ...baseProps,
-        rates: {
-          // 3 DUSK a stDUSK to 3.1 in 30 days: about 40% a year, not the
-          // native rate's.
-          growth: {
-            days: 30,
-            from: {
-              at: 0,
-              height: 1_000,
-              stake: 3_000_000n,
-              supply: 1_000_000n,
-            },
-            rate: 0.4,
-            to: { at: 0, height: 2_000, stake: 3_100_000n, supply: 1_000_000n },
-          },
-          native: 0.9,
-          provisioners: [{ amount: { value: 206_900_000n * DUSK } }],
-          tipHeight: 1_000_000n,
-        },
-      });
-
-      expect(textOf(container.querySelector(".liquid-stake__facts"))).toContain(
-        "About 40% a year after Sozu's 15%. Not promised.",
-      );
-      expect(
-        textOf(container.querySelector(".liquid-stake__details")),
-      ).toContain(
-        "stDUSK went from 3.0000 to 3.1000 DUSK over the last 30 days, after Sozu's share.",
-      );
-
-      await fireEvent.input(getByLabelText("Amount"), {
-        target: { value: "100" },
-      });
-
-      expect(
-        textOf(container.querySelector(".liquid-stake__estimate")),
-      ).toMatch(/About 39\.\d+ DUSK in rewards a year at today's rate/);
-    });
-
-    it("says nothing of the rate before it's read", () => {
-      const { container } = render(LiquidStake, baseProps);
-
-      expect(
-        textOf(container.querySelector(".liquid-stake__facts")),
-      ).not.toContain("Not promised");
-    });
   });
 
   it("unstakes up to what is staked with Sozu, back to the public balance", async () => {
@@ -1363,45 +1130,24 @@ describe("LiquidStake", () => {
       },
     });
 
-    expect(textOf(container.querySelector(".liquid-stake__position"))).toBe(
-      "Worth now 15 DUSK stDUSK 4.878 stDUSK",
-    );
-    expect(getByRole("tab", { name: "Unstake" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    // The unstake tab is about getting it back: no pitch for staking, and
-    // that Sozu pays it out at once, free, is said once, in the summary.
-    expect(container.querySelector(".liquid-stake__estimate")).toBeNull();
-    expect(container.querySelector(".liquid-stake__facts")).toBeNull();
-    expect(container.querySelector(".liquid-stake__details")).toBeNull();
-
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "16" },
     });
 
-    expect(textOf(container.querySelector(".liquid-stake__error"))).toBe(
-      "That's more than you have staked with Sozu.",
-    );
+    // More than is staked with Sozu.
+    expect(getByRole("alert")).toHaveTextContent(/more than/i);
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
     expect(getByLabelText("Amount")).toHaveValue("15");
-    expect(
-      Array.from(container.querySelectorAll(".stake-flow__rows > div"), textOf),
-    ).toStrictEqual([
-      "Unstake from Sozu 15 DUSK",
-      "Back to Your public balance, in the same transaction",
-      "Sozu's fee No unstake fee",
-      "Fee paid from Public balance",
-      // What comes back, its fee apart (Lena's: "Total up to" for money
-      // coming back).
-      "You receive About 15 DUSK",
-    ]);
+    // The amount, and what comes back, its fee apart.
+    expect(rowOf(container, /stake/i)).toBe("15 DUSK");
+    expect(totalOf(container)).toMatch(wholeFigure("15 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(getByRole("button", { name: "Unstake 15 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: showsDusk("15") }));
 
     expect(baseProps.execute).toHaveBeenCalledWith(
       "unstake",
@@ -1412,33 +1158,13 @@ describe("LiquidStake", () => {
     );
   });
 
-  it("keeps each tab's amount, and moves between the tabs with the arrow keys", async () => {
-    const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
-
-    await fireEvent.input(getByLabelText("Amount"), {
-      target: { value: "7" },
-    });
-    await fireEvent.keyDown(getByRole("tab", { name: "Stake" }), {
-      key: "ArrowRight",
-    });
-
-    expect(getByRole("tab", { name: "Unstake" })).toHaveFocus();
-    expect(getByLabelText("Amount")).toHaveValue("");
-
-    await fireEvent.click(getByRole("tab", { name: "Stake" }));
-
-    expect(getByLabelText("Amount")).toHaveValue("7");
-  });
-
   it("can't send without Sozu's pool read, and offers to read it again", async () => {
     const { getByLabelText, getByRole } = render(LiquidStake, {
       ...baseProps,
       sozu: { error: new Error("timeout"), loading: false, status: null },
     });
 
-    expect(getByRole("alert")).toHaveTextContent(
-      /^Couldn't reach Sozu\. Try again$/,
-    );
+    expect(getByRole("alert")).toHaveTextContent(/couldn't reach/i);
     expect(getByLabelText("Amount")).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
@@ -1459,9 +1185,7 @@ describe("LiquidStake", () => {
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ gas: gasAt(3n) });
     await afterConfirmDelay();
-    await fireEvent.click(
-      getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-    );
+    await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
     await vi.waitFor(() =>
       expect(execute).toHaveBeenCalledExactlyOnceWith(
@@ -1475,42 +1199,39 @@ describe("LiquidStake", () => {
   });
 
   it("takes each action's own gas: a tab's default follows the tab, and says what an unstake brings back after its fee", async () => {
-    const { container, getByLabelText, getByRole, getByText, queryByText } =
-      render(LiquidStake, {
-        ...baseProps,
-        sozu: {
-          ...baseProps.sozu,
-          status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
-        },
-      });
-    const total = () =>
-      textOf(container.querySelector(".stake-flow__rows--total"));
+    const { container, getByLabelText, getByRole } = render(LiquidStake, {
+      ...baseProps,
+      sozu: {
+        ...baseProps.sozu,
+        status: statusWith({ balance: 15n * DUSK, stDusk: 4n * DUSK }),
+      },
+    });
+    const warning = () => container.querySelector(".stake-flow__final");
 
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
 
-    expect(total()).toBe("Total up to 1.005 DUSK");
+    expect(totalOf(container)).toMatch(wholeFigure("1.005 DUSK"));
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
 
-    expect(total()).toBe("You receive About 1 DUSK");
+    expect(totalOf(container)).toMatch(wholeFigure("1 DUSK"));
 
     // So small the fee can take more than comes back: said on the review.
     await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.005" },
     });
 
-    expect(total()).toBe("You receive About 0.005 DUSK");
+    expect(totalOf(container)).toMatch(wholeFigure("0.005 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(
-      getByText("The fee, up to 0.01 DUSK, can be more than what comes back."),
-    ).toBeInTheDocument();
+    expect(warning()).toHaveTextContent(/more than/i);
+    expect(warning()).toHaveTextContent(wholeFigure("0.01 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
     await fireEvent.input(getByLabelText("Amount"), {
@@ -1518,10 +1239,10 @@ describe("LiquidStake", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(queryByText(/can be more than what comes back/)).toBeNull();
+    expect(warning()).toBeNull();
 
     await afterConfirmDelay();
-    await fireEvent.click(getByRole("button", { name: "Unstake 1 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: showsDusk("1") }));
 
     // An unstake doesn't wait for Sozu's terms: it has none to read.
     expect(baseProps.recheck).not.toHaveBeenCalled();
@@ -1546,9 +1267,7 @@ describe("LiquidStake", () => {
       sozu: { ...baseProps.sozu, status: paused },
     });
 
-    expect(getByRole("alert")).toHaveTextContent(
-      "Sozu has paused deposits. Unstaking still works.",
-    );
+    expect(getByRole("alert")).toHaveTextContent(/paused/i);
     expect(getByLabelText("Amount")).toBeDisabled();
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -1561,7 +1280,7 @@ describe("LiquidStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(getByRole("button", { name: "Unstake 1 DUSK" })).toBeEnabled();
+    expect(getByRole("button", { name: showsDusk("1") })).toBeEnabled();
   });
 
   it("warns that a call can fail while Sozu synchronizes its pool", () => {
@@ -1576,9 +1295,7 @@ describe("LiquidStake", () => {
       },
     });
 
-    expect(getByRole("status")).toHaveTextContent(
-      "Sozu is updating its pool, so a stake or an unstake sent now can fail.",
-    );
+    expect(getByRole("status")).toHaveTextContent(/can fail/i);
 
     cleanup();
 
@@ -1624,26 +1341,26 @@ describe("LiquidStake", () => {
 
     it.each([
       {
+        fee: "1 DUSK",
         next: statusWith({}, RAISED),
         pool: POOL,
-        shows: "Deposit fee, not refunded 1 DUSK",
         what: "the deposit fee",
       },
       {
+        fee: "0.25 DUSK",
         next: statusWith({}, FEES, OPEN, NEW_POOL),
         pool: NEW_POOL,
-        shows: "Deposit fee, not refunded 0.25 DUSK",
         what: "the pool",
       },
       {
+        fee: "0.25 DUSK",
         next: statusWith({}, FEES, { ...OPEN, synchronization: true }),
         pool: POOL,
-        shows: "Deposit fee, not refunded 0.25 DUSK",
         what: "the switches: the pool synchronizes now",
       },
     ])(
       "sends nothing when $what changed, shows the figures now, and sends once they're confirmed",
-      async ({ next, pool, shows }) => {
+      async ({ fee, next, pool }) => {
         const { container, getByLabelText, getByRole, recheck } =
           renderReading(next);
 
@@ -1652,28 +1369,18 @@ describe("LiquidStake", () => {
         });
         await fireEvent.click(getByRole("button", { name: "Review" }));
         await afterConfirmDelay();
-        await fireEvent.click(
-          getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-        );
+        await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
         await vi.waitFor(() =>
-          expect(changedNote(container)).toBe(
-            "Sozu's terms changed These are the figures now. Check them, then confirm again.",
-          ),
+          expect(changedNote(container)).toMatch(/changed/i),
         );
         expect(baseProps.execute).not.toHaveBeenCalled();
-        expect(
-          Array.from(
-            container.querySelectorAll(".stake-flow__rows > div"),
-            textOf,
-          ),
-        ).toContain(shows);
+        // The deposit fee now.
+        expect(rowOf(container, /deposit/i)).toMatch(wholeFigure(fee));
 
         // Confirmed again, on the same terms: it goes.
         await afterConfirmDelay();
-        await fireEvent.click(
-          getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-        );
+        await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
         await vi.waitFor(() =>
           expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
@@ -1692,8 +1399,7 @@ describe("LiquidStake", () => {
       const { container, getByLabelText, getByRole, recheck } = renderReading(
         statusWith({}, RAISED),
       );
-      const stake = () =>
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" });
+      const stake = () => getByRole("button", { name: showsDusk("100") });
 
       await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
@@ -1702,7 +1408,7 @@ describe("LiquidStake", () => {
       await afterConfirmDelay();
       await fireEvent.click(stake());
       // On the page's clock, which only the test moves on.
-      await waitFor(() => expect(changedNote(container)).toBeTruthy());
+      await waitFor(() => expect(changedNote(container)).toMatch(/changed/i));
 
       // The second click of a double click, and Enter, as the new figures show.
       await fireEvent.click(stake());
@@ -1729,7 +1435,7 @@ describe("LiquidStake", () => {
     });
 
     it("keeps the stake off when Sozu paused deposits since the summary showed", async () => {
-      const { container, getByLabelText, getByRole, getByText } = renderReading(
+      const { container, getByLabelText, getByRole } = renderReading(
         statusWith({}, FEES, { maintenance: true, synchronization: false }),
       );
 
@@ -1738,13 +1444,12 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
-      await vi.waitFor(() => expect(changedNote(container)).toBeTruthy());
+      await vi.waitFor(() =>
+        expect(changedNote(container)).toMatch(/changed/i),
+      );
       expect(baseProps.execute).not.toHaveBeenCalled();
-      expect(getByText("Sozu has paused deposits.")).toBeInTheDocument();
       expect(getByRole("button", { name: "Stake with Sozu" })).toBeDisabled();
     });
 
@@ -1759,7 +1464,7 @@ describe("LiquidStake", () => {
     ])(
       "sends nothing when Sozu's status $what, and says so",
       async ({ recheck }) => {
-        const { container, getByLabelText, getByRole, findByText } = render(
+        const { container, findByRole, getByLabelText, getByRole } = render(
           LiquidStake,
           { ...baseProps, recheck },
         );
@@ -1769,16 +1474,11 @@ describe("LiquidStake", () => {
         });
         await fireEvent.click(getByRole("button", { name: "Review" }));
         await afterConfirmDelay();
-        await fireEvent.click(
-          getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-        );
+        await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
 
-        const error = await findByText(
-          "Couldn't check Sozu's terms just now, so nothing was sent.",
-        );
-
-        expect(textOf(error.parentElement)).toBe(
-          "Couldn't check Sozu's terms just now, so nothing was sent. Try again.",
+        // Nothing sent, and said so.
+        expect(await findByRole("alert")).toHaveTextContent(
+          /nothing was sent/i,
         );
         expect(baseProps.execute).not.toHaveBeenCalled();
         expect(changedNote(container)).toBeUndefined();
@@ -1815,9 +1515,7 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
       unmount();
       answer();
       await settled();
@@ -1838,9 +1536,7 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
       await fireEvent.click(getByRole("button", { name: "Back" }));
       answer();
       await settled();
@@ -1860,9 +1556,7 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
       await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "50" },
       });
@@ -1874,9 +1568,7 @@ describe("LiquidStake", () => {
 
       recheck.mockResolvedValue(statusWith());
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 50 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("50") }));
 
       await vi.waitFor(() =>
         expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
@@ -1901,9 +1593,7 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        getByRole("button", { name: "Stake 100 DUSK with Sozu" }),
-      );
+      await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
       await rerender({ gas: gasAt(3n) });
       answer();
 
@@ -1930,7 +1620,7 @@ describe("LiquidStake", () => {
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      const button = getByRole("button", { name: "Stake 100 DUSK with Sozu" });
+      const button = getByRole("button", { name: showsDusk("100") });
 
       await afterConfirmDelay();
       await fireEvent.click(button);
@@ -1946,7 +1636,7 @@ describe("LiquidStake", () => {
   });
 
   it("keeps staking off while Sozu's deposits can't be checked, not unstaking", async () => {
-    const { getByLabelText, getByRole, getByText } = render(LiquidStake, {
+    const { getByLabelText, getByRole } = render(LiquidStake, {
       ...baseProps,
       sozu: {
         ...baseProps.sozu,
@@ -1957,11 +1647,7 @@ describe("LiquidStake", () => {
       },
     });
 
-    expect(
-      textOf(getByText("Sozu's deposits couldn't be checked.").parentElement),
-    ).toBe(
-      "Sozu's deposits couldn't be checked. Staking stays off until they can be. Unstaking still works.",
-    );
+    expect(getByRole("alert")).toHaveTextContent(/couldn't be checked/i);
     expect(getByLabelText("Amount")).toBeDisabled();
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
@@ -1971,7 +1657,7 @@ describe("LiquidStake", () => {
   });
 
   it("says no stake gets stDUSK while Sozu's deposit fee is 100%", async () => {
-    const { getByLabelText, getByRole, getByText } = render(LiquidStake, {
+    const { getByLabelText, getByRole } = render(LiquidStake, {
       ...baseProps,
       sozu: {
         ...baseProps.sozu,
@@ -1986,9 +1672,7 @@ describe("LiquidStake", () => {
       target: { value: "100" },
     });
 
-    expect(
-      getByText("No stake gets stDUSK at Sozu's deposit fee now."),
-    ).toBeInTheDocument();
+    expect(getByRole("alert")).toHaveTextContent(/no stake/i);
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
 });

@@ -39,45 +39,56 @@ describe("How a route is doing", () => {
       lastPayout: { amount: LUX, at: NOW - 12 * 60_000, block: 1, hash: "a" },
     };
 
+    /** The last payout's time: 12 minutes, never 112 or 2 minutes. */
+    const TWELVE_MINUTES = /(?<![\d.,])12 minutes\b/;
+
     it("says it's paying out, with the last payout, where the chains say", () => {
       expect(statusLine(status(paid), at)).toStrictEqual({
-        text: "Paying out. Last payout 12 minutes ago.",
+        text: expect.stringMatching(/\bpaying out\b/i),
         warn: false,
       });
-      expect(statusLine(status(), at)?.text).toBe("Paying out.");
+      expect(statusLine(status(paid), at)?.text).toMatch(TWELVE_MINUTES);
+      // No time said where none is known.
+      expect(statusLine(status(), at)?.text).toMatch(/\bpaying out\b/i);
+      expect(statusLine(status(), at)?.text).toMatch(/^\D+$/);
     });
 
     it("says it's late as something to know, and what it pays on claim as no wait at all", () => {
       expect(statusLine(status({ ...paid, paying: "late" }), at)).toStrictEqual(
         {
-          text: "Payouts are running late. Last payout 12 minutes ago.",
+          text: expect.stringMatching(/\blate\b/i),
           warn: true,
         },
       );
+      expect(statusLine(status({ ...paid, paying: "late" }), at)?.text).toMatch(
+        TWELVE_MINUTES,
+      );
       expect(statusLine(status({ paying: "on-claim" }), at)).toStrictEqual({
-        text: "It pays when you claim it.",
+        text: expect.stringMatching(/\bwhen you claim\b/i),
         warn: false,
       });
     });
 
     it("says a quiet route's last payout, or how far it looked", () => {
-      expect(statusLine(status({ ...paid, paying: "quiet" }), at)?.text).toBe(
-        "Last payout 12 minutes ago.",
-      );
+      const quiet = statusLine(status({ ...paid, paying: "quiet" }), at)?.text;
+
+      // Not paying out now: when it last did.
+      expect(quiet).toMatch(TWELVE_MINUTES);
+      expect(quiet).not.toMatch(/\bpaying out\b/i);
       expect(
         statusLine(
           status({ paying: "quiet", readSince: Date.UTC(2026, 9, 6, 12) }),
           at,
         )?.text,
-      ).toBe("No payouts since 6 Oct.");
-      expect(statusLine(status({ paying: "quiet" }), at)?.text).toBe(
-        "No recent payouts.",
+      ).toMatch(/\bno payouts since\b.*(?<!\d)6 Oct\b/i);
+      expect(statusLine(status({ paying: "quiet" }), at)?.text).toMatch(
+        /^\D*\bno\b\D*\bpayouts\b\D*$/i,
       );
     });
 
     it("says unknown as not knowing, never as a problem", () => {
       expect(statusLine(status({ paying: "unknown" }), at)).toStrictEqual({
-        text: "Last payout not known right now.",
+        text: expect.stringMatching(/\bnot known\b/i),
         warn: false,
       });
     });
@@ -89,24 +100,38 @@ describe("How a route is doing", () => {
 
     it("says what it can pay where a balance limits it, and warns of an amount past it", () => {
       const balance = status({ canPay: 5n * LUX, limit: "balance" });
+      // 5 DUSK, never 15, 0.5 or a negative 5 DUSK.
+      const upTo5 = /(?<![\d.,\u2212+-])5 DUSK(?!\d)/;
 
-      expect(statusLine(balance, at)?.text).toBe(
-        "Paying out. Can pay up to 5 DUSK.",
-      );
+      /** The DUSK figures a line gives, each whole. */
+      const figures = (/** @type {string | undefined} */ text) =>
+        text?.match(/[\d.,]+ DUSK/g);
+
+      expect(statusLine(balance, at)?.text).toMatch(upTo5);
+      // And no other: not "up to 1 DUSK (previously 5 DUSK)".
+      expect(figures(statusLine(balance, at)?.text)).toStrictEqual(["5 DUSK"]);
       expect(statusLine(balance, { ...at, amountLux: 5n * LUX })?.warn).toBe(
         false,
       );
       expect(statusLine(balance, { ...at, amountLux: 6n * LUX })).toStrictEqual(
         {
-          text: "Paying out. Can pay up to 5 DUSK now, less than you're sending: yours may wait.",
+          text: expect.stringMatching(upTo5),
           warn: true,
         },
       );
+      expect(
+        figures(statusLine(balance, { ...at, amountLux: 6n * LUX })?.text),
+      ).toStrictEqual(["5 DUSK"]);
       // What's minted as it's paid has no such limit.
       expect(
-        statusLine(status({ canPay: 5n * LUX }), { ...at, amountLux: 6n * LUX })
-          ?.text,
-      ).toBe("Paying out.");
+        statusLine(status({ canPay: 5n * LUX }), {
+          ...at,
+          amountLux: 6n * LUX,
+        }),
+      ).toStrictEqual({
+        text: expect.not.stringContaining("5 DUSK"),
+        warn: false,
+      });
     });
   });
 

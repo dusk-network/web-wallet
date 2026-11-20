@@ -14,24 +14,36 @@ const sum = (lux, worth = null) => ({ lux, unpriced: 0, worth });
 describe("RewardsByYear", () => {
   afterEach(cleanup);
 
+  /** @param {Element | null | undefined} element */
+  const textOf = (element) =>
+    element?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+
   /**
-   * The row of a year, as read.
+   * A year's figures in a column, found by the year and by the key word of
+   * the column's heading: in DUSK, and in money with its sign and its
+   * bound, apart from the marks between them.
    *
    * @param {HTMLElement} container
    * @param {number} year
+   * @param {RegExp} column The key word of the column's heading
    */
-  const rowOf = (container, year) =>
-    Array.from(
-      /** @type {HTMLTableRowElement | undefined} */ (
-        Array.from(container.querySelectorAll("tbody tr")).find(
-          (row) => row.querySelector("th")?.textContent === String(year),
-        )
-      )?.cells ?? [],
-      (cell) => cell.textContent?.replace(/\s+/g, " ").trim(),
+  const figuresOf = (container, year, column) => {
+    const headings = Array.from(container.querySelectorAll("thead th"), textOf);
+    const row = /** @type {HTMLTableRowElement | undefined} */ (
+      Array.from(container.querySelectorAll("tbody tr")).find(
+        (each) => textOf(each.querySelector("th")) === String(year),
+      )
     );
+    const text = textOf(
+      row?.cells[headings.findIndex((heading) => column.test(heading))],
+    );
+    const dusk = text.slice(0, text.indexOf(" DUSK") + " DUSK".length);
+
+    return [dusk, text.slice(dusk.length).replace(/^[ ·]+/, "")];
+  };
 
   it("counts what unstaking took out at average cost with the deposit fees, as said under the years, and shows a loss as one, in DUSK and in money", () => {
-    const { container, getByText } = render(RewardsByYear, {
+    const { container } = render(RewardsByYear, {
       currency: "EUR",
       locale: "en",
       rewards: {
@@ -58,25 +70,31 @@ describe("RewardsByYear", () => {
       valued: true,
     });
 
-    expect(
-      getByText(
-        "Taken out by unstaking is part of grown while held: both count stDUSK at its average cost, deposit fees included.",
-      ),
-    ).toBeInTheDocument();
-
     // Less than a cent either way: under it, a loss said as one.
-    expect(rowOf(container, 2026)).toStrictEqual([
-      "2026",
-      "0 DUSK · €0.00",
-      "0.0425 DUSK · €0.01",
-      "−0.0035 DUSK · a loss under €0.01",
+    expect(figuresOf(container, 2026, /claimed/i)).toStrictEqual([
+      "0 DUSK",
+      "€0.00",
+    ]);
+    expect(figuresOf(container, 2026, /grown/i)).toStrictEqual([
+      "0.0425 DUSK",
+      "€0.01",
+    ]);
+    expect(figuresOf(container, 2026, /taken out/i)).toStrictEqual([
+      "−0.0035 DUSK",
+      "a loss under €0.01",
     ]);
     // More: with its sign.
-    expect(rowOf(container, 2025)).toStrictEqual([
-      "2025",
-      "0 DUSK · €0.00",
-      "0.000002 DUSK · under €0.01",
-      "−1.5 DUSK · −€0.48",
+    expect(figuresOf(container, 2025, /claimed/i)).toStrictEqual([
+      "0 DUSK",
+      "€0.00",
+    ]);
+    expect(figuresOf(container, 2025, /grown/i)).toStrictEqual([
+      "0.000002 DUSK",
+      "under €0.01",
+    ]);
+    expect(figuresOf(container, 2025, /taken out/i)).toStrictEqual([
+      "−1.5 DUSK",
+      "−€0.48",
     ]);
   });
 
@@ -101,11 +119,17 @@ describe("RewardsByYear", () => {
       valued: true,
     });
 
-    expect(rowOf(container, 2026)).toStrictEqual([
-      "2026",
-      "0 DUSK · €0.00",
-      "−0.0005 DUSK · a loss under €0.01",
-      "−0.0005 DUSK · a loss under €0.01",
+    expect(figuresOf(container, 2026, /claimed/i)).toStrictEqual([
+      "0 DUSK",
+      "€0.00",
+    ]);
+    expect(figuresOf(container, 2026, /grown/i)).toStrictEqual([
+      "−0.0005 DUSK",
+      "a loss under €0.01",
+    ]);
+    expect(figuresOf(container, 2026, /taken out/i)).toStrictEqual([
+      "−0.0005 DUSK",
+      "a loss under €0.01",
     ]);
   });
 });

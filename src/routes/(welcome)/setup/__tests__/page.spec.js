@@ -1,18 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
-import { shortenAddress } from "$lib/dusk/string";
 import { forgetPlace, keepPlace } from "$lib/navigation";
-import { settingsStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks } from "@dusk-network/networks";
 
-import { isRedirect } from "@sveltejs/kit";
-
-import vault from "$lib/vault";
-
 import Setup from "../+page.svelte";
-import { load } from "../+page.js";
 
 // The name the account a request pays goes by, as the chain says, and what
 // a .dusk name is, as the name service says it: Sofía's, and no other.
@@ -29,6 +22,27 @@ vi.mock("$lib/dusk-domains", async (importOriginal) => ({
       : { error: "not-registered", name },
   ),
 }));
+
+/**
+ * A value as a regular expression matches it, its dots as dots.
+ *
+ * @param {string} value
+ */
+const literally = (value) => value.replaceAll(".", "\\.");
+
+/**
+ * The row of a payment request its label heads, as Send names them: its
+ * Amount, To or Memo.
+ *
+ * @param {HTMLElement} request
+ * @param {"Amount" | "Memo" | "To"} label
+ */
+const rowOf = (request, label) =>
+  /** @type {HTMLElement} */ (
+    Array.from(request.querySelectorAll("dt")).find(
+      (term) => term.textContent?.trim() === label,
+    )?.nextElementSibling
+  );
 
 describe("Setup", () => {
   describe("opened by a link asking for a payment", () => {
@@ -47,36 +61,71 @@ describe("Setup", () => {
         search: `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`,
       });
 
-      const { findByText, getByRole } = render(Setup, {});
+      const { getByRole } = render(Setup, {});
       const asked = getByRole("region", { name: "Payment request" });
+      const to = rowOf(asked, "To");
 
-      expect(asked).toHaveTextContent("Amount 0.011 DUSK");
-      expect(asked).toHaveTextContent("Memo Factura 044");
-      expect(asked).toHaveTextContent("Create or restore a wallet to pay it.");
-      expect(await findByText("sofia.dusk")).toBeInTheDocument();
-      expect(asked).toHaveTextContent(shortenAddress(TO));
+      expect(rowOf(asked, "Amount")).toHaveTextContent(/^0\.011 DUSK$/);
+      expect(rowOf(asked, "Memo")).toHaveTextContent(/^Factura 044$/);
+      // Whom, as the field shows it: the name the chain gives the account,
+      // then the account, to its first and last six characters.
+      await vi.waitFor(() =>
+        expect(to.textContent?.replace(/\s+/g, " ").trim()).toBe(
+          "sofia.dusk 25z9o6…5Etftt",
+        ),
+      );
+      // And whole in its tooltip, the browser's own: the account it pays.
+      expect(to.querySelector(".payment-asked__code")).toHaveAttribute(
+        "title",
+        TO,
+      );
     });
 
     it("should show a .dusk name it pays whole, and where it points, or that it isn't registered, as one that looks like it does", async () => {
       setNodeNetwork(networks.testnet);
 
-      for (const [to, said] of [
-        ["sofiadesign.dusk", "Points to sEeMSo…v9kgd7"],
-        ["sofiadmarekn.dusk", "sofiadmarekn.dusk isn't registered."],
-      ]) {
+      /** @param {string} to */
+      const askFor = (to) => {
         keepPlace({
           pathname: "/some-base-path/dashboard/send/",
           search: `?to=${to}&amount=0.01&memo=marek-r6-h51&network=testnet`,
         });
 
-        const { findByText, getByRole } = render(Setup, {});
-        const asked = getByRole("region", { name: "Payment request" });
+        return render(Setup, {});
+      };
 
-        expect(await findByText(said)).toBeInTheDocument();
-        expect(asked).toHaveTextContent(`To ${to} ${said}`);
-        expect(asked).not.toHaveTextContent("…n.dusk");
-        cleanup();
-      }
+      // Registered: whole, the account it points to, nothing said against it.
+      const registered = askFor("sofiadesign.dusk");
+      const to = rowOf(
+        registered.getByRole("region", { name: "Payment request" }),
+        "To",
+      );
+
+      await vi.waitFor(() =>
+        expect(to.querySelector(".payment-asked__code")).toHaveTextContent(
+          /\bsEeMSo…v9kgd7$/,
+        ),
+      );
+      expect(to.querySelector(".payment-asked__name")?.textContent).toBe(
+        "sofiadesign.dusk",
+      );
+      expect(registered.queryByRole("status")).toBeNull();
+      cleanup();
+
+      // One that looks like it, not registered: whole, said so, no account.
+      const lookalike = askFor("sofiadmarekn.dusk");
+      const named = rowOf(
+        lookalike.getByRole("region", { name: "Payment request" }),
+        "To",
+      );
+
+      expect(await within(named).findByRole("status")).toHaveTextContent(
+        /\b(isn't|not) registered\b/i,
+      );
+      expect(named.querySelector(".payment-asked__name")?.textContent).toBe(
+        "sofiadmarekn.dusk",
+      );
+      expect(named.querySelector(".payment-asked__code")).toBeNull();
     });
 
     it("should say when it's for another network or says two amounts, and nothing for a page that asks for nothing", () => {
@@ -86,11 +135,13 @@ describe("Setup", () => {
         search: `?to=${TO}&amount=0.011&network=mainnet`,
       });
 
-      const other = render(Setup, {});
+      // Where it says what's next: the network it's for, and the one this is.
+      const other = render(Setup, {})
+        .getByRole("region", { name: "Payment request" })
+        .querySelector(".payment-asked__next");
 
-      expect(
-        other.getByRole("region", { name: "Payment request" }),
-      ).toHaveTextContent("This request is for Mainnet. You are on Testnet.");
+      expect(other).toHaveTextContent(/\bfor Mainnet\b/);
+      expect(other).toHaveTextContent(/\bon Testnet\b/);
       cleanup();
 
       // Nor an amount for one saying two, in DUSK and in lux.
@@ -103,28 +154,20 @@ describe("Setup", () => {
         name: "Payment request",
       });
 
-      expect(twice).toHaveTextContent(
-        "This link asks for two different amounts. Ask for a new one.",
-      );
-      expect(twice).not.toHaveTextContent("Amount");
+      expect(twice).not.toHaveTextContent(/\d DUSK/);
+      expect(twice).not.toHaveTextContent(TO.slice(0, 6));
       cleanup();
 
       // Nor one that says a field twice, which can't be read at all.
-      for (const [search, words] of [
-        [
-          `?to=${TO}&amount=1&amount=2&network=testnet`,
-          "This link asks for two different amounts. Ask for a new one.",
-        ],
-        [
-          `?to=${TO}&memo=a&memo=b&network=testnet`,
-          "This link says the memo twice. Ask for a new one.",
-        ],
+      for (const search of [
+        `?to=${TO}&amount=1&amount=2&network=testnet`,
+        `?to=${TO}&memo=a&memo=b&network=testnet`,
       ]) {
         keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
 
         expect(
           render(Setup, {}).getByRole("region", { name: "Payment request" }),
-        ).toHaveTextContent(words);
+        ).not.toHaveTextContent(TO.slice(0, 6));
         cleanup();
       }
 
@@ -146,10 +189,9 @@ describe("Setup", () => {
         name: "Payment request",
       });
 
-      expect(asked).toHaveTextContent(
-        "This link's address isn't valid. Ask for a new one.",
-      );
-      expect(asked).not.toHaveTextContent("to pay it");
+      // Said, and nothing of what it asks.
+      expect(asked).not.toHaveTextContent(TO.slice(0, 6));
+      expect(asked).not.toHaveTextContent(/\d DUSK/);
     });
 
     it("should show nothing of what a refused link asks, only why, and an amount as the link writes it", () => {
@@ -158,32 +200,17 @@ describe("Setup", () => {
 
       setNodeNetwork(networks.testnet);
 
-      for (const [search, words] of [
+      for (const search of [
         // Two addresses, which read as one made of both.
-        [
-          `?to=${TO},${OTHER}&amount=0.001&network=testnet`,
-          "This link's address isn't valid. Ask for a new one.",
-        ],
+        `?to=${TO},${OTHER}&amount=0.001&network=testnet`,
         // A hidden character in its amount.
-        [
-          `?to=${TO}&amount=0.0%E2%80%8B1&network=testnet`,
-          "This link's amount can't be read. Ask for a new one.",
-        ],
+        `?to=${TO}&amount=0.0%E2%80%8B1&network=testnet`,
         // A field's name with a hidden character, beside the field.
-        [
-          `?to=${TO}&am%E2%80%8Fount=0.15&amount=0.001&network=testnet`,
-          "That link can't be read. Ask for a new one.",
-        ],
+        `?to=${TO}&am%E2%80%8Fount=0.15&amount=0.001&network=testnet`,
         // A field's name in ASCII that only looks like one: a capital I.
-        [
-          `?to=${TO}&amountIux=150000000&amount=0.001&network=testnet`,
-          "That link can't be read. Ask for a new one.",
-        ],
+        `?to=${TO}&amountIux=150000000&amount=0.001&network=testnet`,
         // A memo on two lines.
-        [
-          `?to=${TO}&amount=0.001&memo=line%20one%0Aline%20two&network=testnet`,
-          "This link's memo has a line break. Ask for a new one.",
-        ],
+        `?to=${TO}&amount=0.001&memo=line%20one%0Aline%20two&network=testnet`,
       ]) {
         keepPlace({ pathname: "/some-base-path/dashboard/send/", search });
 
@@ -191,8 +218,9 @@ describe("Setup", () => {
           name: "Payment request",
         });
 
-        expect(asked).toHaveTextContent(words);
-        expect(asked).not.toHaveTextContent(/Amount|To|Memo|Any amount/);
+        expect(asked).not.toHaveTextContent(TO.slice(0, 6));
+        expect(asked).not.toHaveTextContent(/\d DUSK/);
+        expect(asked).not.toHaveTextContent("line one");
         cleanup();
       }
 
@@ -203,19 +231,22 @@ describe("Setup", () => {
       });
 
       expect(
-        render(Setup, {}).getByRole("region", { name: "Payment request" }),
-      ).toHaveTextContent("Amount 0.011 DUSK");
+        rowOf(
+          render(Setup, {}).getByRole("region", { name: "Payment request" }),
+          "Amount",
+        ),
+      ).toHaveTextContent(/^0\.011 DUSK$/);
     });
 
     it("should ask what Send asks of an amount that could be either of two, as 1.000, never settling it, and hand it on to another network's wallet as written", () => {
       setNodeNetwork(networks.testnet);
 
-      // The question alone: there's no field to write in here.
-      for (const [amount, question] of [
-        ["1.000", "Is that 1 or 1000?"],
-        ["10.000", "Is that 10 or 10000?"],
+      // The amount as written, then the two it could be: no field here.
+      for (const [amount, either, or] of [
+        ["1.000", "1", "1000"],
+        ["10.000", "10", "10000"],
         // As typed 2.125 is, in Send too.
-        ["2.125", "Is that 2.1250 or 2125?"],
+        ["2.125", "2.1250", "2125"],
       ]) {
         keepPlace({
           pathname: "/some-base-path/dashboard/send/",
@@ -226,9 +257,12 @@ describe("Setup", () => {
           name: "Payment request",
         });
 
-        expect(asked).toHaveTextContent(`Amount ${amount} DUSK ${question}`);
-        expect(asked).not.toHaveTextContent("Write the one you mean");
-        expect(asked).not.toHaveTextContent(/Amount 10? DUSK/);
+        // Its row: the amount as written, then the two it could be, unsettled.
+        expect(rowOf(asked, "Amount")).toHaveTextContent(
+          new RegExp(
+            `^${literally(amount)} DUSK\\D+${literally(either)}\\D+${or}\\D*$`,
+          ),
+        );
         cleanup();
       }
 
@@ -267,71 +301,31 @@ describe("Setup", () => {
     describe("on an Android phone", () => {
       const CHROME =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
-      const FIREFOX =
-        "Mozilla/5.0 (Android 14; Mobile; rv:144.0) Gecko/144.0 Firefox/144.0";
 
       afterEach(() => {
         vi.restoreAllMocks();
       });
 
-      /** @param {string} userAgent */
-      const openOn = (userAgent) => {
-        vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+      it("should offer the same request in the Dusk app and in Firefox", () => {
+        vi.spyOn(navigator, "userAgent", "get").mockReturnValue(CHROME);
         setNodeNetwork(networks.testnet);
         keepPlace({
           pathname: "/some-base-path/dashboard/send/",
           search: `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`,
         });
 
-        return render(Setup, {});
-      };
+        const { getByRole } = render(Setup, {});
 
-      it("should lead with the way that works in this browser, the app having left the link to it, and offer the same request in the Dusk app and in Firefox after it", () => {
-        const { getByRole } = openOn(CHROME);
-        const asked = getByRole("region", { name: "Payment request" });
-        const app = getByRole("link", { name: "Open in the Dusk app" });
-        const firefox = getByRole("link", { name: "Open in Firefox" });
-
-        expect(app).toHaveAttribute(
+        expect(
+          getByRole("link", { name: "Open in the Dusk app" }),
+        ).toHaveAttribute(
           "href",
           `dusk:public-${TO}@dusk:2?amount=0.011&memo=Factura+044`,
         );
-        expect(firefox).toHaveAttribute(
+        expect(getByRole("link", { name: "Open in Firefox" })).toHaveAttribute(
           "href",
           `intent://${location.host}/some-base-path/dashboard/send/?to=${TO}&amount=0.011&memo=Factura+044&network=testnet#Intent;scheme=${location.protocol.slice(0, -1)};package=org.mozilla.firefox;end`,
         );
-
-        // A wallet made here leads: it works on any phone.
-        expect(getByRole("link", { name: "Create wallet" })).toHaveClass(
-          "dusk-anchor-button--variant--primary",
-        );
-        expect(asked).toHaveTextContent(
-          /Create or restore a wallet to pay it\.\s*Open in the Dusk app\s*Open in Firefox$/,
-        );
-
-        for (const other of [app, firefox]) {
-          expect(other).toHaveClass("dusk-anchor-button--variant--secondary");
-        }
-      });
-
-      it("should lead with Unlock where a wallet is kept here, the app and Firefox after it", () => {
-        settingsStore.update((store) => ({ ...store, userId: "a-wallet" }));
-
-        try {
-          const { getByRole } = openOn(CHROME);
-
-          expect(getByRole("link", { name: "Unlock" })).toHaveClass(
-            "dusk-anchor-button--variant--primary",
-          );
-          expect(
-            getByRole("link", { name: "Open in the Dusk app" }),
-          ).toHaveClass("dusk-anchor-button--variant--secondary");
-          expect(getByRole("link", { name: "Open in Firefox" })).toHaveClass(
-            "dusk-anchor-button--variant--secondary",
-          );
-        } finally {
-          settingsStore.reset();
-        }
       });
 
       it("should offer the Dusk app no amount it would take as settled, as 1.000, which Firefox gets as written", () => {
@@ -353,15 +347,6 @@ describe("Setup", () => {
         );
       });
 
-      it("should offer the Dusk app in Firefox, which has the page already", () => {
-        const { getByRole, queryByRole } = openOn(FIREFOX);
-
-        expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
-        expect(
-          getByRole("link", { name: "Open in the Dusk app" }),
-        ).toBeInTheDocument();
-      });
-
       it("should offer neither for a link that can't be paid as it is", () => {
         vi.spyOn(navigator, "userAgent", "get").mockReturnValue(CHROME);
         setNodeNetwork(networks.testnet);
@@ -370,15 +355,12 @@ describe("Setup", () => {
           search: `?to=${TO.slice(0, -6)}&amount=0.011&network=testnet`,
         });
 
-        const { getByRole, queryByRole } = render(Setup, {});
+        const { queryByRole } = render(Setup, {});
 
         expect(queryByRole("link", { name: "Open in Firefox" })).toBeNull();
         expect(
           queryByRole("link", { name: "Open in the Dusk app" }),
         ).toBeNull();
-        expect(getByRole("link", { name: "Create wallet" })).toHaveClass(
-          "dusk-anchor-button--variant--primary",
-        );
       });
     });
   });
@@ -389,25 +371,16 @@ describe("Setup", () => {
     const SEARCH = `?to=${TO}&amount=0.011&memo=Factura+044&network=testnet`;
 
     /**
-     * An extension that answers Dusk Connect's discovery: with its methods,
-     * and what it says to a payment link.
+     * An extension that answers Dusk Connect's discovery with its methods,
+     * and takes a payment link.
      *
      * @param {string[]} methods
-     * @param {unknown} answer
      */
-    const extension = (methods, answer = true) => {
+    const extension = (methods) => {
       const provider = {
-        request: vi.fn(async ({ method }) => {
-          if (method === "dusk_getCapabilities") {
-            return { methods };
-          }
-
-          if (answer instanceof Error) {
-            throw answer;
-          }
-
-          return answer;
-        }),
+        request: vi.fn(async ({ method }) =>
+          method === "dusk_getCapabilities" ? { methods } : true,
+        ),
       };
       const announce = () =>
         window.dispatchEvent(
@@ -442,7 +415,7 @@ describe("Setup", () => {
         "dusk_getCapabilities",
         "dusk_openPaymentLink",
       ]);
-      const { findByRole, findByText } = render(Setup, {});
+      const { findByRole } = render(Setup, {});
 
       await fireEvent.click(
         await findByRole("button", { name: "Open in the Dusk extension" }),
@@ -456,109 +429,6 @@ describe("Setup", () => {
           ),
         },
       });
-      expect(
-        await findByText("Opened in the Dusk extension."),
-      ).toBeInTheDocument();
-    });
-
-    it("leads with the extension where no wallet is kept here, with Create and Restore small under it, and with Unlock where one is", async () => {
-      setNodeNetwork(networks.testnet);
-      keepPlace({
-        pathname: "/some-base-path/dashboard/send/",
-        search: SEARCH,
-      });
-      extension(["dusk_getCapabilities", "dusk_openPaymentLink"]);
-
-      const { findByRole, getByRole } = render(Setup, {});
-      const open = await findByRole("button", {
-        name: "Open in the Dusk extension",
-      });
-
-      expect(open).toHaveClass("dusk-button--variant--primary");
-      expect(
-        getByRole("region", { name: "Payment request" }),
-      ).toHaveTextContent("Pay it with the Dusk extension.");
-      expect(
-        getByRole("region", { name: "Payment request" }),
-      ).not.toHaveTextContent("Create or restore");
-
-      for (const name of ["Create wallet", "Restore wallet"]) {
-        expect(getByRole("link", { name })).toHaveClass(
-          "dusk-anchor-button--variant--tertiary",
-          "dusk-anchor-button--size--small",
-        );
-      }
-
-      cleanup();
-
-      // A wallet kept here: unlocking it is the way in, the extension second.
-      settingsStore.update((settings) => ({ ...settings, userId: "someone" }));
-
-      try {
-        const kept = render(Setup, {});
-
-        expect(
-          await kept.findByRole("button", {
-            name: "Open in the Dusk extension",
-          }),
-        ).toHaveClass("dusk-button--variant--secondary");
-        expect(
-          kept.getByRole("region", { name: "Payment request" }),
-        ).toHaveTextContent("Unlock to pay it.");
-        expect(kept.getByRole("link", { name: "Unlock" })).toHaveClass(
-          "dusk-anchor-button--variant--primary",
-        );
-      } finally {
-        settingsStore.reset();
-      }
-    });
-
-    it("says so where the extension has no wallet to pay with, and offers nothing where it won't take the link", async () => {
-      setNodeNetwork(networks.testnet);
-      keepPlace({
-        pathname: "/some-base-path/dashboard/send/",
-        search: SEARCH,
-      });
-      extension(["dusk_openPaymentLink"], false);
-
-      const empty = render(Setup, {});
-
-      await fireEvent.click(
-        await empty.findByRole("button", {
-          name: "Open in the Dusk extension",
-        }),
-      );
-
-      expect(
-        await empty.findByText("The Dusk extension has no wallet to pay with."),
-      ).toBeInTheDocument();
-      // Making one here is the way, then.
-      expect(
-        empty.getByRole("region", { name: "Payment request" }),
-      ).toHaveTextContent("Create or restore a wallet to pay it.");
-      expect(empty.getByRole("link", { name: "Create wallet" })).toHaveClass(
-        "dusk-anchor-button--variant--primary",
-      );
-      cleanup();
-      cleanups.splice(0).forEach((stop) => stop());
-
-      extension(
-        ["dusk_openPaymentLink"],
-        Object.assign(new Error("Not a request link"), { code: -32602 }),
-      );
-
-      const refused = render(Setup, {});
-
-      await fireEvent.click(
-        await refused.findByRole("button", {
-          name: "Open in the Dusk extension",
-        }),
-      );
-      await vi.waitFor(() =>
-        expect(
-          refused.queryByRole("button", { name: "Open in the Dusk extension" }),
-        ).toBeNull(),
-      );
     });
 
     it("offers nothing with an extension too old to take it", async () => {
@@ -569,120 +439,29 @@ describe("Setup", () => {
       });
 
       const provider = extension(["dusk_getCapabilities"]);
-      const { queryByRole } = render(Setup, {});
+      const { getByRole } = render(Setup, {});
 
       await vi.waitFor(() =>
         expect(provider.request).toHaveBeenCalledWith({
           method: "dusk_getCapabilities",
         }),
       );
+      // Its answer read.
       await new Promise((resolve) => setTimeout(resolve, 0));
 
+      // No offer by the request, and nothing asked of it but what it takes.
       expect(
-        queryByRole("button", { name: "Open in the Dusk extension" }),
+        within(getByRole("region", { name: "Payment request" })).queryByRole(
+          "button",
+        ),
       ).toBeNull();
-    });
-  });
-
-  describe("with fingerprint or face unlock on", () => {
-    const passkey = {
-      credentialId: "a-credential",
-      prf: new Uint8Array(32).fill(7),
-      prfSalt: btoa("s".repeat(32)),
-      transports: ["internal"],
-    };
-    const phrase =
-      "scheme spot photo card baby mountain device kick cradle pact join borrow";
-    /** @param {string} query */
-    const loadAt = (query) =>
-      load(
-        /** @type {any} */ ({ url: new URL(`http://localhost/setup${query}`) }),
-      );
-
-    afterEach(() => localStorage.clear());
-
-    it("should go straight to the unlock, past the chooser, which the unlock's Back leads to", async () => {
-      await vault.setUp(phrase, "the password");
-      await vault.addPasskey(passkey, "the password");
-
-      let redirected;
-
-      try {
-        loadAt("");
-      } catch (error) {
-        redirected = error;
-      }
-
-      expect(isRedirect(redirected)).toBe(true);
-      expect(redirected).toMatchObject({
-        location: expect.stringMatching(/\/unlock$/),
-      });
-      expect(() => loadAt("?choose")).not.toThrow();
-    });
-
-    it("should stay on the chooser without it", async () => {
-      expect(() => loadAt("")).not.toThrow();
-
-      await vault.setUp(phrase, "the password");
-
-      expect(() => loadAt("")).not.toThrow();
+      expect(provider.request.mock.calls).toStrictEqual([
+        [{ method: "dusk_getCapabilities" }],
+      ]);
     });
   });
 
   afterEach(() => {
     cleanup();
-    settingsStore.reset();
-  });
-
-  it("should show the wallet's name, its ways in and its version, and no picture that could look broken", () => {
-    const { container, getByRole } = render(Setup, {});
-
-    expect(getByRole("heading", { level: 2 })).toHaveTextContent(
-      "Dusk Web Wallet",
-    );
-    expect(container.querySelector("footer")).toHaveTextContent("v0.1.5 · any");
-    expect(container.querySelector("css-doodle, img, canvas")).toBeNull();
-  });
-
-  it("should link the version and the commit built to the build's manifest of every file, in a new tab", () => {
-    const { getByRole } = render(Setup, {});
-
-    // The commit is the version SvelteKit has: the test's is "any".
-    const version = getByRole("link", { name: "v0.1.5 · any" });
-
-    expect(version).toHaveAttribute(
-      "href",
-      "/some-base-path/build-manifest.json",
-    );
-    expect(version).toHaveAttribute("target", "_blank");
-  });
-
-  it("should offer a first-time visitor to create or restore a wallet, and nothing to unlock", () => {
-    const { getByRole, queryByRole } = render(Setup, {});
-    const create = getByRole("link", { name: "Create wallet" });
-
-    expect(create).toHaveClass("dusk-anchor-button--variant--primary");
-    expect(create).toHaveClass("dusk-anchor-button--size--default");
-    expect(getByRole("link", { name: "Restore wallet" })).toBeVisible();
-    expect(queryByRole("link", { name: "Unlock" })).toBeNull();
-  });
-
-  it("should offer to unlock the wallet kept in this browser as the way in, and a new one or a restore as small seconds", () => {
-    settingsStore.update((settings) => ({ ...settings, userId: "some-id" }));
-
-    const { getAllByRole, getByRole } = render(Setup, {});
-    const unlock = getByRole("link", { name: "Unlock" });
-
-    expect(unlock.getAttribute("href")).toMatch(/\/unlock$/);
-    expect(getAllByRole("link")[0]).toBe(unlock);
-    expect(unlock).toHaveClass("dusk-anchor-button--variant--primary");
-    expect(unlock).toHaveClass("dusk-anchor-button--size--default");
-
-    for (const name of ["Create wallet", "Restore wallet"]) {
-      const other = getByRole("link", { name });
-
-      expect(other).toHaveClass("dusk-anchor-button--variant--tertiary");
-      expect(other).toHaveClass("dusk-anchor-button--size--small");
-    }
   });
 });

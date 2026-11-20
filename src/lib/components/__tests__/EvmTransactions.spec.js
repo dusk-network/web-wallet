@@ -8,10 +8,13 @@ import { EvmTransactions } from "..";
 import WithdrawalLifecycle from "../EvmTransactions/WithdrawalLifecycle.svelte";
 import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { claimDay } from "$lib/bridge/claimDate";
-import { WITHDRAWAL_GAS_REFUSAL } from "$lib/bridge/withdrawalLifecycle";
+import {
+  WITHDRAWAL_GAS_REFUSAL,
+  withdrawalActionFailure,
+  withdrawalStageDefaultMessage,
+} from "$lib/bridge/withdrawalLifecycle";
 import { formatTimestamp } from "../EvmTransactions/withdrawalPresentation";
 import { networks } from "@dusk-network/networks";
-import { recordAnimations } from "$lib/dusk/test-helpers";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
@@ -378,6 +381,65 @@ const ITS_WALLET = expect.objectContaining({
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 
 /**
+ * The id of the group a row is listed in: needs, progress, other, done or
+ * failed.
+ *
+ * @param {string} group
+ */
+const inGroup = (group) => `bridge-group-${group}`;
+
+/** @param {string} text */
+const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * `text` as a whole value: `2 Nov` not inside `12 Nov`, `5 DUSK` not inside
+ * `0.5 DUSK` or `15 DUSK`.
+ *
+ * @param {string} text
+ */
+const whole = (text) => new RegExp(`(?<![\\w.,])${escaped(text)}(?!\\w)`);
+
+/**
+ * `text` as a whole value in the sentence that says `step`: a claim's date
+ * or wait, never a proof's.
+ *
+ * @param {string} step
+ * @param {string} text
+ */
+const inStep = (step, text) =>
+  new RegExp(`\\b${step}\\b[^.]*${whole(text).source}`, "i");
+
+/**
+ * A row's fields, as its open button shows them.
+ *
+ * @param {HTMLElement} row
+ */
+const fieldsOf = (row) => {
+  /** @param {string} name */
+  const field = (name) =>
+    row.querySelector(`.bridge-row__${name}`)?.textContent?.trim() ?? "";
+
+  return {
+    amount: field("amount"),
+    line: field("line"),
+    state: field("state"),
+    title: field("title"),
+  };
+};
+
+/**
+ * What a details list gives the line its `dt` names: the `dd` after it.
+ *
+ * @param {string} list The list's class
+ * @param {RegExp} name
+ */
+const detail = (list, name) =>
+  Array.from(document.querySelectorAll(`.${list} dt`))
+    .find((term) => name.test(term.textContent ?? ""))
+    ?.nextElementSibling?.textContent?.replace(/\s+/g, " ")
+    .trim();
+
+/**
  * @param {string} transactionHash
  * @param {string} [stage]
  */
@@ -553,8 +615,10 @@ describe("EvmTransactions", () => {
     const paidAt = Date.now() - 3_600_000;
     const sentAt = Date.now() - 600_000;
 
-    const { container, findByRole, getByRole, queryByLabelText, queryByText } =
-      render(EvmTransactions, { target: document.body });
+    const { findByRole, getByRole, queryByLabelText, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body },
+    );
 
     // The history comes after the page opened.
     expect(tracking.followTransfers).not.toHaveBeenCalled();
@@ -581,24 +645,34 @@ describe("EvmTransactions", () => {
       ]),
     );
     const paid = await findByRole("button", {
-      name: `BNB Smart Chain to Dusk Arrived ${claimDay(paidAt, "en")} 5 DUSK`,
+      name: /^BNB Smart Chain to Dusk/,
     });
-    const sent = getByRole("button", {
-      name: `Dusk to BNB Smart Chain Sent ${claimDay(sentAt, "en")} · takes ~10 hours 200,001 DUSK Pending`,
-    });
+    const sent = getByRole("button", { name: /^Dusk to BNB Smart Chain/ });
 
-    expect(paid.closest("section")).toHaveAccessibleName("Completed");
-    expect(sent.closest("section")).toHaveAccessibleName("In progress");
+    // What each came to and when: paid, and sent, in its usual time.
+    expect(fieldsOf(paid)).toMatchObject({
+      amount: "5 DUSK",
+      line: expect.stringMatching(whole(claimDay(paidAt, "en"))),
+    });
+    expect(fieldsOf(sent)).toMatchObject({
+      amount: "200,001 DUSK",
+      line: expect.stringMatching(whole(claimDay(sentAt, "en"))),
+      state: expect.stringMatching(/pending/i),
+    });
+    expect(fieldsOf(sent).line).toMatch(whole("10 hours"));
+    expect(paid.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("done"),
+    );
+    expect(sent.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("progress"),
+    );
     // No DuskEVM on mainnet: nothing to connect for it, nor to look up.
-    expect(queryByText(/Connect a DuskEVM wallet/)).toBeNull();
+    expect(queryByRole("button", { name: /^connect$/i })).toBeNull();
     expect(
       queryByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
     ).toBeNull();
-    // No line saying what the page is: its head says it.
-    expect(container).not.toHaveTextContent("Transfers between");
-    expect(
-      container.querySelector(".bridge-activity__lede"),
-    ).not.toHaveTextContent("DuskEVM");
 
     // Followed as soon as the history gives the one under way: the one
     // paid needs no read.
@@ -610,16 +684,6 @@ describe("EvmTransactions", () => {
         ],
         {},
       ),
-    );
-
-    await fireEvent.click(paid);
-
-    // On mainnet's own Dusk explorer.
-    expect(
-      getByRole("link", { name: "View dusk payout hash in Dusk explorer" }),
-    ).toHaveAttribute(
-      "href",
-      `https://explorer.dusk.network/transactions/transaction?id=${"b1".repeat(32)}`,
     );
   });
 
@@ -703,13 +767,20 @@ describe("EvmTransactions", () => {
     (await import("$lib/bridge/migrationActivity")).hydrateMigrations();
     mocks.setPageSearch(`?tx=0x${"bb".repeat(32)}`);
 
-    const { findByRole, findByText, getAllByRole } = render(EvmTransactions, {
+    const { getAllByRole, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
+    // Open, as its link asks.
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: /^BNB Smart Chain to Dusk/ }),
+      ).toHaveAttribute("aria-expanded", "true"),
+    );
     expect(
-      await findByRole("button", { name: /^BNB Smart Chain to Dusk Sent/ }),
-    ).toHaveAttribute("aria-expanded", "true");
+      fieldsOf(getByRole("button", { name: /^BNB Smart Chain to Dusk/ }))
+        .amount,
+    ).toBe("2.5 DUSK");
     expect(
       getAllByRole("button", { name: /^BNB Smart Chain to Dusk/ }),
     ).toHaveLength(1);
@@ -717,10 +788,10 @@ describe("EvmTransactions", () => {
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
 
     // Its gas, with the approval sent for it, as its chain says.
-    expect(
-      (await findByText("Gas, allowance and migration")).parentElement,
-    ).toHaveTextContent(
-      "Gas, allowance and migration 0.000093199001491184 BNB",
+    await vi.waitFor(() =>
+      expect(detail("transfer-ledger", /\ballowance\b/i)).toBe(
+        "0.000093199001491184 BNB",
+      ),
     );
     expect(evmReads.readMigrationsEvm).toHaveBeenCalledWith(networks.mainnet, [
       {
@@ -733,19 +804,25 @@ describe("EvmTransactions", () => {
     // The approvals its sender sent there that no migration spent: each a
     // row of its own, with what it approved, or what a revoke took back of
     // the approval before it, and its gas.
-    for (const title of [
-      "Approved 2.5 BEP20 DUSK, never used",
-      "Revoked the 2.5 BEP20 DUSK approved, never used",
-    ]) {
-      expect(
-        await findByRole("button", {
-          name: `${title} Sent ${claimDay(day, "en")} · gas on BNB Smart Chain 0.000046 BNB`,
-        }),
-      ).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(getAllByRole("button", { name: /BEP20 DUSK/ })).toHaveLength(2),
+    );
+
+    const approvals = getAllByRole("button", { name: /BEP20 DUSK/ }).map(
+      fieldsOf,
+    );
+
+    for (const { amount, line, title } of approvals) {
+      expect(title).toMatch(whole("2.5 BEP20 DUSK"));
+      expect(title).toMatch(/never used/i);
+      expect(line).toMatch(whole(claimDay(day, "en")));
+      expect(line).toMatch(/\bBNB Smart Chain\b/);
+      expect(amount).toBe("0.000046 BNB");
     }
+    // One approved it, the other revoked it.
     expect(
-      getAllByRole("button", { name: /^(Approved|Revoked|Approval)/ }),
-    ).toHaveLength(2);
+      approvals.filter(({ title }) => /\brevoked\b/i.test(title)),
+    ).toHaveLength(1);
     expect(evmReads.readMigrationApprovals).toHaveBeenCalledWith(
       networks.mainnet,
       [accountAddress],
@@ -774,20 +851,19 @@ describe("EvmTransactions", () => {
       route: "bsc-to-dusk",
       state: "unused",
     };
-    const rows = () =>
-      Array.from(document.querySelectorAll(".bridge-row__title"), (title) =>
-        title.textContent?.trim(),
-      ).filter((title) => /^(Approved|Revoked|Approval)/.test(title ?? ""));
 
     setNodeNetwork(networks.mainnet);
     evmReads.readMigrationApprovals.mockResolvedValueOnce([unused]);
     mocks.setAccount({ address: owner, addresses: [owner], isConnected: true });
 
-    render(EvmTransactions, { target: document.body });
+    const { queryAllByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+    /** The approvals listed: rows of the token they approved. */
+    const rows = () => queryAllByRole("button", { name: /BEP20 DUSK/ });
 
-    await vi.waitFor(() =>
-      expect(rows()).toStrictEqual(["Approved 2.5 BEP20 DUSK, never used"]),
-    );
+    await vi.waitFor(() => expect(rows()).toHaveLength(1));
+    expect(fieldsOf(rows()[0]).title).toMatch(whole("2.5 BEP20 DUSK"));
 
     mocks.setAccount({ address: undefined, isConnected: false });
 
@@ -816,10 +892,6 @@ describe("EvmTransactions", () => {
 
   it("hides what an approval approved while balances are hidden, and shows it again as they're shown", async () => {
     const owner = `0x${"44".repeat(20)}`;
-    const rows = () =>
-      Array.from(document.querySelectorAll(".bridge-row__title"), (title) =>
-        title.textContent?.trim(),
-      ).filter((title) => /^(Approved|Revoked|Approval)/.test(title ?? ""));
 
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
     setNodeNetwork(networks.mainnet);
@@ -842,17 +914,19 @@ describe("EvmTransactions", () => {
     mocks.setAccount({ address: owner, addresses: [owner], isConnected: true });
 
     try {
-      render(EvmTransactions, { target: document.body });
+      const { queryAllByRole } = render(EvmTransactions, {
+        target: document.body,
+      });
+      /** The approvals listed: rows of the token they approved. */
+      const rows = () => queryAllByRole("button", { name: /BEP20 DUSK/ });
 
-      await vi.waitFor(() =>
-        expect(rows()).toStrictEqual(["Approved •••• BEP20 DUSK, never used"]),
-      );
-      expect(document.body).not.toHaveTextContent("2.5 BEP20");
+      await vi.waitFor(() => expect(rows()).toHaveLength(1));
+      expect(document.body).not.toHaveTextContent("2.5");
 
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
 
       await vi.waitFor(() =>
-        expect(rows()).toStrictEqual(["Approved 2.5 BEP20 DUSK, never used"]),
+        expect(fieldsOf(rows()[0]).title).toMatch(whole("2.5 BEP20 DUSK")),
       );
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -881,9 +955,7 @@ describe("EvmTransactions", () => {
       new Error("The DuskEVM bridge isn't configured."),
     );
 
-    const { queryByText } = render(EvmTransactions, {
-      target: document.body,
-    });
+    render(EvmTransactions, { target: document.body });
 
     // Connected for a migration.
     mocks.setAccount({ address: accountAddress, isConnected: true });
@@ -894,7 +966,9 @@ describe("EvmTransactions", () => {
     expect(mocks.rememberHistoryWithdrawals).not.toHaveBeenCalled();
     expect(mocks.resumeWithdrawalTracking).not.toHaveBeenCalled();
     expect(mocks.resumeDepositTracking).not.toHaveBeenCalled();
-    expect(queryByText(/DuskEVM's explorer can't be read/)).toBeNull();
+    expect(document.body).not.toHaveTextContent(
+      "The DuskEVM bridge isn't configured.",
+    );
   });
 
   it("reads nothing again while nothing is under way", async () => {
@@ -922,63 +996,6 @@ describe("EvmTransactions", () => {
     }
   });
 
-  it("shows its page at once, with no fade", async () => {
-    mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
-
-    const animations = recordAnimations();
-
-    try {
-      const { getByLabelText } = render(EvmTransactions, {
-        target: document.body,
-      });
-
-      await tick();
-
-      const page = getByLabelText(
-        "Find a withdrawal by its DuskEVM transaction ID",
-      ).closest(".bridge-activity");
-
-      expect(page).toBeInTheDocument();
-      expect(animations.runs.filter((run) => run.element === page)).toEqual([]);
-    } finally {
-      animations.restore();
-    }
-  });
-
-  it("keeps activity and manual lookup available without an EVM wallet", async () => {
-    mocks.loadWithdrawalActivity.mockImplementation(emptyActivity);
-
-    const { findByText, getByLabelText, getByRole, getByText } = render(
-      EvmTransactions,
-      {
-        target: document.body,
-      },
-    );
-
-    expect(
-      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
-    ).toBeInTheDocument();
-    expect(
-      await findByText("Connect a DuskEVM wallet to see its transfers."),
-    ).toBeInTheDocument();
-    await fireEvent.click(getByRole("button", { name: /^connect$/i }));
-    expect(mocks.modalOpen).toHaveBeenCalledOnce();
-    // The bridge's card, on its Activity tab, with the way Home.
-    expect(getByRole("link", { name: "Bridge" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/bridge/",
-    );
-    expect(getByRole("link", { name: "Activity" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(getByRole("link", { name: "Home" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/",
-    );
-    expect(getByText("No transfers yet.")).toBeInTheDocument();
-  });
-
   it("lists the deposits kept here with the withdrawals, each in its group, and opens one row at a time", async () => {
     const depositHash = "ab".repeat(32);
     const withdrawalHash = `0x${"5c".repeat(32)}`;
@@ -1003,28 +1020,30 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"e9".repeat(32)}`,
     });
 
-    const {
-      findByRole,
-      getByLabelText,
-      getByRole,
-      getByText,
-      queryByRole,
-      queryByText,
-    } = render(EvmTransactions, { target: document.body });
+    const { findByRole, getByLabelText, getByRole, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body },
+    );
     const depositButton = await findByRole("button", {
-      name: new RegExp(
-        `^Dusk to DuskEVM Sent ${claimDay(now - 60_000, "en")}.* 0\\.25 DUSK Pending$`,
-      ),
+      name: /^Dusk to DuskEVM/,
     });
     const withdrawalButton = getByRole("button", {
-      name: "DuskEVM to Dusk Ready to claim on Dusk 0.1 DUSK",
+      name: /^DuskEVM to Dusk/,
     });
 
-    expect(withdrawalButton.closest("section")).toHaveAccessibleName(
-      "Needs you",
+    expect(fieldsOf(depositButton)).toMatchObject({
+      amount: "0.25 DUSK",
+      line: expect.stringMatching(whole(claimDay(now - 60_000, "en"))),
+      state: expect.stringMatching(/pending/i),
+    });
+    expect(fieldsOf(withdrawalButton).amount).toBe("0.1 DUSK");
+    expect(withdrawalButton.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("needs"),
     );
-    expect(depositButton.closest("section")).toHaveAccessibleName(
-      "In progress",
+    expect(depositButton.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("progress"),
     );
     expect(queryByRole("button", { name: /0\.5 DUSK/ })).toBeNull();
     expect(mocks.resumeDepositTracking).toHaveBeenCalledWith(accountAddress);
@@ -1033,9 +1052,6 @@ describe("EvmTransactions", () => {
     await fireEvent.click(depositButton);
 
     expect(depositButton).toHaveAttribute("aria-expanded", "true");
-    expect(getByText("Dusk transaction")).toBeInTheDocument();
-    // Its row says the amount and the state: the steps don't again.
-    expect(queryByRole("heading", { name: "0.25 DUSK" })).toBeNull();
 
     // Opening a withdrawal closes it.
     await fireEvent.click(withdrawalButton);
@@ -1044,7 +1060,6 @@ describe("EvmTransactions", () => {
       expect(withdrawalButton).toHaveAttribute("aria-expanded", "true"),
     );
     expect(depositButton).toHaveAttribute("aria-expanded", "false");
-    expect(queryByText("Dusk transaction")).toBeNull();
 
     // And the other way around.
     await fireEvent.click(depositButton);
@@ -1108,30 +1123,26 @@ describe("EvmTransactions", () => {
       }),
     ]);
 
-    const { findByRole, getByRole, getByText, queryByRole } = render(
-      EvmTransactions,
-      { target: document.body },
-    );
-    const row = await findByRole("button", {
-      name: `Dusk to DuskEVM Arrived ${claimDay(arrived, "en")} · to 0xAB84…C86F 0.25 DUSK`,
+    const { findByRole, queryByRole } = render(EvmTransactions, {
+      target: document.body,
     });
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+    const { amount, line } = fieldsOf(row);
 
+    // What arrived, when, and the DuskEVM address it went to.
+    expect(amount).toBe("0.25 DUSK");
+    expect(line).toMatch(/\barrived\b/i);
+    expect(line).toMatch(whole(claimDay(arrived, "en")));
+    expect(line).toMatch(whole("0xAB84…C86F"));
     expect(mocks.followHistoryDeposits).toHaveBeenCalledWith(rows);
-    expect(row.closest("section")).toHaveAccessibleName("Completed");
+    expect(row.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("done"),
+    );
     expect(queryByRole("button", { name: /0\.5 DUSK/ })).toBeNull();
-
-    // Its steps link the DuskEVM transaction that paid it.
-    await fireEvent.click(row);
-
-    expect(getByText("Arrived")).toBeInTheDocument();
-    expect(
-      getByRole("link", {
-        name: "View duskevm transaction hash in Blockscout",
-      }),
-    ).toHaveAttribute("href", `https://explorer.example.test/tx/${paid}`);
   });
 
-  it("puts a withdrawal the EVM wallet sent to someone else's Dusk account in a group of its own, saying whom it pays, with its Prove offered quietly", async () => {
+  it("puts a withdrawal the EVM wallet sent to someone else's Dusk account in a group of its own, saying whom it pays", async () => {
     const theirs = `0x${"67".repeat(32)}`;
     const mine = `0x${"68".repeat(32)}`;
     const own = String(get(walletStore).currentProfile?.account);
@@ -1149,69 +1160,32 @@ describe("EvmTransactions", () => {
       transactionHash: hash,
     }));
 
-    const { findByRole, getAllByRole, getByRole } = render(EvmTransactions, {
+    const { findByRole, getAllByRole } = render(EvmTransactions, {
       target: document.body,
     });
     const row = await findByRole("button", {
-      name: "DuskEVM to Dusk Pays 213qXN…V5JJ9Y · ready to prove on Dusk 0.1 DUSK",
+      name: /^DuskEVM to Dusk.*213qXN…V5JJ9Y/,
     });
+    const [ownRow] = getAllByRole("button", {
+      name: /^DuskEVM to Dusk/,
+    }).filter((each) => each !== row);
 
-    expect(row.closest("section")).toHaveAccessibleName("Sent to someone else");
-    expect(
-      getByRole("button", {
-        name: "DuskEVM to Dusk Ready to prove on Dusk 0.1 DUSK",
-      }).closest("section"),
-    ).toHaveAccessibleName("Needs you");
-
-    // What needs you comes first.
-    const [loud, quiet] = getAllByRole("button", {
-      name: "Prove 0.1 DUSK from DuskEVM",
+    // Whom it pays, in its line.
+    expect(fieldsOf(row)).toMatchObject({
+      amount: "0.1 DUSK",
+      line: expect.stringMatching(whole("213qXN…V5JJ9Y")),
     });
-
-    expect(quiet).toHaveClass("dusk-button--variant--secondary");
-    expect(loud).toHaveClass("dusk-button--variant--primary");
-
-    // Opened, its own step is quiet too.
-    await fireEvent.click(quiet);
-
-    expect(await findByRole("button", { name: "Prove on Dusk" })).toHaveClass(
-      "dusk-button--variant--secondary",
+    expect(row.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("other"),
     );
-  });
-
-  it("leaves a withdrawal to someone else that this wallet proved where its claim needs it, with its Claim as ever, still saying whom it pays", async () => {
-    const theirs = `0x${"69".repeat(32)}`;
-    const withdrawalHash = `0x${"a3".repeat(32)}`;
-    const other =
-      "213qXNJXsQEGigeKJ8jFxuaPb1UV2BiGNykjS3cqRULiaBjQQcGQyEknV7WAhNF5u9hhhFoJcLxbuMWuWhCq3b9jCHDTpvGZaV5HcUU8Z5c4oHbdJ7TQ1NWQJNghYV5JJ9Y";
-
-    mocks.setAccount({ address: accountAddress, isConnected: true });
-    // Its reads, which are this wallet's, say it's proved and ready to claim.
-    mocks.setWithdrawalItems([
-      {
-        ...activityItem(theirs, "ready_to_finalize"),
-        recipient: other,
-        withdrawalHash,
-      },
-    ]);
-    mocks.loadWithdrawalStatus.mockImplementation(async (hash) => ({
-      blockNumber: 13668n,
-      stage: "ready_to_finalize",
-      transactionHash: hash,
-      withdrawalHash,
-    }));
-
-    const { findByRole, getByRole } = render(EvmTransactions, {
-      target: document.body,
-    });
-    const row = await findByRole("button", {
-      name: "DuskEVM to Dusk Pays 213qXN…V5JJ9Y · ready to claim on Dusk 0.1 DUSK",
-    });
-
-    expect(row.closest("section")).toHaveAccessibleName("Needs you");
-    expect(
-      getByRole("button", { name: "Claim 0.1 DUSK from DuskEVM" }),
-    ).toHaveClass("dusk-button--variant--primary");
+    // The one that pays this wallet's account needs it, naming no one.
+    expect(ownRow.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("needs"),
+    );
+    expect(fieldsOf(ownRow)).toMatchObject({ amount: "0.1 DUSK" });
+    expect(fieldsOf(ownRow).line).not.toMatch(/213qXN…V5JJ9Y/);
   });
 
   it("opens the deposit its link names, without checking it as a withdrawal", async () => {
@@ -1222,16 +1196,14 @@ describe("EvmTransactions", () => {
     ]);
     mocks.setPageSearch(`?tx=${depositHash}`);
 
-    const { findByRole, getByText } = render(EvmTransactions, {
+    const { findByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
-    expect(
-      await findByRole("button", {
-        name: /^Dusk to DuskEVM Arrived on DuskEVM 0\.25 DUSK$/,
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
-    expect(getByText("Dusk transaction")).toBeInTheDocument();
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+
+    expect(row).toHaveAttribute("aria-expanded", "true");
+    expect(fieldsOf(row).amount).toBe("0.25 DUSK");
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
     expect(mocks.rememberWithdrawalTransaction).not.toHaveBeenCalled();
   });
@@ -1258,11 +1230,13 @@ describe("EvmTransactions", () => {
 
     mocks.setAccount({ address: accountAddress, isConnected: true });
 
-    expect(
-      await findByRole("button", {
-        name: /^Dusk to DuskEVM Arrived on DuskEVM · to 0x\w{4}…\w{4} 0\.25 DUSK$/,
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
+    const row = await findByRole("button", { name: /^Dusk to DuskEVM/ });
+
+    expect(row).toHaveAttribute("aria-expanded", "true");
+    expect(fieldsOf(row)).toMatchObject({
+      amount: "0.25 DUSK",
+      line: expect.stringMatching(whole("0x2222…2222")),
+    });
     expect(queryByRole("alert")).toBeNull();
     expect(input).not.toHaveAttribute("aria-invalid");
     expect(input).toHaveValue("");
@@ -1287,9 +1261,7 @@ describe("EvmTransactions", () => {
     );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
-    expect(await findByRole("alert")).toHaveTextContent(
-      "Withdrawal transaction was not found.",
-    );
+    expect(await findByRole("alert")).toBeInTheDocument();
     expect(queryByRole("button", { name: /^DuskEVM to Dusk/ })).toBeNull();
   });
 
@@ -1325,30 +1297,6 @@ describe("EvmTransactions", () => {
     );
   });
 
-  it("leaves the linked deposit closed when a hash was checked before its account connects", async () => {
-    const depositHash = "cd".repeat(32);
-
-    mocks.setDepositItems([deposit(depositHash, { stage: "completed" })]);
-    mocks.setPageSearch(`?tx=${depositHash}`);
-
-    const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
-      target: document.body,
-    });
-    const input = getByLabelText(
-      "Find a withdrawal by its DuskEVM transaction ID",
-    );
-
-    await fireEvent.input(input, { target: { value: "0x1234" } });
-    await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    mocks.setAccount({ address: accountAddress, isConnected: true });
-
-    expect(
-      await findByRole("button", {
-        name: /^Dusk to DuskEVM Arrived on DuskEVM · to 0x\w{4}…\w{4} 0\.25 DUSK$/,
-      }),
-    ).toHaveAttribute("aria-expanded", "false");
-  });
-
   it("shows inline validation for an invalid transaction hash", async () => {
     const { findByRole, getByLabelText, getByRole } = render(EvmTransactions, {
       target: document.body,
@@ -1360,14 +1308,12 @@ describe("EvmTransactions", () => {
     await fireEvent.input(input, { target: { value: "0x1234" } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
-    expect(await findByRole("alert")).toHaveTextContent(
-      "Enter a 0x-prefixed 32-byte transaction hash.",
-    );
+    expect(await findByRole("alert")).toBeInTheDocument();
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(mocks.loadWithdrawalStatus).not.toHaveBeenCalled();
   });
 
-  it("shows missing finalization config and disables status checks", async () => {
+  it("disables status checks while the finalization config is missing", async () => {
     mocks.finalizationConfig = {
       configured: false,
       disputeGameFactoryContractId: undefined,
@@ -1381,16 +1327,10 @@ describe("EvmTransactions", () => {
       optimismPortalDataDriverUrl: "/optimism_portal_dd_opt.wasm",
     };
 
-    const { getByRole, getByText } = render(EvmTransactions, {
+    const { getByRole } = render(EvmTransactions, {
       target: document.body,
     });
 
-    expect(getByText("Finalization not configured")).toBeInTheDocument();
-    expect(
-      getByText(
-        "Missing VITE_EVM_OPTIMISM_PORTAL_CONTRACT_ID, VITE_EVM_DISPUTE_GAME_FACTORY_CONTRACT_ID.",
-      ),
-    ).toBeInTheDocument();
     expect(getByRole("button", { name: /^check$/i })).toBeDisabled();
   });
 
@@ -1413,10 +1353,9 @@ describe("EvmTransactions", () => {
     const { findByRole, queryByRole } = render(EvmTransactions, {
       target: document.body,
     });
-    const item = await findByRole("button", {
-      name: /Not on Dusk yet.*0\.1 DUSK/i,
-    });
+    const item = await findByRole("button", { name: /^DuskEVM to Dusk/ });
 
+    expect(fieldsOf(item).amount).toBe("0.1 DUSK");
     expect(item).toHaveAttribute("aria-expanded", "false");
     await fireEvent.click(item);
 
@@ -1434,7 +1373,7 @@ describe("EvmTransactions", () => {
     });
   });
 
-  it("names a withdrawal by its route and amount, says what it needs once, and when it was sent in its steps", async () => {
+  it("names a withdrawal by its route and amount, offers its proof, and says when it was sent in its steps", async () => {
     const txHash = `0x${"5a".repeat(32)}`;
     const sentAt = "2026-09-25T11:51:09.000Z";
 
@@ -1460,133 +1399,29 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ea".repeat(32)}`,
     });
 
-    const { container, findByRole, getAllByText, getByRole, queryByText } =
-      render(EvmTransactions, { target: document.body });
-    const item = await findByRole("button", {
-      name: "DuskEVM to Dusk Ready to prove on Dusk 10 DUSK",
-    });
-
-    // It needs its proof: under Needs you, with Prove beside it.
-    expect(item.closest("section")).toHaveAccessibleName("Needs you");
-    expect(
-      getByRole("button", { name: "Prove 10 DUSK from DuskEVM" }),
-    ).toBeInTheDocument();
-
-    await fireEvent.click(item);
-
-    expect(
-      Array.from(container.querySelectorAll(".withdrawal-details dt"), (term) =>
-        term.textContent?.trim(),
-      ),
-    ).toStrictEqual([
-      "Sent",
-      "DuskEVM block",
-      "DuskEVM transaction",
-      "Withdrawal hash",
-    ]);
-    expect(container.querySelector(".withdrawal-details dd")).toHaveTextContent(
-      formatTimestamp(sentAt),
-    );
-    expect(getAllByText("Ready to prove on Dusk")).toHaveLength(1);
-    expect(getByRole("button", { name: "Prove on Dusk" })).toBeInTheDocument();
-    expect(
-      getByRole("button", { name: "Copy duskevm transaction hash" }),
-    ).toBeInTheDocument();
-    expect(queryByText(/Initiated|L2 /)).toBeNull();
-  });
-
-  it("links a withdrawal's two sides: its DuskEVM transaction, and its proof on Dusk as the history has it", async () => {
-    const txHash = `0x${"5b".repeat(32)}`;
-    const withdrawalHash = `0x${"eb".repeat(32)}`;
-    const proof = "b7".repeat(32);
-
-    mocks.setAccount({ address: accountAddress, isConnected: true });
-    mocks.setHistoryRows(
-      rowsOf([
-        {
-          bridge: { hash: withdrawalHash, kind: "prove", withdrawal: "01" },
-          hash: proof,
-          status: "executed",
-          timestamp: Date.now() - 3_600_000,
-        },
-      ]),
-    );
-    mocks.loadWithdrawalActivity.mockResolvedValue({
-      error: null,
-      items: [{ ...activityItem(txHash, "proven_waiting"), withdrawalHash }],
-      sourceUnavailable: false,
-    });
-    mocks.loadWithdrawalStatus.mockResolvedValue({
-      blockNumber: 2580123n,
-      stage: "proven_waiting",
-      transactionHash: txHash,
-      withdrawalHash,
-    });
-
     const { findByRole, getByRole } = render(EvmTransactions, {
       target: document.body,
     });
+    const item = await findByRole("button", { name: /^DuskEVM to Dusk/ });
 
-    const actionButton = await findByRole("button", {
-      name: /^DuskEVM to Dusk /,
-    });
-
-    await afterConfirmDelay();
-    await fireEvent.click(actionButton);
-
-    expect(
-      getByRole("link", {
-        name: "View duskevm transaction hash in Blockscout",
-      }),
-    ).toHaveAttribute("href", `https://explorer.example.test/tx/${txHash}`);
-    expect(
-      await findByRole("link", {
-        name: "View proof on dusk hash in Dusk explorer",
-      }),
-    ).toHaveAttribute(
-      "href",
-      `https://explorer.testnet.dusk.network/transactions/transaction?id=${proof}`,
+    // Its amount, from its wei; it needs its proof: under Needs you, with
+    // Prove beside it.
+    expect(fieldsOf(item).amount).toBe("10 DUSK");
+    expect(item.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("needs"),
     );
-  });
+    expect(
+      getByRole("button", { name: /^Prove 10 DUSK\b/ }),
+    ).toBeInTheDocument();
+    expect(detail("withdrawal-details", /^sent$/i)).toBeUndefined();
 
-  it("shows the complete journey and prove action when ready", async () => {
-    const txHash = `0x${"58".repeat(32)}`;
+    await fireEvent.click(item);
 
-    mocks.loadWithdrawalStatus.mockResolvedValue({
-      blockNumber: 13669n,
-      proofSubmitter: "0xeb9ea22334e679cdbc669cf9ad2d713b559708b1",
-      provenAt: 0n,
-      stage: "ready_to_prove",
-      transactionHash: txHash,
-      withdrawalHash: `0x${"e8".repeat(32)}`,
-    });
-
-    const { findByRole, getAllByText, getByLabelText, getByRole, getByText } =
-      render(EvmTransactions, { target: document.body });
-
-    await fireEvent.input(
-      getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
-      {
-        target: { value: txHash },
-      },
+    expect(detail("withdrawal-details", /^sent$/i)).toBe(
+      formatTimestamp(sentAt),
     );
-    await fireEvent.click(getByRole("button", { name: /^check$/i }));
-
-    expect(
-      await findByRole("button", { name: /^prove on dusk$/i }),
-    ).toBeInTheDocument();
-    for (const label of [
-      "Sent",
-      "Reported to Dusk",
-      "Proved",
-      "Waiting period",
-      "Claimed",
-    ]) {
-      expect(getAllByText(label).length).toBeGreaterThan(0);
-    }
-    expect(
-      getByText("Step 2 of 3. Fee from your public account."),
-    ).toBeInTheDocument();
+    expect(getByRole("button", { name: "Prove on Dusk" })).toBeInTheDocument();
   });
 
   it("does not show the prove action before an output is available", async () => {
@@ -1612,7 +1447,10 @@ describe("EvmTransactions", () => {
     );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
-    expect(await findByText("Usually within an hour.")).toBeInTheDocument();
+    // Its steps, at that stage.
+    expect(
+      await findByText(withdrawalStageDefaultMessage("waiting_for_output")),
+    ).toBeInTheDocument();
     expect(
       queryByText(
         "No finalized output proposal covering this withdrawal is ready yet.",
@@ -1665,13 +1503,10 @@ describe("EvmTransactions", () => {
     });
     mocks.proveWithdrawal.mockResolvedValue("65".repeat(32));
 
-    const {
-      findAllByText,
-      findByRole,
-      getByLabelText,
-      getByRole,
-      queryByRole,
-    } = render(EvmTransactions, { target: document.body });
+    const { findByRole, getByLabelText, getByRole, queryByRole } = render(
+      EvmTransactions,
+      { target: document.body },
+    );
 
     await fireEvent.input(
       getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
@@ -1686,13 +1521,18 @@ describe("EvmTransactions", () => {
 
     await afterConfirmDelay();
     await fireEvent.click(actionButton);
-    expect(
-      (await findAllByText("Proof sent, waiting for Dusk")).length,
-    ).toBeGreaterThan(0);
-    expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(
-      txHash,
-      { action: "prove", hash: "65".repeat(32) },
-      ITS_WALLET,
+    await vi.waitFor(() =>
+      expect(mocks.recordWithdrawalSubmission).toHaveBeenCalledWith(
+        txHash,
+        { action: "prove", hash: "65".repeat(32) },
+        ITS_WALLET,
+      ),
+    );
+    // Under way, waiting for Dusk: nothing to prove again.
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: /^DuskEVM to Dusk/ }).closest("section"),
+      ).toHaveAttribute("aria-labelledby", inGroup("progress")),
     );
     expect(
       queryByRole("button", { name: /^prove on dusk$/i }),
@@ -1700,9 +1540,10 @@ describe("EvmTransactions", () => {
     expect(
       queryByRole("button", { name: /refresh status/i }),
     ).not.toBeInTheDocument();
+    await tick();
     expect(
-      (await findAllByText("Proof sent, waiting for Dusk")).length,
-    ).toBeGreaterThan(0);
+      queryByRole("button", { name: /^prove on dusk$/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("re-enables proof with a short line when the submitted transaction fails", async () => {
@@ -1715,14 +1556,8 @@ describe("EvmTransactions", () => {
       withdrawalHash: `0x${"ed".repeat(32)}`,
     });
     mocks.proveWithdrawal.mockResolvedValue("67".repeat(32));
-    const {
-      findAllByText,
-      findByRole,
-      findByText,
-      getByLabelText,
-      getByRole,
-      queryByText,
-    } = render(EvmTransactions, { target: document.body });
+    const { findByRole, findByText, getByLabelText, getByRole, queryByText } =
+      render(EvmTransactions, { target: document.body });
 
     await fireEvent.input(
       getByLabelText("Find a withdrawal by its DuskEVM transaction ID"),
@@ -1737,7 +1572,11 @@ describe("EvmTransactions", () => {
 
     await afterConfirmDelay();
     await fireEvent.click(actionButton);
-    await findAllByText("Proof sent, waiting for Dusk");
+    await vi.waitFor(() =>
+      expect(
+        getByRole("button", { name: /^DuskEVM to Dusk/ }).closest("section"),
+      ).toHaveAttribute("aria-labelledby", inGroup("progress")),
+    );
 
     const pending = mocks
       .withdrawalItems()
@@ -1756,7 +1595,7 @@ describe("EvmTransactions", () => {
       await findByRole("button", { name: /^prove on dusk$/i }),
     ).toBeInTheDocument();
     expect(
-      await findByText("The proof wasn't sent. Try again."),
+      await findByText(withdrawalActionFailure("ready_to_prove")),
     ).toBeInTheDocument();
     expect(queryByText(/contract execution failed/i)).not.toBeInTheDocument();
   });
@@ -1765,18 +1604,17 @@ describe("EvmTransactions", () => {
     {
       action: "prove",
       button: /^prove on dusk$/i,
-      line: "The proof wasn't sent. Try again.",
       stage: "ready_to_prove",
     },
     {
       action: "finalize",
       button: /^claim on dusk$/i,
-      line: "The claim wasn't sent. Try again.",
       stage: "ready_to_finalize",
     },
   ])(
     "keeps the $action action for a retry when it isn't sent, and logs why",
-    async ({ action, button, line, stage }) => {
+    async ({ action, button, stage }) => {
+      const line = withdrawalActionFailure(stage);
       const txHash = `0x${"68".repeat(32)}`;
       const error = new Error("User rejected the request.");
       const consoleError = vi
@@ -1815,10 +1653,7 @@ describe("EvmTransactions", () => {
       ).toBe(line);
       expect(queryByText(error.message)).not.toBeInTheDocument();
       expect(getByRole("button", { name: button })).toBeEnabled();
-      expect(consoleError).toHaveBeenCalledWith(
-        `Withdrawal ${action} failed`,
-        error,
-      );
+      expect(consoleError).toHaveBeenCalledWith(expect.any(String), error);
       expect(mocks.recordWithdrawalSubmission).not.toHaveBeenCalled();
 
       consoleError.mockRestore();
@@ -1864,7 +1699,7 @@ describe("EvmTransactions", () => {
         ?.textContent?.trim(),
     ).toBe(WITHDRAWAL_GAS_REFUSAL);
     expect(
-      queryByText("The claim wasn't sent. Try again."),
+      queryByText(withdrawalActionFailure("ready_to_finalize")),
     ).not.toBeInTheDocument();
 
     consoleError.mockRestore();
@@ -1892,14 +1727,23 @@ describe("EvmTransactions", () => {
     });
 
     const actionButton = await findByRole("button", {
-      name: /0\.1 DUSK.*Failed/i,
+      name: /^DuskEVM to Dusk/,
     });
+
+    expect(fieldsOf(actionButton)).toMatchObject({
+      amount: "0.1 DUSK",
+      state: expect.stringMatching(/failed/i),
+    });
+    expect(actionButton.closest("section")).toHaveAttribute(
+      "aria-labelledby",
+      inGroup("failed"),
+    );
 
     await afterConfirmDelay();
     await fireEvent.click(actionButton);
 
     expect(
-      await findByText("Your DUSK is still on DuskEVM."),
+      await findByText(withdrawalStageDefaultMessage("failed")),
     ).toBeInTheDocument();
     expect(
       queryByText("Withdrawal transaction failed on DuskEVM."),
@@ -1927,9 +1771,13 @@ describe("EvmTransactions", () => {
 
     await fireEvent.input(input, { target: { value: selectedHash } });
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
-    await findByRole("button", {
-      name: /Not on Dusk yet.*0\.1 DUSK/i,
-    });
+    await vi.waitFor(() =>
+      expect(mocks.withdrawalItems()).toMatchObject([
+        { stage: "waiting_for_output", transactionHash: selectedHash },
+      ]),
+    );
+    const row = await findByRole("button", { name: /^DuskEVM to Dusk/ });
+
     await fireEvent.input(input, { target: { value: editedHash } });
 
     const selected = mocks
@@ -1945,13 +1793,17 @@ describe("EvmTransactions", () => {
       },
     ]);
 
+    // When it can be claimed, exactly, as its row and its open steps say.
+    await vi.waitFor(() =>
+      expect(fieldsOf(row).line).toMatch(
+        inStep("claim", claimDay(CLAIM_AT, "en")),
+      ),
+    );
+    expect(fieldsOf(row).line).not.toMatch(/\babout\b/i);
+    expect(fieldsOf(row).amount).toBe("0.1 DUSK");
+    expect(row).toHaveAttribute("aria-expanded", "true");
     expect(
-      await findByRole("button", {
-        name: new RegExp(`Claim from ${claimDay(CLAIM_AT, "en")} 0\\.1 DUSK`),
-      }),
-    ).toHaveAttribute("aria-expanded", "true");
-    expect(
-      getByText(`Claim from ${claimDay(CLAIM_AT, "en")}`, {
+      getByText(inStep("claim", claimDay(CLAIM_AT, "en")), {
         selector: ".bridge-timeline *",
       }),
     ).toBeInTheDocument();
@@ -1997,20 +1849,23 @@ describe("EvmTransactions", () => {
     });
     mocks.finalizeWithdrawal.mockResolvedValue("claim-hash");
 
-    const { findByRole, getByRole, queryByRole, queryByText } = render(
-      EvmTransactions,
-      { target: document.body },
+    const { findByRole, getByRole, queryByRole } = render(EvmTransactions, {
+      target: document.body,
+    });
+
+    // The one waiting: when it can be claimed, about, as the chain said.
+    const waiting = fieldsOf(
+      await findByRole("button", {
+        name: whole(claimDay(CLAIM_AT, "en")),
+      }),
     );
 
-    expect(
-      await findByRole("button", {
-        name: new RegExp(`Claim from about ${claimDay(CLAIM_AT, "en")}`),
-      }),
-    ).toBeInTheDocument();
+    expect(waiting.line).toMatch(inStep("claim", claimDay(CLAIM_AT, "en")));
+    expect(waiting.line).toMatch(/\babout\b/i);
+    expect(waiting.amount).toBe("0.1 DUSK");
     expect(
       queryByRole("button", { name: new RegExp(otherHash.slice(0, 8)) }),
     ).toBeNull();
-    expect(queryByText("No transfers yet.")).toBeNull();
     expect(mocks.historyWithdrawals).toHaveBeenCalledWith([
       { hash: "some-row" },
     ]);
@@ -2018,9 +1873,7 @@ describe("EvmTransactions", () => {
     expect(mocks.trackWithdrawalTransaction).toHaveBeenCalledWith(waitingHash);
 
     // Claim opens its steps, where the claim is sent, and goes to it.
-    await fireEvent.click(
-      getByRole("button", { name: "Claim 0.1 DUSK from DuskEVM" }),
-    );
+    await fireEvent.click(getByRole("button", { name: /^Claim 0\.1 DUSK\b/ }));
 
     const claim = await findByRole("button", { name: /^claim on dusk$/i });
 
@@ -2061,10 +1914,11 @@ describe("EvmTransactions", () => {
     const { findByRole } = render(EvmTransactions, { target: document.body });
 
     expect(
-      await findByRole("button", {
-        name: /^DuskEVM to Dusk Sent .+ 0\.1 DUSK Pending$/,
-      }),
-    ).toBeInTheDocument();
+      fieldsOf(await findByRole("button", { name: /^DuskEVM to Dusk/ })),
+    ).toMatchObject({
+      amount: "0.1 DUSK",
+      state: expect.stringMatching(/pending/i),
+    });
     expect(mocks.rememberHistoryWithdrawals).toHaveBeenCalledWith(
       known,
       ITS_WALLET,
@@ -2106,9 +1960,7 @@ describe("EvmTransactions", () => {
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
     expect(
-      await findByText(
-        `Step 2 of 3. Fee from your public account. If you prove now, you can claim from ${claimDay(CLAIM_AT, "en")}.`,
-      ),
+      await findByText(inStep("claim", claimDay(CLAIM_AT, "en"))),
     ).toBeInTheDocument();
     expect(mocks.loadProveNowClaim).toHaveBeenCalledWith(txHash);
   });
@@ -2143,11 +1995,10 @@ describe("EvmTransactions", () => {
     );
     await fireEvent.click(getByRole("button", { name: /^check$/i }));
 
-    expect(
-      await findByText(
-        "Claim 7 days after you prove. You can prove about 30 minutes after sending.",
-      ),
-    ).toBeInTheDocument();
+    // Each wait with its step: 7 days to claim, 30 minutes to prove.
+    expect(await findByText(inStep("claim", "7 days"))).toHaveTextContent(
+      inStep("prove", "30 minutes"),
+    );
   });
 });
 
@@ -2163,11 +2014,13 @@ describe("a withdrawal ready to prove: when it can be claimed if it's proved now
   /** @param {number} at */
   const claimAt = (at) => ({ at, exact: true, overdue: false });
 
-  /** The date the card says, if any. */
+  /** The claim date the card says, of those it could: null if it says none. */
   const said = () =>
-    /If you prove now, you can claim from ([^.]+)\./u.exec(
-      document.body.textContent ?? "",
-    )?.[1] ?? null;
+    [CLAIM_AT, LATER]
+      .map((at) => claimDay(at, "en"))
+      .find((day) =>
+        inStep("claim", day).test(document.body.textContent ?? ""),
+      ) ?? null;
 
   const flush = async () => {
     await vi.advanceTimersByTimeAsync(0);

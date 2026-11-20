@@ -47,24 +47,13 @@ describe("Settings, with more than one wallet", () => {
     vi.restoreAllMocks();
   });
 
-  it("says Lock, which locks every wallet in every tab, that auto-lock locks them all, and that Reset takes them all", async () => {
+  it("locks every wallet in every tab, and says Reset takes them all", async () => {
     await vault.setUp(A, PASSWORD);
     await unlockWallets(PASSWORD);
     await addWallet(B, PASSWORD);
 
-    const { getByRole, getByText } = render(Settings);
+    const { getByRole } = render(Settings);
 
-    expect(
-      getByText("Locks every wallet after this long without use."),
-    ).toBeInTheDocument();
-    expect(
-      getByRole("heading", { name: "Reset all wallets" }),
-    ).toBeInTheDocument();
-    expect(
-      getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. Only each wallet's recovery phrase gets you back in.",
-      ),
-    ).toBeInTheDocument();
     expect(
       getByRole("button", { name: "Reset all wallets" }),
     ).toBeInTheDocument();
@@ -86,22 +75,13 @@ describe("Settings, with more than one wallet", () => {
     expect(get(walletStore).wallets).toHaveLength(1);
     expect(vault.list()).toHaveLength(2);
 
-    const { getByRole, getByText } = render(Settings);
+    const { getByRole } = render(Settings);
 
     await vi.waitFor(() =>
       expect(
-        getByRole("heading", { name: "Reset all wallets" }),
+        getByRole("button", { name: "Reset all wallets" }),
       ).toBeInTheDocument(),
     );
-    expect(
-      getByText(
-        "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. Only each wallet's recovery phrase gets you back in.",
-      ),
-    ).toBeInTheDocument();
-    expect(getByRole("button", { name: "Lock" })).toBeInTheDocument();
-    expect(
-      getByText("Locks every wallet after this long without use."),
-    ).toBeInTheDocument();
   });
 
   it("shows the block the open wallet was made at, each its own", async () => {

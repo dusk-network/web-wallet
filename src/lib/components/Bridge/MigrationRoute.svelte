@@ -1090,7 +1090,7 @@
         <dd>
           {typeof feeBalance === "bigint"
             ? feeEstimate
-              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)}) · no bridge fee`
+              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}) · no bridge fee`
               : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
             : `On ${chainName}, as your wallet shows · no bridge fee`}
         </dd>
@@ -1201,7 +1201,7 @@
         <dd>
           {typeof revokeFees.balance === "bigint"
             ? revokeFees.fee
-              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)})`
+              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit})`
               : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for it`
             : `On ${chainName}, as your wallet shows`}
         </dd>

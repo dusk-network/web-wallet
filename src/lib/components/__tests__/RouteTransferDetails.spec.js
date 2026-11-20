@@ -6,7 +6,6 @@ import { rowsOf } from "$lib/activity/__tests__/fixtures/rows";
 import { cardRoutes } from "$lib/bridge/cardRoutes";
 import { settingsStore } from "$lib/stores";
 
-import RouteTransferDetails from "../EvmTransactions/RouteTransferDetails.svelte";
 import TransferLedger from "../EvmTransactions/TransferLedger.svelte";
 import { ledgerOf } from "../EvmTransactions/bridgeActivity";
 
@@ -31,39 +30,6 @@ const migration = (at) => ({
   recipient: "",
   route,
   stage: "paid",
-});
-
-/** @param {HTMLElement} container */
-const terms = (container) =>
-  Array.from(container.querySelectorAll("dt"), (term) => term.textContent);
-
-describe("RouteTransferDetails", () => {
-  afterEach(cleanup);
-
-  it("says when a migration known only by its payout was paid, never as when it was sent", () => {
-    const { container } = render(RouteTransferDetails, {
-      transfer: migration(null),
-    });
-
-    expect(terms(container)).toStrictEqual([
-      "BNB Smart Chain transaction",
-      "Arrived",
-      "Dusk payout",
-    ]);
-  });
-
-  it("says when one sent from here was sent, and when it was paid", () => {
-    const { container } = render(RouteTransferDetails, {
-      transfer: migration(PAID_AT - 60_000),
-    });
-
-    expect(terms(container)).toStrictEqual([
-      "Sent",
-      "BNB Smart Chain transaction",
-      "Arrived",
-      "Dusk payout",
-    ]);
-  });
 });
 
 describe("A transfer's amounts, as its details say them", () => {
@@ -91,25 +57,35 @@ describe("A transfer's amounts, as its details say them", () => {
   ]);
 
   /**
-   * What the details say, line by line.
+   * The ledger of a transfer, as its details are given it.
    *
    * @param {any} activity
    * @param {{ evm?: Record<string, any>, locale?: string, rows?: ActivityRow[], steps?: Map<string, any> }} [context]
    */
-  function linesOf(activity, { evm, locale = "en", rows = [], steps } = {}) {
-    const ledger = ledgerOf(activity, {
-      evm,
-      locale,
-      rows,
-      steps: steps ?? new Map(),
-    });
-    const { container } = render(TransferLedger, {
-      ledger: /** @type {any} */ (ledger),
-    });
+  const ledgerFor = (activity, { evm, locale = "en", rows = [], steps } = {}) =>
+    ledgerOf(activity, { evm, locale, rows, steps: steps ?? new Map() });
 
-    return Array.from(container.querySelectorAll("dl > div"), (line) =>
-      line.textContent?.replace(/\s+/g, " ").trim(),
-    );
+  /**
+   * What the details say, each amount by its line's label: what was sent,
+   * the fees, what it received or is still to pay, and the gas.
+   *
+   * @param {any} activity
+   * @param {{ evm?: Record<string, any>, locale?: string, rows?: ActivityRow[], steps?: Map<string, any> }} [context]
+   * @returns {Record<string, string | undefined>}
+   */
+  function linesOf(activity, context) {
+    const { container } = render(TransferLedger, {
+      ledger: /** @type {any} */ (ledgerFor(activity, context)),
+    });
+    const lines = Array.from(container.querySelectorAll("dl > div"), (row) => [
+      row.querySelector("dt")?.textContent?.trim() ?? "",
+      row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
+    ]);
+
+    // Each label once: none hides another.
+    expect(new Set(lines.map(([label]) => label)).size).toBe(lines.length);
+
+    return Object.fromEntries(lines);
   }
 
   /** @param {Record<string, unknown>} fields */
@@ -127,26 +103,28 @@ describe("A transfer's amounts, as its details say them", () => {
     kind: "service",
   });
 
-  it("gives a transfer out to the last digit, with its network fee, and what it'll pay until it has", () => {
-    expect(linesOf(transferOut({}), { rows: history })).toStrictEqual([
-      "Sent 3.053082083 DUSK",
-      "Bridge fee 1 DUSK",
-      "Fee 0.001859281 DUSK",
-      "You receive 2.053082083 BEP20 DUSK",
-    ]);
+  it("gives a transfer out to the last digit, with its fees, and what it'll pay until it has", () => {
+    expect(linesOf(transferOut({}), { rows: history })).toStrictEqual({
+      "Bridge fee": "1 DUSK",
+      Fee: "0.001859281 DUSK",
+      Sent: "3.053082083 DUSK",
+      "You receive": "2.053082083 BEP20 DUSK",
+    });
   });
 
   it("says what arrived once it has, as the chain said it", () => {
-    expect(
-      linesOf(
-        transferOut({
-          arrivedLux: 2_053_082_083n,
-          payout: "0xcc",
-          stage: "arrived",
-        }),
-        { rows: history },
-      ).at(-1),
-    ).toBe("Received 2.053082083 BEP20 DUSK");
+    const arrived = transferOut({
+      arrivedLux: 2_053_082_083n,
+      payout: "0xcc",
+      stage: "arrived",
+    });
+
+    expect(linesOf(arrived, { rows: history })).toStrictEqual({
+      "Bridge fee": "1 DUSK",
+      Fee: "0.001859281 DUSK",
+      Received: "2.053082083 BEP20 DUSK",
+      Sent: "3.053082083 DUSK",
+    });
   });
 
   it("says what a transfer that failed on Dusk paid, and nothing about what it moved", () => {
@@ -160,9 +138,9 @@ describe("A transfer's amounts, as its details say them", () => {
       },
     ]);
 
-    expect(linesOf(transferOut({}), { rows: failed })).toStrictEqual([
-      "Fee 0.001859281 DUSK",
-    ]);
+    expect(linesOf(transferOut({}), { rows: failed })).toStrictEqual({
+      Fee: "0.001859281 DUSK",
+    });
   });
 
   /**
@@ -191,28 +169,22 @@ describe("A transfer's amounts, as its details say them", () => {
   });
 
   it("writes the gas paid to the wei, as the export does, on screen", () => {
-    const ledger = ledgerOf(
-      /** @type {any} */ ({ item: migration(PAID_AT), kind: "migration" }),
-      { evm: onItsChain(), locale: "en", rows: [], steps: new Map() },
-    );
-    const { container } = render(TransferLedger, {
-      ledger: /** @type {any} */ (ledger),
-    });
-    const gas = /** @type {Element} */ (
-      Array.from(container.querySelectorAll("dl > div")).find((line) =>
-        line.textContent?.includes("Gas"),
-      )
-    );
-
-    expect(gas.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Gas, migration 0.00004220500067528 BNB",
-    );
+    expect(
+      linesOf(
+        { item: migration(PAID_AT), kind: "migration" },
+        { evm: onItsChain() },
+      )["Gas, migration"],
+    ).toBe("0.00004220500067528 BNB");
   });
 
   it("gives a migration in its token, what was paid out, and the gas paid on its chain with the approval it spent", () => {
     const paid = {
       item: migration(PAID_AT),
       kind: "migration",
+    };
+    const sent = {
+      ...paid,
+      item: { ...paid.item, payout: null, stage: "sent" },
     };
 
     // What this browser kept of it once is the migration's gas alone: what
@@ -234,37 +206,38 @@ describe("A transfer's amounts, as its details say them", () => {
           }),
         },
       ),
-    ).toStrictEqual([
-      "Sent 4 BEP20 DUSK",
-      "Received 4 DUSK",
-      "Gas, allowance and migration 0.000093199001491184 BNB",
-    ]);
+    ).toStrictEqual({
+      "Gas, allowance and migration": "0.000093199001491184 BNB",
+      Received: "4 DUSK",
+      Sent: "4 BEP20 DUSK",
+    });
     // Not read on its chain yet: no gas said.
-    expect(linesOf(paid)).toStrictEqual([
-      "Sent 4 BEP20 DUSK",
-      "Received 4 DUSK",
-    ]);
-    expect(
-      linesOf({
-        ...paid,
-        item: { ...paid.item, payout: null, stage: "sent" },
-      }),
-    ).toStrictEqual(["Sent 4 BEP20 DUSK", "You receive 4 DUSK"]);
+    expect(linesOf(paid)).toStrictEqual({
+      Received: "4 DUSK",
+      Sent: "4 BEP20 DUSK",
+    });
+    // Not paid out yet: what it'll pay.
+    expect(linesOf(sent)).toStrictEqual({
+      Sent: "4 BEP20 DUSK",
+      "You receive": "4 DUSK",
+    });
   });
 
   it("says nothing arrives of a transfer the bridge won't pay out, though it went through on Dusk, keeping what was sent and the fee", () => {
-    const lines = linesOf(
-      transferOut({
-        failure: "The memo isn't an address: the bridge can't pay it out",
-        stage: "failed",
-      }),
-      { rows: history, steps: new Map() },
-    );
+    const failed = transferOut({
+      failure: "The memo isn't an address: the bridge can't pay it out",
+      stage: "failed",
+    });
+    const lines = linesOf(failed, { rows: history, steps: new Map() });
 
-    expect(lines).toContain("Sent 3.053082083 DUSK");
-    expect(lines.some((line) => line?.startsWith("Fee "))).toBe(true);
-    expect(lines.some((line) => line?.startsWith("You receive"))).toBe(false);
-    expect(lines.at(-1)).toMatch(/^Received 0 /);
+    // Not what it would have paid: it received nothing, and these lines
+    // alone, with no payout still to come.
+    expect(lines).toStrictEqual({
+      "Bridge fee": "1 DUSK",
+      Fee: "0.001859281 DUSK",
+      Received: "0 BEP20 DUSK",
+      Sent: "3.053082083 DUSK",
+    });
   });
 
   it("gives a deposit, and a withdrawal with what its proof and claim paid on Dusk", () => {
@@ -277,12 +250,13 @@ describe("A transfer's amounts, as its details say them", () => {
         },
         kind: "deposit",
       }),
-    ).toStrictEqual(["Sent 0.25 DUSK", "Received 0.25 DUSK"]);
+    ).toStrictEqual({ Received: "0.25 DUSK", Sent: "0.25 DUSK" });
 
     const proof = "b1".repeat(32);
     const claim = "b2".repeat(32);
     const withdrawalHash = `0x${"5c".repeat(32)}`;
 
+    // The network's fees, for the proof and the claim, together.
     expect(
       linesOf(
         {
@@ -305,25 +279,25 @@ describe("A transfer's amounts, as its details say them", () => {
           steps: new Map([[withdrawalHash, { claim, prove: proof }]]),
         },
       ),
-    ).toStrictEqual([
-      "Sent 0.090082082 DUSK",
-      "Fee 0.002 DUSK",
-      "Received 0.090082082 DUSK",
-    ]);
+    ).toStrictEqual({
+      Fee: "0.002 DUSK",
+      Received: "0.090082082 DUSK",
+      Sent: "0.090082082 DUSK",
+    });
   });
 
   it("writes them as the language does", () => {
     expect(
-      linesOf(transferOut({}), { locale: "de-DE", rows: history })[0],
-    ).toBe("Sent 3,053082083 DUSK");
+      linesOf(transferOut({}), { locale: "de-DE", rows: history }).Sent,
+    ).toBe("3,053082083 DUSK");
   });
 
   it("hides them while balances are hidden", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
-    const lines = linesOf(transferOut({}), { rows: history });
+    const lines = Object.values(linesOf(transferOut({}), { rows: history }));
 
-    expect(lines[0]).toBe("Sent •••• hidden DUSK");
+    expect(lines).toHaveLength(4);
     expect(lines.join(" ")).not.toMatch(/\d[.,]\d/);
   });
 });

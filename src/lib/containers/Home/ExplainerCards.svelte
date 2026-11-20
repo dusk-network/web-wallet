@@ -8,6 +8,7 @@
   import { resolve } from "$app/paths";
   import { Button, Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
+  import { lastReadText } from "$lib/activity/present";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
 
   /** @type {bigint} */
@@ -40,8 +41,25 @@
    */
   export let stakeUnread = false;
 
+  /**
+   * Whether the balances couldn't be read: the public and shielded ones
+   * shown are what was read before.
+   */
+  export let balanceUnread = false;
+
   /** Whether it's being read, with nothing read before to show meanwhile. */
   export let stakeReading = false;
+
+  /**
+   * When the balances, and what's staked, were last read whole: said with
+   * each figure that may be out of date. Null where that isn't known.
+   *
+   * @type {number | null}
+   */
+  export let balanceReadAt = null;
+
+  /** @type {number | null} */
+  export let stakeReadAt = null;
 
   /**
    * Reads what's staked again.
@@ -81,6 +99,11 @@
     <p class="explainer-card__text">
       Visible on chain. Staking and the bridge use it.
     </p>
+    {#if balanceUnread}
+      <p class="explainer-card__text">
+        May be out of date. {lastReadText(balanceReadAt, locale)}
+      </p>
+    {/if}
   </li>
   <li class="explainer-card">
     <p class="explainer-card__key ledger-label">
@@ -94,6 +117,11 @@
       <span class="explainer-card__unit">DUSK</span>
     </p>
     <p class="explainer-card__text">Amounts and accounts hidden on chain.</p>
+    {#if balanceUnread}
+      <p class="explainer-card__text">
+        May be out of date. {lastReadText(balanceReadAt, locale)}
+      </p>
+    {/if}
   </li>
   {#if stakeEnabled}
     <li class="explainer-card">
@@ -154,6 +182,11 @@
         {/if}
       {/if}
       {#if stakeUnread}
+        {#if staked || liquid > 0n}
+          <p class="explainer-card__text">
+            May be out of date. {lastReadText(stakeReadAt, locale)}
+          </p>
+        {/if}
         <Button
           className="explainer-card__retry"
           disabled={isRetrying}

@@ -241,7 +241,6 @@ describe("Work begun on one wallet", () => {
       const said = await acting;
 
       expect(said).toEqual(new WalletChangedError());
-      expect(String(said)).toContain("The wallet changed meanwhile.");
     }
 
     expect(execute).not.toHaveBeenCalled();

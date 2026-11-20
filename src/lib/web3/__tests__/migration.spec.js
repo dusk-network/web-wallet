@@ -36,6 +36,16 @@ const send = () =>
     /** @type {`0x${string}`} */ (OWNER),
   );
 
+/**
+ * What a failure says where nothing went out: "Not sent", its status, and
+ * never that it may have gone out.
+ */
+const NOT_SENT = {
+  canRetry: true,
+  heading: "Not sent",
+  sentence: expect.not.stringMatching(/\bmay have\b/i),
+};
+
 /** @param {() => Promise<unknown>} doing */
 const failureOf = (doing) =>
   doing().then(
@@ -67,11 +77,7 @@ describe("migrate", () => {
       new Error("User rejected the request."),
     );
 
-    expect(await failureOf(send)).toStrictEqual({
-      canRetry: true,
-      heading: "Not sent",
-      sentence: "Declined in your EVM wallet.",
-    });
+    expect(await failureOf(send)).toStrictEqual(NOT_SENT);
 
     vi.mocked(simulateContract).mockRejectedValue(new Error("It reverted."));
 
@@ -163,11 +169,7 @@ describe("what an EVM wallet's error proves", () => {
       raw(-32000, "gas required exceeds allowance (0)"),
     ],
   ])("says nothing went out for a revert: %s", async (_, answer) => {
-    expect(await failureFrom(wrapped(answer))).toStrictEqual({
-      canRetry: true,
-      heading: "Not sent",
-      sentence: "The network would refuse it. See Details.",
-    });
+    expect(await failureFrom(wrapped(answer))).toStrictEqual(NOT_SENT);
   });
 
   it.each([
@@ -184,11 +186,7 @@ describe("what an EVM wallet's error proves", () => {
   ])(
     "says nothing went out when the wallet wasn't asked: %s",
     async (_, error) => {
-      expect(await failureFrom(error)).toStrictEqual({
-        canRetry: true,
-        heading: "Not sent",
-        sentence: "Your EVM wallet isn't on this account or network. Check it.",
-      });
+      expect(await failureFrom(error)).toStrictEqual(NOT_SENT);
     },
   );
 
@@ -197,20 +195,12 @@ describe("what an EVM wallet's error proves", () => {
       await failureFrom(
         wrapped(new UnauthorizedProviderError(new Error("Not authorized."))),
       ),
-    ).toStrictEqual({
-      canRetry: true,
-      heading: "Not sent",
-      sentence: "Your EVM wallet refused it. See Details.",
-    });
+    ).toStrictEqual(NOT_SENT);
     expect(
       await failureFrom(
         wrapped(new UserRejectedRequestError(new Error("Denied."))),
       ),
-    ).toStrictEqual({
-      canRetry: true,
-      heading: "Not sent",
-      sentence: "Declined in your EVM wallet.",
-    });
+    ).toStrictEqual(NOT_SENT);
   });
 
   it("says nothing went out when the node finds too little to pay", async () => {
@@ -245,9 +235,12 @@ describe("what an EVM wallet's error proves", () => {
       const failure = await failureFrom(wrapped(answer));
 
       expect(failure).toMatchObject({
-        heading: "Not confirmed",
+        mayHaveGoneOut: true,
         outcomeUnknown: true,
+        sentence: expect.not.stringMatching(/\bnothing was sent\b/i),
       });
+      expect(failure.sentence).toMatch(/\bmay have gone out\b/i);
+      expect(failure.heading).not.toBe("Not sent");
       expect(failure).not.toHaveProperty("canRetry");
     },
   );

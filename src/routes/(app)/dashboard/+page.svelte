@@ -339,6 +339,8 @@
 
   <div class="home__cards">
     <ExplainerCards
+      {balanceReadAt}
+      balanceUnread={balanceReadFailed}
       {hasPastStaking}
       {liquid}
       locale={language}
@@ -346,6 +348,7 @@
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
       stakeEnabled={isEnabled("stake")}
+      stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       {stakeReading}
       {stakeUnread}
       {staked}

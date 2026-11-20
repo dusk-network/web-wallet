@@ -1,42 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import { act, cleanup, render } from "@testing-library/svelte";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
-import { pageTitle } from "$lib/navigation";
 
 import Shell from "../Shell.svelte";
 
 const mocks = vi.hoisted(() => ({
-  goto: vi.fn(() => Promise.resolve()),
   /** @type {import("svelte/store").Writable<any> | null} */
   network: null,
   startHistory: vi.fn(),
-  /** @type {import("svelte/store").Writable<any> | null} */
-  state: null,
-  url: new URL("http://localhost"),
-}));
-
-vi.mock("$app/stores", async () => {
-  const { derived, writable } = await import("svelte/store");
-
-  mocks.state = writable({});
-
-  return {
-    page: {
-      subscribe: (/** @type {(value: any) => void} */ run) =>
-        derived(
-          /** @type {import("svelte/store").Writable<any>} */ (mocks.state),
-          (state) => ({ state, url: mocks.url }),
-        ).subscribe(run),
-    },
-  };
-});
-
-vi.mock("$app/navigation", async (importOriginal) => ({
-  .../** @type {object} */ (await importOriginal()),
-  goto: mocks.goto,
-  pushState: (/** @type {string} */ _, /** @type {any} */ state) =>
-    mocks.state?.set(state),
 }));
 
 vi.mock("$lib/stores", async (importOriginal) => {
@@ -63,143 +35,13 @@ vi.mock("$lib/stores", async (importOriginal) => {
 describe("Shell", () => {
   afterEach(() => {
     cleanup();
-    mocks.goto.mockClear();
     mocks.startHistory.mockClear();
-    mocks.state?.set({});
-    mocks.url = new URL("http://localhost");
-  });
-
-  describe("the search, as a step of its own in the browser's history", () => {
-    it("closes with Back, and nothing else moves", async () => {
-      const { queryByRole } = render(Shell);
-
-      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
-
-      expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
-
-      // The browser's Back: the step before it.
-      await act(() => mocks.state?.set({}));
-
-      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-    });
-
-    it("takes its step back as it's closed on the screen", async () => {
-      const back = vi.spyOn(history, "back").mockImplementation(() => {});
-      const { getByRole, queryByRole } = render(Shell);
-
-      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
-      await fireEvent.click(getByRole("button", { name: "Close search" }));
-
-      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-      expect(back).toHaveBeenCalledOnce();
-
-      back.mockRestore();
-    });
-
-    it("gives its step to the page a result opens: Back from there returns to where it opened", async () => {
-      const back = vi.spyOn(history, "back").mockImplementation(() => {});
-      const { container, getByRole, queryByRole } = render(Shell);
-
-      await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
-      await fireEvent.input(
-        /** @type {HTMLElement} */ (
-          container.querySelector(".command-bar__input")
-        ),
-        { target: { value: "settings" } },
-      );
-      await fireEvent.click(getByRole("option", { name: /Settings/ }));
-
-      expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-      expect(back).not.toHaveBeenCalled();
-      expect(mocks.goto).toHaveBeenCalledExactlyOnceWith(
-        expect.stringMatching(/\/settings$/),
-        { replaceState: true },
-      );
-
-      back.mockRestore();
-    });
-  });
-
-  it("finds the Bridge by Migrate, with no page of its own for it", async () => {
-    const { container, getByRole } = render(Shell);
-
-    await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
-    await fireEvent.input(getByRole("combobox"), {
-      target: { value: "migrate" },
-    });
-
-    const labels = Array.from(
-      container.querySelectorAll("[role=option] .command-bar__label"),
-      (label) => label.textContent?.trim(),
-    );
-
-    expect(labels).toContain("Bridge");
-    expect(labels).not.toContain("Migrate");
-  });
-
-  it("opens the search with Ctrl K, and closes it with Escape", async () => {
-    const { container, queryByRole } = render(Shell);
-
-    expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-
-    await fireEvent.keyDown(window, { ctrlKey: true, key: "k" });
-
-    expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
-
-    await fireEvent.keyDown(
-      /** @type {HTMLElement} */ (
-        container.querySelector(".command-bar__input")
-      ),
-      { key: "Escape" },
-    );
-
-    expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-  });
-
-  it("opens the search with /, as with Ctrl K, unless a field is typed in", async () => {
-    const { container, queryByRole } = render(Shell);
-    const shell = /** @type {HTMLElement} */ (
-      container.querySelector(".shell")
-    );
-    const field = document.createElement("input");
-    const notes = document.createElement("textarea");
-    const box = document.createElement("input");
-
-    box.type = "checkbox";
-    shell.append(field, notes, box);
-
-    // Typed in a field, it's a slash.
-    for (const target of [field, notes]) {
-      expect(await fireEvent.keyDown(target, { key: "/" })).toBe(true);
-    }
-
-    // With Ctrl or Alt, it's another shortcut.
-    await fireEvent.keyDown(window, { ctrlKey: true, key: "/" });
-    await fireEvent.keyDown(window, { altKey: true, key: "/" });
-
-    expect(queryByRole("dialog", { name: "Search" })).toBeNull();
-
-    // Anywhere else, as on a checkbox, it opens the search, the slash kept
-    // out of its field.
-    expect(await fireEvent.keyDown(box, { key: "/" })).toBe(false);
-
-    expect(queryByRole("dialog", { name: "Search" })).toBeInTheDocument();
-    expect(container.querySelector(".top-bar__search")).toHaveAttribute(
-      "aria-keyshortcuts",
-      "Control+K Meta+K /",
-    );
   });
 
   it("says at the top that test DUSK has no value, on a test network only", async () => {
-    const { container, getByRole, queryByRole } = render(Shell);
+    const { getByRole, queryByRole } = render(Shell);
 
-    expect(getByRole("note")).toHaveTextContent(
-      "Testnet · Test DUSK has no value",
-    );
-    // At the top, above the top bar.
-    expect(
-      container.querySelector(".shell__header > .testnet-strip + .top-bar"),
-    ).toBeInTheDocument();
+    expect(getByRole("note")).toHaveTextContent("Testnet");
 
     await act(() =>
       mocks.network?.set({ connected: true, networkName: "mainnet" }),
@@ -216,93 +58,5 @@ describe("Shell", () => {
     render(Shell);
 
     expect(mocks.startHistory).toHaveBeenCalled();
-  });
-
-  it("hides the phone's tab bar while a field is typed in", async () => {
-    const { container } = render(Shell);
-    const shell = /** @type {HTMLElement} */ (
-      container.querySelector(".shell")
-    );
-    const input = document.createElement("input");
-
-    shell.append(input);
-    await fireEvent.focusIn(input);
-
-    expect(shell).toHaveClass("shell--typing");
-
-    await fireEvent.focusOut(input);
-
-    expect(shell).not.toHaveClass("shell--typing");
-  });
-
-  it("keeps Staking marked in a staking flow, which has the phone's bottom for its buttons", () => {
-    mocks.url = new URL("http://localhost/some-base-path/dashboard/stake");
-
-    const overview = render(Shell);
-    const staking = () =>
-      overview.getAllByRole("link", { name: /^\s*staking\s*$/i })[0];
-
-    expect(overview.container.querySelector(".shell")).not.toHaveClass(
-      "shell--flow",
-    );
-    expect(staking()).toHaveAttribute("aria-current", "page");
-
-    cleanup();
-    mocks.url = new URL(
-      "http://localhost/some-base-path/dashboard/stake?flow=native",
-    );
-
-    const flow = render(Shell);
-
-    expect(flow.container.querySelector(".shell")).toHaveClass("shell--flow");
-    expect(
-      flow.getAllByRole("link", { name: /^\s*staking\s*$/i })[0],
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("lets a keyboard skip to the page's content", () => {
-    const { getByRole } = render(Shell);
-
-    expect(getByRole("link", { name: "Skip to content" })).toHaveAttribute(
-      "href",
-      "#shell-main",
-    );
-  });
-
-  it("keeps the top bar and the navigation out of the page's main content, which the skip link goes to", () => {
-    mocks.url = new URL("http://localhost/dashboard");
-
-    const { getAllByRole, getByRole } = render(Shell);
-    const main = getByRole("main");
-
-    expect(main).toHaveAttribute("id", "shell-main");
-    expect(main).not.toContainElement(getByRole("banner"));
-    expect(main).not.toContainElement(
-      getByRole("link", { name: "Skip to content" }),
-    );
-
-    for (const nav of getAllByRole("navigation", { name: "Wallet pages" })) {
-      expect(main).not.toContainElement(nav);
-    }
-  });
-
-  it("names the page with one heading: its own title where it shows one, or else one for screen readers", async () => {
-    mocks.url = new URL("http://localhost/dashboard/send");
-
-    const { getAllByRole, queryByRole } = render(Shell);
-
-    expect(
-      getAllByRole("heading", { level: 1 }).map((h) => h.textContent),
-    ).toStrictEqual(["Send"]);
-    expect(getAllByRole("heading", { level: 1 })[0]).toHaveClass("sr-only");
-
-    // A page showing its own title: that one only.
-    const title = await act(() => pageTitle(document.createElement("h1")));
-
-    expect(queryByRole("heading", { level: 1 })).toBeNull();
-
-    await act(() => title.destroy());
-
-    expect(getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 });

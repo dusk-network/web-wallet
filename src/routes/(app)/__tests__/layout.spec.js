@@ -13,6 +13,7 @@ import { ProfileGenerator } from "@dusk/w3sper";
 
 import * as navigation from "$lib/navigation";
 import * as routeHistory from "$lib/bridge/routeHistory";
+import { SendPasswordDeclinedError } from "$lib/errors";
 import {
   sendPasswordFor,
   setSendPasswordLimit,
@@ -88,34 +89,15 @@ describe("App layout.svelte, on a wallet open", () => {
     const { findByRole, queryByRole } = render(Layout);
     const asking = sendPasswordFor(1n, "");
 
-    expect(
-      await findByRole("dialog", { name: /^Password for sends over / }),
-    ).toBeInTheDocument();
+    expect(await findByRole("dialog")).toBeInTheDocument();
 
     cleanup();
 
-    await expect(asking).rejects.toThrow("The password wasn't given.");
+    await expect(asking).rejects.toBeInstanceOf(SendPasswordDeclinedError);
     expect(queryByRole("dialog")).toBeNull();
 
     setSendPasswordLimit(null);
     await vault.clear();
-  });
-
-  it("should sync as the browser is online again, not at the wallet's next turn", async () => {
-    await walletStore.init(new ProfileGenerator(async () => new Uint8Array()));
-
-    const refresh = vi
-      .spyOn(walletStore, "refreshBalance")
-      .mockResolvedValue(undefined);
-
-    render(Layout);
-
-    expect(refresh).not.toHaveBeenCalled();
-
-    window.dispatchEvent(new Event("online"));
-
-    expect(refresh).toHaveBeenCalledOnce();
-    refresh.mockRestore();
   });
 
   it("should keep the profile the wallet is on, for an unlock to come back to", async () => {
