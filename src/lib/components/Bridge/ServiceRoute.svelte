@@ -39,7 +39,7 @@
   } from "$lib/transactions";
   import { account, modal } from "$lib/web3/walletConnection";
   import { notRunning } from "$lib/bridge/cardRoutes";
-  import { sendServiceTransfer, serviceLine } from "$lib/bridge/routeFlows";
+  import { sendServiceTransfer } from "$lib/bridge/routeFlows";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
   import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
@@ -53,8 +53,8 @@
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import TransactionStatus from "../TransactionStatus/TransactionStatus.svelte";
   import FullAddress from "../FullAddress/FullAddress.svelte";
-  import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
+  import SectionHead from "../SectionHead/SectionHead.svelte";
   import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "service" }} */
@@ -110,6 +110,10 @@
 
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
+
+  /** A review's heading takes focus as it shows: its section head. */
+  const focusHead = (/** @type {HTMLElement} */ node) =>
+    node.querySelector("h2")?.focus();
 
   const draft = formDraft(`bridge-${route.id}`);
 
@@ -322,6 +326,8 @@
       "Your EVM wallet switched to another account, so nothing was sent. Review again.";
     leaveReview();
   }
+
+  import "./routeReview.css";
 </script>
 
 {#if step === "form"}
@@ -539,34 +545,42 @@
     />
   </div>
 {:else if step === "review"}
-  <div class="route-review">
-    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
+  <!-- As Send's review: rows of what goes where and what it costs, one
+    button, what can't be undone, then Back. -->
+  <div class="route-review" use:focusHead>
+    <SectionHead tabindex="-1">Review</SectionHead>
     <ReviewWallet />
-    <p class="route-review__line">
-      {isAmountMasked
-        ? `${BALANCE_MASK} DUSK to ${chainName}, less the ${formatDuskExact(route.feeLux, language)} DUSK bridge fee.`
-        : serviceLine(
-            { chain: chainName, feeLux: route.feeLux, sentLux: amountLux },
-            language,
-          )}
-    </p>
-    {#if timeText}
-      <p class="route-review__time">
-        It usually arrives in {timeText.replace(/^~/, "about ")}.
-      </p>
-    {/if}
-    <dl class="route-review__ends">
+    <dl class="route-review__rows">
+      <div>
+        <dt>Amount</dt>
+        <dd>
+          {isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)}
+          DUSK
+        </dd>
+      </div>
+      <div>
+        <dt>Bridge fee</dt>
+        <dd>{formatDuskExact(route.feeLux, language)} DUSK</dd>
+      </div>
+      <div>
+        <dt>You receive</dt>
+        <dd>
+          {arrivesLux === 0n
+            ? "Nothing"
+            : `${isAmountMasked ? BALANCE_MASK : formatDuskExact(arrivesLux, language)} DUSK`}
+        </dd>
+      </div>
       <div>
         <dt>From</dt>
         <dd>
-          <span>Public account</span>
+          <span class="route-review__name">Public account</span>
           <FullAddress address={unshieldedAddress} />
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
-          <span>Your {chainName} account</span>
+          <span class="route-review__name">Your {chainName} account</span>
           <FullAddress address={address ?? ""} />
         </dd>
       </div>
@@ -574,20 +588,31 @@
         <dt>Through</dt>
         <dd>The bridge's account, which pays you</dd>
       </div>
+      {#if timeText}
+        <div>
+          <dt>Arrives</dt>
+          <dd>in {timeText.replace(/^~/, "about ")}</dd>
+        </div>
+      {/if}
+      <div>
+        <dt>Fee up to</dt>
+        <dd>{formatFee(fee, language, { max: true })} DUSK</dd>
+      </div>
     </dl>
-    <ReviewAmount
-      label="Fee up to"
-      value={formatFee(fee, language, { max: true })}
-    />
-    <ReviewAmount
-      label="Total up to"
-      value={isAmountMasked
-        ? BALANCE_MASK
-        : formatTotal(total, unshieldedBalance, language)}
-    />
-    <details class="route-review__check">
-      <summary>Addresses to check</summary>
-      <dl class="route-review__ends">
+    <dl class="route-review__rows route-review__rows--total">
+      <div>
+        <dt>Total up to</dt>
+        <dd>
+          {isAmountMasked
+            ? BALANCE_MASK
+            : formatTotal(total, unshieldedBalance, language)} DUSK
+        </dd>
+      </div>
+    </dl>
+    <!-- What to check against the transfer, for whoever does: closed. -->
+    <details class="route-review__details">
+      <summary>Details</summary>
+      <dl class="route-review__rows">
         <div>
           <dt>Bridge account</dt>
           <dd><FullAddress address={route.account} /></dd>
@@ -602,22 +627,23 @@
         your {chainName} account and the amount.
       </p>
     </details>
-    <div class="route-review__actions">
-      <Button
-        icon={{ path: mdiArrowLeft }}
-        on:click={leaveReview}
-        text="Back"
-        variant="secondary"
-      />
-      <Button
-        confirm
-        disabled={arrivesLux === 0n || !isConnected || !isGasValid}
-        icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
-        on:click={send}
-        text={`Bridge ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
-        variant="primary"
-      />
-    </div>
+    <Button
+      className="route-review__primary"
+      confirm
+      disabled={arrivesLux === 0n || !isConnected || !isGasValid}
+      icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+      on:click={send}
+      text={`Bridge ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+      variant="primary"
+    />
+    <p class="route-review__final">Can't be undone.</p>
+    <Button
+      className="route-review__back"
+      icon={{ path: mdiArrowLeft }}
+      on:click={leaveReview}
+      text="Back"
+      variant="secondary"
+    />
   </div>
 {:else}
   <div class="route-result" role="status" tabindex="-1" use:takeFocus>
@@ -667,7 +693,6 @@
     margin: 0 0.5rem 0.5rem;
   }
 
-  .route-review,
   .route-result {
     display: flex;
     flex-direction: column;
@@ -675,98 +700,13 @@
     padding: 0.5rem;
   }
 
-  .route-review__title:focus,
   .route-result:focus {
     outline: none;
-  }
-
-  .route-review__check {
-    font-size: 0.875em;
-
-    summary {
-      cursor: pointer;
-      padding-block: 0.25em;
-    }
-  }
-
-  /*
-   * A thumb's, on a phone held either way, as the buttons around it: its
-   * marker stays.
-   */
-  @media (max-width: 30rem), (pointer: coarse) {
-    .route-review__check summary {
-      box-sizing: border-box;
-      min-height: 44px;
-      padding-block: calc((44px - 1lh) / 2);
-    }
-  }
-
-  .route-review__public {
-    margin: 0.5em 0 0;
   }
 
   .route-note {
     margin: 0 0 0.75em;
     font-size: 0.875em;
     color: var(--on-surface-color);
-  }
-
-  .route-review__title {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-  }
-
-  .route-review__line {
-    margin: 0;
-    font-weight: 500;
-    line-height: 1.45;
-  }
-
-  .route-review__time {
-    margin: 0;
-    color: var(--calm-muted);
-    font-size: 0.875rem;
-  }
-
-  .route-review__ends {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0;
-
-    & > div {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    & dt {
-      color: var(--calm-muted);
-      font-size: 0.8125rem;
-    }
-
-    & dd {
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-      margin: 0;
-    }
-  }
-
-  .route-review__actions {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-  }
-
-  /* A long amount wraps in its button: nothing runs off a phone's screen. */
-  .route-review__actions > :global(*) {
-    min-width: 0;
-  }
-
-  .route-review__actions :global(.dusk-button > span) {
-    white-space: normal;
   }
 </style>

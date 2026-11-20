@@ -32,8 +32,8 @@
     FullAddress,
     GasSettings,
     OperationResult,
-    ReviewAmount,
     ReviewWallet,
+    SectionHead,
   } from "$lib/components";
   import {
     amountProblem,
@@ -43,6 +43,8 @@
   import NetworkPicker from "$lib/components/NetworkPicker/NetworkPicker.svelte";
   import SwapCard from "$lib/components/SwapCard/SwapCard.svelte";
   import nodeNetwork from "$lib/stores/nodeNetwork";
+
+  import "./routeReview.css";
   import {
     cardRoutes,
     choosePair,
@@ -1067,18 +1069,22 @@
       />
     </div>
   {:else if step === "review"}
-    <div class="bridge-review">
-      <h2 class="bridge-review__title">Review</h2>
+    <!-- As Send's review: rows of what goes where and what it costs, one
+      button, what can't be undone, then Back. -->
+    <div class="route-review">
+      <SectionHead>Review</SectionHead>
       <ReviewWallet />
-      <ReviewAmount
-        label="Amount"
-        value={formatDuskExact(amountLux, language)}
-      />
-      <dl class="bridge-review__ends">
+      <dl class="route-review__rows">
+        <div>
+          <dt>Amount</dt>
+          <dd>{formatDuskExact(amountLux, language)} DUSK</dd>
+        </div>
         <div>
           <dt>From</dt>
           <dd>
-            <span>{isDepositing ? "Public account" : "DuskEVM"}</span>
+            <span class="route-review__name"
+              >{isDepositing ? "Public account" : "DuskEVM"}</span
+            >
             <FullAddress
               address={(isDepositing ? unshieldedAddress : address) ?? ""}
             />
@@ -1087,26 +1093,55 @@
         <div>
           <dt>To</dt>
           <dd>
-            <span>{isDepositing ? "DuskEVM" : "Your public account"}</span>
+            <span class="route-review__name"
+              >{isDepositing ? "DuskEVM" : "Your public account"}</span
+            >
             <FullAddress
               address={(isDepositing ? address : unshieldedAddress) ?? ""}
             />
           </dd>
         </div>
+        {#if isDepositing}
+          <div>
+            <dt>Fee up to</dt>
+            <dd>{formatFee(fee, language, { max: true })} DUSK</dd>
+          </div>
+        {:else if withdrawalFeeWei !== null}
+          <div>
+            <dt>Fee on DuskEVM, about</dt>
+            <dd>
+              {formatFee(withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR, language)} DUSK
+            </dd>
+          </div>
+        {/if}
       </dl>
+      {#if isDepositing}
+        <dl class="route-review__rows route-review__rows--total">
+          <div>
+            <dt>Total up to</dt>
+            <dd>
+              {formatTotal(totalDepositLux, unshieldedBalance, language)} DUSK
+            </dd>
+          </div>
+        </dl>
+      {:else}
+        <Banner title={withdrawalNext} variant="info">
+          <p>Each step on Dusk takes a small fee from your public balance.</p>
+        </Banner>
+      {/if}
       <!-- The named contract a deposit calls, for whoever checks it: closed. -->
       {#if isDepositing && depositContract}
-        <details class="bridge-review__details">
+        <details class="route-review__details">
           <summary>Details</summary>
-          <dl class="bridge-review__ends">
+          <dl class="route-review__rows">
             <div>
               <dt>Contract</dt>
               <dd>
-                <span
+                <span class="route-review__name"
                   >{contractLabel(depositContract, networkName) ||
                     "DuskEVM bridge"}</span
                 >
-                <span class="bridge-review__address" title={depositContract}
+                <span class="route-review__code" title={depositContract}
                   >{shortenAddress(depositContract)}</span
                 >
               </dd>
@@ -1114,45 +1149,23 @@
           </dl>
         </details>
       {/if}
-      {#if isDepositing}
-        <ReviewAmount
-          label="Fee up to"
-          value={formatFee(fee, language, { max: true })}
-        />
-        <ReviewAmount
-          label="Total up to"
-          value={formatTotal(totalDepositLux, unshieldedBalance, language)}
-        />
-      {:else}
-        {#if withdrawalFeeWei !== null}
-          <ReviewAmount
-            label="Fee on DuskEVM, about"
-            value={formatFee(
-              withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR,
-              language,
-            )}
-          />
-        {/if}
-        <Banner title={withdrawalNext} variant="info">
-          <p>Each step on Dusk takes a small fee from your public balance.</p>
-        </Banner>
-      {/if}
-      <div class="bridge-review__actions">
-        <Button
-          icon={{ path: mdiArrowLeft }}
-          on:click={edit}
-          text="Back"
-          variant="secondary"
-        />
-        <Button
-          confirm
-          disabled={isNextButtonDisabled || !isConnected}
-          icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
-          on:click={send}
-          text={`Bridge ${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
-          variant="primary"
-        />
-      </div>
+      <Button
+        className="route-review__primary"
+        confirm
+        disabled={isNextButtonDisabled || !isConnected}
+        icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+        on:click={send}
+        text={`Bridge ${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+        variant="primary"
+      />
+      <p class="route-review__final">Can't be undone.</p>
+      <Button
+        className="route-review__back"
+        icon={{ path: mdiArrowLeft }}
+        on:click={edit}
+        text="Back"
+        variant="secondary"
+      />
     </div>
   {:else if isDepositing}
     <div class="bridge-result">
@@ -1211,73 +1224,10 @@
     color: var(--calm-muted);
   }
 
-  .bridge-review,
   .bridge-result {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.5rem;
-  }
-
-  .bridge-review__title {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-  }
-
-  .bridge-review__ends {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0;
-
-    & > div {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    & dt {
-      color: var(--calm-muted);
-      font-size: 0.8125rem;
-    }
-
-    & dd {
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-      margin: 0;
-    }
-  }
-
-  .bridge-review__address {
-    color: var(--calm-muted);
-    font-family: var(--mono-font-family, monospace);
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
-  }
-
-  /* The contract a deposit calls, for whoever checks it: closed. */
-  .bridge-review__details summary {
-    color: var(--calm-muted);
-    cursor: pointer;
-    font-size: 0.8125rem;
-    font-weight: 500;
-  }
-
-  .bridge-review__actions {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-  }
-
-  /* A long amount wraps in its button: nothing runs off a phone's screen. */
-  .bridge-review__actions > :global(*) {
-    min-width: 0;
-  }
-
-  .bridge-review__actions :global(.dusk-button > span) {
-    white-space: normal;
   }
 </style>

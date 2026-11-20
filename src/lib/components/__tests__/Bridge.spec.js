@@ -84,18 +84,19 @@ vi.mock("$lib/web3/walletConnection", async () => {
 });
 
 /**
- * A review amount, found by its label's key word.
+ * A review row's figure, found by its label: its value, as shown.
  *
  * @param {ParentNode} container
  * @param {RegExp} label
  */
 const amountOf = (container, label) =>
-  Array.from(container.querySelectorAll(".review-amount"))
+  Array.from(container.querySelectorAll(".route-review__rows > div"))
     .find((row) =>
       label.test(row.querySelector("dt")?.textContent?.trim() ?? ""),
     )
     ?.querySelector("dd")
-    ?.textContent?.trim();
+    ?.textContent?.replace(/\s+/g, " ")
+    .trim();
 
 /**
  * A review row's value, by its label's key word.
@@ -119,7 +120,7 @@ const fieldOf = (container, label) =>
  */
 const termOf = (container, label) =>
   Array.from(
-    container.querySelectorAll(".review-amount dt"),
+    container.querySelectorAll(".route-review__rows dt"),
     (term) => term.textContent?.trim() ?? "",
   ).find((term) => label.test(term)) ?? "";
 
@@ -481,9 +482,19 @@ describe("Bridge", () => {
     // contract the network's file names, shown shortened.
     expect(addressOf(container, /^from$/i)).toBe(PAID);
     expect(addressOf(container, /^to$/i)).toBe(CONNECTED.address);
-    expect(fieldOf(container, /^contract$/i)).toHaveTextContent(
+    // The named contract under Details, closed: reference, not a step.
+    const details = /** @type {HTMLDetailsElement} */ (
+      container.querySelector("details.route-review__details")
+    );
+
+    expect(details.open).toBe(false);
+    expect(fieldOf(details, /^contract$/i)).toHaveTextContent(
       /(^|\s)2257e5…a1b31d$/,
     );
+    // One button sends it, and under it, that it can't be undone.
+    const bridge = getByRole("button", { name: "Bridge 2.5 DUSK" });
+
+    expect(bridge.nextElementSibling).toHaveTextContent(/^Can't be undone\.$/);
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {

@@ -375,14 +375,13 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.input(amount, { target: { value: "2" } });
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    // Each in its own part of the line: 2 DUSK sent, the 1 DUSK bridge fee,
-    // and 1 DUSK arriving on BNB Smart Chain...
-    const line = container.querySelector(".route-review__line");
-
-    expect(line).toHaveTextContent(/(^|·)\s*2 DUSK sent\b/);
-    expect(line).toHaveTextContent(/(^|·)\s*1 DUSK bridge fee\b/);
-    expect(line).toHaveTextContent(
-      /(^|·)\s*1 DUSK arrives on BNB Smart Chain$/,
+    // Each in its own row: 2 DUSK sent, the 1 DUSK bridge fee, and 1 DUSK
+    // arriving in the BNB Smart Chain account...
+    expect(fieldOf(container, /^amount$/i)).toHaveTextContent(/^2 DUSK$/);
+    expect(fieldOf(container, /^bridge fee$/i)).toHaveTextContent(/^1 DUSK$/);
+    expect(fieldOf(container, /^you receive$/i)).toHaveTextContent(/^1 DUSK$/);
+    expect(fieldOf(container, /^to$/i)).toHaveTextContent(
+      /^Your BNB Smart Chain account\s/,
     );
     // ...from this public account, to the connected wallet's address.
     expect(addressOf(container, /^from$/i)).toBe(ACCOUNT);
@@ -452,6 +451,10 @@ describe("the Bridge card's routes to and from other chains", () => {
     expect(addressOf(container, /^to$/i)).toBe(ACCOUNT);
     expect(getByRole("button", { name: "Approve 2.5 DUSK" })).toBeEnabled();
     expect(stepOf(container)).toBe("1 of 2");
+    // Under it, that the migration it starts can't be undone.
+    expect(container.querySelector(".route-review__final")).toHaveTextContent(
+      /^Can't be undone\.$/,
+    );
 
     await afterConfirmDelay();
     await fireEvent.click(getByRole("button", { name: MIGRATE }));
@@ -1720,7 +1723,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       // by its ID 1: each in its row, for whoever checks them against the
       // wallet.
       const check = /** @type {HTMLDetailsElement} */ (
-        container.querySelector("details.route-review__check")
+        container.querySelector("details.route-review__details")
       );
 
       expect(fieldOf(check, /^network$/i)).toHaveTextContent(
@@ -1820,7 +1823,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       // For whoever checks them: the bridge's account it goes to, and the
       // address it pays, as its memo.
       const check = /** @type {HTMLDetailsElement} */ (
-        container.querySelector("details.route-review__check")
+        container.querySelector("details.route-review__details")
       );
 
       expect(addressOf(check, /bridge account/i)).toBe(service.account);
@@ -2284,9 +2287,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
     expect(getByRole("heading", { name: "Review" })).toBeInTheDocument();
-    expect(container.querySelector(".route-review__line")).toHaveTextContent(
-      /^2 DUSK sent\b/,
-    );
+    expect(fieldOf(container, /^amount$/i)).toHaveTextContent(/^2 DUSK$/);
     expect(mocks.executeSend).toHaveBeenCalledOnce();
   });
 
