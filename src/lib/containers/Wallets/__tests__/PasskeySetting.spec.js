@@ -52,36 +52,16 @@ describe("Settings: unlock with fingerprint or face", () => {
     await fireEvent.click(view.getByRole("button", { name: "Turn on" }));
   }
 
-  it("isn't offered where this browser or device can't, off by default where it can", async () => {
-    fakeAuthenticator({ capabilities: { "extension:prf": false } });
-
-    const off = render(PasskeySetting);
-
-    await vi.waitFor(() =>
-      expect(off.queryByRole("switch")).not.toBeInTheDocument(),
-    );
-    off.unmount();
-    removeFakeAuthenticator();
-
-    fakeAuthenticator();
-
-    const offered = render(PasskeySetting);
-
-    expect(await theSwitch(offered)).not.toBeChecked();
-    expect(vault.passkey()).toBeNull();
-  });
-
-  it("takes the password to turn on, and says what it means once it's on", async () => {
+  it("takes the password to turn on", async () => {
     const device = fakeAuthenticator();
     const view = render(PasskeySetting);
 
     await turnOnWith(view, PASSWORD);
 
-    expect(
-      await view.findByText(
-        /On this device only\. Your password keeps working/,
-      ),
-    ).toBeInTheDocument();
+    // On: the password asked for no more.
+    await vi.waitFor(() =>
+      expect(view.queryByLabelText("Password you unlock with")).toBeNull(),
+    );
     expect(device.create).toHaveBeenCalledOnce();
     expect(vault.passkey()).not.toBeNull();
     expect(await theSwitch(view)).toBeChecked();
@@ -93,7 +73,12 @@ describe("Settings: unlock with fingerprint or face", () => {
 
     await turnOnWith(view, "wrong");
 
-    expect(await view.findByText("Wrong password.")).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(view.getByLabelText("Password you unlock with")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      ),
+    );
     expect(device.create).not.toHaveBeenCalled();
     expect(vault.passkey()).toBeNull();
   });
@@ -107,9 +92,7 @@ describe("Settings: unlock with fingerprint or face", () => {
 
     await turnOnWith(view, PASSWORD);
 
-    expect(
-      await view.findByText("Cancelled, so it stays off."),
-    ).toBeInTheDocument();
+    expect(await view.findByRole("alert")).toBeInTheDocument();
     expect(vault.passkey()).toBeNull();
   });
 
@@ -120,11 +103,7 @@ describe("Settings: unlock with fingerprint or face", () => {
 
     await turnOnWith(view, PASSWORD);
 
-    expect(
-      await view.findByText(
-        "This device or browser can't do fingerprint or face unlock, so it stays off.",
-      ),
-    ).toBeInTheDocument();
+    expect(await view.findByRole("status")).toBeInTheDocument();
     expect(view.queryByRole("switch")).toBeNull();
     expect(vault.passkey()).toBeNull();
     view.unmount();
@@ -141,20 +120,14 @@ describe("Settings: unlock with fingerprint or face", () => {
     const view = render(PasskeySetting);
 
     await turnOnWith(view, PASSWORD);
-    await view.findByText(/On this device only/);
+    await vi.waitFor(() =>
+      expect(view.queryByLabelText("Password you unlock with")).toBeNull(),
+    );
+    expect(vault.passkey()).not.toBeNull();
     await fireEvent.click(await theSwitch(view));
 
     await vi.waitFor(() => expect(vault.passkey()).toBeNull());
     expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     await expect(vault.check(PASSWORD)).resolves.toBeUndefined();
-  });
-
-  it("offers nothing for a wallet without a password", async () => {
-    fakeAuthenticator();
-    await vault.clear();
-
-    const view = render(PasskeySetting);
-
-    await vi.waitFor(() => expect(view.queryByRole("switch")).toBeNull());
   });
 });

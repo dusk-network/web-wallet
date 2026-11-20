@@ -17,30 +17,44 @@ const LINK =
 
 describe("What Share and Copy give of a request", () => {
   it("says whose it is, what it asks and its memo in a line, its test network where it isn't Mainnet, then its link", () => {
-    expect(
-      requestText(
-        { link: LINK, lux: 30_000_000n, memo: "Factura F-2026-071" },
-        { language: "es-ES", name: "sofiadesign.dusk", net: networks.testnet },
-      ),
-    ).toBe(
-      `sofiadesign.dusk asks you to pay 0,03 DUSK on Testnet · Factura F-2026-071\nPay here: ${LINK}`,
+    /** @param {string} text */
+    const lineOf = (text) => text.split("\n")[0];
+    const onTestnet = requestText(
+      { link: LINK, lux: 30_000_000n, memo: "Factura F-2026-071" },
+      { language: "es-ES", name: "sofiadesign.dusk", net: networks.testnet },
     );
+
+    for (const value of [
+      "sofiadesign.dusk",
+      "0,03 DUSK",
+      "Testnet",
+      "Factura F-2026-071",
+    ]) {
+      expect(lineOf(onTestnet)).toContain(value);
+    }
+    expect(onTestnet.endsWith(LINK)).toBe(true);
+
     // On Mainnet, a name given here, no memo.
-    expect(
-      requestText(
-        { link: LINK, lux: 20_000_000n, memo: "" },
-        { language: "en-SG", name: "Chen", net: networks.mainnet },
-      ),
-    ).toBe(`Chen asks you to pay 0.02 DUSK\nPay here: ${LINK}`);
-    // A profile known by its number, asking any amount.
-    expect(
-      requestText(
-        { link: LINK, lux: null, memo: "chicken rice" },
-        { language: "en", name: "", net: networks.testnet },
-      ),
-    ).toBe(
-      `You're asked for a payment in DUSK on Testnet · chicken rice\nPay here: ${LINK}`,
+    const onMainnet = requestText(
+      { link: LINK, lux: 20_000_000n, memo: "" },
+      { language: "en-SG", name: "Chen", net: networks.mainnet },
     );
+
+    expect(lineOf(onMainnet)).toContain("Chen");
+    expect(lineOf(onMainnet)).toContain("0.02 DUSK");
+    expect(lineOf(onMainnet)).not.toMatch(/testnet|mainnet/i);
+    expect(onMainnet.endsWith(LINK)).toBe(true);
+
+    // A profile known by its number, asking any amount.
+    const anyAmount = requestText(
+      { link: LINK, lux: null, memo: "chicken rice" },
+      { language: "en", name: "", net: networks.testnet },
+    );
+
+    expect(lineOf(anyAmount)).toContain("Testnet");
+    expect(lineOf(anyAmount)).toContain("chicken rice");
+    expect(lineOf(anyAmount)).not.toMatch(/\d/);
+    expect(anyAmount.endsWith(LINK)).toBe(true);
   });
 });
 
@@ -138,12 +152,23 @@ describe("What's pasted of a request", () => {
   // Nandini's, Lena's and Amélie's: "The message and its link don't agree."
   // never said what disagreed.
   it("refuses what Share and Copy give of a request whose line says another amount, memo or name than its link, saying what disagrees", () => {
-    /** @param {string} problem */
-    const refused = (problem) => ({
+    /**
+     * Refused, naming what disagrees: each of these values, in any words.
+     *
+     * @param {string[]} values
+     */
+    const refused = (...values) => ({
       amount: "",
       elsewhere: null,
       memo: "",
-      problem,
+      problem: expect.stringMatching(
+        new RegExp(
+          values
+            .map((value) => `(?=.*${value.replaceAll(".", "\\.")})`)
+            .join(""),
+          "s",
+        ),
+      ),
       to: "",
     });
     const said = (/** @type {string} */ link) =>
@@ -162,9 +187,7 @@ describe("What's pasted of a request", () => {
         networks.testnet,
         "en",
       ),
-    ).toStrictEqual(
-      refused("The message says 0.03 DUSK; its link asks 0.15 DUSK."),
-    );
+    ).toStrictEqual(refused("0.03 DUSK", "0.15 DUSK"));
     // The line's amount, or its memo.
     expect(
       readPastedLink(
@@ -172,18 +195,14 @@ describe("What's pasted of a request", () => {
         networks.testnet,
         "en",
       ),
-    ).toStrictEqual(
-      refused("The message says 0.002 DUSK; its link asks 0.03 DUSK."),
-    );
+    ).toStrictEqual(refused("0.002 DUSK", "0.03 DUSK"));
     expect(
       readPastedLink(
         said(httpsLink).replace("· Factura 71", "· coffee"),
         networks.testnet,
         "en",
       ),
-    ).toStrictEqual(
-      refused("The message's memo is “coffee”; its link's is “Factura 71”."),
-    );
+    ).toStrictEqual(refused("coffee", "Factura 71"));
     // Its name, where the name service says that name pays another account,
     // or no one.
     const another =
@@ -217,11 +236,7 @@ describe("What's pasted of a request", () => {
           "en",
           new Map([["sofiadesign.dusk", owner]]),
         ),
-      ).toStrictEqual(
-        refused(
-          "The message says sofiadesign.dusk; its link pays 25z9o6…5Etftt.",
-        ),
-      );
+      ).toStrictEqual(refused("sofiadesign.dusk", "25z9o6", "5Etftt"));
     }
 
     expect(

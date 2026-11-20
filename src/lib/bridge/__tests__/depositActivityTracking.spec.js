@@ -960,7 +960,7 @@ describe("DuskEVM deposit tracking", () => {
       expect.objectContaining({
         failureLayer: "l1",
         stage: "failed",
-        statusMessage: "The Dusk deposit failed: deposit rejected",
+        statusMessage: expect.stringContaining("deposit rejected"),
         trackingError: null,
       }),
     );

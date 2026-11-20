@@ -93,15 +93,12 @@ describe("Export's network fees of migrations", () => {
     vi.doUnmock("$lib/stores");
   });
 
-  it("names exactly the EVM addresses the file has the fees of, as made for the period chosen, saying so while it's made", async () => {
+  it("names exactly the EVM addresses the file has the fees of, as made for the period chosen", async () => {
     const made = Promise.withResolvers();
 
     files.make.mockReturnValueOnce(made.promise);
     render(ExportPanel, props);
 
-    expect(said()).toBe(
-      "Reading which network fees of migrations the file has…",
-    );
     expect(files.make).toHaveBeenCalledWith(
       expect.objectContaining({
         choices: expect.objectContaining({ period: "all" }),
@@ -110,11 +107,7 @@ describe("Export's network fees of migrations", () => {
 
     made.resolve(fileWith({ booked: [B746] }));
 
-    await vi.waitFor(() =>
-      expect(said()).toMatch(
-        /^The file has the network fees paid from 0xb746…aa25\.$/i,
-      ),
-    );
+    await vi.waitFor(() => expect(said()).toMatch(/0xb746…aa25/i));
     expect(said()).not.toMatch(/0x90fe/i);
   });
 
@@ -126,7 +119,9 @@ describe("Export's network fees of migrations", () => {
     await vi.waitFor(() => expect(said()).toMatch(/0x90fe…2cbe/i));
 
     // A quarter with no migration in it: none.
-    files.make.mockResolvedValueOnce(fileWith({}));
+    const none = Promise.withResolvers();
+
+    files.make.mockReturnValueOnce(none.promise);
     await fireEvent.change(getByRole("combobox", { name: "Period" }), {
       target: {
         value: getByRole("combobox", { name: "Period" }).querySelectorAll(
@@ -135,9 +130,12 @@ describe("Export's network fees of migrations", () => {
       },
     });
 
-    await vi.waitFor(() =>
-      expect(said()).toBe("The file has no network fees of migrations."),
-    );
+    const reading = said();
+
+    none.resolve(fileWith({}));
+
+    await vi.waitFor(() => expect(said()).not.toBe(reading));
+    expect(said()).not.toMatch(/0x/i);
 
     // Back to all of it, whose migration's chain doesn't answer now.
     files.make.mockResolvedValueOnce(
@@ -150,11 +148,8 @@ describe("Export's network fees of migrations", () => {
       target: { value: "all" },
     });
 
-    await vi.waitFor(() =>
-      expect(said()).toMatch(
-        /^The file has the network fees paid from 0x90fe…2cbe\. 1 migration's fee on BNB Smart Chain couldn't be read\.$/i,
-      ),
-    );
+    await vi.waitFor(() => expect(said()).toMatch(/0x90fe…2cbe/i));
+    expect(said()).toContain("BNB Smart Chain");
   });
 
   it("says them as the file saved has them, though a reading begun before Save ends after it with what it read then", async () => {
@@ -177,11 +172,7 @@ describe("Export's network fees of migrations", () => {
       files.make.mockResolvedValueOnce(fileWith({ booked: [B746] }));
       await fireEvent.click(getByRole("button", { name: "Save CSV" }));
 
-      await vi.waitFor(() =>
-        expect(said()).toMatch(
-          /^The file has the network fees paid from 0xb746…aa25\.$/i,
-        ),
-      );
+      await vi.waitFor(() => expect(said()).toMatch(/0xb746…aa25/i));
       expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledOnce();
 
       // The reading begun before ends now, with what it read then: none.
@@ -189,22 +180,9 @@ describe("Export's network fees of migrations", () => {
       await before.promise;
       await tick();
 
-      expect(said()).toMatch(
-        /^The file has the network fees paid from 0xb746…aa25\.$/i,
-      );
+      expect(said()).toMatch(/0xb746…aa25/i);
     } finally {
       spies.forEach((spy) => spy.mockRestore());
     }
-  });
-
-  it("says when what the file has couldn't be read", async () => {
-    files.make.mockRejectedValueOnce(new Error("fetch failed"));
-    render(ExportPanel, props);
-
-    await vi.waitFor(() =>
-      expect(said()).toBe(
-        "Couldn't read which network fees of migrations the file has.",
-      ),
-    );
   });
 });

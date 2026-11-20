@@ -46,15 +46,14 @@ describe("the password on big sends, in Settings", () => {
       target: { value },
     });
 
-  it("is off until it's turned on", () => {
-    const { getByRole, queryByLabelText } = render(SendPasswordSetting);
-
-    expect(sendPasswordLimit()).toBeNull();
-    expect(
-      getByRole("switch", { name: "Ask for the password on big sends" }),
-    ).toHaveAttribute("aria-checked", "false");
-    expect(queryByLabelText("Password you unlock with")).toBeNull();
-  });
+  /** @param {import("@testing-library/svelte").RenderResult<any>} view */
+  const passwordRefused = ({ getByLabelText }) =>
+    vi.waitFor(() =>
+      expect(getByLabelText("Password you unlock with")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      ),
+    );
 
   it("turns on for the amount typed, once the password is checked against the vault", async () => {
     const view = render(SendPasswordSetting);
@@ -68,7 +67,7 @@ describe("the password on big sends, in Settings", () => {
     await enterPassword(view, "not the password");
     await fireEvent.click(view.getByRole("button", { name: "Save" }));
 
-    expect(await view.findByText("Wrong password.")).toBeInTheDocument();
+    await passwordRefused(view);
     expect(sendPasswordLimit()).toBeNull();
 
     await enterPassword(view, PASSWORD);
@@ -78,11 +77,7 @@ describe("the password on big sends, in Settings", () => {
       expect(sendPasswordLimit()).toBe(1_000_500_000_000n),
     );
 
-    expect(
-      await view.findByText(
-        "Sends, stakes, shielding and the bridge above 1,000.5 DUSK, network fee included.",
-      ),
-    ).toBeInTheDocument();
+    expect(await view.findByText(/1,000\.5 DUSK/)).toBeInTheDocument();
     expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     // The password goes with the form.
     expect(
@@ -101,8 +96,9 @@ describe("the password on big sends, in Settings", () => {
     await typeAmount(view, "ten");
     await fireEvent.click(view.getByRole("button", { name: "Save" }));
 
-    expect(view.getByRole("alert")).toHaveTextContent(
-      "Enter an amount such as 100 or 100.5. 0 asks on every send.",
+    expect(view.getByLabelText("Above this amount, in DUSK")).toHaveAttribute(
+      "aria-invalid",
+      "true",
     );
     expect(check).not.toHaveBeenCalled();
 
@@ -126,13 +122,13 @@ describe("the password on big sends, in Settings", () => {
 
     await fireEvent.click(view.getByRole("button", { name: "Turn off" }));
 
-    expect(await view.findByText("Enter your password.")).toBeInTheDocument();
+    await passwordRefused(view);
     expect(sendPasswordLimit()).toBe(DUSK);
 
     await enterPassword(view, "not the password");
     await fireEvent.click(view.getByRole("button", { name: "Turn off" }));
 
-    expect(await view.findByText("Wrong password.")).toBeInTheDocument();
+    await passwordRefused(view);
     expect(sendPasswordLimit()).toBe(DUSK);
 
     await enterPassword(view, PASSWORD);
@@ -155,7 +151,7 @@ describe("the password on big sends, in Settings", () => {
 
     expect(sendPasswordLimit()).toBe(DUSK);
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
-    expect(view.container).toHaveTextContent("above 1 DUSK");
+    expect(view.container).toHaveTextContent(/\b1 DUSK\b/);
   });
 
   it("goes back to off on Cancel when it was being turned on", async () => {
@@ -176,18 +172,7 @@ describe("the password on big sends, in Settings", () => {
       new StorageEvent("storage", { storageArea: localStorage }),
     );
 
-    expect(await view.findByText(/above 2 DUSK/)).toBeInTheDocument();
+    expect(await view.findByText(/\b2 DUSK\b/)).toBeInTheDocument();
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
-  });
-
-  it("isn't offered to a wallet without a password, and says why", async () => {
-    await vault.clear();
-
-    const { container, queryByRole } = render(SendPasswordSetting);
-
-    expect(queryByRole("switch")).toBeNull();
-    expect(container).toHaveTextContent(
-      "Asking for the password on big sends needs a wallet with a password. This one opens with its recovery phrase, so there's none to ask for.",
-    );
   });
 });

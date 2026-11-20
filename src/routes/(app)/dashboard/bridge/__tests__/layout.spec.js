@@ -8,8 +8,6 @@ import { keepIncarnation, useWalletDataSuffix } from "$lib/wallets/dataNames";
 import BridgeLayout from "../+layout.svelte";
 
 const MIGRATIONS = `${CONFIG.LOCAL_STORAGE_APP_KEY}-migrations:k`;
-const UNKEPT =
-  "This browser's storage is full, so new Bridge activity isn't kept here.";
 const migration = {
   amountLux: "1",
   createdAt: 1,
@@ -18,6 +16,14 @@ const migration = {
   routeId: "bsc-to-dusk",
   sender: "s",
 };
+
+/**
+ * What the layout says around an empty page: only ever that new activity
+ * isn't kept.
+ *
+ * @param {HTMLElement} container
+ */
+const said = (container) => container.textContent?.trim() ?? "";
 
 /** A wallet kept from before incarnations unlocks: whether it has one. */
 async function unlock() {
@@ -48,7 +54,7 @@ describe("Bridge", () => {
 
     const { container } = render(BridgeLayout);
 
-    expect(container.textContent).toContain(UNKEPT);
+    expect(said(container)).not.toBe("");
 
     full.mockRestore();
     rememberMigration(migration);
@@ -63,7 +69,7 @@ describe("Bridge", () => {
     await tick();
     rememberMigration(migration);
 
-    expect(container.textContent).not.toContain(UNKEPT);
+    expect(said(container)).toBe("");
     expect(JSON.parse(localStorage.getItem(MIGRATIONS) ?? "[]")).toMatchObject([
       migration,
     ]);

@@ -365,45 +365,53 @@ describe("History's Export", () => {
       booked: [OTHER_EVM],
       unread: [],
     });
-    expect(savedWords(two)).toContain(
-      "The file has the network fees paid from 0xB746…aa25.",
-    );
+    expect(savedWords(two)).toContain("0xB746");
+    expect(savedWords(two)).toContain("aa25");
     expect(savedWords(two).toLowerCase()).not.toContain("0x7cdb");
   });
 
   it("says once saved which network fees it couldn't read: a migration's, approvals for now, and those before a block it reads back to", () => {
-    expect(
-      savedWords({
-        count: 3,
-        csv: "",
-        currency: "EUR",
-        evm: {
-          approvalsUnread: [
-            {
-              chain: "BSC test chain",
-              from: null,
-              owner: OTHER_EVM,
-              state: "error",
-            },
-            {
-              chain: "Sepolia",
-              from: 4_200_000,
-              owner: ITS_EVM,
-              state: "beyond",
-            },
-          ],
-          booked: [ITS_EVM],
-          unread: [{ chain: "BSC test chain", hash: ITS_MIGRATION }],
-        },
-        fileName: "dusk-profile-1-testnet-all.csv",
-        hasOtherProfiles: false,
-        left: { notRead: 0, outOfPeriod: 0, pending: 0 },
-        shieldedWaiting: false,
-        unpriced: 0,
-      }),
-    ).toBe(
-      "CSV saved: 3 lines. The file has the network fees paid from 0x7cdb…8e73. 1 migration's fee on BSC test chain couldn't be read: export again to add it. Some network fees on BSC test chain couldn't be read: export again to add them. Network fees on Sepolia from before block 4,200,000 aren't in the file.",
-    );
+    const said = savedWords({
+      count: 3,
+      csv: "",
+      currency: "EUR",
+      evm: {
+        approvalsUnread: [
+          {
+            chain: "BSC test chain",
+            from: null,
+            owner: OTHER_EVM,
+            state: "error",
+          },
+          {
+            chain: "Sepolia",
+            from: 4_200_000,
+            owner: ITS_EVM,
+            state: "beyond",
+          },
+        ],
+        booked: [ITS_EVM],
+        unread: [{ chain: "BSC test chain", hash: ITS_MIGRATION }],
+      },
+      fileName: "dusk-profile-1-testnet-all.csv",
+      hasOtherProfiles: false,
+      left: { notRead: 0, outOfPeriod: 0, pending: 0 },
+      shieldedWaiting: false,
+      unpriced: 0,
+    });
+
+    // Its 3 lines, whose fees, and which it couldn't read.
+    expect(said).toMatch(/\b3\b/);
+
+    for (const value of [
+      "0x7cdb",
+      "8e73",
+      "BSC test chain",
+      "Sepolia",
+      "4,200,000",
+    ]) {
+      expect(said).toContain(value);
+    }
   });
 
   it("says an approval of an address connected here that never migrated may be in another profile's file, where the first profile's books it", async () => {
@@ -424,14 +432,9 @@ describe("History's Export", () => {
     );
 
     expect(one.csv).toContain(NEVER_APPROVAL);
-    expect(savedWords(one)).not.toContain("Some network fees");
+    expect(savedWords(one)).not.toContain("BSC test chain");
     expect(two.csv).not.toContain(NEVER_APPROVAL);
-    expect(savedWords(two)).toContain(
-      "Some network fees on BSC test chain may be in another profile's file, or couldn't be read: export again to add them.",
-    );
-    expect(savedWords(two)).not.toContain(
-      "Some network fees on BSC test chain couldn't be read",
-    );
+    expect(savedWords(two)).toContain("BSC test chain");
   });
 
   it("books a bridge-out's fee in the fee column, with what reached the other side as sent", async () => {

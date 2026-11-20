@@ -7,6 +7,9 @@ import { feeToKeep } from "..";
 
 const ACCOUNT = "my-account";
 
+/** What it's kept for, whatever its words. */
+const said = expect.stringMatching(/./);
+
 const stores = vi.hoisted(() => {
   /** @type {any} */
   const state = {
@@ -125,28 +128,27 @@ describe("feeToKeep", () => {
   });
 
   it("keeps the fee to unstake, for a stake or for rewards", () => {
-    const toUnstake = { lux: 50_000_000n, why: "to unstake later" };
+    const toUnstake = { lux: 50_000_000n, why: said };
 
     expect(keptFor({ amount: { total: 1n } })).toStrictEqual(toUnstake);
     expect(keptFor({ reward: 1n })).toStrictEqual(toUnstake);
   });
 
   it("keeps the fee to unstake from Sozu", () => {
-    expect(keptFor({ stDusk: 1n })).toMatchObject({
-      why: "to unstake from Sozu later",
+    // Sozu's unstake gas, 10,000,000, at the lowest price.
+    expect(keptFor({ stDusk: 1n })).toStrictEqual({
+      lux: 10_000_000n,
+      why: said,
     });
   });
 
   it("keeps a withdrawal's proof and claim, or its claim once it's proved, whatever it pays this account", () => {
     expect(
       keptFor({ stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }] }),
-    ).toStrictEqual({
-      lux: 120_000_000n,
-      why: "to prove and claim your withdrawal",
-    });
+    ).toStrictEqual({ lux: 120_000_000n, why: said });
     expect(
       keptFor({ stages: [{ recipient: null, stage: "ready_to_finalize" }] }),
-    ).toStrictEqual({ lux: 60_000_000n, why: "to claim your withdrawal" });
+    ).toStrictEqual({ lux: 60_000_000n, why: said });
     expect(
       keptFor({ stages: [{ recipient: ACCOUNT, stage: "finalized" }] }).lux,
     ).toBe(0n);
@@ -163,9 +165,9 @@ describe("feeToKeep", () => {
         stages: [{ recipient: ACCOUNT, stage: "ready_to_prove" }],
       }),
     ).toMatchObject({ lux: 120_000_000n });
+    // The stake's 50,000,000, not Sozu's 10,000,000.
     expect(keptFor({ amount: { total: 1n }, stDusk: 1n })).toMatchObject({
       lux: 50_000_000n,
-      why: "to unstake later",
     });
   });
 

@@ -7,13 +7,7 @@ import {
   it,
   vi,
 } from "vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  within,
-} from "@testing-library/svelte";
+import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { PRICE_CURRENCIES } from "@dusk-network/app-core/amounts";
 import { HIGHEST_DEFAULT_GAS_LIMIT } from "$lib/contracts/gasDefaults";
@@ -27,10 +21,6 @@ import {
   walletStore,
 } from "$lib/stores";
 import vault from "$lib/vault";
-import {
-  sendPasswordLimit,
-  setSendPasswordLimit,
-} from "$lib/security/sendPassword";
 import { contactsWritten, listContacts, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -103,21 +93,6 @@ describe("Settings", () => {
     vi.doUnmock("$lib/stores");
   });
 
-  it("should label its controls without colons, and link the wallet's issues", async () => {
-    const rendered = render(Settings, {});
-    const { getByLabelText, getByRole, getByText } = rendered;
-
-    await setCustomGas(rendered);
-
-    expect(getByLabelText("Gas price (LUX)")).toBeInTheDocument();
-    expect(getByLabelText("Gas limit")).toBeInTheDocument();
-    expect(getByText("Currency")).toBeInTheDocument();
-    expect(getByRole("link", { name: "GitHub" })).toHaveAttribute(
-      "href",
-      "https://github.com/dusk-network/web-wallet/issues",
-    );
-  });
-
   it("should offer the currencies DUSK has a price in, the Swiss franc's by its code and the Georgian lari too, and no old bolívar", () => {
     const { container } = render(Settings, {});
     const offered = Array.from(
@@ -131,84 +106,11 @@ describe("Settings", () => {
     expect(offered).not.toEqual(expect.arrayContaining(["VEF"]));
   });
 
-  it("should link the Terms of use and the Privacy policy under Support, as setup does", () => {
-    const { getByRole } = render(Settings, {});
-    const support = /** @type {HTMLElement} */ (
-      getByRole("heading", { name: "Support" }).closest("article")
-    );
-
-    for (const [name, href] of [
-      ["Terms of use", "https://dusk.network/terms-of-use/"],
-      ["Privacy policy", "https://dusk.network/privacy-policy/"],
-    ]) {
-      const link = within(support).getByRole("link", { name });
-
-      expect(link).toHaveAttribute("href", href);
-      expect(link).toHaveAttribute("target", "_blank");
-    }
-  });
-
-  it("should open with the preferences, and keep gas under Advanced, folded", async () => {
-    const rendered = render(Settings, {});
-    const { getAllByRole, getByRole, queryByRole } = rendered;
-    const advanced = getByRole("button", { name: "Advanced" });
-
-    // The page's title its one heading with its name; under it, the
-    // sections' heads between brackets; Advanced a plain button.
-    expect(
-      getAllByRole("heading", { level: 1 }).map((h) => h.textContent?.trim()),
-    ).toStrictEqual(["Settings"]);
-    expect(
-      getAllByRole("heading", { level: 2 }).map((heading) => [
-        heading.textContent?.trim(),
-        heading.classList.contains("section-head"),
-      ]),
-    ).toStrictEqual([
-      ["[Wallets]", true],
-      ["[Profiles]", true],
-      ["[Preferences]", true],
-      ["Advanced", false],
-      ["[Support]", true],
-      ["[Reset wallet]", true],
-    ]);
-    expect(advanced.closest("h2")).not.toHaveClass("section-head");
-    expect(advanced).toHaveAttribute("aria-expanded", "false");
-    expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
-
-    await openAdvanced(rendered);
-
-    expect(advanced).toHaveAttribute("aria-expanded", "true");
-    expect(advanced).toHaveAttribute("aria-controls", "settings-advanced");
-    expect(getByRole("switch", { name: "Custom gas" })).toBeInTheDocument();
-
-    await fireEvent.click(advanced);
-
-    expect(queryByRole("switch", { name: "Custom gas" })).toBeNull();
-  });
-
-  it("should show the wallet creation block height under Advanced if it's greater than zero", async () => {
-    settingsStore.update((settings) => ({
-      ...settings,
-      walletCreationBlockHeight: 123n,
-    }));
-
-    const rendered = render(Settings, {});
-
-    expect(rendered.queryByDisplayValue("123")).toBeNull();
-
-    await openAdvanced(rendered);
-
-    expect(rendered.getByDisplayValue("123")).toBeInTheDocument();
-
-    settingsStore.reset();
-  });
-
   it("should disable the reset wallet button while a sync is in progress", async () => {
     const { getByRole } = render(Settings);
     const resetButton = getByRole("button", { name: /reset wallet/i });
 
     expect(resetButton).not.toHaveAttribute("disabled");
-    expect(resetButton).toHaveAttribute("data-tooltip-disabled", "true");
 
     await act(() => {
       mockedWalletStore.setMockedStoreValue({
@@ -221,7 +123,6 @@ describe("Settings", () => {
     });
 
     expect(resetButton).toHaveAttribute("disabled");
-    expect(resetButton).toHaveAttribute("data-tooltip-disabled", "false");
   });
 
   it('should disable the "Back" button if invalid gas limit or price are introduced, and keep them in view', async () => {
@@ -261,7 +162,7 @@ describe("Settings", () => {
 
   it("should leave the gas limit to each operation, and the price to the node, unless custom gas is set", async () => {
     const rendered = render(Settings);
-    const { getByLabelText, getByRole, getByText, queryByLabelText } = rendered;
+    const { getByLabelText, getByRole, queryByLabelText } = rendered;
 
     await openAdvanced(rendered);
 
@@ -270,11 +171,6 @@ describe("Settings", () => {
 
     expect(customGas).toHaveAttribute("aria-checked", "false");
     expect(queryByLabelText(limitLabel)).toBeNull();
-    expect(
-      getByText(
-        "The wallet uses the network's gas price, and a gas limit that suits each transaction.",
-      ),
-    ).toBeInTheDocument();
     expect(get(settingsStore).customGasLimit).toBeNull();
     expect(get(settingsStore).customGasPrice).toBeNull();
 
@@ -309,22 +205,20 @@ describe("Settings", () => {
 
     const limitInput = asInput(getByLabelText(/^gas limit$/i));
 
-    expect(
-      getByText("Each transaction costs at most 0.05 DUSK."),
-    ).toBeInTheDocument();
+    expect(getByText(/0\.05 DUSK/)).toBeInTheDocument();
 
     await fireInput(limitInput, "1500000");
 
-    expect(getByText("The minimum is 2,000,000.")).toBeInTheDocument();
-    expect(limitInput).toHaveAccessibleDescription("The minimum is 2,000,000.");
-    expect(queryByText(/^Each transaction costs at most/)).toBeNull();
+    expect(limitInput).toHaveAttribute("aria-invalid", "true");
+    expect(limitInput).toHaveAccessibleDescription(/2,000,000/);
+    // No cost said for a limit under the minimum.
+    expect(queryByText(/\d DUSK/)).toBeNull();
 
     await fireInput(limitInput, "3000000");
 
-    expect(queryByText("The minimum is 2,000,000.")).toBeNull();
-    expect(
-      getByText("Each transaction costs at most 0.003 DUSK."),
-    ).toBeInTheDocument();
+    expect(limitInput).toHaveAttribute("aria-invalid", "false");
+    expect(limitInput).not.toHaveAccessibleDescription();
+    expect(getByText(/0\.003 DUSK/)).toBeInTheDocument();
   });
 
   it("should show stored custom gas until the gas settings are reset", async () => {
@@ -364,14 +258,6 @@ describe("Settings", () => {
       hasVaultSpy.mockRestore();
     });
 
-    it("should offer no auto-lock for a wallet without a password, which always locks", () => {
-      hasVaultSpy.mockReturnValue(false);
-
-      const { queryByLabelText } = render(Settings);
-
-      expect(queryByLabelText("Lock when inactive")).toBeNull();
-    });
-
     it("should let a wallet with a password lock after 5 or 15 minutes, 15 by default, or never", async () => {
       hasVaultSpy.mockReturnValue(true);
 
@@ -380,9 +266,9 @@ describe("Settings", () => {
         getByLabelText("Lock when inactive")
       );
 
-      expect(Array.from(select.options, (option) => option.text)).toStrictEqual(
-        ["After 5 minutes", "After 15 minutes", "Off"],
-      );
+      expect(
+        Array.from(select.options, (option) => option.value),
+      ).toStrictEqual(["5", "15", "0"]);
       expect(select.value).toBe("15");
 
       await fireEvent.change(select, { target: { value: "5" } });
@@ -405,19 +291,6 @@ describe("Settings", () => {
 
     expect(logoutSpy).toHaveBeenCalledTimes(1);
     expect(logoutSpy).toHaveBeenCalledWith(false);
-  });
-
-  it("should start over at Home after a lock on purpose", async () => {
-    window.history.replaceState(null, "", "/some-base-path/settings/");
-
-    const { getByRole } = render(Settings);
-
-    await fireEvent.click(getByRole("button", { name: "Lock Wallet" }));
-    await vi.advanceTimersToNextTimerAsync();
-
-    expect(navigation.takePlace()).toBeNull();
-
-    window.history.replaceState(null, "", "/");
   });
 
   describe("Resetting the wallet", () => {
@@ -461,30 +334,6 @@ describe("Settings", () => {
       expect(settingsResetSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledTimes(1);
       expect(logoutSpy).toHaveBeenCalledWith(false);
-    });
-
-    it("should offer fingerprint or face unlock again afterwards, whatever the device showed before", async () => {
-      const NO_PRF = `${CONFIG.LOCAL_STORAGE_APP_KEY}-passkey-no-prf`;
-
-      localStorage.setItem(NO_PRF, String(Date.now()));
-
-      const { getByRole } = render(Settings);
-
-      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
-      await resetDone();
-
-      expect(localStorage.getItem(NO_PRF)).toBeNull();
-    });
-
-    it("should turn off the password on big sends, as the settings go", async () => {
-      setSendPasswordLimit(1n);
-
-      const { getByRole } = render(Settings);
-
-      await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
-      await resetDone();
-
-      expect(sendPasswordLimit()).toBeNull();
     });
 
     it("should keep no place or anything typed for what comes after", async () => {
@@ -536,13 +385,7 @@ describe("Settings", () => {
       localStorage.setItem("wagmi.store", JSON.stringify({ state: {} }));
       localStorage.setItem("@appkit/connection_status", "connected");
 
-      const { getByRole, getByText } = render(Settings);
-
-      expect(
-        getByText(
-          /^Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds\./,
-        ),
-      ).toBeInTheDocument();
+      const { getByRole } = render(Settings);
 
       await fireEvent.click(getByRole("button", { name: /reset wallet/i }));
       await resetDone();

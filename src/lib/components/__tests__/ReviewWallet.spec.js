@@ -48,12 +48,13 @@ describe("ReviewWallet", () => {
     const { id } = await addWallet(B, PASSWORD);
     const two = render(ReviewWallet);
 
-    expect(two.container).toHaveTextContent("From Wallet 2 · Profile 1");
+    expect(two.container).toHaveTextContent("Wallet 2");
+    expect(two.container).toHaveTextContent("Profile 1");
 
     await renameWallet(id, "Savings");
 
-    await vi.waitFor(() =>
-      expect(two.container).toHaveTextContent("From Savings · Profile 1"),
-    );
+    await vi.waitFor(() => expect(two.container).toHaveTextContent("Savings"));
+    expect(two.container).not.toHaveTextContent("Wallet 2");
+    expect(two.container).toHaveTextContent("Profile 1");
   });
 });

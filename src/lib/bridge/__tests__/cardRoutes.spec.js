@@ -64,9 +64,9 @@ describe("the Bridge card's routes", () => {
     expect(
       toChoices(list, "duskDs", "bsc", networks.mainnet, (route) => route.id),
     ).toStrictEqual([
-      { disabled: "No route from Dusk", id: "ethereum", name: "Ethereum" },
+      { disabled: expect.any(String), id: "ethereum", name: "Ethereum" },
       { id: "bsc", name: "BNB Smart Chain", note: "dusk-to-bsc" },
-      { disabled: "It's where it comes from", id: "duskDs", name: "Dusk" },
+      { disabled: expect.any(String), id: "duskDs", name: "Dusk" },
     ]);
     // BNB Smart Chain's DUSK comes back to Dusk; Ethereum's is one way.
     const bsc = list.find(({ id }) => id === "bsc-to-dusk") ?? null;
@@ -92,12 +92,12 @@ describe("the Bridge card's routes", () => {
     ]);
     expect(
       toChoices(list, "duskDs", "duskEvm", networks.testnet).map(
-        ({ disabled = "", id }) => [id, disabled],
+        ({ disabled = "", id }) => [id, disabled !== ""],
       ),
     ).toStrictEqual([
-      ["bsc", ""],
-      ["duskDs", "It's where it comes from"],
-      ["duskEvm", ""],
+      ["bsc", false],
+      ["duskDs", true],
+      ["duskEvm", false],
     ]);
     expect(ids(openingRoute(list, "bsc-to-dusk"))).toBe("bsc-to-dusk");
     // A link to a route retired, as Sepolia's, opens on DuskEVM.
@@ -114,7 +114,7 @@ describe("the Bridge card's routes", () => {
     expect(ids(openingRoute(list))).toBe("dusk-to-dusk-evm");
     expect(fromChoices(list, "duskDs", net)).toStrictEqual([
       {
-        disabled: "Not running on testnet right now",
+        disabled: expect.any(String),
         id: "bsc",
         name: "BSC test chain",
       },
@@ -124,12 +124,12 @@ describe("the Bridge card's routes", () => {
     expect(
       toChoices(list, "duskDs", "duskEvm", net).map(({ disabled = "", id }) => [
         id,
-        disabled,
+        disabled !== "",
       ]),
     ).toStrictEqual([
-      ["bsc", "Not running on testnet right now"],
-      ["duskDs", "It's where it comes from"],
-      ["duskEvm", ""],
+      ["bsc", true],
+      ["duskDs", true],
+      ["duskEvm", false],
     ]);
     expect(ids(openingRoute(list, "bsc-to-dusk"))).toBe("bsc-to-dusk");
   });

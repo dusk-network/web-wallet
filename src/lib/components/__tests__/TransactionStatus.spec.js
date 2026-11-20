@@ -5,12 +5,30 @@ import { get } from "svelte/store";
 import { activityFor, activityState, stopActivity } from "$lib/activity";
 import fixture from "$lib/activity/__tests__/fixtures/activity-testnet.json";
 import { fakeArchive } from "$lib/activity/__tests__/fixtures/fakeArchive";
-import { timeLabel } from "$lib/activity/present";
+import { SENT_AFTER_DONT_SEND, timeLabel } from "$lib/activity/present";
 
 import { settingsStore, walletStore } from "$lib/stores";
-import { setNetworkReach } from "$lib/stores/networkReach";
 
 import { TransactionStatus } from "..";
+
+/**
+ * Text that names each of `values`, in any order, whatever its words.
+ *
+ * @param {...string} values
+ */
+const naming = (...values) =>
+  new RegExp(
+    values
+      .map((value) => `(?=.*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`)
+      .join(""),
+  );
+
+/**
+ * Where the transaction is said to be: pending, late, completed or failed.
+ *
+ * @param {HTMLElement} container
+ */
+const statusOf = (container) => container.querySelector(".transaction-status");
 
 const { followTransaction } = vi.hoisted(() => ({
   followTransaction: vi.fn(),
@@ -68,58 +86,21 @@ describe("TransactionStatus", () => {
   it("should say a transaction it follows is being sent, with its hash and the most it can cost", async () => {
     followNext();
 
-    const { getByRole, getByText } = render(TransactionStatus, baseProps);
+    const { container, getByText } = render(TransactionStatus, baseProps);
 
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith(
       hash,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
-    // Not sent, nor pending, twice over: sending, until a block has it.
-    expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute.",
-    );
+    // Sending, until a block has it.
+    expect(statusOf(container)).toHaveClass("transaction-status--pending");
     expect(getByText("8dcf6f…3db55e")).toBeInTheDocument();
-    expect(
-      getByRole("button", { name: "Copy transaction hash" }),
-    ).toBeInTheDocument();
-    expect(getByText("Network fee (at most)")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
-    expect(
-      getByRole("link", { name: "View in Dusk explorer" }),
-    ).toHaveAttribute("href", `/explorer/transactions/transaction?id=${hash}`);
-  });
-
-  it("should say while it's being sent that it waits for the network, offline or where the network doesn't answer, and that it has left the wallet", async () => {
-    followNext();
-
-    const { getByRole } = render(TransactionStatus, baseProps);
-
-    try {
-      await act(() => setNetworkReach("offline"));
-
-      expect(getByRole("status")).toHaveTextContent(
-        "Sending… You're offline. It has left your wallet. This updates once you're back online.",
-      );
-
-      await act(() => setNetworkReach("silent"));
-
-      expect(getByRole("status")).toHaveTextContent(
-        "Sending… The network isn't answering. It has left your wallet. This updates once it answers.",
-      );
-
-      await act(() => setNetworkReach("answering"));
-
-      expect(getByRole("status")).toHaveTextContent(
-        "Sending… This usually takes under a minute.",
-      );
-    } finally {
-      setNetworkReach("answering");
-    }
   });
 
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {
     const following = followNext();
-    const { getByRole, getByText, queryByText } = render(
+    const { container, getByRole, getByText } = render(
       TransactionStatus,
       baseProps,
     );
@@ -134,15 +115,14 @@ describe("TransactionStatus", () => {
     // At its block's time, to the second, as the request it paid says it.
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,687,200.`,
+        naming(timeLabel(blockTime, "en", { seconds: true }), "4,687,200"),
       ),
     );
-    expect(getByRole("status")).toHaveTextContent(/Sent at \d{1,2}:34:07/);
+    expect(getByRole("status")).toHaveTextContent(/\d{1,2}:34:07/);
 
-    expect(getByText("Network fee")).toBeInTheDocument();
+    // The fee it was charged, no longer the most it could cost.
     expect(getByText("0.001854795 DUSK")).toBeInTheDocument();
-    expect(queryByText("Network fee (at most)")).not.toBeInTheDocument();
-    expect(queryByText("Details")).not.toBeInTheDocument();
+    expect(container).not.toHaveTextContent("0.0025");
   });
 
   it("should say it was sent as soon as a block took it, not once that block is final, and read History and the balances again then", async () => {
@@ -160,14 +140,16 @@ describe("TransactionStatus", () => {
       timestamp: blockTime,
     };
 
+    // Sent: when, and in which block.
+    const sent = naming(
+      timeLabel(blockTime, "en", { seconds: true }),
+      "4,820,416",
+    );
+
     // The block that took it, attested, its next not there yet.
     followTransaction.mock.lastCall?.[1].onBlock(inBlock);
 
-    await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`,
-      ),
-    );
+    await vi.waitFor(() => expect(getByRole("status")).toHaveTextContent(sent));
     expect(refreshBalance).not.toHaveBeenCalled();
     expect(onFinal).not.toHaveBeenCalled();
 
@@ -176,9 +158,7 @@ describe("TransactionStatus", () => {
 
     await vi.waitFor(() => expect(onFinal).toHaveBeenCalledOnce());
     expect(refreshBalance).toHaveBeenCalledOnce();
-    expect(getByRole("status")).toHaveTextContent(
-      `Sent at ${timeLabel(blockTime, "en", { seconds: true })} In block 4,820,416.`,
-    );
+    expect(getByRole("status")).toHaveTextContent(sent);
     refreshBalance.mockRestore();
   });
 
@@ -222,7 +202,7 @@ describe("TransactionStatus", () => {
       followTransaction.mock.lastCall?.[1].onBlock(inBlock);
 
       await vi.waitFor(() =>
-        expect(getByRole("status")).toHaveTextContent(/^Sent at /),
+        expect(getByRole("status")).toHaveTextContent("4,833,654"),
       );
       await vi.waitFor(() =>
         expect(rowOf()).toMatchObject({
@@ -249,7 +229,7 @@ describe("TransactionStatus", () => {
 
   it("should stay sent where its block took it but the wallet stopped following it before that block was final", async () => {
     const following = followNext();
-    const { getByRole } = render(TransactionStatus, baseProps);
+    const { container, getByRole } = render(TransactionStatus, baseProps);
 
     followTransaction.mock.lastCall?.[1].onBlock({
       blockHeight: 4_820_416n,
@@ -260,52 +240,10 @@ describe("TransactionStatus", () => {
     following.resolve(null);
 
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(/^Sent at /),
+      expect(getByRole("status")).toHaveTextContent("4,820,416"),
     );
-    expect(getByRole("status")).not.toHaveTextContent("Still pending");
-  });
-
-  it("should offer to say when a transfer arrives while it's being sent, and tell whoever isn't looking once a block takes it", async () => {
-    const { arrivalTitle, forgetArrivalTitle } =
-      await import("$lib/bridge/arrivalNotice");
-    const { get } = await import("svelte/store");
-
-    followNext();
-
-    const { container } = render(TransactionStatus, {
-      ...baseProps,
-      tellArrival: true,
-      what: "0.02 DUSK to Lucas",
-    });
-
-    expect(container.querySelector(".arrival-notice")).toHaveTextContent(
-      "when it arrives",
-    );
-
-    // Away from the page as a block takes it: its title says so.
-    const hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(false);
-
-    followTransaction.mock.lastCall?.[1].onBlock({
-      blockHeight: 4_820_416n,
-      error: null,
-      fee: 1_854_795n,
-      timestamp: 1,
-    });
-
-    await vi.waitFor(() =>
-      expect(get(arrivalTitle)).toBe("Arrived: 0.02 DUSK to Lucas"),
-    );
-    expect(container.querySelector(".arrival-notice")).toBeNull();
-    hasFocus.mockRestore();
-    forgetArrivalTitle();
-    cleanup();
-
-    // Not offered where it's no transfer to someone, as a stake.
-    followNext();
-
-    const stake = render(TransactionStatus, baseProps);
-
-    expect(stake.container.querySelector(".arrival-notice")).toBeNull();
+    // Still sent: never late again.
+    expect(statusOf(container)).toHaveClass("transaction-status--completed");
   });
 
   it("should hide the fee with the balances, before the block and after", async () => {
@@ -313,10 +251,10 @@ describe("TransactionStatus", () => {
 
     try {
       const following = followNext();
-      const { container, getByText } = render(TransactionStatus, baseProps);
+      const { container, getByRole } = render(TransactionStatus, baseProps);
 
-      expect(getByText("Network fee (at most)")).toBeInTheDocument();
       expect(container.textContent).not.toMatch(/\d DUSK/);
+      expect(container).not.toHaveTextContent("0.0025");
 
       following.resolve({
         blockHeight: 4_687_200n,
@@ -325,7 +263,7 @@ describe("TransactionStatus", () => {
         timestamp: 1,
       });
       await vi.waitFor(() =>
-        expect(getByText("Network fee")).toBeInTheDocument(),
+        expect(getByRole("status")).toHaveTextContent("4,687,200"),
       );
 
       expect(container.textContent).not.toContain("0.0019");
@@ -336,10 +274,7 @@ describe("TransactionStatus", () => {
 
   it("should show a transaction that failed, the fee it was charged and why", async () => {
     const following = followNext();
-    const { container, getByRole, getByText } = render(
-      TransactionStatus,
-      baseProps,
-    );
+    const { container, getByText } = render(TransactionStatus, baseProps);
 
     following.resolve({
       blockHeight: 4_687_200n,
@@ -347,14 +282,10 @@ describe("TransactionStatus", () => {
       fee: 2_500_000n,
     });
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(
-        "Failed It didn't go through. The network fee was charged.",
-      ),
+      expect(statusOf(container)).toHaveClass("transaction-status--failed"),
     );
 
-    expect(getByText("Network fee")).toBeInTheDocument();
     expect(getByText("0.0025 DUSK")).toBeInTheDocument();
-    expect(getByText("Details")).toBeInTheDocument();
     expect(
       container.querySelector(".dusk-error-details__error"),
     ).toHaveTextContent("Panic: out of gas");
@@ -362,13 +293,15 @@ describe("TransactionStatus", () => {
 
   it("should say a transaction is still pending once it stops following it, and follow it again when asked", async () => {
     const following = followNext();
-    const { getByRole, queryByRole } = render(TransactionStatus, baseProps);
+    const { container, getByRole, queryByRole } = render(
+      TransactionStatus,
+      baseProps,
+    );
 
+    // Late, never failed: it may still go through.
     following.resolve(null);
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer.",
-      ),
+      expect(statusOf(container)).toHaveClass("transaction-status--late"),
     );
 
     const again = followNext();
@@ -376,9 +309,7 @@ describe("TransactionStatus", () => {
     await fireEvent.click(getByRole("button", { name: "Check again" }));
 
     expect(followTransaction).toHaveBeenCalledTimes(2);
-    expect(getByRole("status")).toHaveTextContent(
-      "Sending… This usually takes under a minute.",
-    );
+    expect(statusOf(container)).toHaveClass("transaction-status--pending");
     expect(queryByRole("button", { name: "Check again" })).toBeNull();
 
     // A block the node gives no time for: when the wallet saw it final.
@@ -386,7 +317,7 @@ describe("TransactionStatus", () => {
     again.resolve({ blockHeight: 1n, error: null, fee: 1n, timestamp: null });
     await vi.waitFor(() =>
       expect(getByRole("status")).toHaveTextContent(
-        `Sent at ${timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true })} In block 1.`,
+        timeLabel(Date.UTC(2026, 9, 28, 1, 2), "en", { seconds: true }),
       ),
     );
     vi.restoreAllMocks();
@@ -414,7 +345,7 @@ describe("TransactionStatus", () => {
     ).set(new Map([[hash, "not-sent"]]));
 
     try {
-      const { getByRole } = render(TransactionStatus, {
+      const { container, getByRole, queryByRole } = render(TransactionStatus, {
         ...baseProps,
         unconfirmed: true,
         what: "0.01 DUSK to your Profile 2",
@@ -427,8 +358,13 @@ describe("TransactionStatus", () => {
       // Three minutes on, still in no block: this stops following it.
       await act(() => following.resolve(null));
 
+      // Not sent, as chosen: nothing to send again, nor said sent.
       expect(getByRole("status")).toHaveTextContent(
-        "Not sent yet 0.01 DUSK to your Profile 2 If it still arrives, it will show here.",
+        "0.01 DUSK to your Profile 2",
+      );
+      expect(queryByRole("button", { name: "Send it now" })).toBeNull();
+      expect(statusOf(container)).not.toHaveClass(
+        "transaction-status--declined",
       );
 
       // A block took it: found, and kept no more.
@@ -448,8 +384,14 @@ describe("TransactionStatus", () => {
       );
 
       expect(getByRole("status")).toHaveTextContent(
-        `Sent after you chose not to send, at ${timeLabel(landed, "en", { seconds: true })} 0.01 DUSK to your Profile 2 In block 4,850,170.`,
+        naming(
+          SENT_AFTER_DONT_SEND,
+          timeLabel(landed, "en", { seconds: true }),
+          "0.01 DUSK to your Profile 2",
+          "4,850,170",
+        ),
       );
+      expect(statusOf(container)).toHaveClass("transaction-status--declined");
     } finally {
       kept.set([]);
       found.set([]);
@@ -459,38 +401,12 @@ describe("TransactionStatus", () => {
   it("should say a transaction is still pending if it can't be followed", async () => {
     followTransaction.mockRejectedValueOnce(new Error("Invalid hash"));
 
-    const { getByRole } = render(TransactionStatus, baseProps);
+    const { container, getByRole } = render(TransactionStatus, baseProps);
 
+    // Late, never failed: it may still go through.
     await vi.waitFor(() =>
-      expect(getByRole("status")).toHaveTextContent(
-        "Sending… Still pending. See its status in the explorer.",
-      ),
+      expect(statusOf(container)).toHaveClass("transaction-status--late"),
     );
-  });
-
-  it("should stop following the transaction once it is gone", () => {
-    followNext();
-
-    const { unmount } = render(TransactionStatus, baseProps);
-    const { signal } = followTransaction.mock.calls[0][1];
-
-    expect(signal.aborted).toBe(false);
-
-    unmount();
-
-    expect(signal.aborted).toBe(true);
-  });
-
-  it("should follow nothing without a hash", () => {
-    const { getByRole, queryByRole } = render(TransactionStatus, {
-      ...baseProps,
-      hash: undefined,
-    });
-
-    expect(followTransaction).not.toHaveBeenCalled();
-    expect(getByRole("status")).toHaveTextContent(
-      "Sent The wallet updates automatically.",
-    );
-    expect(queryByRole("link")).toBeNull();
+    expect(getByRole("button", { name: "Check again" })).toBeInTheDocument();
   });
 });

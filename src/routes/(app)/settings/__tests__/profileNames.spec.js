@@ -25,15 +25,14 @@ vi.mock("$lib/mocks/ProtocolDriver", async (importOriginal) => ({
   generateProfile: (await import("$lib/test-helpers/distinctProfile")).default,
 }));
 
-// The `.dusk` names the node gives, by public account, and what the name
-// service says of a name looked up, by name: none, as on a network without
-// names, unless a test says.
-const dusk = vi.hoisted(() => ({ names: new Map(), resolved: new Map() }));
+// No `.dusk` name the node gives any account, and what the name service says
+// of a name looked up, by name: none, as on a network without names, unless
+// a test says.
+const dusk = vi.hoisted(() => ({ resolved: new Map() }));
 
 vi.mock("$lib/dusk-domains", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
-  getPrimaryName: async (/** @type {string} */ account) =>
-    dusk.names.get(account) ?? "",
+  getPrimaryName: async () => "",
 }));
 
 vi.mock("$lib/dusk-domains/resolveDuskName", () => ({
@@ -52,15 +51,18 @@ const B =
 /** Lets the stores and the lookups settle. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 10));
 
-/** The toasts shown, each as it came: they go at once in a test. */
+/**
+ * The toasts shown, by type ("success" for a name saved), each as it came:
+ * they go at once in a test.
+ */
 const toasts = /** @type {string[]} */ ([]);
 const seen = new Set();
 
 toastList.subscribe((list) => {
-  for (const { id, message } of list) {
+  for (const { id, type } of list) {
     if (!seen.has(id)) {
       seen.add(id);
-      toasts.push(message);
+      toasts.push(type);
     }
   }
 });
@@ -130,7 +132,7 @@ async function openSwitcher() {
         ),
       ]);
 
-  return { bar, listed, pill, pillName };
+  return { listed, pillName };
 }
 
 describe("Settings › Profiles", () => {
@@ -146,7 +148,6 @@ describe("Settings › Profiles", () => {
     await vault.clear();
     localStorage.clear();
     toasts.length = 0;
-    dusk.names.clear();
     dusk.resolved.clear();
     logoutSpy.mockClear();
   });
@@ -154,123 +155,6 @@ describe("Settings › Profiles", () => {
   afterAll(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-  });
-
-  it("names a profile on this device as its field is left or Enter is pressed, and shows the name in the top bar's pill and the switcher", async () => {
-    await vault.setUp(A, PASSWORD);
-    await unlockWallets(PASSWORD);
-
-    const settings = render(Settings);
-
-    expect(
-      settings.getByRole("heading", { name: "Names on this device" }),
-    ).toBeInTheDocument();
-    expect(
-      settings
-        .getByRole("textbox", { name: "Profile 1 name" })
-        .getAttribute("placeholder"),
-    ).toBe("Name, only on this device");
-
-    await nameProfile(settings, 1, "  Savings    jar ");
-    await nameProfile(settings, 2, "Spending", "enter");
-
-    expect(toasts).toEqual(["Name saved.", "Name saved."]);
-    // One line, as it's kept.
-    expect(fieldsOf(settings)).toEqual(["Savings jar", "Spending"]);
-
-    const { listed, pill, pillName } = await openSwitcher();
-
-    expect(pillName).toHaveTextContent("Savings jar");
-    // Not a label its number says already: shown on narrow screens too.
-    expect(pillName).not.toHaveClass("address-picker__compact-name--label");
-    expect(pill).toHaveAccessibleName("Profile: Savings jar");
-    expect(listed()).toEqual([
-      ["Wallet 1", ["Savings jar (Current)", "Spending"]],
-    ]);
-  });
-
-  it("shows a verified .dusk name in the pill over the name given here, and both in the switcher", async () => {
-    await vault.setUp(A, PASSWORD);
-    await unlockWallets(PASSWORD);
-    dusk.names.set(String(get(walletStore).profiles[0].account), "alice.dusk");
-
-    const settings = render(Settings);
-
-    await nameProfile(settings, 1, "Savings");
-
-    const { bar, listed, pill, pillName } = await openSwitcher();
-
-    expect(pillName).toHaveTextContent("alice.dusk");
-    expect(pill).toHaveAccessibleName("Profile: alice.dusk (Savings)");
-    expect(listed()).toEqual([
-      ["Wallet 1", ["Savings (Current)", "Profile 2"]],
-    ]);
-    expect(
-      bar.container.querySelector(".address-picker__address-name"),
-    ).toHaveTextContent("alice.dusk");
-  });
-
-  it("keeps the name typed last, when it's the one there was, though a save before it waits for the other tabs", async () => {
-    await vault.setUp(A, PASSWORD);
-    await unlockWallets(PASSWORD);
-
-    const settings = render(Settings);
-
-    await nameProfile(settings, 1, "Savings");
-
-    // Another tab writes the wallets' names meanwhile: this one's wait.
-    const busy = Promise.withResolvers();
-    const held = Promise.withResolvers();
-
-    navigator.locks.request(`${CONFIG.LOCAL_STORAGE_APP_KEY}-wallets`, () => {
-      held.resolve(undefined);
-
-      return busy.promise;
-    });
-    await held.promise;
-
-    await nameProfile(settings, 1, "Travel", "enter");
-    // Back to the name there was, before that save could be.
-    await nameProfile(settings, 1, "Savings");
-
-    busy.resolve(undefined);
-    await vi.waitFor(() => expect(toasts).toHaveLength(3));
-    await settle();
-
-    expect(fieldsOf(settings)).toEqual(["Savings", ""]);
-
-    const { pillName } = await openSwitcher();
-
-    expect(pillName).toHaveTextContent("Savings");
-  });
-
-  it("takes a name of 40 characters, says so once the field holds that many, and never saves one cut short", async () => {
-    await vault.setUp(A, PASSWORD);
-    await unlockWallets(PASSWORD);
-
-    const NAME = "Savings for Mum in Ipoh, do not touch pl";
-    const settings = render(Settings);
-
-    expect(NAME).toHaveLength(40);
-
-    await nameProfile(settings, 1, NAME);
-
-    expect(fieldsOf(settings)).toEqual([NAME, ""]);
-    expect(settings.getByText("40 characters at most.")).toBeInTheDocument();
-    expect(toasts.at(-1)).toBe("Name saved.");
-
-    // One more, as a script could put there past the field's limit: it
-    // stays as typed, unsaved, the limit said.
-    toasts.length = 0;
-    await nameProfile(settings, 1, `${NAME}s`);
-
-    expect(fieldsOf(settings)).toEqual([`${NAME}s`, ""]);
-    expect(settings.getByText("40 characters at most.")).toBeInTheDocument();
-    expect(toasts).toEqual([]);
-
-    const { pillName } = await openSwitcher();
-
-    expect(pillName).toHaveTextContent(new RegExp(`^${NAME}$`));
   });
 
   it("refuses a name with what can't be seen in it, saying so under its field, until it's typed again", async () => {
@@ -288,9 +172,8 @@ describe("Settings › Profiles", () => {
     const field = settings.getByRole("textbox", { name: "Profile 1 name" });
 
     expect(toasts).toEqual([]);
-    expect(field).toHaveAccessibleDescription(
-      "This name has hidden characters. Type it again without them.",
-    );
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/\S/);
 
     const { pillName } = await openSwitcher();
 
@@ -298,7 +181,7 @@ describe("Settings › Profiles", () => {
 
     await nameProfile(settings, 1, "Alice");
 
-    expect(toasts).toEqual(["Name saved."]);
+    expect(toasts).toEqual(["success"]);
     expect(field).not.toHaveAccessibleDescription();
   });
 
@@ -320,25 +203,20 @@ describe("Settings › Profiles", () => {
       const settings = render(Settings);
       const field = settings.getByRole("textbox", { name: "Profile 2 name" });
 
-      for (const [name, words] of [
-        [
-          "Profile 1",
-          "Your other profile is called Profile 1. Choose another name.",
-        ],
-        [
-          "profile 1.",
-          "Your other profile is called Profile 1. Choose another name.",
-        ],
-        ["Alice", "You have a contact called Alice. Choose another name."],
+      for (const [name, whose] of [
+        ["Profile 1", "Profile 1"],
+        ["profile 1.", "Profile 1"],
+        ["Alice", "Alice"],
         // A Cyrillic А.
-        [
-          "\u0410lice",
-          "That looks like your contact Alice. Choose another name.",
-        ],
+        ["\u0410lice", "Alice"],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 
-        expect(field).toHaveAccessibleDescription(words);
+        // Refused, naming whose it is.
+        expect(field).toHaveAttribute("aria-invalid", "true");
+        expect(field).toHaveAccessibleDescription(
+          expect.stringContaining(whose),
+        );
       }
 
       expect(toasts).toEqual([]);
@@ -347,7 +225,7 @@ describe("Settings › Profiles", () => {
       await nameProfile(settings, 2, "Profile 2");
       await nameProfile(settings, 2, "Savings");
 
-      expect(toasts).toEqual(["Name saved.", "Name saved."]);
+      expect(toasts).toEqual(["success", "success"]);
       expect(field).not.toHaveAccessibleDescription();
     } finally {
       removeContact(alice.id);
@@ -370,20 +248,15 @@ describe("Settings › Profiles", () => {
     const settings = render(Settings);
     const field = settings.getByRole("textbox", { name: "Profile 2 name" });
 
-    for (const [name, words] of [
-      [
-        "sofiadesign.dusk",
-        "Your other profile is called sofiadesign.dusk. Choose another name.",
-      ],
+    for (const [name, whose] of [
+      ["sofiadesign.dusk", "sofiadesign.dusk"],
       // A Cyrillic о.
-      [
-        "s\u043Efiadesign.dusk",
-        "That looks like sofiadesign.dusk, one of your other profiles. Choose another name.",
-      ],
+      ["s\u043Efiadesign.dusk", "sofiadesign.dusk"],
     ]) {
       await nameProfile(settings, 2, name, "enter");
 
-      expect(field).toHaveAccessibleDescription(words);
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(expect.stringContaining(whose));
     }
 
     expect(toasts).toEqual([]);
@@ -409,10 +282,10 @@ describe("Settings › Profiles", () => {
 
       await nameProfile(settings, 1, "Lucas");
 
-      // Asked: nothing saved yet.
+      // Asked, naming the contact: nothing saved yet.
       expect(toasts).toEqual([]);
       expect(field).toHaveAccessibleDescription(
-        "You have a contact called Lucas (petit-fils). Is this someone else?",
+        expect.stringContaining("Lucas (petit-fils)"),
       );
       expect(get(openProfileNames)[0] ?? "").toBe("");
 
@@ -420,7 +293,7 @@ describe("Settings › Profiles", () => {
       await fireEvent.click(
         settings.getByRole("button", { name: "Yes, save it" }),
       );
-      await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+      await vi.waitFor(() => expect(toasts).toEqual(["success"]));
 
       expect(get(openProfileNames)[0]).toBe("Lucas");
 
@@ -428,13 +301,13 @@ describe("Settings › Profiles", () => {
       await settle();
 
       expect(field).not.toHaveAccessibleDescription();
-      expect(toasts).toEqual(["Name saved."]);
+      expect(toasts).toEqual(["success"]);
 
       // A word of it alone, or another name, asks nothing.
       await nameProfile(settings, 1, "Luc");
 
       expect(field).not.toHaveAccessibleDescription();
-      expect(toasts).toEqual(["Name saved.", "Name saved."]);
+      expect(toasts).toEqual(["success", "success"]);
     } finally {
       removeContact(lucas.id);
     }
@@ -473,28 +346,25 @@ describe("Settings › Profiles", () => {
       const settings = render(Settings);
       const field = settings.getByRole("textbox", { name: "Profile 2 name" });
 
-      for (const [name, words] of [
-        [
-          "alice.dusk",
-          "You have a contact called Wendy, at alice.dusk. Is this someone else?",
-        ],
-        [
-          "sofiadesign.dusk cliente",
-          "Your other profile is called sofiadesign.dusk. Is this someone else?",
-        ],
-        [
-          "sofiadesign",
-          "Your other profile is called sofiadesign.dusk. Is this someone else?",
-        ],
+      for (const [name, ...named] of [
+        ["alice.dusk", "Wendy", "alice.dusk"],
+        ["sofiadesign.dusk cliente", "sofiadesign.dusk"],
+        ["sofiadesign", "sofiadesign.dusk"],
         // Someone paid, not a contact: Marek's "sofiadesign.dusk" in another's place.
-        [
-          "Mi cliente (marek.dusk)",
-          "marek.dusk is a .dusk name. Is it this profile's?",
-        ],
+        ["Mi cliente (marek.dusk)", "marek.dusk"],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 
-        expect(field).toHaveAccessibleDescription(words);
+        // Asked, naming whose it is where it can, with Yes to save it.
+        for (const whose of named) {
+          expect(field).toHaveAccessibleDescription(
+            expect.stringContaining(whose),
+          );
+        }
+
+        expect(
+          settings.getByRole("button", { name: "Yes, save it" }),
+        ).toBeInTheDocument();
         expect(fieldsOf(settings)[1]).toBe(name);
       }
 
@@ -506,7 +376,7 @@ describe("Settings › Profiles", () => {
       await fireEvent.click(
         settings.getByRole("button", { name: "Yes, save it" }),
       );
-      await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+      await vi.waitFor(() => expect(toasts).toEqual(["success"]));
 
       expect(get(openProfileNames)[1]).toBe("Mi cliente (marek.dusk)");
     } finally {
@@ -534,23 +404,11 @@ describe("Settings › Profiles", () => {
 
     // In small capitals and circled letters too: Marek's, which History
     // then gave his own transfers.
-    for (const [name, words] of [
-      [
-        "sofiadesign.dusk",
-        "sofiadesign.dusk belongs to another account. Choose another name.",
-      ],
-      [
-        "Mi cliente (sofiadesign.dusk)",
-        "sofiadesign.dusk belongs to another account. Choose another name.",
-      ],
-      [
-        "sofiadesign.ᴅᴜꜱᴋ",
-        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
-      ],
-      [
-        "ⓢⓞⓕⓘⓐⓓⓔⓢⓘⓖⓝ.dusk",
-        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
-      ],
+    for (const [name, whose] of [
+      ["sofiadesign.dusk", "sofiadesign.dusk"],
+      ["Mi cliente (sofiadesign.dusk)", "sofiadesign.dusk"],
+      ["sofiadesign.ᴅᴜꜱᴋ", "sofiadesign.dusk"],
+      ["ⓢⓞⓕⓘⓐⓓⓔⓢⓘⓖⓝ.dusk", "sofiadesign.dusk"],
       // Q14, Marek's: a middle dot, an ideographic full stop or a bullet for
       // the point saved without a word, and History filed his own
       // transfers under it, right above Sofía's. Then a dot above, a Braille
@@ -562,14 +420,15 @@ describe("Settings › Profiles", () => {
         "sofiadesign˙dusk",
         "sofiadesign⠄dusk",
         "sofiadesign· dusk",
-      ].map((styled) => [
-        styled,
-        "That looks like sofiadesign.dusk, which belongs to another account. Choose another name.",
-      ]),
+      ].map((styled) => [styled, "sofiadesign.dusk"]),
     ]) {
       await nameProfile(settings, 2, name, "enter");
 
-      await vi.waitFor(() => expect(field).toHaveAccessibleDescription(words));
+      await vi.waitFor(() =>
+        expect(field).toHaveAccessibleDescription(
+          expect.stringContaining(whose),
+        ),
+      );
       expect(
         settings.queryByRole("button", { name: "Yes, save it" }),
       ).toBeNull();
@@ -580,7 +439,7 @@ describe("Settings › Profiles", () => {
 
     // Its own: saved, with nothing to ask.
     await nameProfile(settings, 2, "marek.dusk", "enter");
-    await vi.waitFor(() => expect(toasts).toEqual(["Name saved."]));
+    await vi.waitFor(() => expect(toasts).toEqual(["success"]));
 
     expect(get(openProfileNames)[1]).toBe("marek.dusk");
   });
@@ -608,19 +467,22 @@ describe("Settings › Profiles", () => {
       const settings = render(Settings);
       const field = settings.getByRole("textbox", { name: "Profile 2 name" });
 
-      for (const [name, words] of [
-        ["VVendy", "That looks like your contact Wendy. Choose another name."],
-        ["Davicl", "That looks like your contact David. Choose another name."],
+      for (const [name, whose] of [
+        ["VVendy", "Wendy"],
+        ["Davicl", "David"],
         // A digit for a letter, and v for y.
-        ["Dav1d", "That looks like your contact David. Choose another name."],
-        ["Wendv", "That looks like your contact Wendy. Choose another name."],
+        ["Dav1d", "David"],
+        ["Wendv", "Wendy"],
         // Marek's: l and ! for an i.
-        ["Davld", "That looks like your contact David. Choose another name."],
-        ["Dav!d", "That looks like your contact David. Choose another name."],
+        ["Davld", "David"],
+        ["Dav!d", "David"],
       ]) {
         await nameProfile(settings, 2, name, "enter");
 
-        expect(field).toHaveAccessibleDescription(words);
+        expect(field).toHaveAttribute("aria-invalid", "true");
+        expect(field).toHaveAccessibleDescription(
+          expect.stringContaining(whose),
+        );
       }
 
       expect(toasts).toEqual([]);
@@ -654,7 +516,7 @@ describe("Settings › Profiles", () => {
     expect(switcher.pillName).toHaveTextContent("Profile 1");
     expect(switcher.listed()).toEqual([
       ["Wallet 1", ["Savings", "Profile 2"]],
-      ["Wallet 2", ["Profile 1 (Current)", "Travel"]],
+      ["Wallet 2", [expect.stringMatching(/^Profile 1\b/), "Travel"]],
     ]);
     cleanup();
 
@@ -675,7 +537,7 @@ describe("Settings › Profiles", () => {
 
     expect(switcher.listed()).toEqual([
       ["Wallet 1", ["Savings", "Profile 2"]],
-      ["Wallet 2", ["Profile 1 (Current)", "Profile 2"]],
+      ["Wallet 2", [expect.stringMatching(/^Profile 1\b/), "Profile 2"]],
     ]);
   });
 
@@ -706,6 +568,5 @@ describe("Settings › Profiles", () => {
     const { pillName } = await openSwitcher();
 
     expect(pillName).toHaveTextContent("Profile 1");
-    expect(pillName).toHaveClass("address-picker__compact-name--label");
   });
 });

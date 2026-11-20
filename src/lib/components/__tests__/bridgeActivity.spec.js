@@ -19,6 +19,12 @@ const SENT = Date.UTC(2026, 9, 26, 4, 49);
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 const options = { locale: "en" };
 
+/** A state said, whatever its words. */
+const SAID = expect.stringMatching(/\S/);
+
+/** A time of day, as every date the wallet writes has one. */
+const A_DATE = /\d:\d\d/;
+
 /** The Dusk account the activity is of, and another one. */
 const OWN =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
@@ -77,7 +83,7 @@ describe("routeTransferRow", () => {
       ),
     ).toMatchObject({
       group: "done",
-      line: `Arrived ${claimDay(CLAIM_AT, "en")}`,
+      line: expect.stringContaining(claimDay(CLAIM_AT, "en")),
       when: CLAIM_AT,
     });
   });
@@ -129,15 +135,23 @@ describe("routeTransferRow, on a transfer out", () => {
 
     const time = /** @type {const} */ ({ seconds: 3600, source: "network" });
     const at = (/** @type {number} */ ms) => NOW - ms;
+    const onTime = routeTransferRow(transfer({ at: at(3_600_000) }), {
+      ...options,
+      time,
+    }).line;
+    const late = routeTransferRow(transfer({ at: at(7_300_000) }), {
+      ...options,
+      time,
+    }).line;
 
-    expect(
-      routeTransferRow(transfer({ at: at(3_600_000) }), { ...options, time })
-        .line,
-    ).toBe(`Sent ${claimDay(at(3_600_000), "en")} · takes ~1 hour`);
-    expect(
-      routeTransferRow(transfer({ at: at(7_300_000) }), { ...options, time })
-        .line,
-    ).toBe(`Sent ${claimDay(at(7_300_000), "en")} · taking longer than usual`);
+    expect(onTime).toContain(claimDay(at(3_600_000), "en"));
+    expect(onTime).toContain("1 hour");
+    // Late: not how long it takes, and more than when it was sent.
+    expect(late).toContain(claimDay(at(7_300_000), "en"));
+    expect(late).not.toContain("1 hour");
+    expect(late).not.toBe(
+      routeTransferRow(transfer({ at: at(7_300_000) }), options).line,
+    );
   });
 });
 
@@ -149,9 +163,7 @@ describe("withdrawalRow", () => {
         amount: "1 DUSK",
         from: "duskEvm",
         group: "needs",
-        line: "Ready to claim on Dusk",
         state: "",
-        title: "DuskEVM to Dusk",
         to: "duskDs",
         when: SENT,
       }),
@@ -160,7 +172,6 @@ describe("withdrawalRow", () => {
       expect.objectContaining({
         action: "prove",
         group: "needs",
-        line: "Ready to prove on Dusk",
       }),
     );
   });
@@ -170,67 +181,74 @@ describe("withdrawalRow", () => {
       readyAt: String(CLAIM_AT / 1_000),
       readyAtExact: false,
     });
+    const day = claimDay(CLAIM_AT, "en");
+    const about = withdrawalRow(waiting, options);
+    const exact = withdrawalRow({ ...waiting, readyAtExact: true }, options);
+    const rejected = withdrawalRow(
+      { ...waiting, proofRejected: true },
+      options,
+    );
 
-    expect(withdrawalRow(waiting, options)).toEqual(
+    expect(about).toEqual(
       expect.objectContaining({
         action: null,
         group: "progress",
-        line: `Claim from about ${claimDay(CLAIM_AT, "en")}`,
-        state: "Pending",
+        line: expect.stringContaining(day),
+        state: SAID,
       }),
     );
-    expect(
-      withdrawalRow({ ...waiting, readyAtExact: true }, options).line,
-    ).toBe(`Claim from ${claimDay(CLAIM_AT, "en")}`);
-    expect(
-      withdrawalRow({ ...waiting, proofRejected: true }, options).line,
-    ).toBe("Proof rejected · prove it again once DuskEVM reports a new output");
+    // Exact, it's said otherwise.
+    expect(exact.line).toContain(day);
+    expect(exact.line).not.toBe(about.line);
+    // A rejected proof's date is no claim date.
+    expect(rejected.line).toMatch(/\S/);
+    expect(rejected.line).not.toContain(day);
     // No date made up before the chain gives one.
-    expect(withdrawalRow(withdrawal("proven_waiting"), options).line).toBe(
-      "Proved, not claimable yet",
-    );
+    expect(
+      withdrawalRow(withdrawal("proven_waiting"), options).line,
+    ).not.toMatch(A_DATE);
   });
 
   it("should say what a withdrawal waits for before its proof, and after a step was sent", () => {
-    expect(withdrawalRow(withdrawal("submitted"), options).line).toBe(
-      `Sent ${claimDay(SENT, "en")}`,
+    expect(withdrawalRow(withdrawal("submitted"), options).line).toContain(
+      claimDay(SENT, "en"),
     );
     expect(
       withdrawalRow(
         withdrawal("submitted", { sentAt: null, timestamp: null }),
         options,
       ).line,
-    ).toBe("Sent");
-    expect(withdrawalRow(withdrawal("waiting_for_output"), options).line).toBe(
-      "Not on Dusk yet · usually within an hour",
-    );
+    ).not.toMatch(A_DATE);
+    expect(
+      withdrawalRow(withdrawal("waiting_for_output"), options).line,
+    ).not.toMatch(A_DATE);
     expect(
       withdrawalRow(withdrawal("waiting_for_output"), {
         ...options,
         time: { prove: 3_600, seconds: 0, source: "chain" },
       }).line,
-    ).toBe(`Prove from about ${claimDay(SENT + 3_600_000, "en")}`);
-    expect(withdrawalRow(withdrawal("prove_submitted"), options).line).toBe(
-      "Proof sent, waiting for Dusk",
-    );
-    expect(withdrawalRow(withdrawal("finalize_submitted"), options).line).toBe(
-      "Claim sent, waiting for Dusk",
-    );
+    ).toContain(claimDay(SENT + 3_600_000, "en"));
+    // A proof or a claim sent waits for Dusk: nothing to send again.
+    for (const stage of ["prove_submitted", "finalize_submitted"]) {
+      expect(withdrawalRow(withdrawal(stage), options)).toEqual(
+        expect.objectContaining({ action: null, group: "progress" }),
+      );
+    }
   });
 
   it("should put a claimed withdrawal under done, and a failed one under what didn't go through", () => {
     expect(withdrawalRow(withdrawal("finalized"), options)).toEqual(
       expect.objectContaining({
         group: "done",
-        line: "Claimed on Dusk",
         state: "",
       }),
     );
+    // Saying where the DUSK still is.
     expect(withdrawalRow(withdrawal("failed"), options)).toEqual(
       expect.objectContaining({
         group: "failed",
-        line: "The DUSK is still on DuskEVM",
-        state: "Failed",
+        line: expect.stringContaining("DuskEVM"),
+        state: SAID,
       }),
     );
   });
@@ -249,7 +267,7 @@ describe("withdrawalRow", () => {
         action: "prove",
         forOther: true,
         group: "other",
-        line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
+        line: expect.stringContaining("213qXN…V5JJ9Y"),
         state: "",
       }),
     );
@@ -258,7 +276,7 @@ describe("withdrawalRow", () => {
         ...options,
         account: OWN,
       }),
-    ).toEqual(expect.objectContaining({ group: "other", state: "Pending" }));
+    ).toEqual(expect.objectContaining({ group: "other", state: SAID }));
 
     // Done or failed, it goes where all of those go, still saying whom.
     expect(
@@ -269,17 +287,18 @@ describe("withdrawalRow", () => {
     ).toEqual(
       expect.objectContaining({
         group: "done",
-        line: "Pays 213qXN…V5JJ9Y · claimed on Dusk",
+        line: expect.stringContaining("213qXN…V5JJ9Y"),
       }),
     );
 
     // A contract it pays is said to be one.
-    expect(
-      withdrawalRow(
-        withdrawal("ready_to_prove", { recipient: "21a5cb".padEnd(64, "0") }),
-        { ...options, account: OWN },
-      ).line,
-    ).toBe("Pays contract 21a5cb…000000 · ready to prove on Dusk");
+    const contract = withdrawalRow(
+      withdrawal("ready_to_prove", { recipient: "21a5cb".padEnd(64, "0") }),
+      { ...options, account: OWN },
+    ).line;
+
+    expect(contract).toContain("21a5cb…000000");
+    expect(contract).toMatch(/contract/i);
 
     // One that pays the account, or whose recipient isn't known: as ever.
     for (const recipient of [OWN, null]) {
@@ -292,7 +311,6 @@ describe("withdrawalRow", () => {
         expect.objectContaining({
           forOther: false,
           group: "needs",
-          line: "Ready to prove on Dusk",
         }),
       );
     }
@@ -322,14 +340,14 @@ describe("withdrawalRow", () => {
         action: "claim",
         forOther: false,
         group: "needs",
-        line: "Pays 213qXN…V5JJ9Y · ready to claim on Dusk",
+        line: expect.stringContaining("213qXN…V5JJ9Y"),
       }),
     );
     expect(row("proven_waiting")).toEqual(
       expect.objectContaining({
         forOther: false,
         group: "progress",
-        state: "Pending",
+        state: SAID,
       }),
     );
 
@@ -342,7 +360,7 @@ describe("withdrawalRow", () => {
         action: "prove",
         forOther: false,
         group: "needs",
-        line: "Pays 213qXN…V5JJ9Y · ready to prove on Dusk",
+        line: expect.stringContaining("213qXN…V5JJ9Y"),
       }),
     );
 
@@ -372,67 +390,83 @@ describe("withdrawalRow", () => {
 
 describe("depositRow", () => {
   it("should name a deposit by its route and amount, sent when, and how long it takes", () => {
+    const account = "0xab84edffd745af9420ac74fec73121fbee9fc86f";
+
     expect(depositRow(deposit("l1_pending"), options)).toEqual(
       expect.objectContaining({
         action: null,
         amount: "0.1 DUSK",
         from: "duskDs",
         group: "progress",
-        line: `Sent ${claimDay(SENT, "en")}`,
-        state: "Pending",
-        title: "Dusk to DuskEVM",
+        line: expect.stringContaining(claimDay(SENT, "en")),
+        state: SAID,
         to: "duskEvm",
       }),
     );
-    expect(
-      depositRow(deposit("l2_pending", { l1ConfirmedAt: Date.now() }), {
+
+    const usual = depositRow(
+      deposit("l2_pending", { l1ConfirmedAt: Date.now() }),
+      {
         ...options,
         time: { seconds: 60, source: "chain" },
-      }).line,
-    ).toBe(`Sent ${claimDay(SENT, "en")} · takes ~1 min`);
+      },
+    ).line;
+
+    expect(usual).toContain(claimDay(SENT, "en"));
+    expect(usual).toContain("1 min");
     // Arrived, when DuskEVM's explorer says, and where.
     expect(depositRow(deposit("completed"), options)).toEqual(
       expect.objectContaining({
         group: "done",
-        line: "Arrived on DuskEVM",
+        line: expect.stringContaining("DuskEVM"),
         state: "",
       }),
     );
-    expect(
-      depositRow(
-        deposit("completed", {
-          account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
-          arrivedAt: SENT + 60_000,
-        }),
-        options,
-      ).line,
-    ).toBe(`Arrived ${claimDay(SENT + 60_000, "en")} · to 0xAB84…C86F`);
-    expect(
-      depositRow(
-        deposit("l1_pending", {
-          account: "0xab84edffd745af9420ac74fec73121fbee9fc86f",
-        }),
-        options,
-      ).line,
-    ).toBe(`Sent ${claimDay(SENT, "en")} · to 0xAB84…C86F`);
+
+    const arrived = depositRow(
+      deposit("completed", { account, arrivedAt: SENT + 60_000 }),
+      options,
+    ).line;
+    const sent = depositRow(deposit("l1_pending", { account }), options).line;
+
+    expect(arrived).toContain(claimDay(SENT + 60_000, "en"));
+    expect(arrived).toContain("0xAB84…C86F");
+    expect(sent).toContain(claimDay(SENT, "en"));
+    expect(sent).toContain("0xAB84…C86F");
   });
 
   it("should say a deposit takes longer than usual, or why it didn't go through", () => {
-    expect(
-      depositRow(deposit("l2_pending", { l1ConfirmedAt: SENT }), options).line,
-    ).toBe(`Sent ${claimDay(SENT, "en")} · taking longer than usual`);
-    expect(
-      depositRow(deposit("failed", { failureLayer: "l1" }), options),
-    ).toEqual(
+    const late = depositRow(
+      deposit("l2_pending", { l1ConfirmedAt: SENT }),
+      options,
+    ).line;
+
+    expect(late).toContain(claimDay(SENT, "en"));
+    // More than when it was sent: that it's late.
+    expect(late).not.toBe(
+      depositRow(deposit("l2_pending", { l1ConfirmedAt: Date.now() }), options)
+        .line,
+    );
+
+    const onDusk = depositRow(
+      deposit("failed", { failureLayer: "l1" }),
+      options,
+    );
+    const onDuskEvm = depositRow(
+      deposit("failed", { failureLayer: "l2" }),
+      options,
+    ).line;
+
+    expect(onDusk).toEqual(
       expect.objectContaining({
         group: "failed",
-        line: "The DUSK didn't leave Dusk",
-        state: "Failed",
+        state: SAID,
       }),
     );
-    expect(
-      depositRow(deposit("failed", { failureLayer: "l2" }), options).line,
-    ).toBe("Delivery failed on DuskEVM · don't send it again");
+    // Why, by where: the DUSK never left Dusk, or DuskEVM didn't deliver it.
+    expect(onDusk.line).toMatch(/\bDusk\b/);
+    expect(onDuskEvm).toContain("DuskEVM");
+    expect(onDuskEvm).not.toBe(onDusk.line);
   });
 });
 
@@ -457,24 +491,21 @@ describe("groupBridgeActivity", () => {
     ];
 
     expect(
-      groupBridgeActivity(rows).map(({ head, rows: grouped }) => [
-        head,
+      groupBridgeActivity(rows).map(({ group, rows: grouped }) => [
+        group,
         grouped.map((row) => row.id),
       ]),
     ).toStrictEqual([
-      ["Needs you", [`withdrawal:0x${"5a".repeat(32)}`]],
-      ["In progress", [`withdrawal:0x${"01".repeat(32)}`]],
-      [
-        "Completed",
-        [`deposit:${"cd".repeat(32)}`, `deposit:${"ab".repeat(32)}`],
-      ],
+      ["needs", [`withdrawal:0x${"5a".repeat(32)}`]],
+      ["progress", [`withdrawal:0x${"01".repeat(32)}`]],
+      ["done", [`deposit:${"cd".repeat(32)}`, `deposit:${"ab".repeat(32)}`]],
     ]);
-    expect(BRIDGE_ACTIVITY_GROUPS.map(([, head]) => head)).toStrictEqual([
-      "Needs you",
-      "In progress",
-      "Sent to someone else",
-      "Completed",
-      "Didn't go through",
+    expect(BRIDGE_ACTIVITY_GROUPS.map(([group]) => group)).toStrictEqual([
+      "needs",
+      "progress",
+      "other",
+      "done",
+      "failed",
     ]);
   });
 });
@@ -554,17 +585,17 @@ describe("an approval no migration spent", () => {
     );
 
   it("should say what it let the migration contract take, and what came of it", () => {
-    expect(
-      titles([
-        approval("0x1", "unused", (ONE * 4n) / 1000n),
-        approval("0x2", "uncertain", ONE),
-        approval("0x3", "open", 2n ** 256n - 1n),
-      ]),
-    ).toStrictEqual([
-      "Approved 0.004 BEP20 DUSK, never used",
-      "Approved 1 BEP20 DUSK for a migration",
-      "Approved any amount of BEP20 DUSK, not used yet",
+    const [unused, uncertain, open] = titles([
+      approval("0x1", "unused", (ONE * 4n) / 1000n),
+      approval("0x2", "uncertain", ONE),
+      approval("0x3", "open", 2n ** 256n - 1n),
     ]);
+
+    expect(unused).toContain("0.004 BEP20 DUSK");
+    expect(uncertain).toMatch(/(?:^|\s)1 BEP20 DUSK/);
+    // No limit: any amount, never a figure.
+    expect(open).toContain("any amount");
+    expect(open).not.toMatch(/\d BEP20/);
   });
 
   it("should hide what it approved, or what a revoke took back, while balances are hidden: not that it had no limit", () => {
@@ -574,23 +605,29 @@ describe("an approval no migration spent", () => {
       approval("0x3", "open", 2n ** 256n - 1n),
       approval("0x4", "unused", 1n),
     ];
+    const shown = titles(approvals);
+    const hidden = approvals.map(
+      (each) =>
+        approvalRow(each, { approvals, locale: "en", masked: true, route })
+          ?.title,
+    );
 
-    expect(
-      approvals.map(
-        (each) =>
-          approvalRow(each, { approvals, locale: "en", masked: true, route })
-            ?.title,
-      ),
-    ).toStrictEqual([
-      "Approved •••• BEP20 DUSK, never used",
-      "Revoked the •••• BEP20 DUSK approved, never used",
-      "Approved any amount of BEP20 DUSK, not used yet",
-      "Approved •••• BEP20 DUSK, never used",
-    ]);
+    // The figures go, not the token they're of...
+    for (const [index, figure] of /** @type {[number, string][]} */ ([
+      [0, "0.004"],
+      [1, "0.004"],
+      [3, "0.000000001"],
+    ])) {
+      expect(shown[index]).toContain(figure);
+      expect(hidden[index]).not.toContain(figure);
+      expect(hidden[index]).toContain("BEP20 DUSK");
+    }
+    // ...nor that one had no limit.
+    expect(hidden[2]).toBe(shown[2]);
   });
 
   it("should say what a revoke took back of the approval before it: all of it where none of it was drawn, else what was left", () => {
-    expect(
+    const [approved, revoked, spent, leftRevoked, others, othersRevoked] =
       titles([
         approval("0x1", "unused", (ONE * 4n) / 1000n),
         approval("0x2", "revoke", 0n),
@@ -600,14 +637,15 @@ describe("an approval no migration spent", () => {
         // Another owner's approval before it is no part of it.
         approval("0x5", "unused", ONE, { owner: `0x${"55".repeat(20)}` }),
         approval("0x6", "revoke", 0n, { owner: `0x${"66".repeat(20)}` }),
-      ]),
-    ).toStrictEqual([
-      "Approved 0.004 BEP20 DUSK, never used",
-      "Revoked the 0.004 BEP20 DUSK approved, never used",
-      undefined,
-      "Revoked what was left of 0.004 BEP20 DUSK approved",
-      "Approved 1 BEP20 DUSK, never used",
-      "Approval revoked",
-    ]);
+      ]);
+
+    expect(approved).toContain("0.004 BEP20 DUSK");
+    expect(revoked).toContain("0.004 BEP20 DUSK");
+    expect(spent).toBeUndefined();
+    // What was left of it, said otherwise than all of it.
+    expect(leftRevoked).toContain("0.004 BEP20 DUSK");
+    expect(leftRevoked).not.toBe(revoked);
+    expect(others).toMatch(/(?:^|\s)1 BEP20 DUSK/);
+    expect(othersRevoked).not.toMatch(/\d BEP20/);
   });
 });

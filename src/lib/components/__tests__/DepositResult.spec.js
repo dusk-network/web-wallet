@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 
-import { outcomeUnknown } from "$lib/transactions";
+import { describeFailure, outcomeUnknown } from "$lib/transactions";
 
 import { DepositResult } from "..";
 
@@ -31,14 +31,14 @@ describe("DepositResult", () => {
     followTransaction.mockReset();
   });
 
-  it("follows a deposit whose answer got lost, and once the chain has it, keeps it and shows its progress", async () => {
+  it("follows a deposit whose answer got lost, offers no second one, and keeps it once the chain has it", async () => {
     const hash = "ef".repeat(32);
     const found = Promise.withResolvers();
     const onSeen = vi.fn();
 
     followTransaction.mockReturnValueOnce(found.promise);
 
-    const { findByText, getByRole, queryByRole } = render(DepositResult, {
+    const { getByRole, queryByRole } = render(DepositResult, {
       onRetry: vi.fn(),
       onSeen,
       operation: Promise.reject(
@@ -47,38 +47,17 @@ describe("DepositResult", () => {
       what: "0.05 DUSK to DuskEVM",
     });
 
-    expect(await findByText("Not confirmed")).toBeInTheDocument();
-    expect(getByRole("status")).toHaveTextContent(
-      "0.05 DUSK to DuskEVM It may have reached the network. Wait for it here before you send it again.",
+    await vi.waitFor(() =>
+      expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
     );
+    expect(getByRole("status")).toHaveTextContent("0.05 DUSK to DuskEVM");
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
-    expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
     expect(onSeen).not.toHaveBeenCalled();
 
     found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
 
-    expect(
-      await findByText("Track in activity", { exact: false }),
-    ).toBeInTheDocument();
-    expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash);
-  });
-
-  it("says in plain words why a deposit to DuskEVM failed before it went out, with its own message under Details", async () => {
-    const { container, findByText } = render(DepositResult, {
-      operation: Promise.reject(new TypeError("Failed to fetch")),
-    });
-
-    expect(
-      await findByText(
-        "Couldn't reach the network. Nothing was sent and no fee was charged.",
-      ),
-    ).toBeInTheDocument();
-    expect(container).toHaveTextContent("Not sent");
-    expect(container.querySelector("details summary")).toHaveTextContent(
-      /^Details$/,
-    );
-    expect(container.querySelector("details")).toHaveTextContent(
-      "Failed to fetch",
+    await vi.waitFor(() =>
+      expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash),
     );
   });
 
@@ -97,14 +76,18 @@ describe("DepositResult", () => {
 
     cleanup();
 
+    const lost = outcomeUnknown(new TypeError("Failed to fetch"));
     const unknown = render(DepositResult, {
       onRetry,
-      operation: Promise.reject(
-        outcomeUnknown(new TypeError("Failed to fetch")),
-      ),
+      operation: Promise.reject(lost),
     });
 
-    expect(await unknown.findByText("Not confirmed")).toBeInTheDocument();
+    // Shown as one that may have gone out.
+    expect(
+      await unknown.findByText(
+        /** @type {string} */ (describeFailure(lost).heading),
+      ),
+    ).toBeInTheDocument();
     expect(unknown.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

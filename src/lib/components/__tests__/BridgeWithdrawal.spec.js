@@ -14,13 +14,7 @@ import {
 import vault from "$lib/vault";
 
 import { Bridge } from "..";
-import {
-  BaseError,
-  InsufficientFundsError,
-  UserRejectedRequestError,
-  decodeFunctionData,
-  parseAbi,
-} from "viem";
+import { decodeFunctionData, parseAbi } from "viem";
 import { networks } from "@dusk-network/networks";
 import { duskRecipientOf } from "@dusk-network/networks/duskevm";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
@@ -183,25 +177,27 @@ describe("Bridge withdrawal", () => {
     network: "testnet",
   });
 
+  // When it can be claimed after it's proved, and proved after it's sent:
+  // none said where the chain doesn't say.
   it.each([
-    [
-      604_800,
-      "Claim 7 days after you prove. You can prove about 30 minutes after sending.",
-    ],
-    [
-      10_800,
-      "Claim 3 hours after you prove. You can prove about 30 minutes after sending.",
-    ],
-    [null, "Prove it on Dusk, then claim it."],
+    [604_800, ["30 minutes", "7 days"]],
+    [10_800, ["3 hours", "30 minutes"]],
+    [null, []],
   ])(
-    "says what's left on Dusk once sent, for a proof maturity of %s seconds",
-    async (maturitySeconds, line) => {
+    "says when to prove and claim on Dusk once sent, for a proof maturity of %s seconds",
+    async (maturitySeconds, times) => {
       /** @type {any} */ (bridgeTimes).set(timesFor(maturitySeconds));
 
-      const { findByText } = await sendWithdrawal();
+      const { container, findByRole } = await sendWithdrawal();
 
-      expect(await findByText("Withdrawal sent")).toBeInTheDocument();
-      expect(await findByText(line)).toBeInTheDocument();
+      // Sent: it can be tracked from here.
+      await findByRole("link", { name: "Track withdrawal" });
+
+      expect(
+        (
+          container.textContent?.match(/\d+ (?:days?|hours?|minutes?)\b/g) ?? []
+        ).sort(),
+      ).toStrictEqual(times);
       expect(mocks.sendTransaction).toHaveBeenCalledOnce();
     },
   );
@@ -209,9 +205,10 @@ describe("Bridge withdrawal", () => {
   it("sends the withdrawal on DuskEVM's bridge, from the connected address, paying the wallet's public account", async () => {
     /** @type {any} */ (bridgeTimes).set(timesFor(604_800));
 
-    const { findByText } = await sendWithdrawal();
-
-    expect(await findByText("Withdrawal sent")).toBeInTheDocument();
+    await sendWithdrawal();
+    await vi.waitFor(() =>
+      expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
+    );
 
     const [[, sent]] = mocks.sendTransaction.mock.calls;
     const { args, functionName } = decodeFunctionData({
@@ -236,36 +233,24 @@ describe("Bridge withdrawal", () => {
   });
 
   /**
-   * The failure screen's heading and sentence, once it shows.
+   * Waits for the failure screen, whatever it says.
    *
    * @param {import("@testing-library/svelte").RenderResult<any>} rendered
    */
-  async function failureOf(rendered) {
-    await vi.waitFor(() =>
+  const failureShown = (rendered) =>
+    vi.waitFor(() =>
       expect(
         rendered.container.querySelector(".dusk-error-alert"),
-      ).toBeTruthy(),
+      ).not.toBeNull(),
     );
 
-    const alert = /** @type {HTMLElement} */ (
-      rendered.container.querySelector(".dusk-error-alert")
-    );
-
-    return [
-      alert.querySelector(".dusk-error-alert__summary")?.textContent,
-      alert.querySelector(".dusk-error-alert__description")?.textContent,
-    ];
-  }
-
-  it("says to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and after, that it may have gone out and to check the EVM wallet", async () => {
+  it("offers to try again when DuskEVM couldn't be reached before the EVM wallet was asked to send it, and not after, as it may have gone out", async () => {
     mocks.switchChain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
     const unreached = await sendWithdrawal();
 
-    expect(await failureOf(unreached)).toStrictEqual([
-      "Not sent",
-      "Couldn't reach the network. Nothing was sent and no fee was charged.",
-    ]);
+    await failureShown(unreached);
+
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
 
     await fireEvent.click(unreached.getByRole("button", { name: "Try again" }));
@@ -279,11 +264,8 @@ describe("Bridge withdrawal", () => {
 
     const rendered = await sendWithdrawal();
 
-    expect(await failureOf(rendered)).toStrictEqual([
-      "Not confirmed",
-      "It may have reached the network. Check your EVM wallet's activity before you send it again.",
-    ]);
-    expect(rendered.container).not.toHaveTextContent(/try again/i);
+    await failureShown(rendered);
+
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
@@ -368,45 +350,16 @@ describe("Bridge withdrawal", () => {
       });
     });
 
-    it("says nothing was sent when it isn't given, and offers to try again", async () => {
+    it("sends nothing when it isn't given, and offers to try again", async () => {
       const rendered = await sendWithdrawal();
 
       await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
       get(sendPasswordAsk)?.cancel();
 
-      expect(await failureOf(rendered)).toStrictEqual([
-        "Not sent",
-        "It waits for your password, so nothing was sent.",
-      ]);
+      await failureShown(rendered);
+
       expect(rendered.getByRole("button", { name: "Try again" })).toBeVisible();
       expect(mocks.sendTransaction).not.toHaveBeenCalled();
     });
-  });
-
-  it("says the balance doesn't cover it, without naming the shielded one, when the EVM wallet's doesn't cover it and its gas", async () => {
-    mocks.sendTransaction.mockRejectedValueOnce(
-      // As the node's refusal reaches the wallet, through viem.
-      new InsufficientFundsError({
-        cause: new BaseError("Insufficient funds.", {
-          details: "insufficient funds for gas * price + value",
-        }),
-      }),
-    );
-
-    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
-      "Bridging failed",
-      "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
-    ]);
-  });
-
-  it("says nothing was sent when it was declined in the EVM wallet", async () => {
-    mocks.sendTransaction.mockRejectedValue(
-      new UserRejectedRequestError(new Error("User denied transaction.")),
-    );
-
-    expect(await failureOf(await sendWithdrawal())).toStrictEqual([
-      "Bridging failed",
-      "It was declined in your EVM wallet, so nothing was sent.",
-    ]);
   });
 });

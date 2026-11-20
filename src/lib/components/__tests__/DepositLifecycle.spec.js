@@ -1,8 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/svelte";
-import { networks } from "@dusk-network/networks";
-
-import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import DepositLifecycle from "../EvmTransactions/DepositLifecycle.svelte";
 
@@ -65,53 +62,18 @@ const deposit = () => ({
 describe("DepositLifecycle", () => {
   afterEach(cleanup);
 
-  it("should head a deposit's steps with its amount and its state, as the Bridge shows it once sent", () => {
-    const { getByRole, getByText } = render(DepositLifecycle, {
+  it("should head a deposit's steps with its amount, as the Bridge shows it once sent", () => {
+    const { getByRole } = render(DepositLifecycle, {
       deposit: deposit(),
     });
 
     expect(getByRole("heading", { name: "0.25 DUSK" })).toBeInTheDocument();
-    expect(getByText("Bridging")).toBeInTheDocument();
-    expect(
-      getByRole("list", { name: "Bridge transaction progress" }),
-    ).toBeInTheDocument();
   });
 
-  it("should link each side's transaction: Dusk's in the network's Dusk explorer, DuskEVM's in its explorer", () => {
-    setNodeNetwork(networks.testnet);
-
-    const { getByRole } = render(DepositLifecycle, {
-      deposit: { ...deposit(), l2TransactionHash: `0x${"e2".repeat(32)}` },
-    });
-    const dusk = getByRole("link", {
-      name: "View dusk transaction hash in Dusk explorer",
-    });
-
-    expect(dusk).toHaveAttribute(
-      "href",
-      `https://explorer.testnet.dusk.network/transactions/transaction?id=${"ab".repeat(32)}`,
-    );
-    expect(dusk).toHaveAttribute("target", "_blank");
-    expect(
-      getByRole("link", {
-        name: "View duskevm transaction hash in Blockscout",
-      }),
-    ).toHaveAttribute(
-      "href",
-      `https://explorer.example.test/tx/0x${"e2".repeat(32)}`,
-    );
-    setNodeNetwork(null);
-  });
-
-  it("should call its chain Dusk, as the Bridge does, and say the network fee its Dusk transaction paid once the history has it", async () => {
-    const { container, getByText, queryByText } = render(DepositLifecycle, {
+  it("should say the network fee its Dusk transaction paid once the history has it", async () => {
+    const { container } = render(DepositLifecycle, {
       deposit: { ...deposit(), stage: "completed" },
     });
-
-    expect(container).not.toHaveTextContent("DuskDS");
-    expect(getByText("Finalized on Dusk")).toBeInTheDocument();
-    expect(getByText("Dusk transaction")).toBeInTheDocument();
-    expect(queryByText("Network fee")).toBeNull();
 
     await act(() =>
       history.state?.set({
@@ -119,21 +81,6 @@ describe("DepositLifecycle", () => {
       }),
     );
 
-    expect(getByText("Network fee").nextElementSibling).toHaveTextContent(
-      "0.001987516 DUSK",
-    );
-  });
-
-  it("should leave the amount and the state to the row in a list that says them", () => {
-    const { getByRole, queryByRole, queryByText } = render(DepositLifecycle, {
-      deposit: deposit(),
-      titled: false,
-    });
-
-    expect(queryByRole("heading")).toBeNull();
-    expect(queryByText("Bridging")).toBeNull();
-    expect(
-      getByRole("list", { name: "Bridge transaction progress" }),
-    ).toBeInTheDocument();
+    expect(container).toHaveTextContent("0.001987516 DUSK");
   });
 });

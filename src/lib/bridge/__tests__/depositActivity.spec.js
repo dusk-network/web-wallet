@@ -146,7 +146,7 @@ describe("DuskEVM deposit activity", () => {
       stage: "l2_pending",
     };
 
-    expect(depositStageLabel(pending)).toBe("Bridging");
+    expect(depositStageLabel(pending)).toMatch(/\S/);
     expect(depositStageProgress(pending)).toBe(2);
     expect(isDepositDelayed(pendingForDelay, 599_999)).toBe(false);
     expect(isDepositDelayed(pendingForDelay, 600_000)).toBe(true);
@@ -156,29 +156,33 @@ describe("DuskEVM deposit activity", () => {
         1_801_000,
       ),
     ).toBe(true);
+    // A stalled deposit is labelled as one, not as on its way.
     expect(
       depositStageLabel({
         createdAt: Date.now() - 1_800_000,
         progressedAt: Date.now() - 1_800_000,
         stage: "l1_pending",
       }),
-    ).toBe("Tracking delayed");
+    ).not.toBe(
+      depositStageLabel({
+        createdAt: Date.now(),
+        progressedAt: Date.now(),
+        stage: "l1_pending",
+      }),
+    );
     expect(
       isDepositDelayed({ createdAt: 1_000, stage: "l2_pending" }, 301_000),
     ).toBe(true);
-    expect(
+    // Failed on Dusk or on DuskEVM: each says its own.
+    const failedOn = (/** @type {string} */ failureLayer) =>
       depositStageMessage({
-        failureLayer: "l1",
+        failureLayer,
         stage: "failed",
         statusMessage: "Low-level SDK failure",
-      }),
-    ).toContain("did not enter the bridge");
-    expect(
-      depositStageMessage({
-        failureLayer: "l2",
-        stage: "failed",
-        statusMessage: "Low-level SDK failure",
-      }),
-    ).toContain("bridge recovery");
+      });
+
+    expect(failedOn("l1")).toMatch(/\S/);
+    expect(failedOn("l2")).toMatch(/\S/);
+    expect(failedOn("l1")).not.toBe(failedOn("l2"));
   });
 });

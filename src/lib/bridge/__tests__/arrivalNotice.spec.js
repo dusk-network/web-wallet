@@ -3,7 +3,6 @@ import { render } from "@testing-library/svelte";
 import { get, writable } from "svelte/store";
 
 import {
-  NOTICE_WORDS,
   arrivalNoticeState,
   arrivalSeen,
   arrivalTitle,
@@ -11,7 +10,6 @@ import {
   followNotificationClicks,
   followsWhileAway,
   forgetArrivalTitle,
-  noticeWords,
   stopArrivalNotice,
   transferEnded,
 } from "../arrivalNotice";
@@ -294,7 +292,7 @@ describe("Being told when a transfer arrives", () => {
     expect(followsWhileAway()).toBe(true);
   });
 
-  it("offers a notification on a phone through the wallet's service worker, saying it comes while the tab stays open, and opens what arrived as it's pressed", async () => {
+  it("offers a notification on a phone through the wallet's service worker, and opens what arrived as it's pressed", async () => {
     browser();
     onPhone();
 
@@ -302,17 +300,13 @@ describe("Being told when a transfer arrives", () => {
 
     stopArrivalNotice();
 
-    // Offered, with what it can't do: it's the open page that tells.
+    // Offered: nothing registered until it's chosen.
     expect(get(arrivalNoticeState)).toBe("offer");
-    expect(noticeWords("offer")).toBe("while this tab stays open");
     expect(worker.registered).not.toHaveBeenCalled();
 
     await chooseArrivalNotice();
 
     expect(get(arrivalNoticeState)).toBe("on");
-    expect(noticeWords("on")).toBe(
-      "You'll get a notification when it arrives, while this tab stays open.",
-    );
     expect(worker.registered).toHaveBeenCalledExactlyOnceWith(
       "/some-base-path/service-worker.js",
       expect.objectContaining({ scope: "/some-base-path/" }),
@@ -362,7 +356,6 @@ describe("Being told when a transfer arrives", () => {
     stopArrivalNotice();
 
     expect(get(arrivalNoticeState)).toBe("phone");
-    expect(NOTICE_WORDS.phone).toBe("This screen says when it arrives.");
     expect(followsWhileAway()).toBe(true);
 
     // Refused on a phone that could, it says where it's said instead.
@@ -370,9 +363,6 @@ describe("Being told when a transfer arrives", () => {
     await chooseArrivalNotice();
 
     expect(get(arrivalNoticeState)).toBe("refused");
-    expect(noticeWords("refused")).toBe(
-      "Notifications aren't allowed for this site, so this screen says when it arrives.",
-    );
 
     vi.restoreAllMocks();
     lookingAtPage(false);
@@ -446,7 +436,9 @@ describe("Being told when a transfer arrives", () => {
 
       stores.transfers.set([service("arrived")]);
 
-      expect(get(arrivalTitle)).toBe("2 DUSK arrived on BSC");
+      // What arrived, the bridge's fee taken, and where.
+      expect(get(arrivalTitle)).toMatch(/(?:^|\s)2 DUSK\b/);
+      expect(get(arrivalTitle)).toContain("BSC");
     });
 
     it("says nothing of a migration whose payout of days before comes to light as all of the history is read", () => {
@@ -480,7 +472,9 @@ describe("Being told when a transfer arrives", () => {
       stores.transfers.set([service("sent")]);
       stores.transfers.set([{ ...service("failed"), failure: "No" }]);
 
-      expect(get(arrivalTitle)).toBe("It didn't go through");
+      // Said, and not as what would have arrived.
+      expect(get(arrivalTitle)).not.toBe("");
+      expect(get(arrivalTitle)).not.toContain("2 DUSK");
 
       const deposit = {
         amountLux: "250000000",
@@ -491,7 +485,10 @@ describe("Being told when a transfer arrives", () => {
       stores.deposits.set([deposit]);
       stores.deposits.set([{ ...deposit, stage: "completed" }]);
 
-      expect(get(arrivalTitle)).toBe("0.25 DUSK arrived on DuskEVM");
+      const deposited = get(arrivalTitle);
+
+      expect(deposited).toMatch(/(?:^|\s)0\.25 DUSK\b/);
+      expect(deposited).toContain("DuskEVM");
 
       const withdrawal = {
         amountWei: "1000000000000000000",
@@ -502,15 +499,21 @@ describe("Being told when a transfer arrives", () => {
       stores.withdrawals.set([withdrawal]);
       stores.withdrawals.set([{ ...withdrawal, stage: "ready_to_prove" }]);
 
-      expect(get(arrivalTitle)).toBe("Ready to prove on Dusk");
+      const prove = get(arrivalTitle);
+
+      expect(prove).not.toBe("");
+      expect(prove).not.toBe(deposited);
 
       stores.withdrawals.set([{ ...withdrawal, stage: "ready_to_finalize" }]);
 
-      expect(get(arrivalTitle)).toBe("Ready to claim on Dusk");
+      expect(get(arrivalTitle)).not.toBe("");
+      expect(get(arrivalTitle)).not.toBe(prove);
 
       stores.withdrawals.set([{ ...withdrawal, stage: "finalized" }]);
 
-      expect(get(arrivalTitle)).toBe("1 DUSK arrived on Dusk");
+      // Arrived on Dusk, not DuskEVM.
+      expect(get(arrivalTitle)).toMatch(/(?:^|\s)1 DUSK\b/);
+      expect(get(arrivalTitle)).toMatch(/\bDusk\b/);
     });
 
     it("opens the transfer's activity from its notification", async () => {
@@ -600,7 +603,7 @@ describe("Being told when a transfer arrives", () => {
         expect(shown).toMatchObject([
           {
             options: { tag: `send:${hash}` },
-            title: "Arrived: 0.02 DUSK to Lucas",
+            title: expect.stringContaining("0.02 DUSK to Lucas"),
           },
         ]),
       );

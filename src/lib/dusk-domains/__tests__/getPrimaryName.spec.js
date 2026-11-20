@@ -221,7 +221,7 @@ describe("getPrimaryName", () => {
 
     await expect(
       getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
-    ).rejects.toThrow("Couldn't look up alice.dusk");
+    ).rejects.toThrow(/alice\.dusk/);
     await expect(
       getPrimaryName(account, "testnet", nodeUrl, shieldedAddress),
     ).resolves.toBe("alice.dusk");
