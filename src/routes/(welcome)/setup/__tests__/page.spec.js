@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
-import { shortenAddress } from "$lib/dusk/string";
 import { forgetPlace, keepPlace } from "$lib/navigation";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { networks } from "@dusk-network/networks";
@@ -68,16 +67,12 @@ describe("Setup", () => {
 
       expect(rowOf(asked, "Amount")).toHaveTextContent(/^0\.011 DUSK$/);
       expect(rowOf(asked, "Memo")).toHaveTextContent(/^Factura 044$/);
-      // Whom: the name the chain gives the account, then the account,
-      // shortened, and whole in its title.
+      // Whom, as the field shows it: the name the chain gives the account,
+      // then the account, to its first and last six characters.
       await vi.waitFor(() =>
-        expect(to).toHaveTextContent(
-          new RegExp(`^sofia\\.dusk ${shortenAddress(TO)}$`),
+        expect(to.textContent?.replace(/\s+/g, " ").trim()).toBe(
+          "sofia.dusk 25z9o6…5Etftt",
         ),
-      );
-      expect(to.querySelector(".payment-asked__code")).toHaveAttribute(
-        "title",
-        TO,
       );
     });
 

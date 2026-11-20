@@ -195,13 +195,13 @@ describe("Bridge withdrawal", () => {
   it.each([
     [
       604_800,
-      /\bclaim (?:about )?7 days\b/i,
-      /\bprove (?:about )?30 minutes\b/i,
+      /\bclaim (?:about )?7 days after (?:you )?prov(?:e|ing)\b/i,
+      /\bprove (?:about )?30 minutes after sending\b/i,
     ],
     [
       10_800,
-      /\bclaim (?:about )?3 hours\b/i,
-      /\bprove (?:about )?30 minutes\b/i,
+      /\bclaim (?:about )?3 hours after (?:you )?prov(?:e|ing)\b/i,
+      /\bprove (?:about )?30 minutes after sending\b/i,
     ],
   ])(
     "says when to prove and claim on Dusk once sent, for a proof maturity of %s seconds",
@@ -310,6 +310,7 @@ describe("Bridge withdrawal", () => {
     // It may have gone out: not confirmed, and nothing to send it again.
     expect(unknown.heading).toMatch(/not confirmed/i);
     expect(unknown.sentence).toMatch(/may have reached the network/i);
+    expect(unknown.sentence).toMatch(/check your EVM wallet/i);
     expect(unknown.sentence).not.toMatch(/nothing was sent/i);
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
   });

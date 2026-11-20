@@ -43,7 +43,7 @@ describe("What Share and Copy give of a request", () => {
     expect(lineOf(onTestnet)).toMatch(
       having("sofiadesign.dusk", "0,03 DUSK", "Testnet", "Factura F-2026-071"),
     );
-    expect(onTestnet.endsWith(LINK)).toBe(true);
+    expect(onTestnet.split(/\s/).at(-1)).toBe(LINK);
 
     // On Mainnet, a name given here, no memo.
     const onMainnet = requestText(
@@ -53,7 +53,7 @@ describe("What Share and Copy give of a request", () => {
 
     expect(lineOf(onMainnet)).toMatch(having("Chen", "0.02 DUSK"));
     expect(lineOf(onMainnet)).not.toMatch(/testnet|mainnet/i);
-    expect(onMainnet.endsWith(LINK)).toBe(true);
+    expect(onMainnet.split(/\s/).at(-1)).toBe(LINK);
 
     // A profile known by its number, asking any amount.
     const anyAmount = requestText(
@@ -63,7 +63,7 @@ describe("What Share and Copy give of a request", () => {
 
     expect(lineOf(anyAmount)).toMatch(having("Testnet", "chicken rice"));
     expect(lineOf(anyAmount)).not.toMatch(/\d/);
-    expect(anyAmount.endsWith(LINK)).toBe(true);
+    expect(anyAmount.split(/\s/).at(-1)).toBe(LINK);
   });
 });
 

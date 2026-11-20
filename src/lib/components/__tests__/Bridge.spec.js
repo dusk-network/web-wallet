@@ -5,7 +5,6 @@ import { tick } from "svelte";
 import { ProfileGenerator } from "@dusk/w3sper";
 
 import bridgeTimes from "$lib/bridge/bridgeTimes";
-import { formatFee } from "$lib/dusk/currency";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { settingsStore, walletStore } from "$lib/stores";
 import { routesStopped, stubWalletNetwork } from "$lib/test-helpers";
@@ -85,14 +84,18 @@ vi.mock("$lib/web3/walletConnection", async () => {
 });
 
 /**
- * The Review step's amounts, as their values.
+ * A review amount, found by its label's key word.
  *
- * @param {HTMLElement} container
+ * @param {ParentNode} container
+ * @param {RegExp} label
  */
-const getReviewAmounts = (container) =>
-  Array.from(container.querySelectorAll(".review-amount dd"), (value) =>
-    value.textContent?.trim(),
-  );
+const amountOf = (container, label) =>
+  Array.from(container.querySelectorAll(".review-amount"))
+    .find((row) =>
+      label.test(row.querySelector("dt")?.textContent?.trim() ?? ""),
+    )
+    ?.querySelector("dd")
+    ?.textContent?.trim();
 
 /**
  * A review row's value, by its label's key word.
@@ -438,20 +441,23 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
     await vi.waitFor(() =>
-      expect(getReviewAmounts(container)).toStrictEqual([
-        "2.5 DUSK",
-        "0.0014 DUSK",
-      ]),
+      expect(amountOf(container, /fee/i)).toBe("0.0014 DUSK"),
     );
+    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
     // The fee is an estimate, never said as the most it costs.
     expect(termOf(container, /fee/i)).toMatch(/\babout\b/i);
     expect(termOf(container, /fee/i)).not.toMatch(/\bat most\b/i);
 
-    // Claim 7 days after proving, and prove about 30 minutes after sending.
+    // Prove about 30 minutes after sending, then claim 7 days after
+    // proving: never before.
     const next = container.querySelector(".banner__title");
 
-    expect(next).toHaveTextContent(/\bclaim (?:about )?7 days\b/i);
-    expect(next).toHaveTextContent(/\bprove (?:about )?30 minutes\b/i);
+    expect(next).toHaveTextContent(
+      /\bclaim (?:about )?7 days after (?:you )?prov(?:e|ing)\b/i,
+    );
+    expect(next).toHaveTextContent(
+      /\bprove (?:about )?30 minutes after sending\b/i,
+    );
   });
 
   it("should show the amount, the network fee and the total when reviewing a deposit", async () => {
@@ -461,11 +467,9 @@ describe("Bridge", () => {
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
     // The amount, and the network fee and the total, each at most.
-    expect(getReviewAmounts(container)).toStrictEqual([
-      "2.5 DUSK",
-      "0.02 DUSK",
-      "2.52 DUSK",
-    ]);
+    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
+    expect(amountOf(container, /fee/i)).toBe("0.02 DUSK");
+    expect(amountOf(container, /total/i)).toBe("2.52 DUSK");
     expect(termOf(container, /fee/i)).toMatch(/\bat most\b/i);
     expect(termOf(container, /total/i)).toMatch(/\bat most\b/i);
     // From this public account to the connected DuskEVM account, through the
@@ -485,12 +489,12 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    expect(getReviewAmounts(container)[1]).toBe("0.06 DUSK");
+    expect(amountOf(container, /fee/i)).toBe("0.06 DUSK");
 
     // Not while reviewing: the fee reviewed is the fee sent.
     await rerender({ gasSettings: { gasLimit, gasPrice: 5n } });
 
-    expect(getReviewAmounts(container)[1]).toBe("0.06 DUSK");
+    expect(amountOf(container, /fee/i)).toBe("0.06 DUSK");
   });
 
   it("should show the fee of the withdrawal reviewed last, whichever estimate comes back last", async () => {
@@ -512,8 +516,6 @@ describe("Bridge", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       await tick();
     };
-    const feeOf = (/** @type {bigint} */ gas) =>
-      `${formatFee((gas * evmGasPrice) / 1_000_000_000n, "en")} DUSK`;
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
@@ -527,7 +529,8 @@ describe("Bridge", () => {
     estimates[0].resolve(100_000n);
     await settle();
 
-    expect(getReviewAmounts(container)[1]).toBe(feeOf(200_000n));
+    // 200,000 gas at 10.001 gwei.
+    expect(amountOf(container, /fee/i)).toBe("0.002 DUSK");
 
     // Another profile while the estimate runs: the fee isn't its, and the
     // review gives the amount alone.
@@ -537,7 +540,8 @@ describe("Bridge", () => {
     estimates[2].resolve(300_000n);
     await settle();
 
-    expect(getReviewAmounts(container)).toStrictEqual(["2.5 DUSK"]);
+    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
+    expect(amountOf(container, /fee/i)).toBeUndefined();
   });
 
   it("should show only the amount when reviewing a withdrawal whose fee can't be estimated", async () => {
@@ -552,7 +556,8 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    expect(getReviewAmounts(container)).toStrictEqual(["2.5 DUSK"]);
+    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
+    expect(amountOf(container, /fee/i)).toBeUndefined();
   });
 
   it("should hide the public balance and the deposit on its way while balances are hidden, but not the Review amounts", async () => {
@@ -568,11 +573,9 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review bridge" }));
 
-    expect(getReviewAmounts(container)).toStrictEqual([
-      "2.5 DUSK",
-      "0.02 DUSK",
-      "2.52 DUSK",
-    ]);
+    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
+    expect(amountOf(container, /fee/i)).toBe("0.02 DUSK");
+    expect(amountOf(container, /total/i)).toBe("2.52 DUSK");
   });
 
   it("should say what stops a review on the card's one button", async () => {

@@ -6,7 +6,6 @@ import { tick } from "svelte";
 import { get } from "svelte/store";
 
 import { cardRoutes } from "$lib/bridge/cardRoutes";
-import { formatDuskPlain } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { afterConfirmDelay } from "$lib/dusk/test-helpers";
 import { InvalidPasswordError } from "$lib/errors";
@@ -790,6 +789,13 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(approval).toHaveTextContent(/stays approved/i);
       expect(approval).not.toHaveTextContent(/none of it/i);
       expect(approval).not.toHaveTextContent(/\d/);
+      // One step, to migrate: no approval asked.
+      expect(fieldOf(unlimited.container, /^steps$/i)).toHaveTextContent(
+        /\bmigrate\b/i,
+      );
+      expect(fieldOf(unlimited.container, /^steps$/i)).not.toHaveTextContent(
+        /\bapprove\b/i,
+      );
     });
 
     it("finishes on the review with what the approval still lets go, which says it's approved already", async () => {
@@ -812,6 +818,11 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(approval).toHaveTextContent(/(^|\s)0\.5 BEP20 DUSK covers\b/);
       expect(approval).toHaveTextContent(/none of it stays approved/i);
       expect(approval).not.toHaveTextContent(/\d BEP20 DUSK stays approved/);
+      // One step, to migrate: no approval asked.
+      expect(fieldOf(container, /^steps$/i)).toHaveTextContent(/\bmigrate\b/i);
+      expect(fieldOf(container, /^steps$/i)).not.toHaveTextContent(
+        /\bapprove\b/i,
+      );
 
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Migrate" }));
@@ -889,6 +900,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       const approval = fieldOf(container, /^approval$/i);
 
       expect(fieldOf(container, /^steps$/i)).toHaveTextContent(/\bapprove\b/i);
+      expect(fieldOf(container, /^steps$/i)).not.toHaveTextContent(
+        /do not approve|don't approve|no approval/i,
+      );
       expect(approval).toHaveTextContent(/exactly this amount/i);
       expect(approval).not.toHaveTextContent(/earlier approval/i);
     });
@@ -1239,12 +1253,8 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      const fee =
-        props.transferGasSettings.gasLimit * props.transferGasSettings.gasPrice;
-
-      expect(/** @type {HTMLInputElement} */ (amount).value).toBe(
-        formatDuskPlain(props.unshieldedBalance - fee - keepForLater.lux),
-      );
+      // 10 DUSK, less its 0.0025 DUSK fee and the 0.05 DUSK it keeps.
+      expect(/** @type {HTMLInputElement} */ (amount).value).toBe("9.9475");
       // It says what Max keeps, in its note, with no warning.
       expect(container.querySelector(".swap-note")).toHaveTextContent(
         /(^|\s)0\.05 DUSK\b/,
@@ -1252,7 +1262,8 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(said(container)).toStrictEqual([]);
 
       await fireEvent.input(amount, {
-        target: { value: formatDuskPlain(props.unshieldedBalance - fee) },
+        // Less the fee alone.
+        target: { value: "9.9975" },
       });
 
       // Over it: a warning that it leaves too little, and no note.
@@ -1887,6 +1898,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       expect(failure.heading).toMatch(/not confirmed/i);
       expect(failure.sentence).toMatch(/may have reached the network/i);
+      expect(failure.sentence).toMatch(/check your EVM wallet/i);
       expect(failure.sentence).not.toMatch(/nothing was sent/i);
       expect(queryByRole("button", { name: "Back" })).toBeNull();
       expect(queryByRole("button", { name: "Migrate" })).toBeNull();
@@ -1916,7 +1928,10 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(failure.sentence).toMatch(/approval went through/i);
       expect(failure.sentence).toMatch(/nothing moved/i);
       expect(mocks.approve).toHaveBeenCalledOnce();
-      expect(container).not.toHaveTextContent(/\bno fee\b/i);
+      expect(container).not.toHaveTextContent(/\bno (network )?fee\b/i);
+      expect(container).not.toHaveTextContent(
+        /fee wasn't charged|not charged/i,
+      );
     });
 
     it("offers to try again when it failed before it went out", async () => {
@@ -2040,6 +2055,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
         expect(failure.heading).toMatch(/not confirmed/i);
         expect(failure.sentence).toMatch(/may have reached the network/i);
+        expect(failure.sentence).toMatch(/check your EVM wallet/i);
         expect(failure.sentence).not.toMatch(/nothing was sent/i);
         expect(queryByRole("button", { name: "Approve again" })).toBeNull();
         expect(queryByRole("button", { name: "Try again" })).toBeNull();

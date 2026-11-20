@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
-import { REWARD_WORDS } from "@dusk-network/app-core/export";
 
 import { RewardsByYear } from "..";
 
@@ -20,12 +19,13 @@ describe("RewardsByYear", () => {
     element?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 
   /**
-   * A year's figures in a column, found by the year and by the column's
-   * heading: in DUSK, and in money, apart from what stands between them.
+   * A year's figures in a column, found by the year and by the key word of
+   * the column's heading: in DUSK, and in money with its sign and its
+   * bound, apart from the marks between them.
    *
    * @param {HTMLElement} container
    * @param {number} year
-   * @param {string} column The column's heading
+   * @param {RegExp} column The key word of the column's heading
    */
   const figuresOf = (container, year, column) => {
     const headings = Array.from(container.querySelectorAll("thead th"), textOf);
@@ -34,10 +34,12 @@ describe("RewardsByYear", () => {
         (each) => textOf(each.querySelector("th")) === String(year),
       )
     );
-    const text = textOf(row?.cells[headings.indexOf(column)]);
+    const text = textOf(
+      row?.cells[headings.findIndex((heading) => column.test(heading))],
+    );
     const dusk = text.slice(0, text.indexOf(" DUSK") + " DUSK".length);
 
-    return [dusk, text.slice(dusk.length).replace(/^[^a-z0-9−€+-]+/i, "")];
+    return [dusk, text.slice(dusk.length).replace(/^[ ·]+/, "")];
   };
 
   it("counts what unstaking took out at average cost with the deposit fees, as said under the years, and shows a loss as one, in DUSK and in money", () => {
@@ -69,28 +71,28 @@ describe("RewardsByYear", () => {
     });
 
     // Less than a cent either way: under it, a loss said as one.
-    expect(figuresOf(container, 2026, REWARD_WORDS.claimed)).toStrictEqual([
+    expect(figuresOf(container, 2026, /claimed/i)).toStrictEqual([
       "0 DUSK",
       "€0.00",
     ]);
-    expect(figuresOf(container, 2026, REWARD_WORDS.sozuGrown)).toStrictEqual([
+    expect(figuresOf(container, 2026, /grown/i)).toStrictEqual([
       "0.0425 DUSK",
       "€0.01",
     ]);
-    expect(figuresOf(container, 2026, REWARD_WORDS.sozu)).toStrictEqual([
+    expect(figuresOf(container, 2026, /taken out/i)).toStrictEqual([
       "−0.0035 DUSK",
       "a loss under €0.01",
     ]);
     // More: with its sign.
-    expect(figuresOf(container, 2025, REWARD_WORDS.claimed)).toStrictEqual([
+    expect(figuresOf(container, 2025, /claimed/i)).toStrictEqual([
       "0 DUSK",
       "€0.00",
     ]);
-    expect(figuresOf(container, 2025, REWARD_WORDS.sozuGrown)).toStrictEqual([
+    expect(figuresOf(container, 2025, /grown/i)).toStrictEqual([
       "0.000002 DUSK",
       "under €0.01",
     ]);
-    expect(figuresOf(container, 2025, REWARD_WORDS.sozu)).toStrictEqual([
+    expect(figuresOf(container, 2025, /taken out/i)).toStrictEqual([
       "−1.5 DUSK",
       "−€0.48",
     ]);
@@ -117,15 +119,15 @@ describe("RewardsByYear", () => {
       valued: true,
     });
 
-    expect(figuresOf(container, 2026, REWARD_WORDS.claimed)).toStrictEqual([
+    expect(figuresOf(container, 2026, /claimed/i)).toStrictEqual([
       "0 DUSK",
       "€0.00",
     ]);
-    expect(figuresOf(container, 2026, REWARD_WORDS.sozuGrown)).toStrictEqual([
+    expect(figuresOf(container, 2026, /grown/i)).toStrictEqual([
       "−0.0005 DUSK",
       "a loss under €0.01",
     ]);
-    expect(figuresOf(container, 2026, REWARD_WORDS.sozu)).toStrictEqual([
+    expect(figuresOf(container, 2026, /taken out/i)).toStrictEqual([
       "−0.0005 DUSK",
       "a loss under €0.01",
     ]);

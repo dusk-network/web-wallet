@@ -42,6 +42,14 @@ const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
 const statusOf = (container) => container.querySelector(".transaction-status");
 
 /**
+ * What the status says the transaction came to, as its heading reads.
+ *
+ * @param {HTMLElement} container
+ */
+const titleOf = (container) =>
+  textOf(container.querySelector(".transaction-status__title"));
+
+/**
  * A detail of the transaction, by its term's key word: the term, and its
  * value, as they read.
  *
@@ -131,7 +139,8 @@ describe("TransactionStatus", () => {
   it("should say when the transaction was sent once its block is final, with the fee it was charged", async () => {
     const following = followNext();
     const { container, getByRole } = render(TransactionStatus, baseProps);
-    const blockTime = Date.UTC(2026, 9, 28, 0, 34, 7);
+    // Its block's time, on the clock of wherever this runs: 00:34:07.
+    const blockTime = new Date(2026, 9, 28, 0, 34, 7).getTime();
 
     following.resolve({
       blockHeight: 4_687_200n,
@@ -140,14 +149,13 @@ describe("TransactionStatus", () => {
       timestamp: blockTime,
     });
     // Sent, at its block's time, to the second, as the request it paid
-    // says it, in its block.
+    // says it, in its block; never that it failed.
     await vi.waitFor(() =>
       expect(statusOf(container)).toHaveClass("transaction-status--completed"),
     );
-    expect(getByRole("status")).toHaveTextContent(
-      naming(timeLabel(blockTime, "en", { seconds: true }), "4,687,200"),
-    );
-    expect(getByRole("status")).toHaveTextContent(/\b\d{1,2}:34:07\b/);
+    expect(titleOf(container)).toBe("Sent at 12:34:07 AM");
+    expect(getByRole("status")).toHaveTextContent(naming("4,687,200"));
+    expect(getByRole("status")).not.toHaveTextContent(/failed/i);
 
     // The fee it was charged, no longer the most it could cost.
     expect(detailOf(container, /network fee/i)).toStrictEqual({
@@ -321,6 +329,9 @@ describe("TransactionStatus", () => {
     await vi.waitFor(() =>
       expect(statusOf(container)).toHaveClass("transaction-status--failed"),
     );
+
+    // Failed, as it reads: never sent.
+    expect(titleOf(container)).toBe("Failed");
 
     // The fee it was charged: said so, and how much.
     expect(getByRole("status")).toHaveTextContent(/fee was charged/i);

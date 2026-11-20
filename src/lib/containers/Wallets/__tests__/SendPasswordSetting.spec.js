@@ -87,7 +87,9 @@ describe("the password on big sends, in Settings", () => {
     );
 
     await vi.waitFor(() =>
-      expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])1,000\.5 DUSK\b/),
+      expect(limitShown(view)).toHaveTextContent(
+        /(?<![\d.,+\u2212-])1,000\.5 DUSK\b/,
+      ),
     );
     expect(view.queryByLabelText("Password you unlock with")).toBeNull();
     // The password goes with the form.
@@ -162,7 +164,8 @@ describe("the password on big sends, in Settings", () => {
 
     expect(sendPasswordLimit()).toBe(DUSK);
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
-    expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])1 DUSK\b/);
+    // Exactly 1 DUSK: not 0.1, 10 or 1.5, nor signed as +1, -1 or with a minus.
+    expect(limitShown(view)).toHaveTextContent(/(?<![\d.,+\u2212-])1 DUSK\b/);
   });
 
   it("goes back to off on Cancel when it was being turned on", async () => {
@@ -184,7 +187,7 @@ describe("the password on big sends, in Settings", () => {
     );
 
     await vi.waitFor(() =>
-      expect(limitShown(view)).toHaveTextContent(/(?<![\d.,])2 DUSK\b/),
+      expect(limitShown(view)).toHaveTextContent(/(?<![\d.,+\u2212-])2 DUSK\b/),
     );
     expect(view.getByRole("switch")).toHaveAttribute("aria-checked", "true");
   });

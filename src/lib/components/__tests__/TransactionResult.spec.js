@@ -6,7 +6,6 @@ import { createCurrencyFormatter } from "$lib/dusk/currency";
 import { SendPasswordDeclinedError, WalletChangedError } from "$lib/errors";
 import { walletStore } from "$lib/stores";
 import {
-  CHECK_BALANCE_FIRST,
   SendCancelledError,
   SendTakenToReviewError,
   outcomeUnknown,
@@ -49,9 +48,13 @@ describe("TransactionResult", () => {
 
   /**
    * That it may have gone out, as a send handed over without an answer: gone
-   * out or reached the network, never "may have failed".
+   * out, or reached the network, never "may have failed" or "may have
+   * reached the signing step".
    */
-  const MAY_HAVE_GONE_OUT = /may have (gone out|reached)/i;
+  const MAY_HAVE_GONE_OUT = /may have (gone out|reached (the network|it)\b)/i;
+
+  /** That nothing went out: what a send that may have gone out never says. */
+  const NOTHING_WENT_OUT = /nothing (was sent|left|has left)/i;
 
   // Chen's: on slow Wi-Fi, with its answer held back, the screen said only
   // "Processing transaction".
@@ -466,6 +469,7 @@ describe("TransactionResult", () => {
 
         expect(heading).toMatch(/not confirmed/i);
         expect(sentence).toMatch(MAY_HAVE_GONE_OUT);
+        expect(`${heading} ${sentence}`).not.toMatch(NOTHING_WENT_OUT);
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
         expect(container).not.toHaveTextContent(/try again/i);
         expect(historyLink(container)).toBeInTheDocument();
@@ -524,7 +528,7 @@ describe("TransactionResult", () => {
       });
 
       await vi.waitFor(() =>
-        expect(container).toHaveTextContent(CHECK_BALANCE_FIRST),
+        expect(container).toHaveTextContent(/check your balance/i),
       );
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
@@ -551,6 +555,7 @@ describe("TransactionResult", () => {
         container.querySelector(".transaction-status__title"),
       ).toHaveTextContent(/not confirmed/i);
       expect(status).toHaveTextContent(MAY_HAVE_GONE_OUT);
+      expect(status).not.toHaveTextContent(NOTHING_WENT_OUT);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
       expect(queryByRole("button", { name: "Cancel" })).toBeNull();
     });
@@ -574,9 +579,20 @@ describe("TransactionResult", () => {
         ),
       );
 
-      // The fee charged, not the most it could have cost (0.0025 DUSK).
-      expect(container).toHaveTextContent("0.001234567 DUSK");
-      expect(container).not.toHaveTextContent("0.0025 DUSK");
+      // Said failed, never sent.
+      expect(
+        container.querySelector(".transaction-status__title")?.textContent,
+      ).toBe("Failed");
+
+      // The fee charged, in its own row: not the most it could have cost
+      // (0.0025 DUSK), and never "no fee".
+      const fee = Array.from(
+        container.querySelectorAll(".transaction-status__details dt"),
+      ).find((term) => /fee/i.test(term.textContent ?? ""));
+
+      expect(fee?.textContent).not.toMatch(/at most|up to/i);
+      expect(fee?.nextElementSibling).toHaveTextContent(/^0\.001234567 DUSK$/);
+      expect(container).not.toHaveTextContent(/\bno (network )?fee\b/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
   });

@@ -63,9 +63,11 @@ describe("GasSettings", () => {
     // Exactly, then the gas limit and the price that make it.
     const exact = container.querySelector(".gas-settings__exact");
 
-    expect(container.querySelector(".gas-settings__most")).toHaveTextContent(
-      wholeFigure("0.002151569 DUSK"),
-    );
+    // The most it can cost, said as the most.
+    const most = container.querySelector(".gas-settings__most");
+
+    expect(most).toHaveTextContent(wholeFigure("0.002151569 DUSK"));
+    expect(most).toHaveTextContent(/at most/i);
     expect(exact).toHaveTextContent(wholeFigure("20,000,000 gas"));
     expect(exact).toHaveTextContent(wholeFigure("1 LUX"));
   });

@@ -94,6 +94,17 @@ const totalOf = (container) =>
 /** What a send that failed came to, as its heading says it. */
 const failureOf = () => document.querySelector(".dusk-error-alert__summary");
 
+/**
+ * The figures a text shows, each as its digits alone, however it's grouped:
+ * "1,482.9", "1482.9" and "1 482,9" are all "14829".
+ *
+ * @param {string | null | undefined} text
+ */
+const figuresIn = (text) =>
+  (text ?? "")
+    .match(/[0-9](?:[0-9.,']|\s(?=[0-9]))*/g)
+    ?.map((figure) => figure.replace(/[^0-9]/g, "")) ?? [];
+
 /** What a send on its way says it is. */
 const goingOf = () => document.querySelector(".transaction-status__what");
 
@@ -327,6 +338,15 @@ describe("NativeStake", () => {
         baseProps,
       );
 
+      /**
+       * The figures shown anywhere on the form that give away what Max filled
+       * in, 1,482.9, or the 1,483 balance it's from, however they're grouped.
+       */
+      const giveAways = () =>
+        figuresIn(container.textContent).filter(
+          (digits) => digits.includes("14829") || digits.includes("1483"),
+        );
+
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       // 1,482.9, filled in, with no figure in the field.
@@ -336,7 +356,7 @@ describe("NativeStake", () => {
 
       expect(field.value).not.toBe("");
       expect(field.value).not.toMatch(/[0-9]/);
-      expect(container.textContent).not.toContain("1,482.9");
+      expect(giveAways()).toStrictEqual([]);
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -344,7 +364,7 @@ describe("NativeStake", () => {
 
       expect(stake).toBeEnabled();
       expect(stake).not.toHaveAccessibleName(/[0-9]/);
-      expect(container.textContent).not.toContain("1,482.9");
+      expect(giveAways()).toStrictEqual([]);
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: /1,000/ }));

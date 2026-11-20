@@ -1765,10 +1765,10 @@ describe("Send", () => {
       // Not "Up to 173.901884001 DUSK" beside "Available 173.9018 DUSK":
       // the balance as it shows there, rounded down.
       expect(container.querySelector(".send__hint")).toHaveTextContent(
-        /(?<![\d.,])173\.9018 DUSK\b/,
+        /(?<![\d.,+\u2212-])173\.9018 DUSK\b/,
       );
       expect(summaryRow(container, TOTAL)).toMatch(
-        /(?<![\d.,])173\.9018 DUSK$/,
+        /(?<![\d.,+\u2212-])173\.9018 DUSK$/,
       );
       expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
     });
@@ -1860,7 +1860,9 @@ describe("Send", () => {
             container.querySelectorAll(".send__field .send__hint"),
             (hint) => hint.textContent?.replace(/\s+/g, " ").trim(),
           ),
-        ).toContainEqual(expect.stringMatching(/(?<![\d.,])0\.05 DUSK\b/));
+        ).toContainEqual(
+          expect.stringMatching(/(?<![\d.,+\u2212-])0\.05 DUSK\b/),
+        );
       });
 
       it("lets an amount over that go, and says what it leaves too little for", async () => {
@@ -2088,7 +2090,7 @@ describe("Send", () => {
       );
 
     /** Its 0.0019 DUSK, as said: never part of a larger amount. */
-    const itsAmount = /(?<![\d.,])0\.0019 DUSK\b/;
+    const itsAmount = /(?<![\d.,+\u2212-])0\.0019 DUSK\b/;
 
     it("should say what's on its way from this profile, as after a reload while it went", () => {
       const { getByRole } = render(Send, {
@@ -2502,7 +2504,9 @@ describe("Send", () => {
       expect(summaryRow(container, TO)).toBe(otherAccount);
       expect(summaryRow(container, AMOUNT)).toBe("0.0019 DUSK");
       expect(summaryRow(container, MEMO)).toBe("tab dropped 1");
-      expect(summaryRow(container, TOTAL)).toMatch(/(?<![\d.,])0\.0219 DUSK$/);
+      expect(summaryRow(container, TOTAL)).toMatch(
+        /(?<![\d.,+\u2212-])0\.0219 DUSK$/,
+      );
       expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
       expect(execute).not.toHaveBeenCalled();
 
@@ -2555,7 +2559,7 @@ describe("Send", () => {
       // Its own memo, none: not what was half typed.
       expect(summaryRow(open.container, MEMO)).toBeUndefined();
       expect(summaryRow(open.container, TOTAL)).toMatch(
-        /(?<![\d.,])0\.0219 DUSK$/,
+        /(?<![\d.,+\u2212-])0\.0219 DUSK$/,
       );
       expect(summaryLine(open.container, TOTAL)).toMatch(UP_TO);
 
@@ -2751,20 +2755,24 @@ describe("Send", () => {
       expect(summaryRow(container, TO)).toBe(shortenAddress(shieldedAddress));
       expect(summaryRow(container, AMOUNT)).toBe("2,345.5 DUSK");
       expect(summaryRow(container, MEMO)).toBe("abc-example-memo");
+      // The total: this figure, in DUSK, with no sign, its bound with it.
       expect(summaryRow(container, TOTAL)).toMatch(
-        /(?<![\d.,])2,345\.52 DUSK$/,
+        /^(?:up to )?2,345\.52 DUSK$/i,
       );
       expect(summaryLine(container, TOTAL)).toMatch(UP_TO);
-      // And the fee, the most it costs, in its own place.
+      // And the fee, the most it costs, in its own place, in DUSK.
       expect(
-        container.querySelector(".send__summary .gas-fee__amount-value"),
-      ).toHaveTextContent(/^0\.02$/);
+        container
+          .querySelector(".send__summary .gas-fee__amount")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim(),
+      ).toBe("0.02 DUSK");
       expect(container.querySelector(".send__visible")).toBeNull();
 
       // Sending is for the review.
       await fireEvent.click(fields.review());
 
-      expect(fields.send()).toHaveTextContent(/(?<![\d.,])2,345\.5 DUSK\b/);
+      expect(fields.send()).toHaveTextContent(/(?:^|\s)2,345\.5 DUSK$/);
     });
 
     it("should say what a public transfer shows everyone, where it's sent from, and on the review", async () => {
@@ -2779,17 +2787,20 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: otherAccount } });
       await fireEvent.input(fields.amount(), { target: { value: "0.1" } });
 
-      // Seen by everyone: with no memo, nothing said of one.
+      // Seen by everyone, never said hidden: with no memo, nothing said of
+      // one.
       expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
       expect(visible()).not.toHaveTextContent(/memo/i);
 
       await fireEvent.input(fields.memo(), {
         target: { value: "Invoice 118" },
       });
 
-      // With one, the memo too.
+      // With one, the memo too: public as the rest.
       expect(visible()).toHaveTextContent(/everyone/i);
       expect(visible()).toHaveTextContent(/memo/i);
+      expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
 
       // The review it's sent from is the summary, the line in it.
       await fireEvent.click(fields.review());
@@ -2797,6 +2808,7 @@ describe("Send", () => {
       expect(container.querySelector(".send--review")).not.toBeNull();
       expect(visible()).toHaveTextContent(/everyone/i);
       expect(visible()).toHaveTextContent(/memo/i);
+      expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
     });
   });
 

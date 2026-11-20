@@ -66,43 +66,26 @@ describe("A transfer's amounts, as its details say them", () => {
     ledgerOf(activity, { evm, locale, rows, steps: steps ?? new Map() });
 
   /**
-   * What the details say, each amount by the line it's on: what was sent,
-   * the bridge's fee, the network's fee, the gas, and what it received, or
-   * is still `expected` to pay, as its label says.
+   * What the details say, each amount by its line's label: what was sent,
+   * the fees, what it received or is still to pay, and the gas.
    *
    * @param {any} activity
    * @param {{ evm?: Record<string, any>, locale?: string, rows?: ActivityRow[], steps?: Map<string, any> }} [context]
    * @returns {Record<string, string | undefined>}
    */
   function linesOf(activity, context) {
-    const ledger = /** @type {any} */ (ledgerFor(activity, context));
-    const { container } = render(TransferLedger, { ledger });
-    const rows = Array.from(container.querySelectorAll("dl > div"), (row) => ({
-      amount: row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
-      term: row.querySelector("dt")?.textContent?.trim() ?? "",
-    }));
-    /** @type {any[]} */
-    const lines = ledger?.lines ?? [];
+    const { container } = render(TransferLedger, {
+      ledger: /** @type {any} */ (ledgerFor(activity, context)),
+    });
+    const lines = Array.from(container.querySelectorAll("dl > div"), (row) => [
+      row.querySelector("dt")?.textContent?.trim() ?? "",
+      row.querySelector("dd")?.textContent?.replace(/\s+/g, " ").trim(),
+    ]);
 
-    expect(rows).toHaveLength(lines.length);
+    // Each label once: none hides another.
+    expect(new Set(lines.map(([label]) => label)).size).toBe(lines.length);
 
-    return Object.fromEntries(
-      lines.map(({ key }, index) => {
-        const { amount, term } = rows[index];
-
-        // What arrived, or what it'll pay, as the line says it.
-        const said =
-          key !== "received"
-            ? key
-            : /^you receive$/i.test(term)
-              ? "expected"
-              : /^received$/i.test(term)
-                ? "received"
-                : `received, said as "${term}"`;
-
-        return [said, amount];
-      }),
-    );
+    return Object.fromEntries(lines);
   }
 
   /** @param {Record<string, unknown>} fields */
@@ -122,10 +105,10 @@ describe("A transfer's amounts, as its details say them", () => {
 
   it("gives a transfer out to the last digit, with its fees, and what it'll pay until it has", () => {
     expect(linesOf(transferOut({}), { rows: history })).toStrictEqual({
-      bridgeFee: "1 DUSK",
-      expected: "2.053082083 BEP20 DUSK",
-      networkFee: "0.001859281 DUSK",
-      sent: "3.053082083 DUSK",
+      "Bridge fee": "1 DUSK",
+      "Network fee": "0.001859281 DUSK",
+      Sent: "3.053082083 DUSK",
+      "You receive": "2.053082083 BEP20 DUSK",
     });
   });
 
@@ -137,10 +120,10 @@ describe("A transfer's amounts, as its details say them", () => {
     });
 
     expect(linesOf(arrived, { rows: history })).toStrictEqual({
-      bridgeFee: "1 DUSK",
-      networkFee: "0.001859281 DUSK",
-      received: "2.053082083 BEP20 DUSK",
-      sent: "3.053082083 DUSK",
+      "Bridge fee": "1 DUSK",
+      "Network fee": "0.001859281 DUSK",
+      Received: "2.053082083 BEP20 DUSK",
+      Sent: "3.053082083 DUSK",
     });
   });
 
@@ -156,7 +139,7 @@ describe("A transfer's amounts, as its details say them", () => {
     ]);
 
     expect(linesOf(transferOut({}), { rows: failed })).toStrictEqual({
-      networkFee: "0.001859281 DUSK",
+      "Network fee": "0.001859281 DUSK",
     });
   });
 
@@ -190,7 +173,7 @@ describe("A transfer's amounts, as its details say them", () => {
       linesOf(
         { item: migration(PAID_AT), kind: "migration" },
         { evm: onItsChain() },
-      ).gas,
+      )["Gas, migration"],
     ).toBe("0.00004220500067528 BNB");
   });
 
@@ -224,19 +207,19 @@ describe("A transfer's amounts, as its details say them", () => {
         },
       ),
     ).toStrictEqual({
-      gas: "0.000093199001491184 BNB",
-      received: "4 DUSK",
-      sent: "4 BEP20 DUSK",
+      "Gas, approval and migration": "0.000093199001491184 BNB",
+      Received: "4 DUSK",
+      Sent: "4 BEP20 DUSK",
     });
     // Not read on its chain yet: no gas said.
     expect(linesOf(paid)).toStrictEqual({
-      received: "4 DUSK",
-      sent: "4 BEP20 DUSK",
+      Received: "4 DUSK",
+      Sent: "4 BEP20 DUSK",
     });
     // Not paid out yet: what it'll pay.
     expect(linesOf(sent)).toStrictEqual({
-      expected: "4 DUSK",
-      sent: "4 BEP20 DUSK",
+      Sent: "4 BEP20 DUSK",
+      "You receive": "4 DUSK",
     });
   });
 
@@ -249,11 +232,11 @@ describe("A transfer's amounts, as its details say them", () => {
 
     // Not what it would have paid: it received nothing.
     expect(lines).toMatchObject({
-      networkFee: "0.001859281 DUSK",
-      received: "0 BEP20 DUSK",
-      sent: "3.053082083 DUSK",
+      "Network fee": "0.001859281 DUSK",
+      Received: "0 BEP20 DUSK",
+      Sent: "3.053082083 DUSK",
     });
-    expect(lines).not.toHaveProperty("expected");
+    expect(lines).not.toHaveProperty(["You receive"]);
   });
 
   it("gives a deposit, and a withdrawal with what its proof and claim paid on Dusk", () => {
@@ -266,7 +249,7 @@ describe("A transfer's amounts, as its details say them", () => {
         },
         kind: "deposit",
       }),
-    ).toStrictEqual({ received: "0.25 DUSK", sent: "0.25 DUSK" });
+    ).toStrictEqual({ Received: "0.25 DUSK", Sent: "0.25 DUSK" });
 
     const proof = "b1".repeat(32);
     const claim = "b2".repeat(32);
@@ -296,15 +279,15 @@ describe("A transfer's amounts, as its details say them", () => {
         },
       ),
     ).toStrictEqual({
-      networkFee: "0.002 DUSK",
-      received: "0.090082082 DUSK",
-      sent: "0.090082082 DUSK",
+      "Network fee": "0.002 DUSK",
+      Received: "0.090082082 DUSK",
+      Sent: "0.090082082 DUSK",
     });
   });
 
   it("writes them as the language does", () => {
     expect(
-      linesOf(transferOut({}), { locale: "de-DE", rows: history }).sent,
+      linesOf(transferOut({}), { locale: "de-DE", rows: history }).Sent,
     ).toBe("3,053082083 DUSK");
   });
 

@@ -100,8 +100,8 @@ describe("How a route is doing", () => {
 
     it("says what it can pay where a balance limits it, and warns of an amount past it", () => {
       const balance = status({ canPay: 5n * LUX, limit: "balance" });
-      // 5 DUSK, never 15 or 0.5 DUSK.
-      const upTo5 = /(^|[^\d.,])5 DUSK(?![\d])/;
+      // 5 DUSK, never 15, 0.5 or a negative 5 DUSK.
+      const upTo5 = /(?<![\d.,\u2212+-])5 DUSK(?!\d)/;
 
       expect(statusLine(balance, at)?.text).toMatch(upTo5);
       expect(statusLine(balance, { ...at, amountLux: 5n * LUX })?.warn).toBe(

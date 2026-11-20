@@ -47,15 +47,19 @@ describe("ReviewWallet", () => {
 
     const { id } = await addWallet(B, PASSWORD);
     const two = render(ReviewWallet);
-    const from = () => two.container.querySelector(".review-wallet");
+    /** The line the review says it's from, its spaces as one. */
+    const from = () =>
+      two.container
+        .querySelector(".review-wallet")
+        ?.textContent?.replace(/\s+/g, " ")
+        .trim();
 
-    // The wallet, then its profile.
-    expect(from()).toHaveTextContent(/\bWallet 2\W+Profile 1$/);
+    // The wallet, then its profile, and nothing else.
+    expect(from()).toBe("From Wallet 2 · Profile 1");
 
     await renameWallet(id, "Savings");
 
-    await vi.waitFor(() =>
-      expect(from()).toHaveTextContent(/\bSavings\W+Profile 1$/),
-    );
+    // Its new name, and none of the one before.
+    await vi.waitFor(() => expect(from()).toBe("From Savings · Profile 1"));
   });
 });

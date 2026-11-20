@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { cleanup, fireEvent, render, within } from "@testing-library/svelte";
 
 import {
@@ -149,6 +157,23 @@ const SOZU_POOL =
   "72883945ac1aa032a88543aacc9e358d1dfef07717094c05296ce675f23078f2";
 
 describe("TransactionDetail", () => {
+  /** The time zone the tests were started in. */
+  const zone = process.env.TZ;
+
+  // Times as UTC gives them, whatever the device's zone, so that what's
+  // said can be written out as it reads, before anything is formatted.
+  beforeAll(() => {
+    process.env.TZ = "UTC";
+  });
+
+  afterAll(() => {
+    if (zone === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = zone;
+    }
+  });
+
   afterEach(() => {
     cleanup();
     setNodeNetwork(null);
@@ -314,9 +339,23 @@ describe("TransactionDetail", () => {
     expect(textOf(container.querySelector(".tx-detail__amount"))).toBe(
       "1,008 DUSK",
     );
-    // Not claimed yet: when the chain says it can be, in full.
+    // Not claimed yet: when the chain says it can be, in full, as an
+    // estimate until its game has resolved, never as an exact time.
     expect(outcome(container)).toMatch(/not claimed/i);
-    expect(nextStep(container)).toContain(fullDateTime(CLAIM_AT, "en"));
+    expect(nextStep(container)).toMatch(
+      /\babout Mon 2 Nov 2026, 3:20 AM UTC\b/,
+    );
+    expect(nextStep(container)).not.toMatch(
+      /(?<!about )Mon 2 Nov 2026, 3:20 AM UTC/,
+    );
+
+    cleanup();
+
+    // Its game resolved: that very time, no longer an estimate.
+    const exact = show(proved, { claims: claims({ exact: true }) }).container;
+
+    expect(nextStep(exact)).toMatch(/\bMon 2 Nov 2026, 3:20 AM UTC\b/);
+    expect(nextStep(exact)).not.toMatch(/\babout\b/i);
 
     cleanup();
 
@@ -328,13 +367,19 @@ describe("TransactionDetail", () => {
 
     cleanup();
 
-    // Its proof's game blacklisted: no date, but that it must be proved again.
+    // Its proof's game blacklisted: that its proof was rejected, and to
+    // prove it again; no claim offered, nor a date to claim from.
     const again = show(proved, {
       claims: claims({ at: null, reprove: true }),
     }).container;
 
+    expect(outcome(again)).toMatch(/\brejected\b/i);
     expect(outcome(again)).toMatch(/prove it again/i);
+    expect(nextStep(again)).toMatch(/\brejected\b/i);
     expect(nextStep(again)).toMatch(/prove it again/i);
+    expect(nextStep(again)).not.toMatch(
+      /claim from|ready to claim|claim it on/i,
+    );
     expect(nextStep(again)).not.toMatch(/\d{1,2}:\d{2}/);
 
     cleanup();
