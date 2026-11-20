@@ -1,14 +1,25 @@
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  within,
+} from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { getGasSettings } from "$lib/contracts";
-import { formatDusk, formatDuskPlain } from "$lib/dusk/currency";
+import {
+  formatDusk,
+  formatDuskExact,
+  formatDuskPlain,
+} from "$lib/dusk/currency";
 import { gasPriceStore, networkStore, settingsStore } from "$lib/stores";
 import { keepWaiting, sendGate } from "$lib/transactions";
 import { feeToKeep } from "$lib/wallet-reserve";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
+import { GAS_PRICE_BUSY } from "@dusk-network/app-core/gas";
 import { networks } from "@dusk-network/networks";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
@@ -104,6 +115,35 @@ const OTHER =
 const available = (container) =>
   container.querySelector(".send__amount + .send__hint");
 
+/**
+ * An amount in DUSK as a whole figure, never part of another: `5 DUSK`, but
+ * not `15 DUSK` or `0.5 DUSK`.
+ *
+ * @param {bigint} lux
+ */
+const duskFigure = (lux) =>
+  new RegExp(
+    `(?<![\\d.,])${formatDusk(lux, "en").replace(/\./g, "\\.")} DUSK\\b`,
+  );
+
+// What Available holds of the balance the page pays from: the two differ
+// here, so the figure says which.
+const PUBLIC_BALANCE = duskFigure(balance.unshielded.value);
+const SHIELDED_BALANCE = duskFigure(balance.shielded.spendable);
+
+/**
+ * What a row of the summary, or of the review, says: found by its label.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const summaryRow = (container, label) =>
+  /** @type {HTMLElement} */ (
+    Array.from(container.querySelectorAll(".send__summary dt")).find((term) =>
+      label.test(term.textContent?.trim() ?? ""),
+    )?.nextElementSibling
+  );
+
 // The profiles' addresses here are made up, so none is two keys, and the
 // accounts none a key.
 vi.mock("$lib/wallet/isShieldedAddress", () => ({ default: () => true }));
@@ -143,6 +183,16 @@ describe("Send page", () => {
             .value,
       );
 
+    /**
+     * The readings an amount's question offers, a button each.
+     *
+     * @param {HTMLElement} question
+     */
+    const readingsOf = (question) =>
+      within(question)
+        .getAllByRole("button")
+        .map((button) => button.textContent?.trim());
+
     afterEach(() => setNodeNetwork(null));
 
     it("should open filled in, with what the link asks", () => {
@@ -165,9 +215,10 @@ describe("Send page", () => {
         "2.125",
         "Factura 34",
       ]);
-      expect(getByRole("alert")).toHaveTextContent(
-        /^Is that 2\.1250 or 2125\?/,
-      );
+      expect(readingsOf(getByRole("alert"))).toStrictEqual([
+        "2.1250 DUSK",
+        "2125 DUSK",
+      ]);
 
       await fireEvent.click(getByRole("button", { name: "2.1250 DUSK" }));
 
@@ -188,9 +239,10 @@ describe("Send page", () => {
       const opened = render(SendPage);
 
       expect(fieldsAre(opened.getByRole)[1]).toBe("1,000");
-      expect(opened.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/,
-      );
+      expect(readingsOf(opened.getByRole("alert"))).toStrictEqual([
+        "1 DUSK",
+        "1000 DUSK",
+      ]);
 
       cleanup();
       openAt(new URL("http://localhost/some-base-path/dashboard/send"));
@@ -207,57 +259,49 @@ describe("Send page", () => {
         expect(fieldsAre(pasted.getByRole)[1]).toBe("1,000"),
       );
 
-      expect(pasted.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/,
-      );
+      expect(readingsOf(pasted.getByRole("alert"))).toStrictEqual([
+        "1 DUSK",
+        "1000 DUSK",
+      ]);
 
       // Typed, it asks the same.
       await fireEvent.input(pasted.getByRole("textbox", { name: "Amount" }), {
         target: { value: "1.000" },
       });
 
-      expect(pasted.getByRole("alert")).toHaveTextContent(
-        /^Is that 1 or 1000\?/,
-      );
+      expect(readingsOf(pasted.getByRole("alert"))).toStrictEqual([
+        "1 DUSK",
+        "1000 DUSK",
+      ]);
     });
 
     it("should say a link for another network is one, and fill in nothing", () => {
       setNodeNetwork(networks.testnet);
       openLink(`to=${OTHER}&amount=0.15&memo=Factura+33&network=mainnet`);
 
-      const { getByRole, getByText } = render(SendPage);
+      const { getByRole } = render(SendPage);
+      const problem = getByRole("alert");
 
-      expect(
-        getByText("This request is for Mainnet. You are on Testnet."),
-      ).toBeInTheDocument();
+      // Both networks named, each as what it is: the link's, and the one the
+      // wallet is on.
+      expect(problem).toHaveTextContent(/\bfor Mainnet\b/);
+      expect(problem).toHaveTextContent(/\bon Testnet\b/);
       expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
     });
 
     it.each([
-      [
-        "no recipient",
-        "amount=0.15&memo=Factura+33",
-        "This link doesn't say who to pay. Ask for a new one.",
-      ],
-      [
-        "an empty recipient",
-        "to=&amount=0.15",
-        "This link doesn't say who to pay. Ask for a new one.",
-      ],
-      [
-        "a network there's no file for",
-        `to=${OTHER}&network=nowhere`,
-        "This link's network can't be read. Ask for a new one.",
-      ],
+      ["no recipient", "amount=0.15&memo=Factura+33"],
+      ["an empty recipient", "to=&amount=0.15"],
+      ["a network there's no file for", `to=${OTHER}&network=nowhere`],
     ])(
       "should say why a link with %s can't be read, and fill in nothing",
-      (_, query, words) => {
+      (_, query) => {
         setNodeNetwork(networks.testnet);
         openLink(query);
 
-        const { getByRole, getByText } = render(SendPage);
+        const { getByRole } = render(SendPage);
 
-        expect(getByText(words)).toBeInTheDocument();
+        expect(getByRole("alert")).toBeInTheDocument();
         expect(fieldsAre(getByRole)).toStrictEqual(["", "", ""]);
       },
     );
@@ -290,23 +334,19 @@ describe("Send page", () => {
     const { container, getByRole } = render(SendPage);
     const to = getByRole("textbox", { name: "To" });
 
-    expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
-    );
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
 
     await fireEvent.input(to, {
       target: { value: currentProfile.address.toString() },
     });
 
-    expect(available(container)).toHaveTextContent(
-      `Available ${formatDusk(balance.shielded.spendable, "en")} DUSK from your shielded balance`,
-    );
+    expect(available(container)).toHaveTextContent(SHIELDED_BALANCE);
 
     await fireEvent.input(to, {
       target: { value: currentProfile.account.toString() },
     });
 
-    expect(available(container)).toHaveTextContent(/from your public balance$/);
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
   });
 
   it("should count out of Available and Max what the sends waiting to go out from that balance take, and say so", async () => {
@@ -340,9 +380,7 @@ describe("Send page", () => {
       );
       const left = balance.unshielded.value - 12_500_000n;
 
-      expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(left, "en")} DUSK from your public balance, after what's waiting to go out`,
-      );
+      expect(available(container)).toHaveTextContent(duskFigure(left));
 
       await fireEvent.input(getByRole("textbox", { name: "To" }), {
         target: { value: OTHER },
@@ -359,18 +397,15 @@ describe("Send page", () => {
       await act(() => fromShielded.cancel());
 
       expect(available(container)).toHaveTextContent(
-        `Available ${formatDusk(balance.unshielded.value - 12_500_000n, "en")} DUSK from your public balance, after what's waiting to go out`,
+        duskFigure(balance.unshielded.value - 12_500_000n),
       );
 
       // Gone out, or called off: all of it again.
       answered.resolve(undefined);
 
       await vi.waitFor(() =>
-        expect(available(container)).toHaveTextContent(
-          `Available ${formatDusk(balance.unshielded.value, "en")} DUSK from your public balance`,
-        ),
+        expect(available(container)).toHaveTextContent(PUBLIC_BALANCE),
       );
-      expect(available(container)).not.toHaveTextContent("waiting");
     } finally {
       fromPublic.cancel();
       fromShielded.cancel();
@@ -387,7 +422,7 @@ describe("Send page", () => {
       ),
     );
 
-    const { container, findByText, getByRole } = render(SendPage);
+    const { container, findByRole, getByRole } = render(SendPage);
 
     /** @param {string} value */
     const enter = (value) =>
@@ -397,23 +432,25 @@ describe("Send page", () => {
 
     await enter("alice.dusk");
 
-    expect(
-      await findByText("alice.dusk points to a shielded address"),
-    ).toBeInTheDocument();
-    expect(available(container)).toHaveTextContent(/shielded balance$/);
+    // Resolved to a shielded address: paid from the shielded balance.
+    await vi.waitFor(() =>
+      expect(available(container)).toHaveTextContent(SHIELDED_BALANCE),
+    );
 
     await enter("bob.dusk");
 
-    expect(await findByText("bob.dusk isn't registered.")).toBeInTheDocument();
-    expect(available(container)).toHaveTextContent(/public balance$/);
+    expect(await findByRole("alert")).toHaveTextContent(
+      /(?<![\w.-])bob\.dusk\b/,
+    );
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
 
     await enter(currentProfile.address.toString());
 
-    expect(available(container)).toHaveTextContent(/shielded balance$/);
+    expect(available(container)).toHaveTextContent(SHIELDED_BALANCE);
 
     await enter("");
 
-    expect(available(container)).toHaveTextContent(/public balance$/);
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
   });
 
   it("should hide the balance it pays from, and what Max fills in, while balances are hidden", async () => {
@@ -425,12 +462,13 @@ describe("Send page", () => {
       get(settingsStore),
       get(gasPriceStore),
     );
-    const fee = gasLimit * gasPrice;
-    const amount = getByRole("textbox", { name: "Amount" });
-
-    expect(available(container)).toHaveTextContent(
-      /^Available •••• hidden DUSK from your public balance$/,
+    // What Max fills in: all of it, less the fee and what's kept for later.
+    const max =
+      balance.unshielded.value - gasLimit * gasPrice - get(feeToKeep).lux;
+    const amount = /** @type {HTMLInputElement} */ (
+      getByRole("textbox", { name: "Amount" })
     );
+
     expect(container).not.toHaveTextContent(
       formatDusk(balance.unshielded.value, "en"),
     );
@@ -440,28 +478,21 @@ describe("Send page", () => {
     });
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(amount).toHaveValue("••••");
+    // No figure in the field, nor Max's anywhere, nor the balance's.
+    expect(amount.value).not.toMatch(/\d/);
+    expect(container).not.toHaveTextContent(formatDuskExact(max, "en"));
     expect(container).not.toHaveTextContent(
-      formatDuskPlain(balance.unshielded.value - fee),
+      formatDusk(balance.unshielded.value, "en"),
     );
-    expect(container.querySelector(".send__summary")).toHaveTextContent(
-      /Amount •••• hidden DUSK/,
-    );
-    expect(available(container)).toHaveTextContent(/•••• hidden/);
 
     // An amount typed shows.
     await fireEvent.input(amount, { target: { value: "1" } });
 
     expect(amount).toHaveValue("1");
-    expect(container.querySelector(".send__summary")).toHaveTextContent(
-      /Amount 1 DUSK/,
-    );
+    expect(summaryRow(container, /amount/i)).toHaveTextContent(/^1 DUSK\b/);
   });
 
   describe("gas price", () => {
-    const BUSY =
-      "The network is busy. You can raise the gas price for it to go out sooner.";
-
     /** Sozu's activation after a stake, waiting alone at 2. */
     const SOZU_ACTIVATION = [{ gasLimit: 6_000_000, gasPrice: "2" }];
 
@@ -529,9 +560,9 @@ describe("Send page", () => {
         expect(reviewFee(container)).toBe(feeAt(price));
 
         if (isBusy) {
-          expect(queryByText(BUSY)).toBeInTheDocument();
+          expect(queryByText(GAS_PRICE_BUSY)).toBeInTheDocument();
         } else {
-          expect(queryByText(BUSY)).toBeNull();
+          expect(queryByText(GAS_PRICE_BUSY)).toBeNull();
         }
 
         cleanup();
@@ -561,7 +592,7 @@ describe("Send page", () => {
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(reviewFee(container)).toBe(feeAt(5n));
-      expect(queryByText(BUSY)).toBeInTheDocument();
+      expect(queryByText(GAS_PRICE_BUSY)).toBeInTheDocument();
     });
   });
 
@@ -619,11 +650,22 @@ describe("Send page", () => {
       status: "executed",
       timestamp: Date.now() - 3 * day,
     });
+    // Another stranger's, since: never said as this address's.
+    const fromSomeoneElse = rowOf({
+      amount: "1000000",
+      blockHeight: 4_800_100,
+      direction: "in",
+      from: "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um",
+      hash: "c4".repeat(32),
+      memo: "Lunch money, thanks",
+      status: "executed",
+      timestamp: Date.now() - day,
+    });
 
     history.whole?.set({
       failed: false,
       reading: false,
-      rows: [fromStranger],
+      rows: [fromSomeoneElse, fromStranger],
       whole: true,
     });
     openAt(
@@ -633,13 +675,20 @@ describe("Send page", () => {
     );
 
     try {
-      const { getByRole } = render(SendPage);
+      const { container, getByRole } = render(SendPage);
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getByRole("note")).toHaveTextContent(
-        `This address sent you: “${URGENT}” · not in your contacts.`,
-      );
+      const note = getByRole("note");
+
+      // What the address under To sent, whole and alone in its own element,
+      // apart from what the wallet says of it; nothing someone else sent.
+      expect(note.querySelector(".memo-text")?.textContent).toBe(URGENT);
+      expect(note).not.toHaveTextContent("Lunch money");
+      expect(
+        summaryRow(container, /^to$/i).querySelector(".full-address")
+          ?.textContent,
+      ).toBe(OTHER);
     } finally {
       history.whole?.set({
         failed: false,

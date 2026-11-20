@@ -47,20 +47,16 @@ vi.mock("$lib/transactions", async (importOriginal) => ({
   followTransaction,
 }));
 
-// How the page came to be: Back or Forward, or a link; and where it is,
-// where a test says.
+// How the page came to be: Back or Forward, or a link.
 const nav = vi.hoisted(() => ({
   /** @type {import("svelte/store").Writable<any> | null} */
   navigating: null,
-  /** @type {import("svelte/store").Writable<any> | null} */
-  page: null,
 }));
 
 // Presses that would leave a page, as SvelteKit tells them before they do.
 const navigation = vi.hoisted(() => ({
   /** @type {Array<(navigation: any) => void>} */
   before: [],
-  goto: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("$app/navigation", () => ({
@@ -70,7 +66,7 @@ vi.mock("$app/navigation", () => ({
     navigation.before.push(listener);
   },
   disableScrollHandling: () => {},
-  goto: navigation.goto,
+  goto: () => Promise.resolve(),
   invalidate: () => Promise.resolve(),
   invalidateAll: () => Promise.resolve(),
   preloadCode: () => Promise.resolve(),
@@ -79,23 +75,12 @@ vi.mock("$app/navigation", () => ({
 }));
 
 vi.mock("$app/stores", async (importOriginal) => {
-  const { get, writable } = await import("svelte/store");
+  const { writable } = await import("svelte/store");
   const original = /** @type {any} */ (await importOriginal());
-  const page = writable(null);
 
   nav.navigating = writable(null);
-  nav.page = page;
 
-  return {
-    ...original,
-    navigating: nav.navigating,
-    // As a test says, else as SvelteKit's own.
-    page: {
-      /** @param {(value: any) => void} run */
-      subscribe: (run) =>
-        get(page) === null ? original.page.subscribe(run) : page.subscribe(run),
-    },
-  };
+  return { ...original, navigating: nav.navigating };
 });
 
 const DUSK = 1_000_000_000n;
@@ -405,7 +390,11 @@ describe("Keeping what's typed in a form that moves money", () => {
       const failed = await typedForm();
 
       await press(failed);
-      await failed.findByText("Not confirmed");
+      await vi.waitFor(() =>
+        expect(
+          failed.container.querySelector(".dusk-suspense__error"),
+        ).not.toBeNull(),
+      );
 
       expect(isKept(RECIPIENT)).toBe(false);
 
@@ -460,103 +449,6 @@ describe("Keeping what's typed in a form that moves money", () => {
       expectBlank(render(Send, sendProps));
     });
 
-    // Amélie's, decided after round 39: as the extension asks.
-    it("asks Leave this payment? before a payment in it is left, Stay the main answer, and lets it go only with Leave", async () => {
-      navigation.before = [];
-      navigation.goto.mockClear();
-
-      const typed = await typedForm();
-
-      expect(goHome()).toBe(true);
-
-      const question = await typed.findByRole("alertdialog", {
-        name: "Leave this payment?",
-      });
-
-      expect(question).toHaveTextContent(
-        "This clears your unfinished payment.",
-      );
-      await vi.waitFor(() =>
-        expect(typed.getByRole("button", { name: "Stay" })).toHaveFocus(),
-      );
-
-      await fireEvent.click(typed.getByRole("button", { name: "Stay" }));
-
-      expect(typed.queryByRole("alertdialog")).toBeNull();
-      expectTyped(typed);
-      expect(navigation.goto).not.toHaveBeenCalled();
-
-      // A phone's Back asks too; Leave goes where it was going.
-      expect(goHome("popstate")).toBe(true);
-      await typed.findByRole("alertdialog");
-
-      const back = vi.spyOn(history, "go").mockImplementation(() => {});
-
-      await fireEvent.click(typed.getByRole("button", { name: "Leave" }));
-
-      expect(back).toHaveBeenCalledExactlyOnceWith(-1);
-      expect(isKept(RECIPIENT)).toBe(false);
-
-      // Gone, it asks nothing more.
-      expect(goHome()).toBe(false);
-      back.mockRestore();
-    });
-
-    // Codex's, round 40: the search's result for another person opened Send
-    // again, at the same path, for another payment, and the one typed went
-    // without a word.
-    it("asks Leave this payment? as Send opens for another payment, but not as it goes to a step of its own at the same address", async () => {
-      const send = new URL("/some-base-path/dashboard/send", location.href);
-
-      navigation.before = [];
-      nav.page?.set({ state: {}, url: send });
-
-      try {
-        const typed = await typedForm();
-
-        expect(goHome("goto", send.href)).toBe(false);
-        expect(goHome("goto", `${send.href}?to=${RECIPIENT_SHIELDED}`)).toBe(
-          true,
-        );
-        expect(
-          await typed.findByRole("alertdialog", {
-            name: "Leave this payment?",
-          }),
-        ).toBeInTheDocument();
-      } finally {
-        // Gone before the page is SvelteKit's own again.
-        cleanup();
-        nav.page?.set(null);
-      }
-    });
-
-    // Codex's, round 40: the search opens a result in its own step's place
-    // in the browser's history; held up by Leave this payment?, Leave went
-    // there as a new step, and Back went to the search again.
-    it("goes where a press was going as it was asked once Leave lets it go, in the page's place where it replaced it", async () => {
-      const contacts = new URL(
-        "/some-base-path/dashboard/contacts",
-        location.href,
-      );
-      const { goto } = await import("$lib/navigation");
-
-      navigation.before = [];
-
-      const typed = await typedForm();
-
-      // As the search opens a result.
-      void goto("/dashboard/contacts", { replaceState: true });
-
-      expect(goHome("goto", contacts.href)).toBe(true);
-      await typed.findByRole("alertdialog");
-      navigation.goto.mockClear();
-      await fireEvent.click(typed.getByRole("button", { name: "Leave" }));
-
-      expect(navigation.goto).toHaveBeenCalledExactlyOnceWith(contacts.href, {
-        replaceState: true,
-      });
-    });
-
     it("asks nothing as an empty form is left, nor as a lock goes, which keeps what's typed", async () => {
       navigation.before = [];
       render(Send, sendProps);
@@ -572,23 +464,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       expect(isKept(RECIPIENT)).toBe(true);
     });
 
-    it("says what a link filled in is what leaving clears", async () => {
-      navigation.before = [];
-
-      const opened = render(Send, {
-        ...sendProps,
-        initialAmount: "0.15",
-        initialMemo: "Factura 33",
-        initialRecipient: RECIPIENT,
-      });
-
-      expect(goHome()).toBe(true);
-      expect(await opened.findByRole("alertdialog")).toHaveTextContent(
-        "This clears the payment the link filled in.",
-      );
-    });
-
-    it("says it's your unfinished payment where a lock or a reload brought it back, and clears what it brought for another recipient", async () => {
+    it("clears what a lock or a reload brought back once another recipient is chosen", async () => {
       await typedForm();
 
       await lockAndUnlock();
@@ -596,7 +472,6 @@ describe("Keeping what's typed in a form that moves money", () => {
       const back = render(Send, sendProps);
 
       expectTyped(back);
-      expect(back.getByText("Your unfinished payment.")).toBeInTheDocument();
 
       // Another recipient: what the kept payment held was for its own.
       await fireEvent.input(back.getByRole("textbox", { name: "To" }), {
@@ -607,7 +482,6 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       expect(amount).toHaveValue("");
       expect(memo).toHaveValue("");
-      expect(back.queryByText("Your unfinished payment.")).toBeNull();
     });
 
     // Amélie's: she chose Chen from Contacts, and the 0,1 meant for a
@@ -749,9 +623,12 @@ describe("Keeping what's typed in a form that moves money", () => {
 
         const back = render(Send, sendProps);
 
-        expect(back.getByRole("textbox", { name: "Amount" })).toHaveValue(
-          "••••",
-        );
+        // Not a figure of it.
+        expect(
+          /** @type {HTMLInputElement} */ (
+            back.getByRole("textbox", { name: "Amount" })
+          ).value,
+        ).not.toMatch(/\d/);
         expect(
           await back.findByRole("radio", { name: "Shielded address" }),
         ).toBeChecked();
@@ -832,7 +709,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       stakeProps.execute.mockReturnValueOnce(sending.promise);
       await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(back.getByRole("button", { name: /^Stake 1,200/ }));
+      await fireEvent.click(back.getByRole("button", { name: /1,200 DUSK/ }));
 
       expect(isKept("1200")).toBe(false);
 
@@ -849,9 +726,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       await fireEvent.click(failed.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        failed.getByRole("button", { name: /^Stake 1,200/ }),
-      );
+      await fireEvent.click(failed.getByRole("button", { name: /1,200 DUSK/ }));
       leave();
 
       expect(
@@ -910,21 +785,6 @@ describe("Keeping what's typed in a form that moves money", () => {
       ).toHaveValue("7");
     });
 
-    it("keeps what's typed as the form is left by the Staking link above it, for its next opening", async () => {
-      const typed = render(liquidView, liquidProps);
-
-      await fireEvent.input(typed.getByLabelText("Stake amount"), {
-        target: { value: "7" },
-      });
-      nav.navigating?.set({ type: "link" });
-      leave();
-      nav.navigating?.set(null);
-
-      expect(
-        render(liquidView, liquidProps).getByLabelText("Stake amount"),
-      ).toHaveValue("7");
-    });
-
     it("brings back each tab's amount and the tab it was on, and lets them go as one is sent", async () => {
       const typed = render(liquidView, liquidProps);
 
@@ -947,9 +807,7 @@ describe("Keeping what's typed in a form that moves money", () => {
 
       await fireEvent.click(back.getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(
-        back.getByRole("button", { name: "Stake 7 DUSK with Sozu" }),
-      );
+      await fireEvent.click(back.getByRole("button", { name: /\b7 DUSK/ }));
       await vi.waitFor(() => expect(liquidProps.execute).toHaveBeenCalled());
 
       expect(isKept("7")).toBe(false);

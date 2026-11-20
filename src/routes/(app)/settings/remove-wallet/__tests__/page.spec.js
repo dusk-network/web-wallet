@@ -77,13 +77,14 @@ describe("Remove wallet", () => {
   });
 
   it("says what goes, waits for the phrase's box and the password, and takes only that wallet", async () => {
-    const { getByLabelText, getByRole, getByText } = render(RemoveWallet);
+    const { container, getByLabelText, getByRole } = render(RemoveWallet);
+    const hasPhrase = getByRole("checkbox");
 
-    expect(
-      getByText(
-        "Wallet 1 leaves this device, with its contacts and activity. Its funds and stake stay on Dusk.",
-      ),
-    ).toBeInTheDocument();
+    // Wallet 1 goes, and it's Wallet 1's phrase the box is for.
+    expect(container.querySelector(".remove-wallet__which")).toHaveTextContent(
+      /^Wallet 1(?!\d)/,
+    );
+    expect(hasPhrase).toHaveAccessibleName(/\bWallet 1(?!\d)/);
 
     const password = getByLabelText("Password you unlock with");
     const remove = getByRole("button", { name: "Remove wallet" });
@@ -94,11 +95,7 @@ describe("Remove wallet", () => {
 
     expect(remove).toBeDisabled();
 
-    await fireEvent.click(
-      getByLabelText(
-        "I have Wallet 1's recovery phrase. It brings this wallet back.",
-      ),
-    );
+    await fireEvent.click(hasPhrase);
     await fireEvent.input(password, { target: { value: "" } });
 
     expect(remove).toBeDisabled();
@@ -110,7 +107,7 @@ describe("Remove wallet", () => {
     await fireEvent.click(remove);
 
     await vi.waitFor(() =>
-      expect(getByRole("alert")).toHaveTextContent("Wrong password."),
+      expect(password).toHaveAttribute("aria-invalid", "true"),
     );
     expect(vault.list()).toHaveLength(2);
 

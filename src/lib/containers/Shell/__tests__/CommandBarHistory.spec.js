@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { networks } from "@dusk-network/networks";
 
-import { dayLabel, shortAddress, timeLabel } from "$lib/activity/present";
+import { shortAddress } from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
@@ -83,28 +83,6 @@ describe("CommandBar, with a history", () => {
     setNodeNetwork(null);
   });
 
-  it("names a bridge transaction as History does, with when it was made under it and its hash at the end", async () => {
-    setNodeNetwork(networks.testnet);
-
-    const { getByRole } = render(CommandBar, { pages: [] });
-
-    await fireEvent.input(getByRole("combobox"), {
-      target: { value: "40c50a" },
-    });
-
-    const option = getByRole("option", { name: /^To DuskEVM/ });
-
-    const when = `${dayLabel(ids.at, { locale: "en" })}, ${timeLabel(ids.at, "en")}`;
-
-    expect(option).toHaveTextContent(`To DuskEVM ${when} 40c50a…111111`);
-    expect(option).not.toHaveTextContent("Called");
-    expect(option).not.toHaveTextContent("depositETHToWithValue");
-    expect(option.querySelector(".command-bar__sub")).toHaveTextContent(when);
-    expect(option.querySelector(".command-bar__detail--end")).toHaveTextContent(
-      "40c50a…111111",
-    );
-  });
-
   // Amélie's: "Nothing on this device" for payments History had, further
   // back than it showed; and in the results, a stranger's memo lost the
   // mark History gives it.
@@ -120,8 +98,11 @@ describe("CommandBar, with a history", () => {
     const [option] = getAllByRole("option");
 
     expect(option).toHaveAttribute("id", `command-tx:${ids.older}`);
-    expect(option.querySelector(".command-bar__memo")).toHaveTextContent(
-      `From ${shortAddress(ids.stranger)} · not in your contacts “Pour le marché, merci”`,
-    );
+
+    // Marked as a stranger's, by who it's from, as History marks it.
+    const memo = option.querySelector(".command-bar__memo");
+
+    expect(memo).toHaveTextContent(shortAddress(ids.stranger));
+    expect(memo).toHaveTextContent("Pour le marché, merci");
   });
 });

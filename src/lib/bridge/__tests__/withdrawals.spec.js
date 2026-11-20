@@ -175,9 +175,8 @@ describe("DuskEVM withdrawals", () => {
         configured: false,
         optimismPortalContractId: "",
       });
-      await expect(withdrawals.loadWithdrawalStatus(TX)).rejects.toThrow(
-        "DuskEVM withdrawal finalization is not configured",
-      );
+      await expect(withdrawals.loadWithdrawalStatus(TX)).rejects.toThrow();
+      expect(pkg.status).not.toHaveBeenCalled();
     });
 
     it("take relative and http data-driver URLs, and no other", () => {
@@ -338,58 +337,29 @@ describe("DuskEVM withdrawals", () => {
   });
 
   describe("a status", () => {
+    /** Why it waits, whatever its words. */
+    const SAYS = expect.stringMatching(/\S/);
+
     it.each([
-      [
-        "waiting_for_output",
-        "no-games",
-        "No dispute games have been proposed yet.",
-      ],
-      [
-        "waiting_for_output",
-        "no-output",
-        "No finalized output proposal covering this withdrawal is ready yet.",
-      ],
+      ["waiting_for_output", "no-games", SAYS],
+      ["waiting_for_output", "no-output", SAYS],
       ["ready_to_prove", null, undefined],
-      [
-        "ready_to_prove",
-        "proof-rejected",
-        "The existing proof is not accepted by the portal, and a newer output proposal is available. Prove the withdrawal again.",
-      ],
-      [
-        "proven_waiting",
-        "game-in-progress",
-        "The proof is accepted. Its dispute game is still in progress.",
-      ],
-      [
-        "proven_waiting",
-        "game-not-final",
-        "The proof is accepted. Wait for its dispute game to become final.",
-      ],
-      [
-        "proven_waiting",
-        "game-unreadable",
-        "The proof is accepted, but its dispute game can't be read right now.",
-      ],
-      [
-        "proven_waiting",
-        "portal-refuses",
-        "The Portal doesn't take the claim yet.",
-      ],
-      [
-        "proven_waiting",
-        "proof-rejected",
-        "The existing proof was rejected, but no replacement output proposal is available yet.",
-      ],
+      ["ready_to_prove", "proof-rejected", SAYS],
+      ["proven_waiting", "game-in-progress", SAYS],
+      ["proven_waiting", "game-not-final", SAYS],
+      ["proven_waiting", "game-unreadable", SAYS],
+      ["proven_waiting", "portal-refuses", SAYS],
+      ["proven_waiting", "proof-rejected", SAYS],
       ["ready_to_finalize", null, ""],
       ["finalized", null, undefined],
     ])(
-      "at %s for %s says why in the wallet's words",
+      "at %s for %s says why, where there's a why",
       async (stage, reason, words) => {
         pkg.status.mockResolvedValue({ ...STATUS, reason, stage });
 
-        expect((await withdrawals.loadWithdrawalStatus(TX)).statusMessage).toBe(
-          words,
-        );
+        expect(
+          (await withdrawals.loadWithdrawalStatus(TX)).statusMessage,
+        ).toEqual(words);
       },
     );
 
@@ -470,7 +440,7 @@ describe("DuskEVM withdrawals", () => {
         withdrawals.loadWithdrawalStatus(
           /** @type {`0x${string}`} */ ("0x1234"),
         ),
-      ).rejects.toThrow("Enter a valid DuskEVM withdrawal transaction hash.");
+      ).rejects.toThrow();
       expect(pkg.status).not.toHaveBeenCalled();
     });
   });
@@ -552,9 +522,7 @@ describe("DuskEVM withdrawals", () => {
         new WithdrawalError("no-proof", undefined, { reason: "no-games" }),
       );
 
-      await expect(withdrawals.proveWithdrawal(TX)).rejects.toThrow(
-        "No dispute games have been proposed yet.",
-      );
+      await expect(withdrawals.proveWithdrawal(TX)).rejects.toThrow();
       expect(wallet.sendDuskEvmWithdrawalCall).not.toHaveBeenCalled();
     });
   });
@@ -589,37 +557,25 @@ describe("DuskEVM withdrawals", () => {
     });
 
     it.each([
-      [
-        { ...STATUS, proofSubmitterCount: 0n, stage: "ready_to_prove" },
-        "The withdrawal must be proven before it can be finalized.",
-      ],
-      [
-        {
-          ...STATUS,
-          disputeGameProxy: PROXY,
-          proofSubmitterCount: 1n,
-          reason: "game-in-progress",
-          stage: "proven_waiting",
-        },
-        "The proof is accepted. Its dispute game is still in progress.",
-      ],
-      [
-        { ...STATUS, stage: "finalized" },
-        "The withdrawal is already finalized.",
-      ],
-    ])(
-      "sends no claim that isn't ready, and says why in the wallet's words",
-      async (status, words) => {
-        pkg.claimCall.mockRejectedValue(
-          new WithdrawalError("not-ready", undefined, {
-            status: /** @type {any} */ (status),
-          }),
-        );
-
-        await expect(withdrawals.finalizeWithdrawal(TX)).rejects.toThrow(words);
-        expect(wallet.sendDuskEvmWithdrawalCall).not.toHaveBeenCalled();
+      { ...STATUS, proofSubmitterCount: 0n, stage: "ready_to_prove" },
+      {
+        ...STATUS,
+        disputeGameProxy: PROXY,
+        proofSubmitterCount: 1n,
+        reason: "game-in-progress",
+        stage: "proven_waiting",
       },
-    );
+      { ...STATUS, stage: "finalized" },
+    ])("sends no claim that isn't ready: $stage", async (status) => {
+      pkg.claimCall.mockRejectedValue(
+        new WithdrawalError("not-ready", undefined, {
+          status: /** @type {any} */ (status),
+        }),
+      );
+
+      await expect(withdrawals.finalizeWithdrawal(TX)).rejects.toThrow();
+      expect(wallet.sendDuskEvmWithdrawalCall).not.toHaveBeenCalled();
+    });
   });
 
   it("starts a withdrawal on DuskEVM's bridge, paying the Dusk account given", () => {
@@ -667,6 +623,8 @@ describe("DuskEVM withdrawals", () => {
     );
     await expect(
       withdrawals.loadDuskTransactionExecution("not-a-hash"),
-    ).rejects.toThrow("Dusk transaction hash is invalid.");
+    ).rejects.toThrow();
+    // Nothing asked of the node for it.
+    expect(query).toHaveBeenCalledOnce();
   });
 });

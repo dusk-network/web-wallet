@@ -11,42 +11,41 @@ import {
 
 describe("DuskEVM withdrawal lifecycle", () => {
   it.each([
-    ["submitted", "Processing", ""],
-    ["waiting_for_output", "Not on Dusk yet", "Usually within an hour."],
-    [
-      "ready_to_prove",
-      "Ready to prove",
-      "Step 2 of 3. Fee from your public account.",
-    ],
-    ["prove_submitted", "Proof sent", ""],
-    ["proven_waiting", "Waiting period", ""],
-    [
-      "ready_to_finalize",
-      "Ready to claim",
-      "Step 3 of 3. Fee from your public account.",
-    ],
-    ["finalize_submitted", "Claim sent", ""],
-    ["finalized", "Done", ""],
-    ["failed", "Failed", "Your DUSK is still on DuskEVM."],
-  ])("labels %s as %s, with at most one short line", (stage, label, line) => {
-    expect(withdrawalStageLabel(stage)).toBe(label);
-    expect(withdrawalStageDefaultMessage(stage)).toBe(line);
-  });
+    ["submitted", /processing/i, ""],
+    ["waiting_for_output", /not on dusk/i, /\bhour\b/i],
+    // Its step, and the balance its fee comes from.
+    ["ready_to_prove", /ready to prove/i, /\b2 of 3\b.*\bpublic\b/i],
+    ["prove_submitted", /proof sent/i, ""],
+    ["proven_waiting", /waiting/i, ""],
+    ["ready_to_finalize", /ready to claim/i, /\b3 of 3\b.*\bpublic\b/i],
+    ["finalize_submitted", /claim sent/i, ""],
+    ["finalized", /done/i, ""],
+    // Where the DUSK is.
+    ["failed", /failed/i, /still on DuskEVM/i],
+  ])(
+    "labels %s as its state, with at most one short line",
+    (stage, label, line) => {
+      expect(withdrawalStageLabel(stage)).toMatch(label);
+      expect(withdrawalStageDefaultMessage(stage)).toEqual(
+        line === "" ? "" : expect.stringMatching(line),
+      );
+    },
+  );
 
-  it("names the five steps of a withdrawal", () => {
+  it("names the five steps of a withdrawal, in their order", () => {
     expect(WITHDRAWAL_TIMELINE_STEPS).toEqual([
-      "Sent",
-      "Reported to Dusk",
-      "Proved",
-      "Waiting period",
-      "Claimed",
+      expect.stringMatching(/sent/i),
+      expect.stringMatching(/report/i),
+      expect.stringMatching(/prove/i),
+      expect.stringMatching(/wait/i),
+      expect.stringMatching(/claim/i),
     ]);
   });
 
   it("rounds durations to words", () => {
-    expect(roughDuration(20)).toBe("a minute");
+    expect(roughDuration(20)).toMatch(/^(?:a|one|1) minute$/i);
     expect(roughDuration(25 * 60)).toBe("25 minutes");
-    expect(roughDuration(59.6 * 60)).toBe("an hour");
+    expect(roughDuration(59.6 * 60)).toMatch(/^(?:an|one|1) hour$/i);
     expect(roughDuration(90 * 60)).toBe("2 hours");
     expect(roughDuration(47 * 3_600)).toBe("47 hours");
     expect(roughDuration(84 * 3_600)).toBe("4 days");
@@ -54,12 +53,17 @@ describe("DuskEVM withdrawal lifecycle", () => {
   });
 
   it("says which step wasn't sent, only where it can be sent again", () => {
-    expect(withdrawalActionFailure("ready_to_prove")).toBe(
-      "The proof wasn't sent. Try again.",
-    );
-    expect(withdrawalActionFailure("ready_to_finalize")).toBe(
-      "The claim wasn't sent. Try again.",
-    );
+    const proof = withdrawalActionFailure("ready_to_prove");
+    const claim = withdrawalActionFailure("ready_to_finalize");
+
+    // The step it was, and that it didn't go out.
+    expect(proof).toMatch(/\bproof\b/i);
+    expect(proof).not.toMatch(/\bclaim\b/i);
+    expect(claim).toMatch(/\bclaim\b/i);
+    expect(claim).not.toMatch(/\bproof\b/i);
+    for (const line of [proof, claim]) {
+      expect(line).toMatch(/wasn't sent/i);
+    }
     expect(withdrawalActionFailure("proven_waiting")).toBe("");
     expect(withdrawalActionFailure("failed")).toBe("");
   });
@@ -75,6 +79,6 @@ describe("DuskEVM withdrawal lifecycle", () => {
         "ready_to_finalize",
         "User rejected the request.",
       ),
-    ).toBe("The claim wasn't sent. Try again.");
+    ).toBe(withdrawalActionFailure("ready_to_finalize"));
   });
 });

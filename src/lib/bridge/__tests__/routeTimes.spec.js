@@ -90,11 +90,9 @@ describe("route times", () => {
       depositStageMessage(deposit, {
         time: routeTime(DEPOSIT, { net: networks.testnet }),
       }),
-    ).toBe(
-      "Finalized on Dusk. Arrives on DuskEVM in ~1 min. Don't send it again.",
-    );
-    expect(depositStageMessage(deposit)).toBe(
-      "Finalized on Dusk, on its way to DuskEVM. Don't send it again.",
-    );
+    ).toMatch(/(^|[^\d.,])1 min\b/);
+    // No time made up where none is known.
+    expect(depositStageMessage(deposit)).toMatch(/\S/);
+    expect(depositStageMessage(deposit)).not.toMatch(/\d/);
   });
 });

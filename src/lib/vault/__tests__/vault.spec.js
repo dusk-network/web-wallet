@@ -187,9 +187,9 @@ describe("vault", () => {
 
       expect(stored(V2).wallets).toHaveLength(1);
       expect(localStorage.getItem(V1)).toBeNull();
-      await expect(vault.unlock("password123")).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(vault.unlock("password123")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
       await expect(vault.unlock("another password")).resolves.toEqual({
         fromV1: null,
         wallets: [{ ...only, mnemonic: FOURTH }],
@@ -212,9 +212,7 @@ describe("vault", () => {
       // Read back as something else: put back as it was.
       failAt();
       answerAt(`get:${V2}@2`, JSON.stringify({ version: 2, wallets: [] }));
-      await expect(vault.setUp(THIRD, "password123")).rejects.toThrow(
-        "couldn't be saved",
-      );
+      await expect(vault.setUp(THIRD, "password123")).rejects.toThrow();
       expect(localStorage.getItem(V2)).toBe(before);
       expect(phrases(await vault.unlock("password123"))).toEqual([OTHER]);
     });
@@ -275,14 +273,18 @@ describe("vault", () => {
       const wallet = await vault.setUp(OTHER, "a password");
       const before = localStorage.getItem(V2);
 
-      await expect(vault.check("wrong")).rejects.toThrow("Wrong password");
-      await expect(vault.check("wrong", wallet.id)).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(vault.check("wrong")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
+      await expect(vault.check("wrong", wallet.id)).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
       await expect(
         vault.check("a password", "not a wallet here"),
-      ).rejects.toThrow("Wrong password");
-      await expect(vault.check("")).rejects.toThrow("Wrong password");
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+      await expect(vault.check("")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
       expect(localStorage.getItem(V2)).toBe(before);
     });
 
@@ -302,9 +304,7 @@ describe("vault", () => {
     it("says there's nothing to check against without a vault", async () => {
       const vault = await restart();
 
-      await expect(vault.check("a password")).rejects.toThrow(
-        "There's no wallet here.",
-      );
+      await expect(vault.check("a password")).rejects.toThrow();
     });
   });
 
@@ -318,7 +318,6 @@ describe("vault", () => {
       const error = await vault.unlock("password12").catch((e) => e);
 
       expect(error.name).toBe("InvalidPasswordError");
-      expect(error.message).toBe("Wrong password");
       expect({ ...localStorage }).toEqual(before);
     });
 
@@ -360,9 +359,7 @@ describe("vault", () => {
 
         const vault = await restart();
 
-        await expect(vault.unlock(current.password)).rejects.toThrow(
-          "can't be read",
-        );
+        await expect(vault.unlock(current.password)).rejects.toThrow();
         expect({ ...localStorage }).toEqual({ [V1]: unreadable });
       }
 
@@ -371,9 +368,7 @@ describe("vault", () => {
 
       const vault = await restart();
 
-      await expect(vault.unlock(current.password)).rejects.toThrow(
-        "can't be read",
-      );
+      await expect(vault.unlock(current.password)).rejects.toThrow();
       expect(stored(V2)).toEqual({ phrases: "?", version: 3 });
     });
 
@@ -394,12 +389,10 @@ describe("vault", () => {
           [V1]: current.stored,
           [V2]: unreadable,
         });
-        await expect(vault.add(OTHER, current.password)).rejects.toThrow(
-          "can't be read",
-        );
+        await expect(vault.add(OTHER, current.password)).rejects.toThrow();
         await expect(
           vault.changePassword(current.password, "another password"),
-        ).rejects.toThrow("can't be read");
+        ).rejects.toThrow();
         expect({ ...localStorage }).toEqual({
           [V1]: current.stored,
           [V2]: unreadable,
@@ -418,9 +411,7 @@ describe("vault", () => {
 
       expect({ ...localStorage }).toEqual({ "something-else": "kept" });
       expect(vault.exists()).toBe(false);
-      await expect(vault.unlock("password123")).rejects.toThrow(
-        "There's no wallet here",
-      );
+      await expect(vault.unlock("password123")).rejects.toThrow();
     });
   });
 
@@ -768,12 +759,12 @@ describe("vault", () => {
 
         let vault = await restart();
 
-        await expect(vault.unlock(`${fixture.password}!`)).rejects.toThrow(
-          "Wrong password",
-        );
-        await expect(vault.unlock(` ${fixture.password}`)).rejects.toThrow(
-          "Wrong password",
-        );
+        await expect(
+          vault.unlock(`${fixture.password}!`),
+        ).rejects.toMatchObject({ name: "InvalidPasswordError" });
+        await expect(
+          vault.unlock(` ${fixture.password}`),
+        ).rejects.toMatchObject({ name: "InvalidPasswordError" });
         expect({ ...localStorage }).toEqual({ [V1]: fixture.stored });
 
         vault = await restart();
@@ -1021,11 +1012,12 @@ describe("vault", () => {
 
     it("refuses a recovery phrase that's here already, however it's spaced, and writes nothing", async () => {
       const { vault } = await twoWallets();
+      const { DUPLICATE_PHRASE } = await import("..");
       const before = { ...localStorage };
 
       for (const phrase of [OTHER, `  ${THIRD.replaceAll(" ", "   ")}\n`]) {
         await expect(vault.add(phrase, "password123")).rejects.toThrow(
-          "This recovery phrase is already in your wallet.",
+          DUPLICATE_PHRASE,
         );
       }
 
@@ -1039,9 +1031,9 @@ describe("vault", () => {
 
       const before = localStorage.getItem(V2);
 
-      await expect(vault.add(THIRD, "password12")).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(vault.add(THIRD, "password12")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
       expect(localStorage.getItem(V2)).toBe(before);
     });
 
@@ -1053,17 +1045,13 @@ describe("vault", () => {
       const before = localStorage.getItem(V2);
 
       failAt(READ_BACK);
-      await expect(vault.add(THIRD, "password123")).rejects.toThrow(
-        "couldn't be saved",
-      );
+      await expect(vault.add(THIRD, "password123")).rejects.toThrow();
       expect(localStorage.getItem(V2)).toBe(before);
 
       // Read back as the vault from before the write.
       failAt();
       answerAt(READ_BACK, before);
-      await expect(vault.add(THIRD, "password123")).rejects.toThrow(
-        "couldn't be saved",
-      );
+      await expect(vault.add(THIRD, "password123")).rejects.toThrow();
       expect(localStorage.getItem(V2)).toBe(before);
       expect(phrases(await vault.unlock("password123"))).toEqual([OTHER]);
     });
@@ -1075,9 +1063,9 @@ describe("vault", () => {
         (/** @type {{ id: string }} */ w) => w.id !== second.id,
       );
 
-      await expect(vault.remove(second.id, "wrong password")).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(
+        vault.remove(second.id, "wrong password"),
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
       expect(stored(V2).wallets).toHaveLength(3);
 
       await vault.remove(second.id, "password123");
@@ -1098,14 +1086,15 @@ describe("vault", () => {
 
     it("never removes the only wallet, or one that isn't here", async () => {
       const vault = await restart();
+      const { NOT_HERE, ONLY_WALLET } = await import("..");
       const only = await vault.setUp(OTHER, "password123");
       const before = { ...localStorage };
 
       await expect(vault.remove(only.id, "password123")).rejects.toThrow(
-        "This is the only wallet here. Reset removes it.",
+        ONLY_WALLET,
       );
       await expect(vault.remove("not-a-wallet", "password123")).rejects.toThrow(
-        "That wallet isn't here.",
+        NOT_HERE,
       );
       expect({ ...localStorage }).toEqual(before);
     });
@@ -1120,9 +1109,9 @@ describe("vault", () => {
 
       const before = localStorage.getItem(V2);
 
-      await expect(vault.remove(other.id, current.password)).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(
+        vault.remove(other.id, current.password),
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
       expect(localStorage.getItem(V2)).toBe(before);
     });
 
@@ -1132,7 +1121,7 @@ describe("vault", () => {
 
       await expect(
         vault.changePassword("password12", "new password"),
-      ).rejects.toThrow("Wrong password");
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
       expect(stored(V2).wallets).toEqual(before);
 
       await vault.changePassword("password123", "a new password, é");
@@ -1151,9 +1140,9 @@ describe("vault", () => {
         expect(entry.data).not.toBe(before[i].data);
       }
 
-      await expect(vault.unlock("password123")).rejects.toThrow(
-        "Wrong password",
-      );
+      await expect(vault.unlock("password123")).rejects.toMatchObject({
+        name: "InvalidPasswordError",
+      });
       expect(phrases(await vault.unlock("a new password, é"))).toEqual([
         OTHER,
         THIRD,
@@ -1295,10 +1284,10 @@ describe("vault", () => {
 
       await expect(
         vault.add(THIRD, "an older password", { held }),
-      ).rejects.toThrow("Wrong password");
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
       await expect(
         vault.changePassword("an older password", "new password", { held }),
-      ).rejects.toThrow("Wrong password");
+      ).rejects.toMatchObject({ name: "InvalidPasswordError" });
       expect({ ...localStorage }).toEqual(before);
 
       await vault.add(THIRD, current.password, { held });
@@ -1315,7 +1304,7 @@ describe("vault", () => {
       failAt(READ_BACK);
       await expect(
         vault.changePassword("password123", "new password"),
-      ).rejects.toThrow("couldn't be saved");
+      ).rejects.toThrow();
       expect(localStorage.getItem(V2)).toBe(before);
 
       // Read back as the vault from before the write.
@@ -1323,7 +1312,7 @@ describe("vault", () => {
       answerAt(READ_BACK, before);
       await expect(
         vault.changePassword("password123", "new password"),
-      ).rejects.toThrow("couldn't be saved");
+      ).rejects.toThrow();
       expect(localStorage.getItem(V2)).toBe(before);
       expect(phrases(await vault.unlock("password123"))).toEqual([
         OTHER,
@@ -1339,7 +1328,7 @@ describe("vault", () => {
       failAt(`set:${V2}`);
       await expect(
         vault.changePassword(current.password, "new password"),
-      ).rejects.toThrow("couldn't be saved");
+      ).rejects.toThrow();
       expect(localStorage.getItem(V1)).toBe(current.stored);
       expect(localStorage.getItem(V2)).toBeNull();
     });

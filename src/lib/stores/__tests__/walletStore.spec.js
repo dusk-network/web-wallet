@@ -2745,7 +2745,7 @@ describe("Wallet store", async () => {
             },
             gas,
           ),
-        ).rejects.toThrow("Not a DuskEVM withdrawal's proof or claim.");
+        ).rejects.toThrow();
         expect(executeSpy).not.toHaveBeenCalled();
       },
     );

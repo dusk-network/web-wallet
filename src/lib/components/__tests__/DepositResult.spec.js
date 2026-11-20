@@ -25,20 +25,23 @@ vi.mock("$lib/bridge/depositActivity", async () => {
   };
 });
 
+/** What the screen says nothing that went out came to: not sent, at no fee. */
+const NOTHING_SENT = /\bnothing was sent\b/i;
+
 describe("DepositResult", () => {
   afterEach(() => {
     cleanup();
     followTransaction.mockReset();
   });
 
-  it("follows a deposit whose answer got lost, and once the chain has it, keeps it and shows its progress", async () => {
+  it("follows a deposit whose answer got lost, offers no second one, and keeps it once the chain has it", async () => {
     const hash = "ef".repeat(32);
     const found = Promise.withResolvers();
     const onSeen = vi.fn();
 
     followTransaction.mockReturnValueOnce(found.promise);
 
-    const { findByText, getByRole, queryByRole } = render(DepositResult, {
+    const { container, getByRole, queryByRole } = render(DepositResult, {
       onRetry: vi.fn(),
       onSeen,
       operation: Promise.reject(
@@ -47,39 +50,39 @@ describe("DepositResult", () => {
       what: "0.05 DUSK to DuskEVM",
     });
 
-    expect(await findByText("Not confirmed")).toBeInTheDocument();
-    expect(getByRole("status")).toHaveTextContent(
-      "0.05 DUSK to DuskEVM It may have reached the network. Wait for it here before you send it again.",
+    await vi.waitFor(() =>
+      expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything()),
     );
+
+    // Not confirmed, as it may have gone out: never sent, nor not sent.
+    const status = getByRole("status");
+
+    expect(
+      status.querySelector(".transaction-status__what")?.textContent?.trim(),
+    ).toBe("0.05 DUSK to DuskEVM");
+    expect(
+      status.querySelector(".transaction-status__title")?.textContent,
+    ).toMatch(/\bnot confirmed\b/i);
+    expect(container).not.toHaveTextContent(NOTHING_SENT);
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
-    expect(followTransaction).toHaveBeenCalledWith(hash, expect.anything());
     expect(onSeen).not.toHaveBeenCalled();
 
     found.resolve({ blockHeight: 9n, error: null, fee: 1n, timestamp: 1 });
 
-    expect(
-      await findByText("Track in activity", { exact: false }),
-    ).toBeInTheDocument();
-    expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash);
+    await vi.waitFor(() =>
+      expect(onSeen).toHaveBeenCalledExactlyOnceWith(hash),
+    );
   });
 
-  it("says in plain words why a deposit to DuskEVM failed before it went out, with its own message under Details", async () => {
+  it("says a deposit that failed before it went out wasn't sent, and charged no fee", async () => {
     const { container, findByText } = render(DepositResult, {
       operation: Promise.reject(new TypeError("Failed to fetch")),
     });
 
-    expect(
-      await findByText(
-        "Couldn't reach the network. Nothing was sent and no fee was charged.",
-      ),
-    ).toBeInTheDocument();
-    expect(container).toHaveTextContent("Not sent");
-    expect(container.querySelector("details summary")).toHaveTextContent(
-      /^Details$/,
-    );
-    expect(container.querySelector("details")).toHaveTextContent(
-      "Failed to fetch",
-    );
+    expect(await findByText(NOTHING_SENT)).toBeInTheDocument();
+    expect(container).toHaveTextContent(/\bnot sent\b/i);
+    expect(container).toHaveTextContent(/\bno fee\b/i);
+    expect(container).not.toHaveTextContent(/\bnot confirmed\b/i);
   });
 
   it("offers to try again only when nothing went out", async () => {
@@ -104,7 +107,9 @@ describe("DepositResult", () => {
       ),
     });
 
-    expect(await unknown.findByText("Not confirmed")).toBeInTheDocument();
+    // Not confirmed, as it may have gone out: no Try again.
+    expect(await unknown.findByText(/\bnot confirmed\b/i)).toBeInTheDocument();
+    expect(unknown.container).not.toHaveTextContent(NOTHING_SENT);
     expect(unknown.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

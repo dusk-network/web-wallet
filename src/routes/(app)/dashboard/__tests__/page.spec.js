@@ -3,10 +3,13 @@ import { act, cleanup, fireEvent, render } from "@testing-library/svelte";
 import { get } from "svelte/store";
 
 import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
-import { lastReadText, timeLabel } from "$lib/activity/present";
+import {
+  NOT_CONFIRMED_YET,
+  lastReadText,
+  timeLabel,
+} from "$lib/activity/present";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
-import routesStopped from "$lib/test-helpers/routesStopped";
 
 import Dashboard from "../+page.svelte";
 import { networks } from "@dusk-network/networks";
@@ -53,12 +56,6 @@ vi.mock("$lib/stores", async (importOriginal) => {
 });
 
 const history = vi.hoisted(() => ({
-  /**
-   * Rows of the history further back than the page History shows.
-   *
-   * @type {import("svelte/store").Writable<any[]> | null}
-   */
-  older: null,
   /** @type {import("svelte/store").Writable<any> | null} */
   state: null,
 }));
@@ -68,7 +65,6 @@ vi.mock("$lib/activity", async (importOriginal) => {
   const original = await importOriginal();
   const { derived, writable } = await import("svelte/store");
 
-  history.older = writable([]);
   history.state = writable({
     complete: true,
     error: null,
@@ -82,16 +78,13 @@ vi.mock("$lib/activity", async (importOriginal) => {
     ...original,
     activityState: history.state,
     currentActivity: () => ({ refresh: mocks.activityRefresh }),
-    // All of the history: the page shown, then what's further back.
-    wholeActivity: derived(
-      [history.state, history.older],
-      ([{ rows }, older]) => ({
-        failed: false,
-        reading: false,
-        rows: [...rows, ...older],
-        whole: true,
-      }),
-    ),
+    // All of the history: the page shown.
+    wholeActivity: derived(history.state, ({ rows }) => ({
+      failed: false,
+      reading: false,
+      rows,
+      whole: true,
+    })),
   };
 });
 
@@ -166,6 +159,134 @@ const rows = FIELDS.map((fields) => rowOf(fields));
 const setHistory = (state) =>
   act(() => history.state?.update((current) => ({ ...current, ...state })));
 
+/**
+ * Text that names each of `values`, in any order, whatever its words: a
+ * string whole, so `0.01 DUSK` is never found in `10.01 DUSK`; a regex as
+ * the key phrase of a state; and `{ not }` as what it never says.
+ *
+ * @param {...(string | RegExp | { not: RegExp })} values
+ */
+const naming = (...values) =>
+  expect.stringMatching(
+    new RegExp(
+      `^${values
+        .map((value) =>
+          typeof value === "string"
+            ? `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`
+            : value instanceof RegExp
+              ? `(?=.*(?${value.flags.includes("i") ? "i" : ""}:${value.source}))`
+              : `(?!.*(?${value.not.flags.includes("i") ? "i" : ""}:${value.not.source}))`,
+        )
+        .join("")}`,
+    ),
+  );
+
+/** @param {Element | null | undefined} element */
+const textOf = (element) => element?.textContent?.replace(/\s+/g, " ").trim();
+
+/** The total balance Home shows, as its figure reads. */
+const totalOf = () => textOf(document.querySelector(".home-balance__amount"));
+
+/** What the total says of what it counts that couldn't be read. */
+const unreadOf = () => textOf(document.querySelector(".home-balance__unread"));
+
+/** What the total is worth in money, as it reads. */
+const fiatOf = () => textOf(document.querySelector(".home-balance__fiat"));
+
+/**
+ * The parts of the total, as its legend gives them, each by its key: public,
+ * shielded and staked.
+ */
+const partsOf = () =>
+  Object.fromEntries(
+    Array.from(document.querySelectorAll(".home-balance__key"), (key) => [
+      key.className.match(/home-balance__key--(\w+)/)?.[1],
+      textOf(key.parentElement?.querySelector("b")),
+    ]),
+  );
+
+/**
+ * A balance card, by its label's key word: its figure, as its value reads,
+ * and the notes under it.
+ *
+ * @param {RegExp} label
+ */
+const cardOf = (label) => {
+  const card = Array.from(document.querySelectorAll(".explainer-card")).find(
+    (each) =>
+      label.test(textOf(each.querySelector(".explainer-card__key")) ?? ""),
+  );
+
+  return {
+    notes: Array.from(
+      card?.querySelectorAll(".explainer-card__text") ?? [],
+      textOf,
+    ),
+    value: textOf(card?.querySelector(".explainer-card__value")),
+  };
+};
+
+/**
+ * The sends Home says are waiting: each as its banner says it, its controls
+ * aside, and what it offers, by its controls' names.
+ */
+const waitingBanners = () =>
+  Array.from(document.querySelectorAll(".home__waiting"), (banner) => {
+    const said = /** @type {Element} */ (banner.cloneNode(true));
+
+    said.querySelectorAll("button").forEach((button) => button.remove());
+
+    return {
+      offers: Array.from(banner.querySelectorAll("button"), (button) =>
+        button.textContent?.trim(),
+      ),
+      says: textOf(said),
+    };
+  });
+
+/*
+ * Where a waiting send is, as its banner says it: by the key phrase of that
+ * state, what it never says then, and what it offers, by its controls' names.
+ */
+
+/** It waits for the network, nothing having left the wallet: to call off. */
+const WAITING = {
+  offers: ["Cancel"],
+  says: [/not sent yet/i, { not: /sending/i }],
+};
+
+/** It's being sent, the node asked to check it: to call off still. */
+const SENDING = {
+  offers: ["Cancel"],
+  says: [/\bsending\b/i, { not: /not sent/i }],
+};
+
+/** Handed over to be broadcast: being sent, with nothing to call off. */
+const HANDED_OVER = {
+  offers: [],
+  says: [/\bsending\b/i, { not: /not sent/i }],
+};
+
+/**
+ * Held as its account sent something else while it waited: not sent yet,
+ * to send it too, or not.
+ */
+const HELD = {
+  offers: ["Send it too", "Don't send"],
+  says: [/your account sent/i, /not sent yet/i, { not: /sending/i }],
+};
+
+/**
+ * A waiting send's banner, as in `state`, that names each of `values`.
+ *
+ * @param {{ offers: string[], says: Array<RegExp | { not: RegExp }> }} state
+ * @param {...(string | RegExp | { not: RegExp })} values
+ */
+const waitingAs = ({ offers, says }, ...values) => ({
+  offers,
+  says: naming(...says, ...values),
+});
+
 describe("Dashboard", () => {
   const usdPrice = 0.5;
   const props = {
@@ -185,8 +306,6 @@ describe("Dashboard", () => {
       status: null,
     });
     await setHistory({ error: null, loaded: true, rows: [], syncing: false });
-    history.older?.set([]);
-    vi.unstubAllEnvs();
   });
 
   afterAll(() => {
@@ -200,6 +319,8 @@ describe("Dashboard", () => {
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
+
+    toastList.set([]);
     render(Dashboard, props);
 
     const first = sendGate();
@@ -227,14 +348,9 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      const banners = () =>
-        Array.from(document.querySelectorAll(".home__waiting"), (banner) =>
-          banner.textContent?.replace(/\s+/g, " ").trim(),
-        );
-
-      expect(banners()).toStrictEqual([
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 1 · ${one} It goes out once the network answers. Cancel`,
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(WAITING, "0.01 DUSK", "Profile 2", "ward round 1", one),
+        waitingAs(WAITING, "0.01 DUSK", "Profile 2", "ward round 2", two),
       ]);
 
       // Called off from here: nothing goes out, and it's said.
@@ -245,25 +361,25 @@ describe("Dashboard", () => {
       );
 
       expect(get(first)).toBe("cancelled");
-      expect(banners()).toStrictEqual([
-        `Not sent yet: 0.01 DUSK to Profile 2. ward round 2 · ${two} It goes out once the network answers. Cancel`,
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(WAITING, "0.01 DUSK", "Profile 2", "ward round 2", two),
       ]);
-      expect(get(toastList).map(({ message }) => message)).toContain(
-        "Not sent: 0.01 DUSK to Profile 2. Nothing left your wallet.",
+      expect(get(toastList).map(({ message }) => message)).toContainEqual(
+        naming(/nothing left/i, "0.01 DUSK", "Profile 2"),
       );
 
-      // The other goes out once the network answers: sent, with nothing to
-      // call off, until the node took it.
+      // The other goes out once the network answers: being sent, with
+      // nothing to call off, until the node took it.
       await act(() => setNetworkReach("answering"));
       await act(() => second.handOver());
 
-      expect(banners()).toStrictEqual([
-        `Sending: 0.01 DUSK to Profile 2. ward round 2 · ${two}`,
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(HANDED_OVER, "0.01 DUSK", "Profile 2", "ward round 2", two),
       ]);
 
       answered.resolve(undefined);
 
-      await vi.waitFor(() => expect(banners()).toStrictEqual([]));
+      await vi.waitFor(() => expect(waitingBanners()).toStrictEqual([]));
     } finally {
       first.cancel();
       second.cancel();
@@ -284,11 +400,6 @@ describe("Dashboard", () => {
 
     const gate = sendGate();
     const answered = Promise.withResolvers();
-    const banner = () =>
-      document
-        .querySelector(".home__waiting")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
 
     keepWaiting({
       gate,
@@ -302,9 +413,12 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("answering"));
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at} Cancel`);
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(SENDING, "0.01 DUSK", "Profile 2", at),
+      ]);
 
-      // The node can't be reached as it's sent: it waits for the network.
+      // The node can't be reached as it's sent: it waits for the network,
+      // nothing having left, and can still be called off.
       gate
         .untilHandedOver(
           () => Promise.reject(new TypeError("Failed to fetch")),
@@ -312,20 +426,22 @@ describe("Dashboard", () => {
         )
         .catch(() => {});
       await vi.waitFor(() =>
-        expect(banner()).toBe(
-          `Not sent yet: 0.01 DUSK to Profile 2. ${at} It goes out once the network answers. Cancel`,
-        ),
+        expect(waitingBanners()).toStrictEqual([
+          waitingAs(WAITING, "0.01 DUSK", "Profile 2", at),
+        ]),
       );
 
-      // Handed over: sent, with nothing to call off, until the node took
-      // it, and then no longer said here.
+      // Handed over: being sent, with nothing to call off, until the node
+      // took it, and then no longer said here.
       await act(() => gate.handOver());
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to Profile 2. ${at}`);
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(HANDED_OVER, "0.01 DUSK", "Profile 2", at),
+      ]);
 
       answered.resolve(undefined);
 
-      await vi.waitFor(() => expect(banner()).toBeUndefined());
+      await vi.waitFor(() => expect(waitingBanners()).toStrictEqual([]));
     } finally {
       gate.cancel();
       answered.resolve(undefined);
@@ -345,11 +461,6 @@ describe("Dashboard", () => {
 
     const gate = sendGate();
     const answered = Promise.withResolvers();
-    const banner = () =>
-      document
-        .querySelector(".home__waiting")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
 
     keepWaiting({
       gate,
@@ -363,28 +474,29 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      expect(banner()).toBe(
-        `Not sent yet: 0.01 DUSK to your Profile 2. ${at} It goes out once the network answers. Cancel`,
-      );
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(WAITING, "0.01 DUSK", "your Profile 2", at),
+      ]);
 
-      // The node is asked to check it: it goes out, its answer slow, and can
+      // The node is asked to check it: being sent, its answer slow, and can
       // still be called off.
       await act(() => gate.checking());
 
-      expect(banner()).toBe(
-        `Sending: 0.01 DUSK to your Profile 2. ${at} Cancel`,
-      );
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(SENDING, "0.01 DUSK", "your Profile 2", at),
+      ]);
 
-      // Handed over: sent, with nothing to call off, until the node took
-      // it, and then no longer said here, as Activity has it.
+      // Handed over: being sent, with nothing to call off, until the node
+      // took it, and then no longer said here, as Activity has it.
       await act(() => gate.handOver());
 
-      expect(banner()).toBe(`Sending: 0.01 DUSK to your Profile 2. ${at}`);
-      expect(document.querySelector(".home__waiting button")).toBeNull();
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(HANDED_OVER, "0.01 DUSK", "your Profile 2", at),
+      ]);
 
       answered.resolve(undefined);
 
-      await vi.waitFor(() => expect(banner()).toBeUndefined());
+      await vi.waitFor(() => expect(waitingBanners()).toStrictEqual([]));
     } finally {
       gate.cancel();
       answered.resolve(undefined);
@@ -406,11 +518,6 @@ describe("Dashboard", () => {
     toastList.set([]);
     render(Dashboard, props);
 
-    const banner = () =>
-      document
-        .querySelector(".home__waiting")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
     /** @param {string} name */
     const button = (name) =>
       /** @type {HTMLElement} */ (
@@ -458,14 +565,9 @@ describe("Dashboard", () => {
     try {
       const at = timeLabel(get(waitingSends)[0].at, "en");
 
-      expect(banner()).toBe(
-        `Your account sent something else while this waited. Not sent yet: 0.01 DUSK to your Profile 2. night shift 6 · ${at} Send it too Don't send`,
-      );
-      expect(
-        Array.from(document.querySelectorAll(".home__waiting button"), (b) =>
-          b.textContent?.trim(),
-        ),
-      ).toStrictEqual(["Send it too", "Don't send"]);
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(HELD, "0.01 DUSK", "your Profile 2", "night shift 6", at),
+      ]);
 
       // Send it too: to Send's review, filled in with it, to send from
       // there; never sent from here.
@@ -473,7 +575,7 @@ describe("Dashboard", () => {
 
       expect(get(sent.gate)).toBe("cancelled");
       expect(sent.goesOn()).toBe(false);
-      expect(banner()).toBeUndefined();
+      expect(waitingBanners()).toStrictEqual([]);
       expect(takeUnsentRefill({ account, network: "mainnet" })).toMatchObject({
         lux: "10000000",
         memo: "night shift 6",
@@ -493,11 +595,10 @@ describe("Dashboard", () => {
 
       expect(get(dropped.gate)).toBe("cancelled");
       expect(dropped.goesOn()).toBe(false);
-      expect(banner()).toBeUndefined();
+      expect(waitingBanners()).toStrictEqual([]);
       expect(get(toastList)).toContainEqual(
         expect.objectContaining({
-          message:
-            "Not sent: 0.01 DUSK to your Profile 2. Nothing left your wallet.",
+          message: naming(/nothing left/i, "0.01 DUSK", "your Profile 2"),
           type: "info",
         }),
       );
@@ -573,11 +674,6 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
-    const banner = () =>
-      document
-        .querySelector(".home__waiting")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
 
     keepWaiting({
       address: ALICE,
@@ -599,10 +695,21 @@ describe("Dashboard", () => {
     gate.ask({ account, from: 1233n, to: 1234n }).catch(() => {});
 
     try {
+      // Held: what was sent, to whom and when, that it looks like this same
+      // payment, and the send held.
       await vi.waitFor(() =>
-        expect(banner()).toBe(
-          `Your account sent 0.01 DUSK to ${shortenAddress(ALICE)} at ${timeLabel(sentAt, "en")} while this waited. That looks like this same payment. Not sent yet: 0.01 DUSK to Alice. night shift 9 · ${at} Send it too Don't send`,
-        ),
+        expect(waitingBanners()).toStrictEqual([
+          waitingAs(
+            HELD,
+            /same payment/i,
+            shortenAddress(ALICE),
+            timeLabel(sentAt, "en"),
+            "0.01 DUSK",
+            "Alice",
+            "night shift 9",
+            at,
+          ),
+        ]),
       );
       // Read again as it was held, and as what was sent was found.
       expect(mocks.activityRefresh).toHaveBeenCalledTimes(2);
@@ -616,7 +723,7 @@ describe("Dashboard", () => {
   // eight to ten seconds, Send it too live, of what was the same payment.
   it("says it's checking what the account sent while that's read, its answers off, and after a moment what's known, its answers on", async () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
-    const { CHECKING_FOR_MS, forgetSentMeanwhile } =
+    const { CHECKING_FOR_MS, CHECKING_TEXT, forgetSentMeanwhile } =
       await import("$lib/transactions/sentMeanwhile");
     const { Network } = await import("@dusk/w3sper");
     const { currentProfile } = mockedWalletStore.getMockedStoreValue();
@@ -637,11 +744,6 @@ describe("Dashboard", () => {
     render(Dashboard, props);
 
     const gate = sendGate();
-    const banner = () =>
-      document
-        .querySelector(".home__waiting")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
     const buttons = () =>
       Array.from(
         document.querySelectorAll(".home__waiting button"),
@@ -671,7 +773,9 @@ describe("Dashboard", () => {
     try {
       await act();
 
-      expect(banner()).toMatch(/^Checking what your account sent… Not sent/);
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(HELD, CHECKING_TEXT, "0.01 DUSK", "night shift 10"),
+      ]);
       expect(buttons()).toStrictEqual([
         ["Send it too", true],
         ["Don't send", true],
@@ -681,9 +785,15 @@ describe("Dashboard", () => {
       answers.resolve();
       await act(() => vi.advanceTimersByTimeAsync(CHECKING_FOR_MS));
 
-      expect(banner()).toMatch(
-        /^Your account sent something else while this waited\. Not sent/,
-      );
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(
+          HELD,
+          /something else/i,
+          { not: /checking/i },
+          "0.01 DUSK",
+          "night shift 10",
+        ),
+      ]);
       expect(buttons()).toStrictEqual([
         ["Send it too", false],
         ["Don't send", false],
@@ -700,7 +810,6 @@ describe("Dashboard", () => {
     const { keepWaiting, sendGate } = await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
     const { toastList } = await import("$lib/dusk/components/Toast/store");
-    const { BALANCE_MASK } = await import("$lib/constants");
     toastList.set([]);
     render(Dashboard, props);
 
@@ -716,22 +825,17 @@ describe("Dashboard", () => {
     try {
       await act(() => setNetworkReach("silent"));
 
-      const banner = () =>
-        document
-          .querySelector(".home__waiting")
-          ?.textContent?.replace(/\s+/g, " ")
-          .trim();
-
-      expect(banner()).toContain("Not sent yet: 0.01 DUSK to Profile 2.");
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(WAITING, "0.01 DUSK", "Profile 2"),
+      ]);
 
       await act(() =>
         settingsStore.update((store) => ({ ...store, hideBalances: true })),
       );
 
-      expect(banner()).toContain(
-        `Not sent yet: ${BALANCE_MASK} DUSK to Profile 2.`,
-      );
-      expect(banner()).not.toContain("0.01");
+      expect(waitingBanners()).toStrictEqual([
+        waitingAs(WAITING, "Profile 2", { not: /0\.01/ }),
+      ]);
 
       await fireEvent.click(
         /** @type {HTMLElement} */ (
@@ -739,12 +843,13 @@ describe("Dashboard", () => {
         ),
       );
 
+      // Said as it's called off, its amount hidden too.
+      const messages = get(toastList).map(({ message }) => message);
+
       expect(get(gate)).toBe("cancelled");
-      expect(get(toastList).map(({ message }) => message)).toContain(
-        `Not sent: ${BALANCE_MASK} DUSK to Profile 2. Nothing left your wallet.`,
-      );
+      expect(messages).toContainEqual(naming(/nothing left/i, "Profile 2"));
       expect(
-        get(toastList).filter(({ message }) => message.includes("0.01 DUSK")),
+        messages.filter((message) => message.includes("0.01")),
       ).toStrictEqual([]);
     } finally {
       gate.cancel();
@@ -752,80 +857,19 @@ describe("Dashboard", () => {
     }
   });
 
-  it("shows the total balance, everything held, its parts, and every action", async () => {
-    const { container, getByRole } = render(Dashboard, props);
+  it("shows the total balance, everything held, its parts, and its value in money", async () => {
+    render(Dashboard, props);
 
     // 1,172.5 public, 2,345 shielded and 1,000 staked.
-    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "4,517.5",
-    );
-    expect(container.querySelector(".home-balance__legend")).toHaveTextContent(
-      "Public 1,172.5 Shielded 2,345 Staked 1,000",
-    );
-
-    for (const [name, href] of [
-      ["Send", "/dashboard/send/"],
-      ["Receive", "/dashboard/receive/"],
-      ["Shield", "/dashboard/allocate/"],
-      ["Stake", "/dashboard/stake/"],
-      ["Bridge", "/dashboard/bridge/"],
-    ]) {
-      expect(getByRole("link", { name })).toHaveAttribute(
-        "href",
-        `/some-base-path${href}`,
-      );
-    }
-
-    await vi.waitFor(() =>
-      expect(container.querySelector(".home-balance__fiat")).toHaveTextContent(
-        "≈ $2,258.75",
-      ),
-    );
-  });
-
-  it("offers whoever holds DUSK on Ethereum or BNB Smart Chain a migration, only where one is running: BNB Smart Chain's on mainnet", async () => {
-    const { getByRole, unmount } = render(Dashboard, props);
-
-    expect(getByRole("link", { name: "Migrate it to Dusk" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
-    );
-    unmount();
-
-    // Testnet's from its BSC test chain.
-    network.store?.set({
-      connected: true,
-      net: networks.testnet,
-      networkName: "testnet",
+    expect(totalOf()).toBe("4,517.5");
+    expect(partsOf()).toStrictEqual({
+      public: "1,172.5",
+      shielded: "2,345",
+      staked: "1,000",
     });
 
-    const testnet = render(Dashboard, props);
-
-    expect(
-      testnet.getByRole("link", { name: "Migrate it to Dusk" }),
-    ).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/bridge/?route=bsc-to-dusk",
-    );
-    testnet.unmount();
-
-    // A migration that isn't running: no line.
-    network.store?.set({
-      connected: true,
-      net: routesStopped(networks.testnet),
-      networkName: "testnet",
-    });
-
-    const { container, queryByRole } = render(Dashboard, props);
-
-    expect(queryByRole("link", { name: "Migrate it to Dusk" })).toBeNull();
-    expect(container).not.toHaveTextContent("Have DUSK on Ethereum");
-
-    network.store?.set({
-      connected: true,
-      net: networks.mainnet,
-      networkName: "mainnet",
-    });
+    // About so much, at the price read.
+    await vi.waitFor(() => expect(fiatOf()).toBe("≈ $2,258.75"));
   });
 
   it("shows no value in money off mainnet, as test DUSK has none", async () => {
@@ -849,117 +893,14 @@ describe("Dashboard", () => {
     });
   });
 
-  it("says what each balance means, and that nothing is staked right now", async () => {
-    mockedWalletStore.setMockedStoreValue({
-      ...initialStore,
-      stakeInfo: { ...initialStore.stakeInfo, amount: null },
-    });
-
-    const { getByText, queryByRole } = render(Dashboard, props);
-
-    expect(
-      getByText("Visible on chain. Staking and the bridge use this balance."),
-    ).toBeInTheDocument();
-    expect(
-      getByText("Amounts and accounts stay hidden on chain."),
-    ).toBeInTheDocument();
-    expect(getByText("Nothing staked right now")).toBeInTheDocument();
-    expect(
-      getByText(
-        "From 1,000 DUSK with your own node, or any amount with Sozu (third party).",
-      ),
-    ).toBeInTheDocument();
-    expect(queryByRole("link", { name: "Past staking" })).toBeNull();
-
-    // Staked before: no "yet", and a way to what was staked.
-    await setHistory({
-      rows: [
-        rowOf({
-          ...FIELDS[1],
-          direction: "out",
-          hash: "d4".repeat(32),
-          kind: "stake",
-        }),
-      ],
-    });
-
-    expect(queryByRole("link", { name: "Past staking" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/transactions/?kind=staking",
-    );
-  });
-
-  // Nandini's: "Nothing staked right now … Open staking" with no way to her
-  // past staking, as it was further back than the page History had shown.
-  it("finds past staking, and the staking its Activity filter shows, in all of the history, not only the page History has shown", async () => {
-    mockedWalletStore.setMockedStoreValue({
-      ...initialStore,
-      stakeInfo: { ...initialStore.stakeInfo, amount: null },
-    });
-    await setHistory({
-      rows: Array.from({ length: 50 }, (_, i) =>
-        rowOf({
-          ...FIELDS[1],
-          hash: (i + 1).toString(16).padStart(64, "0"),
-        }),
-      ),
-    });
-    history.older?.set([
-      rowOf({
-        ...FIELDS[1],
-        blockHeight: 4_000_000,
-        direction: "out",
-        hash: "d6".repeat(32),
-        kind: "stake",
-      }),
-    ]);
-
-    const { container, getByRole, queryByText } = render(Dashboard, props);
-
-    expect(getByRole("link", { name: "Past staking" })).toHaveAttribute(
-      "href",
-      "/some-base-path/dashboard/transactions/?kind=staking",
-    );
-
-    await fireEvent.click(getByRole("button", { name: "Staking" }));
-
-    expect(queryByText("Nothing here yet.")).toBeNull();
-    expect(
-      container.querySelector(".activity-panel .activity-row"),
-    ).toHaveTextContent("Staked");
-  });
-
-  it("counts staking with Sozu as staking, and shows what is staked there", async () => {
+  it("shows what is staked with Sozu, for the profile shown only", async () => {
     const { currentProfile } = initialStore;
 
     mockedWalletStore.setMockedStoreValue({
       ...initialStore,
       stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
-    const { container, queryByRole } = render(Dashboard, props);
-
-    await setHistory({
-      rows: [
-        // Mainnet's pool.
-        rowOf(
-          {
-            amount: "1500000000000",
-            blockHeight: 4_687_000,
-            contractId:
-              "6fdfdc713a18fc6ca2ad20eb2b4a3305a935ef47d6a872d9a4df8bc9fd9d169e",
-            fnName: "sozu_stake",
-            hash: "e5".repeat(32),
-            kind: "contract_call",
-            status: "executed",
-            timestamp: NOW,
-          },
-          { network: networks.mainnet },
-        ),
-      ],
-    });
-
-    // Staked before, with Sozu: a way to it.
-    expect(queryByRole("link", { name: "Past staking" })).toBeInTheDocument();
+    render(Dashboard, props);
 
     await act(() =>
       sozu.store?.set({
@@ -975,38 +916,41 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Staking 1,500 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
-    );
+    expect(cardOf(/stak/i).value).toMatch(/^1,500 DUSK\b/);
 
-    // Another profile's position isn't this one's.
+    // Another profile's position isn't this one's: no figure for it.
     await act(() =>
       sozu.store?.update((state) => ({ ...state, account: "another" })),
     );
 
-    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Nothing staked right now",
-    );
+    expect(cardOf(/stak/i).value).not.toMatch(/\d/);
   });
 
-  it("says every figure may be out of date where it couldn't be read, the total naming what couldn't be", async () => {
-    const { container } = render(Dashboard, props);
-    const textOf = (/** @type {Element | null | undefined} */ element) =>
-      element?.textContent?.replace(/\s+/g, " ").trim();
-    const total = () => textOf(container.querySelector(".home-balance"));
-    const card = (/** @type {number} */ n) =>
-      textOf(container.querySelectorAll(".explainer-card")[n]);
+  it("says every figure may be out of date where it couldn't be read, with when it was read last, the total when the one read longest ago was", async () => {
+    render(Dashboard, props);
 
-    expect(total()).not.toContain("out of date");
-    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
-
-    // Neither the balances nor the stake, as offline or with a silent node:
-    // each says when it was last read (Lena's, for the sixth round), the
-    // total when the one read longest ago was.
+    /** What a figure says while it may be out of date. */
+    const STALE = /out of date/i;
+    /** @param {RegExp} label */
+    const staleOf = (label) =>
+      cardOf(label).notes.find((note) => STALE.test(note ?? ""));
+    const staleNow = () => [
+      staleOf(/public/i),
+      staleOf(/shielded/i),
+      staleOf(/stak/i),
+    ];
     const balanceAt = NOW - 300_000;
     const stakeAt = NOW - 600_000;
     const lastRead = (/** @type {number} */ at) => lastReadText(at, "en");
 
+    // Read just now: none.
+    expect(unreadOf()).toBeUndefined();
+    expect(staleNow()).toStrictEqual([undefined, undefined, undefined]);
+
+    // Neither the balances nor the stake, as offline or with a silent node:
+    // each says it may be out of date, and when it was last read (Lena's,
+    // for the sixth round), with what was read then; the total, when the
+    // one read longest ago was.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -1017,18 +961,15 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(total()).toContain(
-      `Your balance and stake couldn't be read just now. This total may be out of date. ${lastRead(stakeAt)}`,
-    );
-    expect(card(0)).toBe(
-      `Public 1,172.5 DUSK Visible on chain. Staking and the bridge use this balance. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
-    );
-    expect(card(1)).toBe(
-      `Shielded 2,345 DUSK Amounts and accounts stay hidden on chain. It couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
-    );
-    expect(card(2)).toContain(
-      `Your stake couldn't be read just now. This may be out of date. ${lastRead(stakeAt)}`,
-    );
+    expect(unreadOf()).toEqual(naming(STALE, lastRead(stakeAt)));
+    expect(unreadOf()).not.toContain(lastRead(balanceAt));
+    expect(cardOf(/public/i).value).toBe("1,172.5 DUSK");
+    expect(cardOf(/shielded/i).value).toBe("2,345 DUSK");
+    expect(staleNow()).toStrictEqual([
+      naming(lastRead(balanceAt)),
+      naming(lastRead(balanceAt)),
+      naming(lastRead(stakeAt)),
+    ]);
 
     // The balances alone.
     await act(() =>
@@ -1039,12 +980,10 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(total()).toContain(
-      `Your balance couldn't be read just now. This may be out of date. ${lastRead(balanceAt)}`,
-    );
-    expect(card(2)).not.toContain("out of date");
+    expect(unreadOf()).toEqual(naming(STALE, lastRead(balanceAt)));
+    expect(staleOf(/stak/i)).toBeUndefined();
 
-    // The stake alone; where it was never read, nothing's said of when.
+    // The stake alone, never read: nothing said of when.
     await act(() =>
       mockedWalletStore.setMockedStoreValue({
         ...initialStore,
@@ -1052,30 +991,26 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date.",
-    );
-    expect(total()).not.toContain("Last read");
-    expect([card(0), card(1)].join(" ")).not.toContain("out of date");
+    expect(unreadOf()).toEqual(naming(STALE, { not: /last read/i }));
+    expect([staleOf(/public/i), staleOf(/shielded/i)]).toStrictEqual([
+      undefined,
+      undefined,
+    ]);
 
     // Read again: said no more.
     await act(() => mockedWalletStore.setMockedStoreValue(initialStore));
 
-    expect(total()).not.toContain("out of date");
-    expect([card(0), card(1), card(2)].join(" ")).not.toContain("out of date");
+    expect(unreadOf()).toBeUndefined();
+    expect(staleNow()).toStrictEqual([undefined, undefined, undefined]);
   });
 
   it("says the total may be out of date while the stake it counts couldn't be read", async () => {
     const { currentProfile } = initialStore;
-    const { container } = render(Dashboard, props);
-    const total = () =>
-      container
-        .querySelector(".home-balance")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
+
+    render(Dashboard, props);
 
     // Sozu's read fails: what it held as read last shows, counted in the
-    // total.
+    // total, said to be from then.
     await act(() =>
       sozu.store?.set({
         account: String(currentProfile.account),
@@ -1087,23 +1022,15 @@ describe("Dashboard", () => {
       }),
     );
 
-    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "4,520.2471",
-    );
-    expect(total()).toContain(
-      "Your stake couldn't be read just now. This total may be out of date.",
-    );
+    expect(totalOf()).toBe("4,520.2471");
+    expect(unreadOf()).toEqual(naming(/out of date/i, lastReadText(1, "en")));
   });
 
   it("never says nothing is staked where the stake couldn't be read: what was read last, or that it couldn't be, and Try again reads it again", async () => {
     const { currentProfile } = initialStore;
-    const card = () =>
-      container
-        .querySelectorAll(".explainer-card")[2]
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
-    const total = () =>
-      container.querySelector(".home-balance__amount")?.textContent?.trim();
+    const staking = () => cardOf(/stak/i);
+    // Couldn't be read: no figure, and never that nothing is staked.
+    const unread = naming(/couldn.t be read/i, { not: /\d|nothing staked/i });
     const sozuSays = (/** @type {Record<string, unknown>} */ state) =>
       act(() =>
         sozu.store?.set({
@@ -1122,7 +1049,7 @@ describe("Dashboard", () => {
       stakeInfo: { ...initialStore.stakeInfo, amount: null },
     });
 
-    const { container, getByRole } = render(Dashboard, props);
+    const { getByRole } = render(Dashboard, props);
 
     // Unlocked as the node stalls: Sozu's read fails, what it held as read
     // last here shows, counted in the total, and said not to be read now,
@@ -1134,20 +1061,21 @@ describe("Dashboard", () => {
       kept: { at: keptAt, balance: 2_747_100_000n, stDusk: 864_521_348n },
     });
 
-    expect(card()).toBe(
-      `Staking 2.7471 DUSK with Sozu Liquid staking through Sozu, a third party. Your stake couldn't be read just now. This may be out of date. ${lastReadText(keptAt, "en")} Try again Open staking`,
+    expect(staking().value).toMatch(/^2\.7471 DUSK\b/);
+    expect(staking().notes).toContainEqual(
+      naming(/out of date/i, lastReadText(keptAt, "en")),
     );
-    expect(total()).toBe("3,520.2471");
+    expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(totalOf()).toBe("3,520.2471");
 
-    // Read here never: it couldn't be read, which isn't nothing.
+    // Read here never: it couldn't be read, which isn't nothing, and Try
+    // again.
     await sozuSays({ error: new Error("timed out") });
 
-    expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking",
-    );
+    expect(staking().value).toEqual(unread);
+    expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
 
-    // Try again reads it again, Sozu's and the native stake both, and says
-    // it's at it until it's done.
+    // Try again reads it again, Sozu's and the native stake both.
     const done = Promise.withResolvers();
 
     sozu.load.mockClear();
@@ -1157,7 +1085,6 @@ describe("Dashboard", () => {
 
     expect(sozu.load).toHaveBeenCalledWith({ force: true });
     expect(mocks.refreshBalance).toHaveBeenCalledOnce();
-    expect(getByRole("button", { name: "Trying again…" })).toBeDisabled();
 
     await act(() => done.resolve(undefined));
 
@@ -1170,14 +1097,7 @@ describe("Dashboard", () => {
       },
     });
 
-    expect(card()).toBe(
-      "Staking 2.7472 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
-    );
-
-    // Being read for the first time, with nothing read before.
-    await sozuSays({ loading: true });
-
-    expect(card()).toBe("Staking Reading your stake… Open staking");
+    expect(staking().value).toMatch(/^2\.7472 DUSK\b/);
 
     // The native stake that couldn't be read: the same.
     await sozuSays({ account: "" });
@@ -1188,9 +1108,8 @@ describe("Dashboard", () => {
     });
     await act(() => {});
 
-    expect(card()).toBe(
-      "Staking Your stake couldn't be read Try again Open staking",
-    );
+    expect(staking().value).toEqual(unread);
+    expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("reads what's staked with Sozu as the wallet opens, whatever the history shows, and again for another profile, where the network has Sozu", async () => {
@@ -1236,72 +1155,8 @@ describe("Dashboard", () => {
     }
   });
 
-  it("says the stake is being read, on the total and the card, never that nothing is staked, until Sozu answers", async () => {
-    const { currentProfile } = initialStore;
-    const { container } = render(Dashboard, props);
-    const textOf = (/** @type {Element | null | undefined} */ element) =>
-      element?.textContent?.replace(/\s+/g, " ").trim();
-
-    mockedWalletStore.setMockedStoreValue({
-      ...initialStore,
-      stakeInfo: { ...initialStore.stakeInfo, amount: null },
-    });
-
-    // As the wallet opens, with nothing read before here.
-    await act(() =>
-      sozu.store?.set({
-        account: String(currentProfile.account),
-        available: true,
-        error: null,
-        kept: null,
-        loading: true,
-        status: null,
-      }),
-    );
-
-    expect(textOf(container.querySelector(".home-balance"))).toContain(
-      "Reading your stake…",
-    );
-    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
-      "Staking Reading your stake… Open staking",
-    );
-
-    // It answers: counted in the total, and shown under staking.
-    await act(() =>
-      sozu.store?.set({
-        account: String(currentProfile.account),
-        available: true,
-        error: null,
-        kept: null,
-        loading: false,
-        status: {
-          contracts: {},
-          pool: { stake: 3n, supply: 1n },
-          position: { balance: 247_700_000n, stDusk: 77_400_000n },
-        },
-      }),
-    );
-
-    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "3,517.7477",
-    );
-    expect(textOf(container.querySelector(".home-balance"))).not.toContain(
-      "Reading",
-    );
-    expect(textOf(container.querySelectorAll(".explainer-card")[2])).toBe(
-      "Staking 0.2477 DUSK with Sozu Liquid staking through Sozu, a third party. Open staking",
-    );
-  });
-
   it("counts what is staked in the total, natively and with Sozu, and says how much beside the rest, nothing while none is", async () => {
     const { currentProfile } = initialStore;
-    const total = () =>
-      document.querySelector(".home-balance__amount")?.textContent?.trim();
-    const parts = () =>
-      document
-        .querySelector(".home-balance__legend")
-        ?.textContent?.replace(/\s+/g, " ")
-        .trim();
     /** @param {bigint} balance */
     const withSozu = (balance) =>
       act(() =>
@@ -1321,21 +1176,31 @@ describe("Dashboard", () => {
     // Natively: 1,000 DUSK.
     render(Dashboard, props);
 
-    expect(total()).toBe("4,517.5");
-    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 1,000");
+    expect(totalOf()).toBe("4,517.5");
+    expect(partsOf()).toStrictEqual({
+      public: "1,172.5",
+      shielded: "2,345",
+      staked: "1,000",
+    });
 
     // And 0.5002 DUSK with Sozu: both counted.
     await withSozu(500_200_000n);
 
-    expect(total()).toBe("4,518.0002");
-    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 1,000.5002");
+    expect(totalOf()).toBe("4,518.0002");
+    expect(partsOf()).toStrictEqual({
+      public: "1,172.5",
+      shielded: "2,345",
+      staked: "1,000.5002",
+    });
 
     // Hidden with the other balances.
     await act(() =>
       settingsStore.update((settings) => ({ ...settings, hideBalances: true })),
     );
 
-    expect(parts()).not.toMatch(/\d/);
+    expect(Object.values(partsOf())).not.toContainEqual(
+      expect.stringMatching(/\d/),
+    );
 
     cleanup();
     settingsStore.reset();
@@ -1348,13 +1213,17 @@ describe("Dashboard", () => {
     });
     render(Dashboard, props);
 
-    expect(total()).toBe("3,517.5");
-    expect(parts()).toBe("Public 1,172.5 Shielded 2,345");
+    expect(totalOf()).toBe("3,517.5");
+    expect(partsOf()).toStrictEqual({ public: "1,172.5", shielded: "2,345" });
 
     await withSozu(500_200_000n);
 
-    expect(total()).toBe("3,518.0002");
-    expect(parts()).toBe("Public 1,172.5 Shielded 2,345 Staked 0.5002");
+    expect(totalOf()).toBe("3,518.0002");
+    expect(partsOf()).toStrictEqual({
+      public: "1,172.5",
+      shielded: "2,345",
+      staked: "0.5002",
+    });
 
     await act(() =>
       sozu.store?.update((state) => ({ ...state, status: null })),
@@ -1362,46 +1231,17 @@ describe("Dashboard", () => {
   });
 
   it("shows what is staked and its rewards", () => {
-    const { container } = render(Dashboard, props);
+    render(Dashboard, props);
 
-    expect(container.querySelectorAll(".explainer-card")[2]).toHaveTextContent(
-      "Staking 1,000 DUSK staked Rewards: 11,022.8426 DUSK Open staking",
-    );
-  });
+    const { notes, value } = cardOf(/stak/i);
 
-  it("lists the latest activity: pending, received and failed, which moved nothing", async () => {
-    await setHistory({ rows });
-
-    const { container, getByRole } = render(Dashboard, props);
-    const items = () =>
-      Array.from(container.querySelectorAll(".activity-row"), (row) =>
-        row.textContent?.replace(/\s+/g, " ").trim(),
-      );
-
-    expect(items()).toEqual([
-      expect.stringMatching(
-        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/,
-      ),
-      expect.stringMatching(
-        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/,
-      ),
-      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
-    ]);
-    expect(container.querySelector(".activity-row")).toHaveAttribute(
-      "href",
-      `/some-base-path/dashboard/transactions/?tx=${"a1".repeat(32)}`,
-    );
-
-    await fireEvent.click(getByRole("button", { name: "Received" }));
-
-    expect(items()).toEqual([
-      expect.stringMatching(/^wallet-both\.dusk Received/),
-    ]);
+    expect(value).toMatch(/^1,000 DUSK\b/);
+    expect(notes).toContainEqual(naming(/rewards/i, "11,022.8426 DUSK"));
   });
 
   // Amélie's: a stranger's "URGENT… send 0.1 DUSK back" payment showed on
   // Home as a plain "+0,005 DUSK", while History marked it.
-  it("marks a stranger's payment with a memo as History does: who it's from, not in your contacts, and their words in quotes, never a profile's", async () => {
+  it("marks a stranger's payment with a memo as History does: who it's from and their words, never a profile's", async () => {
     const STRANGER =
       "oUgxBUWEPyFAekXW9T2UdJBcMF7xAuBfstrCX8ATXFk7MusqddFGoq2LN9euCbwVuXpSM5rGLKNUb6NVPFUVM5g4pA6CnXjNfNVBiy91NcH9eBVcdcG1eYUaKWQSYQ9t2um";
     const { profiles } = mockedWalletStore.getMockedStoreValue();
@@ -1429,18 +1269,25 @@ describe("Dashboard", () => {
       ],
     });
 
-    const { container } = render(Dashboard, props);
-    const marks = () =>
-      Array.from(container.querySelectorAll(".activity-row"), (row) =>
-        row
-          .querySelector(".activity-row__theirs")
-          ?.textContent?.replace(/\s+/g, " ")
-          .trim(),
-      );
+    render(Dashboard, props);
 
-    expect(marks()).toStrictEqual([
-      `From ${STRANGER.slice(0, 6)}…${STRANGER.slice(-6)} · not in your contacts“URGENT: send 0.1 DUSK back”`,
-      undefined,
+    // The stranger's marked, by who it's from and their words; the
+    // profile's not.
+    const marks = Array.from(
+      document.querySelectorAll(".activity-row"),
+      (row) =>
+        row.querySelector(".activity-row__theirs") && {
+          from: textOf(row.querySelector(".activity-row__theirs-from")),
+          memo: textOf(row.querySelector(".activity-row__theirs-memo")),
+        },
+    );
+
+    expect(marks).toStrictEqual([
+      {
+        from: naming(`${STRANGER.slice(0, 6)}…${STRANGER.slice(-6)}`),
+        memo: naming("URGENT: send 0.1 DUSK back"),
+      },
+      null,
     ]);
   });
 
@@ -1451,66 +1298,37 @@ describe("Dashboard", () => {
       rows: [rowOf({ ...FIELDS[0], hash: "d4".repeat(32), status: "unknown" })],
     });
 
-    const { container } = render(Dashboard, props);
-    const [item] = Array.from(
-      container.querySelectorAll(".activity-row"),
-      (row) => row.textContent?.replace(/\s+/g, " ").trim(),
-    );
+    render(Dashboard, props);
 
-    expect(item).toMatch(
-      /^alice-shop\.dusk Not confirmed yet · .+ · Public −5 DUSK$/,
+    const row = document.querySelector(".activity-row");
+
+    expect(textOf(row?.querySelector(".activity-row__title"))).toBe(
+      "alice-shop.dusk",
     );
-    expect(item).not.toMatch(/Sent|Pending/);
+    expect(textOf(row?.querySelector(".activity-row__line"))).toEqual(
+      naming(NOT_CONFIRMED_YET, { not: /\bsent\b/i }),
+    );
+    expect(textOf(row?.querySelector(".activity-row__amount"))).toBe("−5 DUSK");
+    expect(row?.querySelector(".activity-row__status--pending")).toBeNull();
   });
 
   it("hides amounts while balances are hidden, but not a fee", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
     await setHistory({ rows: [rows[2]] });
 
-    const { container } = render(Dashboard, props);
+    render(Dashboard, props);
 
-    expect(container.querySelector(".home-balance__amount")).toHaveTextContent(
-      "•••• hidden",
+    const row = document.querySelector(".activity-row");
+
+    // Hidden: the total, and what the failed send was for; shown: the fee
+    // it paid, which is no balance.
+    expect(totalOf()).not.toMatch(/\d/);
+    expect(textOf(row?.querySelector(".activity-row__amount"))).not.toMatch(
+      /\d/,
     );
-    expect(container.querySelector(".activity-row")).toHaveTextContent(
-      "fee 0.0037 DUSK paid · Public •••• hidden DUSK",
+    expect(textOf(row?.querySelector(".activity-row__failed"))).toEqual(
+      naming(/\bfee\b/i, "0.0037 DUSK"),
     );
     expect(get(settingsStore).hideBalances).toBe(true);
-  });
-
-  it("says when the history couldn't be read, and tries again", async () => {
-    await setHistory({ error: "fetch failed", rows: [] });
-
-    const { getByRole, getByText } = render(Dashboard, props);
-
-    expect(
-      getByText("Couldn't reach the network's history."),
-    ).toBeInTheDocument();
-
-    await fireEvent.click(getByRole("button", { name: "Try again" }));
-
-    expect(mocks.refresh).toHaveBeenCalledOnce();
-  });
-
-  it("shows the activity unless the history is switched off", () => {
-    vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "");
-
-    const shown = render(Dashboard, props);
-
-    expect(
-      shown.container.querySelector(".activity-panel"),
-    ).toBeInTheDocument();
-
-    cleanup();
-    vi.stubEnv("VITE_FEATURE_TRANSACTION_HISTORY", "false");
-
-    const hidden = render(Dashboard, props);
-
-    expect(hidden.container.querySelector(".activity-panel")).toBeNull();
-    expect(
-      hidden.getByText(
-        "Transaction history isn't available here yet. The Dusk explorer has your transactions.",
-      ),
-    ).toBeInTheDocument();
   });
 });

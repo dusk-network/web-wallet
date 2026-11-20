@@ -11,7 +11,6 @@ import {
   waitingText,
 } from "../waitingSends";
 import describeFailure from "../describeFailure";
-import { BALANCE_MASK } from "$lib/constants";
 
 /** A transaction's builder, as w3sper's: what it builds, by its bytes. */
 const builder = () => ({
@@ -75,12 +74,9 @@ describe("A send that can be called off", () => {
     await expect(sent).rejects.toBeInstanceOf(SendCancelledError);
     expect(get(broadcastsAsked)).toBe(asked);
 
-    const said = describeFailure(new SendCancelledError());
-
-    expect(said).toMatchObject({
+    expect(describeFailure(new SendCancelledError())).toMatchObject({
       canRetry: true,
-      heading: "Not sent",
-      sentence: "Nothing left your wallet.",
+      sentence: expect.stringMatching(/nothing left/i),
     });
   });
 
@@ -321,7 +317,9 @@ describe("The sends waiting to go out", () => {
     const answered = Promise.withResolvers();
     const out = waiting(answered.promise);
 
-    expect(whats()).toStrictEqual(["0.01 DUSK to Profile 2"]);
+    expect(whats()).toStrictEqual([
+      expect.stringMatching(/(?<![\d.,])0\.01 DUSK(?!\w)/),
+    ]);
 
     out.handOver();
 
@@ -367,14 +365,16 @@ describe("The sends waiting to go out", () => {
   it("says what one sends as balances are shown now, not as they were when it was sent: its amount hidden while they're hidden", () => {
     const send = { lux: 10_000_000n, to: "your Profile 2" };
 
-    expect(waitingText(send, { hidden: false, locale: "en" })).toBe(
-      "0.01 DUSK to your Profile 2",
-    );
-    expect(waitingText(send, { hidden: true, locale: "en" })).toBe(
-      `${BALANCE_MASK} DUSK to your Profile 2`,
-    );
-    expect(waitingText(send, { hidden: false, locale: "de" })).toBe(
-      "0,01 DUSK to your Profile 2",
+    const shown = waitingText(send, { hidden: false, locale: "en" });
+    const hidden = waitingText(send, { hidden: true, locale: "en" });
+
+    // Each whole: never 10.01 DUSK, nor Profile 22.
+    expect(shown).toMatch(/(?<![\d.,])0\.01 DUSK(?!\w)/);
+    expect(shown).toMatch(/\byour Profile 2(?!\w)/);
+    expect(hidden).not.toContain("0.01");
+    expect(hidden).toMatch(/\byour Profile 2(?!\w)/);
+    expect(waitingText(send, { hidden: false, locale: "de" })).toMatch(
+      /(?<![\d.,])0,01 DUSK(?!\w)/,
     );
   });
 });

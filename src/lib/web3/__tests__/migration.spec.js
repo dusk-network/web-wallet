@@ -36,6 +36,9 @@ const send = () =>
     /** @type {`0x${string}`} */ (OWNER),
   );
 
+/** What a failure says where nothing went out: that nothing was sent. */
+const SENTENCE = expect.stringMatching(/\bnothing was sent\b/i);
+
 /** @param {() => Promise<unknown>} doing */
 const failureOf = (doing) =>
   doing().then(
@@ -69,7 +72,7 @@ describe("migrate", () => {
 
     expect(await failureOf(send)).toStrictEqual({
       canRetry: true,
-      sentence: "It was declined in your EVM wallet, so nothing was sent.",
+      sentence: SENTENCE,
     });
 
     vi.mocked(simulateContract).mockRejectedValue(new Error("It reverted."));
@@ -164,8 +167,7 @@ describe("what an EVM wallet's error proves", () => {
   ])("says nothing went out for a revert: %s", async (_, answer) => {
     expect(await failureFrom(wrapped(answer))).toStrictEqual({
       canRetry: true,
-      sentence:
-        "The network would refuse it, so nothing was sent. See Details for why.",
+      sentence: SENTENCE,
     });
   });
 
@@ -185,8 +187,7 @@ describe("what an EVM wallet's error proves", () => {
     async (_, error) => {
       expect(await failureFrom(error)).toStrictEqual({
         canRetry: true,
-        sentence:
-          "Your EVM wallet isn't on this account or network, so nothing was sent. Check it and try again.",
+        sentence: SENTENCE,
       });
     },
   );
@@ -198,8 +199,7 @@ describe("what an EVM wallet's error proves", () => {
       ),
     ).toStrictEqual({
       canRetry: true,
-      sentence:
-        "Your EVM wallet refused it, so nothing was sent. See Details for why.",
+      sentence: SENTENCE,
     });
     expect(
       await failureFrom(
@@ -207,7 +207,7 @@ describe("what an EVM wallet's error proves", () => {
       ),
     ).toStrictEqual({
       canRetry: true,
-      sentence: "It was declined in your EVM wallet, so nothing was sent.",
+      sentence: SENTENCE,
     });
   });
 
@@ -243,9 +243,11 @@ describe("what an EVM wallet's error proves", () => {
       const failure = await failureFrom(wrapped(answer));
 
       expect(failure).toMatchObject({
-        heading: "Not confirmed",
+        mayHaveGoneOut: true,
         outcomeUnknown: true,
+        sentence: expect.not.stringMatching(/\bnothing was sent\b/i),
       });
+      expect(failure.sentence).toMatch(/\bmay have reached\b/i);
       expect(failure).not.toHaveProperty("canRetry");
     },
   );

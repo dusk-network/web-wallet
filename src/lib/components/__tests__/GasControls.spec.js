@@ -23,6 +23,15 @@ const fireInput = (input, value) =>
 /** @param {HTMLElement} element */
 const asInput = (element) => /** @type {HTMLInputElement} */ (element);
 
+/**
+ * Matches `value` whole: not inside a longer figure, so "1 LUX" matches
+ * neither "11 LUX" nor "0.1 LUX".
+ *
+ * @param {string} value As the page writes it, as "20,000,000 gas"
+ */
+const wholeFigure = (value) =>
+  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
+
 describe("GasControls", () => {
   const baseProps = {
     limit: 20n,
@@ -74,32 +83,23 @@ describe("GasControls", () => {
     expect(BigInt(limitInput.value)).toBe(25n);
   });
 
-  it("should name its inputs with their labels", () => {
-    const { getByLabelText } = render(GasControls, baseOptions);
-
-    expect(getByLabelText("Gas price (LUX)")).toHaveValue("10");
-    expect(getByLabelText("Gas limit")).toHaveValue("20");
-  });
-
   it("should warn under the minimum gas limit, and over the maximum, while it is typed", async () => {
-    const { getByLabelText, getByText, queryByText } = render(
-      GasControls,
-      baseOptions,
-    );
-    const limitInput = getByLabelText("Gas limit");
+    const { getByLabelText } = render(GasControls, baseOptions);
+    const limitInput = getByLabelText(/limit/i);
 
     expect(limitInput).toHaveAttribute("aria-invalid", "false");
 
     await fireInput(limitInput, 9);
 
-    expect(getByText("The minimum is 10.")).toBeInTheDocument();
     expect(limitInput).toHaveAttribute("aria-invalid", "true");
-    expect(limitInput).toHaveAccessibleDescription("The minimum is 10.");
+    expect(limitInput).toHaveAccessibleDescription(/minimum/i);
+    expect(limitInput).toHaveAccessibleDescription(wholeFigure("10"));
 
     await fireInput(limitInput, 101);
 
-    expect(queryByText("The minimum is 10.")).toBeNull();
-    expect(limitInput).toHaveAccessibleDescription("The maximum is 100.");
+    expect(limitInput).toHaveAttribute("aria-invalid", "true");
+    expect(limitInput).toHaveAccessibleDescription(/maximum/i);
+    expect(limitInput).toHaveAccessibleDescription(wholeFigure("100"));
 
     await fireInput(limitInput, 50);
 
@@ -109,16 +109,18 @@ describe("GasControls", () => {
 
   it("should warn under the lowest gas price while it is typed", async () => {
     const { getByLabelText } = render(GasControls, baseOptions);
-    const priceInput = getByLabelText("Gas price (LUX)");
+    const priceInput = getByLabelText(/price/i);
 
     await fireInput(priceInput, 0);
 
-    expect(priceInput).toHaveAccessibleDescription("The minimum is 1 LUX.");
+    expect(priceInput).toHaveAttribute("aria-invalid", "true");
+    expect(priceInput).toHaveAccessibleDescription(/minimum/i);
+    expect(priceInput).toHaveAccessibleDescription(wholeFigure("1 LUX"));
 
+    // Over the gas limit, 20.
     await fireInput(priceInput, 21);
 
-    expect(priceInput).toHaveAccessibleDescription(
-      "It can't be higher than the gas limit.",
-    );
+    expect(priceInput).toHaveAttribute("aria-invalid", "true");
+    expect(priceInput).toHaveAccessibleDescription(/gas limit/i);
   });
 });

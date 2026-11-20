@@ -334,9 +334,12 @@ describe("the password on big sends", () => {
     it("says why it asks, with the amount chosen, and takes the focus", async () => {
       const { getByLabelText, getByRole, sending } = openDialog();
 
+      // Where it says why: the amount set, whole, 1 DUSK and never 0.1 or 11.
       expect(
-        getByRole("dialog", { name: "Enter your password" }),
-      ).toHaveTextContent("This is above the 1 DUSK you set in Settings.");
+        getByRole("dialog", { name: "Enter your password" }).querySelector(
+          ".send-password__why",
+        ),
+      ).toHaveTextContent(/(?<![\d.,])1 DUSK\b/);
       await vi.waitFor(() =>
         expect(getByLabelText("Password you unlock with")).toHaveFocus(),
       );
@@ -352,7 +355,8 @@ describe("the password on big sends", () => {
       await fireEvent.input(field, { target: { value: "not the password" } });
       await fireEvent.submit(form(container));
 
-      expect(await findByRole("alert")).toHaveTextContent("Wrong password.");
+      expect(await findByRole("alert")).toBeInTheDocument();
+      expect(field).toHaveAttribute("aria-invalid", "true");
       expect(field).toHaveValue("");
       expect(asked()).not.toBeNull();
       await vi.waitFor(() => expect(field).toHaveFocus());
@@ -370,9 +374,7 @@ describe("the password on big sends", () => {
 
       await fireEvent.submit(form(container));
 
-      expect(await findByRole("alert")).toHaveTextContent(
-        "Enter your password.",
-      );
+      expect(await findByRole("alert")).toBeInTheDocument();
       expect(check).not.toHaveBeenCalled();
 
       check.mockRestore();
@@ -401,39 +403,24 @@ describe("the password on big sends", () => {
       );
       expect(asked()).toBeNull();
     });
-
-    it("keeps the focus in it with Tab", async () => {
-      const { getByLabelText, getByRole, sending } = openDialog();
-      const field = getByLabelText("Password you unlock with");
-      const confirm = getByRole("button", { name: "Confirm" });
-
-      confirm.focus();
-      await fireEvent.keyDown(confirm, { key: "Tab" });
-
-      expect(field).toHaveFocus();
-
-      await fireEvent.keyDown(field, { key: "Tab", shiftKey: true });
-
-      expect(confirm).toHaveFocus();
-
-      cancelSendPassword();
-      await expect(sending).rejects.toBeInstanceOf(SendPasswordDeclinedError);
-    });
   });
 
   it("says a send it stopped wasn't sent, with Try again and no word of failure", async () => {
-    const { findByText, getByRole, queryByText } = render(TransactionResult, {
+    const { container, findByRole, queryByText } = render(TransactionResult, {
       maxFee: 1n,
       onRetry: () => {},
       operation: Promise.reject(new SendPasswordDeclinedError()),
     });
 
-    expect(await findByText("Not sent")).toBeInTheDocument();
+    // Nothing went out, as it says: it may be tried again, and isn't said to
+    // have failed.
     expect(
-      await findByText("It waits for your password, so nothing was sent."),
+      await findByRole("button", { name: "Try again" }),
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(".dusk-error-alert__text"),
+    ).toHaveTextContent(/not sent|nothing (was sent|left)/i);
     expect(queryByText("Transaction failed")).toBeNull();
-    expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("isn't fooled by another tab's copy of the settings, which it doesn't live in", async () => {

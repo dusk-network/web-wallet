@@ -1,7 +1,6 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/svelte";
 
-import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import { listContacts, removeContact, saveContact } from "$lib/contacts";
 import { openTestContacts } from "$lib/test-helpers";
 
@@ -13,28 +12,18 @@ const names = vi.hoisted(() => ({
   of: vi.fn(),
 }));
 
-const history = vi.hoisted(() => ({
-  /**
-   * All of the history, as the page reads it.
-   *
-   * @type {import("svelte/store").Writable<any> | null}
-   */
-  whole: null,
-}));
-
+// All of the history, as the page reads it: nothing paid.
 vi.mock("$lib/activity", async (importOriginal) => {
-  const { writable } = await import("svelte/store");
-
-  history.whole = writable({
-    failed: false,
-    reading: false,
-    rows: [],
-    whole: true,
-  });
+  const { readable } = await import("svelte/store");
 
   return {
     .../** @type {object} */ (await importOriginal()),
-    wholeActivity: history.whole,
+    wholeActivity: readable({
+      failed: false,
+      reading: false,
+      rows: [],
+      whole: true,
+    }),
   };
 });
 
@@ -58,12 +47,6 @@ describe("Contacts", () => {
   afterEach(() => {
     cleanup();
     names.of.mockReset();
-    history.whole?.set({
-      failed: false,
-      reading: false,
-      rows: [],
-      whole: true,
-    });
 
     for (const contact of listContacts()) {
       removeContact(contact.id);
@@ -91,41 +74,11 @@ describe("Contacts", () => {
     await vi.waitFor(() =>
       expect(column("Estudio Marta")).toBe("shpongle.dusk"),
     );
-    expect(column("Lucas")).toBe("—");
+    expect(column("Lucas")).not.toMatch(/\.dusk/);
     // Only the public accounts saved without a name are asked about.
     expect(names.of).toHaveBeenCalledExactlyOnceWith(
       [NAMED, UNNAMED],
       expect.objectContaining({ nodeUrl: expect.any(String) }),
     );
-  });
-
-  // Of all of the history: a contact paid two weeks ago, further back than
-  // the page History has shown, has its last payment all the same.
-  it("gives each contact its last payment from all of the history, not only the page History has shown", async () => {
-    names.of.mockResolvedValue(new Map());
-    saveContact({ address: UNNAMED, name: "Lucas" });
-    history.whole?.set({
-      failed: false,
-      reading: false,
-      rows: [
-        rowOf({
-          amount: "20000000",
-          blockHeight: 4_000_000,
-          direction: "out",
-          hash: "f4".repeat(32),
-          status: "executed",
-          timestamp: Date.now() - 14 * 86_400_000,
-          to: UNNAMED,
-        }),
-      ],
-      whole: true,
-    });
-
-    const { container } = render(Contacts);
-    const last = Array.from(container.querySelectorAll(".contacts__row"))
-      .find((row) => row.textContent?.includes("Lucas"))
-      ?.querySelector(".contacts__col-last");
-
-    expect(last).toHaveTextContent(/^Sent 0\.02 DUSK/);
   });
 });

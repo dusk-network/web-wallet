@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { timeLabel } from "$lib/activity/present";
-import { BALANCE_MASK } from "$lib/constants";
 
-import { readSentMeanwhile, sayMeanwhile } from "../sentMeanwhile";
+import {
+  CHECKING_TEXT,
+  readSentMeanwhile,
+  sayMeanwhile,
+} from "../sentMeanwhile";
 
 const ACCOUNT =
   "26dtBf5Lj7C6GccJMeU17JrSEhAarDB6Fvs3MBkCeKVrUXnzXR71MBBvZqih3SB5cwv8t76TWTi7AUMUWL8sBFEGkLabyF2VmALNuf1YYAiaiLitUcKdT4Hwg64pSzxSS93z";
@@ -18,6 +21,30 @@ const hexOf = (text) =>
   Array.from(new TextEncoder().encode(text), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
+
+/**
+ * A sentence that names each of `values`, in any order, whatever its words:
+ * each whole, so `0.001 DUSK` is never found in `10.001 DUSK`.
+ *
+ * @param {...string} values
+ */
+const naming = (...values) =>
+  expect.stringMatching(
+    new RegExp(
+      `^${values
+        .map(
+          (value) =>
+            `(?=.*(?<![\\w.,])${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\w))`,
+        )
+        .join("")}`,
+    ),
+  );
+
+/** What's said where it looks like the same payment. */
+const SAME = expect.stringMatching(/same payment/i);
+
+/** What's said of what it sent, where that isn't known. */
+const SOMETHING_ELSE = expect.stringMatching(/something else/i);
 
 /** When the blocks below were made: 10:02 and 10:05. */
 const AT_1002 = Date.UTC(2026, 10, 17, 10, 2);
@@ -215,12 +242,13 @@ describe("What an account sent while a send waited", () => {
         sends: [{ hash: hashOf(2), lux: 0n, memo: "", nonce: 200n, to: "" }],
         whole: true,
       });
+      // Something else, never the same payment.
       expect(sayMeanwhile(read.sends, payment, shown)).toStrictEqual({
         checking: false,
         items: [],
         memo: "",
         same: "",
-        title: "Your account sent something else while this waited.",
+        title: SOMETHING_ELSE,
       });
     }
   });
@@ -262,8 +290,8 @@ describe("What an account sent while a send waited", () => {
       checking: false,
       items: [],
       memo: "",
-      same: "That looks like this same payment.",
-      title: `Your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
+      same: SAME,
+      title: naming("0.001 DUSK", "Profile 2", timeLabel(AT_1002, "en")),
     });
 
     // Another memo: not the same, its memo said.
@@ -274,15 +302,14 @@ describe("What an account sent while a send waited", () => {
       items: [],
       memo: "kopi",
       same: "",
-      title: `Your account sent 0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
+      title: naming("0.001 DUSK", "Profile 2", timeLabel(AT_1002, "en")),
     });
 
     // Hidden balances: no amount.
-    expect(
-      sayMeanwhile([sent], payment, { ...shown, hidden: true }).title,
-    ).toBe(
-      `Your account sent ${BALANCE_MASK} DUSK to Profile 2 at ${timeLabel(AT_1002, "en")} while this waited.`,
-    );
+    const { title } = sayMeanwhile([sent], payment, { ...shown, hidden: true });
+
+    expect(title).not.toContain("0.001");
+    expect(title).toEqual(naming("Profile 2", timeLabel(AT_1002, "en")));
   });
 
   it("lists each where it sent more, and says one is the same payment where it is", () => {
@@ -293,26 +320,32 @@ describe("What an account sent while a send waited", () => {
       items: [
         {
           memo: "night shift 9",
-          text: `0.001 DUSK to Profile 2 at ${timeLabel(AT_1002, "en")}`,
+          text: naming("0.001 DUSK", "Profile 2", timeLabel(AT_1002, "en")),
         },
         {
           memo: "",
-          text: `0.000000007 DUSK to Profile 2 at ${timeLabel(AT_1005, "en")}`,
+          text: naming(
+            "0.000000007 DUSK",
+            "Profile 2",
+            timeLabel(AT_1005, "en"),
+          ),
         },
       ],
       memo: "",
-      same: "One of them looks like this same payment.",
-      title: "Your account sent 2 payments while this waited.",
+      same: SAME,
+      // How many.
+      title: expect.stringMatching(/(?<![\d.,])2(?![\d.,])/),
     });
   });
 
   it("says only that it sent something else until it's found, or where it called a contract", () => {
+    // Something else, with no amount, nor whom.
     const generic = {
       checking: false,
       items: [],
       memo: "",
       same: "",
-      title: "Your account sent something else while this waited.",
+      title: expect.stringMatching(/^(?!.*(DUSK|Profile 2)).*something else/i),
     };
 
     expect(sayMeanwhile(null, payment, shown)).toStrictEqual(generic);
@@ -338,7 +371,7 @@ describe("What an account sent while a send waited", () => {
       items: [],
       memo: "",
       same: "",
-      title: "Checking what your account sent…",
+      title: CHECKING_TEXT,
     });
   });
 });

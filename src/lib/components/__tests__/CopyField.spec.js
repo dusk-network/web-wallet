@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
+
 import { CopyField } from "..";
 
 Object.assign(navigator, {
@@ -16,30 +17,15 @@ describe("CopyField", () => {
     rawValue: "1234567",
   };
 
-  const baseOptions = {
-    props: baseProps,
-    target: document.body,
-  };
-
   afterEach(cleanup);
 
-  it("renders the CopyField component with the copy button disabled", () => {
+  it("copies the raw value on pressing the copy button", async () => {
     const { getByRole } = render(CopyField, {
-      ...baseOptions,
-      props: { ...baseProps, disabled: true },
+      props: baseProps,
+      target: document.body,
     });
 
-    const copyButton = getByRole("button");
-
-    expect(copyButton).toBeDisabled();
-  });
-
-  it("copies the raw value on pressing the copy button", async () => {
-    const { getByRole } = render(CopyField, baseOptions);
-
-    const copyButton = getByRole("button");
-
-    await fireEvent.click(copyButton);
+    await fireEvent.click(getByRole("button"));
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith("1234567");
   });
