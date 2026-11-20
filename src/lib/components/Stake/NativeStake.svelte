@@ -224,7 +224,7 @@
   $: typedAmount = amount ?? 0n;
   $: isTypedOff = Boolean(check.error);
   $: minimumText = formatDusk(minimumStake, language);
-  $: liquidText = `Under ${minimumText} DUSK? Stake with Sozu (liquid staking, third party)`;
+  $: liquidText = `Under ${minimumText} DUSK? Stake with Sozu (third party)`;
 </script>
 
 {#if sent}
@@ -304,11 +304,14 @@
         /> DUSK (public)
       </p>
       {#if isMaxAmount && !check.error}
-        <p class="native-stake__hint">
+        <!-- The split, for whoever asks: on hover. -->
+        <p
+          class="native-stake__hint"
+          title={`Up to ${formatFee(maxGasFee, language, { max: true })} DUSK for this fee, ${formatFee(unstakeFee, language, { max: true })} DUSK to unstake later`}
+        >
           Max leaves {formatFee(maxGasFee + unstakeFee, language, {
             max: true,
-          })} DUSK: up to {formatFee(maxGasFee, language, { max: true })} for this
-          fee and {formatFee(unstakeFee, language, { max: true })} to unstake later.
+          })} DUSK for this fee and unstaking.
         </p>
       {/if}
       <div id="{id}-error">
@@ -337,10 +340,7 @@
           </div>
         {:else if isBelowMinimum && !amountText}
           <div class="native-stake__note">
-            <p>
-              Not enough public balance for the {minimumText} DUSK minimum, this fee
-              and the fee to unstake later.
-            </p>
+            <p>Not enough for the {minimumText} DUSK minimum and fees.</p>
             {#if liquidHref}
               <a class="native-stake__link text-link" href={resolve(liquidHref)}
                 >{liquidText}</a
@@ -385,10 +385,9 @@
       <li>
         <Icon path={mdiAlertCircleOutline} />
         <div>
-          <p class="native-stake__fact">If your node misses its turn</p>
-          <p>
-            Part of your stake gets locked; unstaking returns it. If the node
-            breaks the rules, part of the stake can be burned (lost).
+          <p class="native-stake__fact">
+            Node misses a turn: part locked, unstaking returns it. Breaks the
+            rules: part can be burned (lost).
           </p>
         </div>
       </li>

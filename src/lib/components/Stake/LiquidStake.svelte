@@ -5,7 +5,7 @@
   import { onDestroy, onMount, tick } from "svelte";
   import { get } from "svelte/store";
   import { page } from "$app/stores";
-  import { mdiPercentOutline, mdiWaterOutline } from "@mdi/js";
+  import { mdiPercentOutline } from "@mdi/js";
 
   import {
     POSITION_WORDS,
@@ -917,11 +917,14 @@
           {/if}
         </p>
         {#if isStake && isMaxAmount && !check.error}
-          <p class="liquid-stake__hint">
+          <!-- The split, for whoever asks: on hover. -->
+          <p
+            class="liquid-stake__hint"
+            title={`Up to ${formatFee(maxGasFee, language, { max: true })} DUSK for this fee, ${formatFee(unstakeFee, language, { max: true })} DUSK to unstake later`}
+          >
             Max leaves {formatFee(maxGasFee + unstakeFee, language, {
               max: true,
-            })} DUSK: up to {formatFee(maxGasFee, language, { max: true })} for this
-            fee and {formatFee(unstakeFee, language, { max: true })} to unstake later.
+            })} DUSK for this fee and unstaking.
           </p>
         {/if}
         <div id="{id}-check">
@@ -955,64 +958,67 @@
                 You get about <BalanceValue
                   hidden={isAmountMasked}
                   value={formatDusk(estimate, language)}
-                /> stDUSK, worth about <BalanceValue
+                /> stDUSK (≈ <BalanceValue
                   hidden={isAmountMasked}
                   value={formatDusk(stake.worth, language)}
-                /> DUSK now. Its DUSK value follows Sozu's pool, its rewards and its
-                fees.
+                /> DUSK now).
               </p>
               {#if yearEarned !== null && yearEarned > 0n}
                 <p>
                   About <BalanceValue
                     hidden={isAmountMasked}
                     value={formatDusk(yearEarned, language)}
-                  /> DUSK in rewards a year at today's rate, after Sozu's share and
-                  the deposit fee.
+                  /> DUSK in rewards a year at today's rate, after fees.
                 </p>
               {/if}
-            </div>
-          {:else if !isStake}
-            <div class="liquid-stake__estimate">
-              <p>Back in the same transaction: no Sozu fee, no waiting.</p>
             </div>
           {/if}
         </div>
       </div>
     </div>
 
-    <ul class="liquid-stake__facts">
-      <li>
-        <Icon path={mdiWaterOutline} />
-        <div>
-          <p class="liquid-stake__fact">Any amount, no node needed</p>
-          <p>You get stDUSK, a token for your share of Sozu's pool.</p>
-        </div>
-      </li>
-      {#if yearly !== null && working}
-        <li>
-          <Icon path={mdiPercentOutline} />
-          <div>
-            <p class="liquid-stake__fact">
-              About {ratePercent(yearly, language)} a year. Not promised.
-            </p>
-            <p>{working}</p>
-          </div>
-        </li>
-      {/if}
-      {#if fees}
-        <li>
-          <Icon path={mdiPercentOutline} />
-          <div>
-            <p>
-              Sozu's fees: {feePercent(fees.deposit, language)} of deposits · {feePercent(
-                fees.reward,
-                language,
-              )} of rewards · no unstake fee
-            </p>
-          </div>
-        </li>
-      {/if}
-    </ul>
+    <!-- What a stake gets: the unstake tab is about getting it back, which
+      its summary says. -->
+    {#if isStake}
+      <ul class="liquid-stake__facts">
+        {#if yearly !== null && working}
+          <li>
+            <Icon path={mdiPercentOutline} />
+            <div>
+              <p class="liquid-stake__fact">
+                About {ratePercent(yearly, language)} a year{fees
+                  ? ` after Sozu's ${feePercent(fees.reward, language)}`
+                  : ""}. Not promised.
+              </p>
+            </div>
+          </li>
+        {/if}
+        {#if fees}
+          <li>
+            <Icon path={mdiPercentOutline} />
+            <div>
+              <p>
+                Fees: {feePercent(fees.deposit, language)} of deposits · {feePercent(
+                  fees.reward,
+                  language,
+                )} of rewards · no unstake fee
+              </p>
+            </div>
+          </li>
+        {/if}
+      </ul>
+      <!-- What stDUSK is and how the rate is worked out: reference, closed. -->
+      <details class="liquid-stake__details">
+        <summary>Details</summary>
+        <p>
+          stDUSK is Sozu's token for your share. Its DUSK value follows Sozu's
+          pool, its rewards and its fees.
+        </p>
+        {#if working}
+          <p>{working}</p>
+        {/if}
+      </details>
+    {/if}
 
     <svelte:fragment slot="summary">
       {#if termsChanged}
@@ -1049,9 +1055,7 @@
             <dt>Deposit fee, not refunded</dt>
             <dd class:stake-flow__muted={isTypedOff && depositFee !== null}>
               {#if depositRate && depositFee !== null}
-                {feePercent(depositRate, language)} · <BalanceValue
-                  value={formatDuskExact(depositFee, language)}
-                /> DUSK
+                <BalanceValue value={formatDuskExact(depositFee, language)} /> DUSK
               {:else}
                 Taken from the deposit
               {/if}
@@ -1059,7 +1063,7 @@
           </div>
           <div>
             <dt>Getting it back</dt>
-            <dd>Unstake any time: no Sozu fee, no waiting</dd>
+            <dd>Any time, no Sozu fee, no waiting</dd>
           </div>
         {:else}
           <div>
@@ -1411,5 +1415,20 @@
   .liquid-stake__fact {
     margin-bottom: 0.25rem;
     font-weight: 500;
+  }
+
+  /* What the figures are made of, for whoever asks: closed. */
+  .liquid-stake__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    color: var(--calm-muted);
+    font-size: 0.875rem;
+
+    & summary {
+      padding: 0.5rem 0;
+      cursor: pointer;
+      font-weight: 500;
+    }
   }
 </style>

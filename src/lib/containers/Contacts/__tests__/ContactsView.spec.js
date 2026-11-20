@@ -107,9 +107,7 @@ describe("ContactsView", () => {
         ),
     );
 
-    expect(
-      getByText("Saved only in this wallet, on this device."),
-    ).toBeInTheDocument();
+    expect(getByText("Kept in this browser only.")).toBeInTheDocument();
     expect(cells).toEqual([
       [
         "A Alice's shop Sent 40 DUSK · Today",
@@ -411,7 +409,7 @@ describe("ContactsView", () => {
     // Its payments, from the history, by what happened.
     expect(
       container.querySelector(".contact-detail__activity .activity-row"),
-    ).toHaveTextContent(/^Sent .* Public/);
+    ).toHaveTextContent(/^Sent /);
   });
 
   it("notes nothing when the network has no names to check a contact's against", async () => {

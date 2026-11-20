@@ -468,10 +468,11 @@ describe("Bridge", () => {
 
     // Your public account in full, as on every review.
     expect(rows[0]).toContain(PAID);
-    // The contract it calls, as the network's file names it, in the rows:
-    // nothing folded away.
+    // The named contract it calls, under Details, closed.
     expect(rows.at(-1)).toBe("Contract DuskEVM bridge 2257e5…a1b31d");
-    expect(container.querySelector(".bridge-review details")).toBeNull();
+    expect(
+      container.querySelector(".bridge-review__details:not([open]) summary"),
+    ).toHaveTextContent("Details");
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {

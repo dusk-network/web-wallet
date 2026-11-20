@@ -287,11 +287,6 @@
       <p class="request__error" role="alert">{made.problems.to}</p>
     {/if}
     {#if request}
-      <p class="request__note">
-        The QR holds what you ask for.{request.link === request.dusk
-          ? ""
-          : " The link opens the web wallet's Send, filled in."}
-      </p>
       <!-- What it asks in a line, then its link: copied, or shared, beside
         each other. -->
       <div class="request__actions">
@@ -425,12 +420,6 @@
   .request__unit {
     color: var(--calm-muted);
     font-size: 0.875rem;
-  }
-
-  .request__note {
-    color: var(--calm-muted);
-    font-size: 0.84375rem;
-    line-height: 1.45;
   }
 
   .request__error {

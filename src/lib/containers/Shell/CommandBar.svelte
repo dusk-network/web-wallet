@@ -413,7 +413,7 @@
         active = 0;
       }}
       on:keydown={handleKeydown}
-      placeholder="Names, addresses, amounts"
+      placeholder="Search"
       role="combobox"
       spellcheck="false"
       type="text"

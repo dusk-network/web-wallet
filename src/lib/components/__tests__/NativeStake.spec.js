@@ -153,9 +153,7 @@ describe("checkAmount", () => {
       isMinimum: true,
       ok: false,
     });
-    expect(check("1483").error).toBe(
-      "0.05 DUSK short in the public balance, with the fee.",
-    );
+    expect(check("1483").error).toBe("0.05 DUSK short, fee included.");
     expect(check("1482.95")).toStrictEqual({
       error: "",
       isMinimum: false,
@@ -167,10 +165,10 @@ describe("checkAmount", () => {
     const keep = 50_000_000n;
 
     expect(check("1482.95", { keep }).error).toBe(
-      "0.05 DUSK short in the public balance, with this fee and the fee to unstake later.",
+      "0.05 DUSK short, fees included.",
     );
     expect(check("1482.95", { hidden: true, keep }).error).toBe(
-      "Too little left for this fee and the fee to unstake later.",
+      "Too little left for the fees.",
     );
     expect(check("1482.9", { keep }).ok).toBe(true);
   });
@@ -310,7 +308,7 @@ describe("NativeStake", () => {
     expect(facts).toStrictEqual([
       "Needs your own node Run a node",
       "Rewards start in about 6–12 hours Unstake any time, no waiting period.",
-      "If your node misses its turn Part of your stake gets locked; unstaking returns it. If the node breaks the rules, part of the stake can be burned (lost).",
+      "Node misses a turn: part locked, unstaking returns it. Breaks the rules: part can be burned (lost).",
     ]);
     // The docs on running one.
     expect(getByRole("link", { name: "Run a node" })).toHaveAttribute(
@@ -450,7 +448,14 @@ describe("NativeStake", () => {
 
     expect(getByLabelText("Amount")).toHaveValue("1482.9");
     expect(container).toHaveTextContent(
-      "Max leaves 0.1 DUSK: up to 0.05 for this fee and 0.05 to unstake later.",
+      "Max leaves 0.1 DUSK for this fee and unstaking.",
+    );
+    // The split, on hover.
+    expect(
+      container.querySelector(".native-stake__hint[title]"),
+    ).toHaveAttribute(
+      "title",
+      "Up to 0.05 DUSK for this fee, 0.05 DUSK to unstake later",
     );
     expect(getByRole("button", { name: "Max" })).toHaveAttribute(
       "title",
@@ -474,7 +479,7 @@ describe("NativeStake", () => {
     });
 
     expect(container.querySelector(".native-stake__error")).toHaveTextContent(
-      "0.05 DUSK short in the public balance, with this fee and the fee to unstake later.",
+      "0.05 DUSK short, fees included.",
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
   });
@@ -489,7 +494,7 @@ describe("NativeStake", () => {
     expect(queryByRole("button", { name: "Use 1,000" })).toBeNull();
     expect(getByRole("button", { name: "Max" })).toBeEnabled();
     expect(container.querySelector(".native-stake__note")).toHaveTextContent(
-      "Not enough public balance for the 1,000 DUSK minimum, this fee and the fee to unstake later.",
+      "Not enough for the 1,000 DUSK minimum and fees.",
     );
   });
 

@@ -173,9 +173,7 @@ describe("Create", async () => {
     const { getByRole, getByText } = render(Create, baseOptions);
 
     expect(
-      getByText(
-        "Your keys stay in this browser, and only you hold them: Dusk can't recover them.",
-      ),
+      getByText("Your keys stay in this browser. Dusk can't recover them."),
     ).toBeInTheDocument();
     expect(
       getByText("No analytics. The DUSK price comes from CoinGecko."),

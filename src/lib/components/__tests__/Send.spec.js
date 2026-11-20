@@ -1716,7 +1716,7 @@ describe("Send", () => {
 
       expect(await card("Estudio Sofía, S.L.")).toBe("Estudio Sofía, S.L.");
       cleanup();
-      expect(await card("Profile 2")).toBe("Your Profile 2");
+      expect(await card("Profile 2")).toBe("Profile 2");
     });
   });
 
@@ -3811,7 +3811,7 @@ describe("Send", () => {
 
       await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
       await fireEvent.input(fields.amount(), { target: { value: "1" } });
-      await findByText("first.dusk points to a public account");
+      await findByText("first.dusk", { selector: ".send__card-title" });
       expect(fields.review()).toBeEnabled();
 
       // While the new name is looked up, nothing can go to the old address,
@@ -3819,7 +3819,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "second.dusk" } });
       expect(fields.review()).toBeDisabled();
       expect(
-        queryByText("second.dusk points to a public account"),
+        queryByText("second.dusk", { selector: ".send__card-title" }),
       ).not.toBeInTheDocument();
       expect(container.textContent).not.toContain(nameAccount);
       expect(container.textContent).not.toContain(shortenAddress(nameAccount));
@@ -3828,7 +3828,7 @@ describe("Send", () => {
       expect(baseProps.execute).not.toHaveBeenCalled();
 
       answerNewName({ account: otherAccount, name: "second.dusk" });
-      await findByText("second.dusk points to a public account");
+      await findByText("second.dusk", { selector: ".send__card-title" });
       expect(fields.review()).toBeEnabled();
       expect(getSummary(container)[1][1]).toContain(
         shortenAddress(otherAccount),
@@ -3849,7 +3849,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
       await fireEvent.input(fields.amount(), { target: { value: "1" } });
       answers[0]({ account: nameAccount, name: "first.dusk" });
-      await findByText("first.dusk points to a public account");
+      await findByText("first.dusk", { selector: ".send__card-title" });
       expect(fields.review()).toBeEnabled();
 
       // Cleared and entered again: the old answer doesn't come back.
@@ -3860,7 +3860,7 @@ describe("Send", () => {
 
       // Moved meanwhile: the new answer is the one that counts.
       answers[1]({ account: otherAccount, name: "first.dusk" });
-      await findByText("first.dusk points to a public account");
+      await findByText("first.dusk", { selector: ".send__card-title" });
       expect(fields.review()).toBeEnabled();
       expect(getSummary(container)[1][1]).toContain(
         shortenAddress(otherAccount),
@@ -3883,7 +3883,7 @@ describe("Send", () => {
       await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
 
       answers[1]({ account: otherAccount, name: "first.dusk" });
-      await findByText("first.dusk points to a public account");
+      await findByText("first.dusk", { selector: ".send__card-title" });
 
       answers[0]({ account: nameAccount, name: "first.dusk" });
       await new Promise((resolve) => setTimeout(resolve));
@@ -3911,7 +3911,7 @@ describe("Send", () => {
 
       await fireEvent.input(fields.to(), { target: { value: "first.dusk" } });
       await fireEvent.input(fields.to(), { target: { value: "second.dusk" } });
-      await findByText("second.dusk points to a public account");
+      await findByText("second.dusk", { selector: ".send__card-title" });
 
       answerFirst({ account: nameAccount, name: "first.dusk" });
       await new Promise((resolve) => setTimeout(resolve));
@@ -3950,7 +3950,7 @@ describe("Send", () => {
       finishLookup({ account: nameAccount, name: "alice.dusk" });
 
       expect(
-        await findByText("alice.dusk points to a public account"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       expect(getByText("Name found")).toBeInTheDocument();
       expect(container.querySelector("[role='radiogroup']")).toBeNull();
@@ -3993,7 +3993,7 @@ describe("Send", () => {
       });
 
       expect(
-        await findByText("alice.dusk points to a shielded address"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       expect(queryByText(/Not enough shielded DUSK/)).not.toBeInTheDocument();
       expect(keyChange).toHaveBeenLastCalledWith(
@@ -4029,7 +4029,7 @@ describe("Send", () => {
       });
 
       expect(
-        await findByText("alice.dusk points to a shielded address"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       expect(getByText(/Not enough shielded DUSK ·/)).toHaveTextContent(
         /^Not enough shielded DUSK · Shield first$/,
@@ -4058,7 +4058,7 @@ describe("Send", () => {
       });
 
       const options = await findByRole("radiogroup", {
-        name: "alice.dusk points to two addresses",
+        name: "alice.dusk",
       });
       const publicOption = getByRole("radio", { name: "Public account" });
       const shieldedOption = getByRole("radio", { name: "Shielded address" });
@@ -4300,7 +4300,7 @@ describe("Send", () => {
       await enter("alice.dusk");
 
       expect(
-        await findByText("alice.dusk points to a shielded address"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       lastReported("address");
 
@@ -4383,7 +4383,7 @@ describe("Send", () => {
       await fireEvent.click(await findByRole("button", { name: "Try again" }));
 
       expect(
-        await findByText("alice.dusk points to a public account"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       await fireEvent.input(fieldsOf(getByRole).amount(), {
         target: { value: "1" },
@@ -4467,7 +4467,7 @@ describe("Send", () => {
 
       expect(fields.to()).toHaveValue("bram.dusk");
       expect(
-        await findByText("bram.dusk points to a public account"),
+        await findByText("bram.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
 
       await fireEvent.input(fields.to(), { target: { value: "zed.dusk" } });
@@ -4497,7 +4497,7 @@ describe("Send", () => {
 
       expect(fields.to()).toHaveValue("alice.dusk");
       expect(
-        await findByText("alice.dusk points to a public account"),
+        await findByText("alice.dusk", { selector: ".send__card-title" }),
       ).toBeInTheDocument();
       expect(baseProps.resolveName).toHaveBeenCalledWith("alice.dusk");
 
@@ -5411,11 +5411,7 @@ describe("Send", () => {
       // Wallet 1's Profile 1.
       found.resolve({ account, name: "profile1.dusk" });
 
-      await waitFor(() =>
-        expect(cardTitle(container)).toBe(
-          "profile1.dusk points to a public account",
-        ),
-      );
+      await waitFor(() => expect(cardTitle(container)).toBe("profile1.dusk"));
       expect(queryByText(someoneElses)).toBeNull();
 
       // Its shielded address.
@@ -5426,11 +5422,7 @@ describe("Send", () => {
       await fireEvent.input(to, { target: { value: "" } });
       await fireEvent.input(to, { target: { value: "profile1.dusk" } });
 
-      await waitFor(() =>
-        expect(cardTitle(container)).toBe(
-          "profile1.dusk points to a shielded address",
-        ),
-      );
+      await waitFor(() => expect(cardTitle(container)).toBe("profile1.dusk"));
       expect(container.querySelector(".send__privacy")).toHaveTextContent(
         /^Shielded:/,
       );
@@ -5456,11 +5448,7 @@ describe("Send", () => {
 
       await fireEvent.input(to, { target: { value: "alice.dusk" } });
 
-      await waitFor(() =>
-        expect(cardTitle(container)).toBe(
-          "alice.dusk points to a public account",
-        ),
-      );
+      await waitFor(() => expect(cardTitle(container)).toBe("alice.dusk"));
     });
 
     it("should name the profile of the other wallet sent to on the Done screen", async () => {

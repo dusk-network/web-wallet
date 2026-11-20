@@ -96,7 +96,6 @@
     balanceReadAt,
     balanceReadFailed,
     currentProfile,
-    minimumStake,
     stakeInfo,
     stakeReadAt,
     stakeReadFailed,
@@ -343,11 +342,9 @@
       {hasPastStaking}
       {liquid}
       locale={language}
-      {minimumStake}
       onRetry={readStakeAgain}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
-      sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
       {stakeReading}
       {stakeUnread}

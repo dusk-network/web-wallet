@@ -49,12 +49,14 @@
   $: time = row.time;
   $: failed = p.status === "failed";
   $: title = withoutCounterparty && !failed ? p.line : p.title;
+  // Only a shielded row says which it is: public is the rule.
+  $: shielded = p.privacy === "Shielded" ? p.privacy : "";
   $: details = failed
-    ? [p.privacy]
+    ? [shielded]
     : [
         withoutCounterparty ? "" : p.shortLine,
         time === null ? "" : timeLabel(time, locale),
-        p.privacy,
+        shielded,
       ];
   // A withdrawal's claim date, on a line of its own: it doesn't fit after.
   $: note = withoutCounterparty ? null : p.note;
@@ -82,7 +84,9 @@
         ? undefined
         : fullDateTime(time, locale, { seconds: true })}
       >{#if failed}<span class="activity-row__failed">{p.line}</span
-        >{SEPARATOR}{/if}{details.filter(Boolean).join(SEPARATOR)}</span
+        >{#if details.some(Boolean)}{SEPARATOR}{/if}{/if}{details
+        .filter(Boolean)
+        .join(SEPARATOR)}</span
     >
     {#if note}
       <span class="activity-row__line">{note}</span>

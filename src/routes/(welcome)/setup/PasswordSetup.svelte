@@ -47,7 +47,6 @@
   iconPath={mdiKeyOutline}
   bind:isToggled
 >
-  <p>Store your password safely.</p>
   <Textbox
     aria-describedby={strength ? strengthId : undefined}
     className="password-input"

@@ -198,8 +198,7 @@
     />
   </form>
   <p class="change-password__note">
-    For every wallet in this browser. Your recovery phrases stay the same. Other
-    open tabs lock.
+    For every wallet in this browser. Other open tabs lock.
   </p>
   <div class="change-password__actions">
     <AppAnchorButton

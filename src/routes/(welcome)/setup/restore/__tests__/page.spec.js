@@ -347,11 +347,6 @@ describe("Restore", async () => {
     expect(
       advanced.contains(getByRole("switch", { name: "Start from block" })),
     ).toBe(true);
-    // Why the block matters, beside it: faster, but a wrong one costs.
-    expect(advanced).toHaveTextContent("A later block syncs faster.");
-    expect(advanced).toHaveTextContent(
-      "A wrong one can mean a wrong balance or missing transactions. More in our documentation.",
-    );
     expect(getByRole("button", { name: "Start sync" })).toBeEnabled();
   });
 
@@ -429,7 +424,7 @@ describe("Restore", async () => {
 
     expect(field).toHaveValue("");
     expect(field).toHaveAccessibleDescription(
-      "Your wallet's first block, or earlier. Not sure? Leave it off.",
+      "Your wallet's first block, or earlier. Too late hides payments. Not sure? Leave it off.",
     );
     expect(nextButton).toBeDisabled();
 

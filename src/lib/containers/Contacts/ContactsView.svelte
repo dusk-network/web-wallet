@@ -149,7 +149,7 @@
         variant="primary"
       />
     </header>
-    <p class="contacts__note">Saved only in this wallet, on this device.</p>
+    <p class="contacts__note">Kept in this browser only.</p>
 
     {#if contacts.length}
       <label class="contacts__search">
@@ -164,9 +164,7 @@
     {/if}
 
     {#if !contacts.length}
-      <p class="contacts__empty">
-        No contacts yet. Save one here, or from Send.
-      </p>
+      <p class="contacts__empty">No contacts yet.</p>
       {#if paid.length}
         <section aria-labelledby="contacts-paid" class="contacts__paid">
           <SectionHead className="contacts__paid-title" id="contacts-paid"

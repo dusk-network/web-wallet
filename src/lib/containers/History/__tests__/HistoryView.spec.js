@@ -106,8 +106,8 @@ describe("HistoryView", () => {
     vi.useRealTimers();
   });
 
-  it("should say times are local, each with its own offset on hover, to the second, and keep them on phones with whether they're public", () => {
-    const { container, getByText } = render(HistoryView, {
+  it("should show times without a note on the zone, each with its own offset on hover, to the second, and keep them on phones", () => {
+    const { container, queryByText } = render(HistoryView, {
       locale: "en",
       state,
     });
@@ -115,8 +115,8 @@ describe("HistoryView", () => {
       container.querySelectorAll("td.history__col-time"),
     );
 
-    // Said once: "time" not twice.
-    expect(getByText(/^In your local time\./)).toBeInTheDocument();
+    // No note on the time zone: times are the browser's own.
+    expect(queryByText(/local time/)).toBeNull();
     expect(container.querySelector("th.history__col-time")).toHaveTextContent(
       /^Time$/,
     );
@@ -131,8 +131,8 @@ describe("HistoryView", () => {
         meta.textContent?.replace(/\s+/g, " ").trim(),
       ),
     ).toStrictEqual([
-      `· ${timeLabel(WINTER, "en")} · Public`,
-      `· ${timeLabel(SUMMER, "en")} · Public`,
+      `· ${timeLabel(WINTER, "en")}`,
+      `· ${timeLabel(SUMMER, "en")}`,
     ]);
   });
 
@@ -719,7 +719,7 @@ describe("HistoryView", () => {
 
     expect(deposit.line).toBe("Bridge · to 0xb0E8…8C6b");
     expect(deposit.meta).toBeNull();
-    expect(deposit.when).toBe(`${timeLabel(WINTER, "en")} · Public`);
+    expect(deposit.when).toBe(timeLabel(WINTER, "en"));
     // Any other row keeps its time after its line.
     expect(sent.when).toBeUndefined();
     expect(sent.meta).not.toBeNull();

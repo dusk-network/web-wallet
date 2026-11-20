@@ -633,25 +633,27 @@
     <article class="settings-group">
       <SectionHead>Support</SectionHead>
       <p>
-        Read the <Anchor
+        Help: <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://docs.dusk.network">Docs</Anchor
-        >, ask on
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
-        > or report issues on
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"
           >GitHub</Anchor
-        >.
+        >
       </p>
       <p>
         <Anchor

@@ -162,10 +162,6 @@ describe("Settings › Profiles", () => {
 
     const settings = render(Settings);
 
-    // That the names stay on this device, said once, over the list.
-    expect(
-      settings.getByRole("heading", { name: "Names on this device" }),
-    ).toBeInTheDocument();
     expect(
       settings
         .getByRole("textbox", { name: "Profile 1 name" })

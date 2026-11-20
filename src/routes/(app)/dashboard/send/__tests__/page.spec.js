@@ -399,7 +399,7 @@ describe("Send page", () => {
 
     await vi.waitFor(() =>
       expect(container.querySelector(".send__card-title")).toHaveTextContent(
-        /^alice\.dusk points to a shielded address$/,
+        /^alice\.dusk$/,
       ),
     );
     // It's this profile's own: said in a warning of its own.

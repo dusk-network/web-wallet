@@ -579,9 +579,6 @@
                     />
                   {/if}
                 {/if}
-                <p class="tx-detail__note">
-                  Saved only in this wallet, on this device.
-                </p>
               </form>
             {/if}
           </dd>
@@ -694,24 +691,6 @@
           {/if}
         </dd>
       </div>
-      <div class="tx-detail__wide">
-        <dt>Transaction ID</dt>
-        <dd class="tx-detail__id">
-          <span class="tx-detail__code"
-            >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
-                >{head}</b
-              ><span class="tx-detail__middle">{middle}</span><b
-                class="tx-detail__tail">{tail}</b
-              >{/each}</span
-          >
-          <CopyButton
-            className="tx-detail__copy"
-            name="transaction ID"
-            text="Copy"
-            value={row.hash}
-          />
-        </dd>
-      </div>
     </dl>
 
     <details class="tx-detail__tech">
@@ -722,6 +701,24 @@
         /></summary
       >
       <dl class="tx-detail__list tx-detail__list--tech">
+        <div class="tx-detail__wide">
+          <dt>Transaction ID</dt>
+          <dd class="tx-detail__id">
+            <span class="tx-detail__code"
+              >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
+                  >{head}</b
+                ><span class="tx-detail__middle">{middle}</span><b
+                  class="tx-detail__tail">{tail}</b
+                >{/each}</span
+            >
+            <CopyButton
+              className="tx-detail__copy"
+              name="transaction ID"
+              text="Copy"
+              value={row.hash}
+            />
+          </dd>
+        </div>
         {#if contract}
           <div class="tx-detail__wide">
             <dt>Contract</dt>

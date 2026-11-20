@@ -1101,21 +1101,27 @@
             />
           </dd>
         </div>
-        {#if isDepositing && depositContract}
-          <div>
-            <dt>Contract</dt>
-            <dd>
-              <span
-                >{contractLabel(depositContract, networkName) ||
-                  "DuskEVM bridge"}</span
-              >
-              <span class="bridge-review__address" title={depositContract}
-                >{shortenAddress(depositContract)}</span
-              >
-            </dd>
-          </div>
-        {/if}
       </dl>
+      <!-- The named contract a deposit calls, for whoever checks it: closed. -->
+      {#if isDepositing && depositContract}
+        <details class="bridge-review__details">
+          <summary>Details</summary>
+          <dl class="bridge-review__ends">
+            <div>
+              <dt>Contract</dt>
+              <dd>
+                <span
+                  >{contractLabel(depositContract, networkName) ||
+                    "DuskEVM bridge"}</span
+                >
+                <span class="bridge-review__address" title={depositContract}
+                  >{shortenAddress(depositContract)}</span
+                >
+              </dd>
+            </div>
+          </dl>
+        </details>
+      {/if}
       {#if isDepositing}
         <ReviewAmount
           label="Fee up to"
@@ -1257,6 +1263,14 @@
     font-family: var(--mono-font-family, monospace);
     font-size: 0.8125rem;
     overflow-wrap: anywhere;
+  }
+
+  /* The contract a deposit calls, for whoever checks it: closed. */
+  .bridge-review__details summary {
+    color: var(--calm-muted);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
   .bridge-review__actions {

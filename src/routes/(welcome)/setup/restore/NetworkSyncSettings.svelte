@@ -7,8 +7,7 @@
   import { createNumberFormatter } from "$lib/dusk/number";
   import { makeClassName } from "$lib/dusk/string";
 
-  import { AppAnchor, Banner } from "$lib/components";
-  import { DOCUMENTATION_LINKS } from "$lib/constants";
+  import { Banner } from "$lib/components";
   import { ToggleableCard } from "$lib/containers/Cards";
 
   import { networkStore, settingsStore } from "$lib/stores";
@@ -99,7 +98,8 @@
         />
 
         <span class="block-height-meta" id="block-height-hint"
-          >Your wallet's first block, or earlier. Not sure? Leave it off.</span
+          >Your wallet's first block, or earlier. Too late hides payments. Not
+          sure? Leave it off.</span
         >
 
         {#if currentNetworkBlock}
@@ -115,18 +115,6 @@
           />
         {/if}
       </ToggleableCard>
-
-      <Banner title="A later block syncs faster." variant="info">
-        <p>
-          A wrong one can mean a wrong balance or missing transactions. More in
-          our <AppAnchor
-            className="text-link"
-            href={DOCUMENTATION_LINKS.RESTORE_BLOCK_HEIGHT}
-            rel="noopener noreferrer"
-            target="_blank">documentation</AppAnchor
-          >.
-        </p>
-      </Banner>
     </div>
   </details>
 </Card>

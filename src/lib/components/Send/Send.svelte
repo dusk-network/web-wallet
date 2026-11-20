@@ -1710,7 +1710,7 @@
    * @param {string} name
    */
   const yourProfile = (name) =>
-    /^Profile \d/.test(name) ? `Your ${name}` : `Your profile ${name}`;
+    /^Profile \d/.test(name) ? name : `Your profile ${name}`;
 
   $: isNameTyped = sendToAddress && !recipientName && !addressInfo.isValid;
 
@@ -1806,10 +1806,8 @@
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress,
   );
-  // "Your Profile 2", where it goes by its number; a name stands on its own.
-  $: ownLabel = /^Profile \d/.test(own?.label ?? "")
-    ? `Your ${own?.label}`
-    : (own?.label ?? "");
+  // "Profile 2", where it goes by its number; a name stands on its own.
+  $: ownLabel = own?.label ?? "";
   // A profile of a wallet kept here, as the From line names its own: on the
   // card, the To line and the Done screen, after a contact or a `.dusk` name
   // entered.
@@ -2142,13 +2140,15 @@
               isRecipientChecked = true;
               pasted = event.clipboardData?.getData("text") ?? "";
             }}
-            placeholder="Account, .dusk name or payment link"
+            placeholder="Account, .dusk name or link"
             spellcheck="false"
             type="text"
           />
           {#if recipientName && nameLookup?.[nameAddressType]}
             <span class="send__verified"
-              ><Icon path={mdiCheckCircleOutline} />Name found</span
+              ><Icon path={mdiCheckCircleOutline} /><span class="sr-only"
+                >Name found</span
+              ></span
             >
           {/if}
           <!-- With a camera, which ScanQR looks for without asking for
@@ -2374,11 +2374,7 @@
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
-                {shownName} points to {isChoice
-                  ? "two addresses"
-                  : isShielded
-                    ? "a shielded address"
-                    : "a public account"}
+                {shownName}
               {:else if walletAccount}
                 {walletAccount}
               {:else}
@@ -2537,9 +2533,6 @@
                     />
                   {/if}
                 {/if}
-                <p class="send__hint">
-                  Saved only in this wallet, on this device.
-                </p>
               </form>
             {/if}
           </div>

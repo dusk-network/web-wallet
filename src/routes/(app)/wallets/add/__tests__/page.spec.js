@@ -113,9 +113,7 @@ describe("Add wallet", () => {
     const password = getByLabelText("Password you unlock with");
 
     expect(password).not.toHaveAttribute("placeholder");
-    expect(password).toHaveAccessibleDescription(
-      "One password unlocks every wallet in this browser.",
-    );
+    expect(password).not.toHaveAccessibleDescription();
 
     await fireEvent.input(password, { target: { value: "password12" } });
     await fireEvent.click(getByRole("button", { name: "Import wallet" }));

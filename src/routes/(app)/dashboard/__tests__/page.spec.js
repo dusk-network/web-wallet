@@ -867,13 +867,6 @@ describe("Dashboard", () => {
       getByText("Amounts and accounts hidden on chain."),
     ).toBeInTheDocument();
     expect(getByText("Nothing staked")).toBeInTheDocument();
-    // How to stake, as on main: from the minimum with a node, or any
-    // amount with Sozu.
-    expect(
-      getByText(
-        "From 1,000 DUSK with your own node, or any amount with Sozu (third party).",
-      ),
-    ).toBeInTheDocument();
     expect(queryByRole("link", { name: "Past staking" })).toBeNull();
 
     // Staked before: no "yet", and a way to what was staked.
@@ -1382,13 +1375,9 @@ describe("Dashboard", () => {
       );
 
     expect(items()).toEqual([
-      expect.stringMatching(
-        /^alice-shop\.dusk Sent · .+ · Public −5 DUSK Pending$/,
-      ),
-      expect.stringMatching(
-        /^wallet-both\.dusk Received · .+ · Public \+50 DUSK$/,
-      ),
-      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid · Public 200 DUSK`,
+      expect.stringMatching(/^alice-shop\.dusk Sent · .+ −5 DUSK Pending$/),
+      expect.stringMatching(/^wallet-both\.dusk Received · .+ \+50 DUSK$/),
+      `${ALICE.slice(0, 6)}…${ALICE.slice(-6)} Failed · nothing sent · fee 0.0037 DUSK paid 200 DUSK`,
     ]);
     expect(container.querySelector(".activity-row")).toHaveAttribute(
       "href",
@@ -1474,7 +1463,7 @@ describe("Dashboard", () => {
       "•••• hidden",
     );
     expect(container.querySelector(".activity-row")).toHaveTextContent(
-      "fee 0.0037 DUSK paid · Public •••• hidden DUSK",
+      "fee 0.0037 DUSK paid •••• hidden DUSK",
     );
     expect(get(settingsStore).hideBalances).toBe(true);
   });

@@ -10,10 +10,7 @@
 
 <section>
   <IconHeadingCard heading="Terms and privacy">
-    <p>
-      Your keys stay in this browser, and only you hold them: Dusk can't recover
-      them.
-    </p>
+    <p>Your keys stay in this browser. Dusk can't recover them.</p>
     <p>No analytics. The DUSK price comes from CoinGecko.</p>
     <p>
       Accepting means you agree to the <AppAnchor

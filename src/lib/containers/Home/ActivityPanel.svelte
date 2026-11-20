@@ -143,7 +143,6 @@
     {:else if !shown.length}
       <p class="activity-panel__note">{emptyText}</p>
     {:else}
-      <p class="activity-panel__zone">In your local time</p>
       {#each groups as group (group.key)}
         <h3 class="activity-panel__day">{group.label}</h3>
         {#each group.items as item (item.row.hash)}
@@ -216,12 +215,6 @@
       outline: 2px solid var(--calm-focus);
       outline-offset: 2px;
     }
-  }
-
-  .activity-panel__zone {
-    margin-top: 0.5rem;
-    color: var(--calm-subtle);
-    font-size: 0.75rem;
   }
 
   .activity-panel__day {

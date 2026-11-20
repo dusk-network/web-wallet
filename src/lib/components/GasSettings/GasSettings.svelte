@@ -7,7 +7,6 @@
     highFeeText,
     networkPriceOf,
   } from "$lib/contracts";
-  import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
   import { createNumberFormatter } from "$lib/dusk/number";
   import { gasPriceStore, settingsStore } from "$lib/stores";
@@ -82,14 +81,11 @@
   <!-- It opens and closes the same way. -->
   {#if isExpanded}
     <div class="gas-settings" transition:section={{ open: isExpanded }}>
-      <!-- What the fee is, in DUSK, before the gas that makes it. -->
+      <!-- What the fee pays for: the gas that makes it. -->
       <p class="gas-settings__exact">
-        <span class="gas-settings__most"
-          >{formatDuskExact(fee, language)} DUSK at most</span
-        >: pays only for the gas used, up to {formatGas(limit)} gas at {formatGas(
+        Pays only for the gas used: up to {formatGas(limit)} gas at {formatGas(
           price,
-        )}
-        LUX each.
+        )} LUX each.
       </p>
       <GasControls
         on:gasSettings
@@ -132,11 +128,5 @@
     color: var(--banner-warning-color);
     font-size: 0.875rem;
     line-height: 1.45;
-  }
-
-  .gas-settings__most {
-    color: var(--calm-text);
-    font-variant-numeric: tabular-nums;
-    user-select: text;
   }
 </style>

@@ -391,7 +391,7 @@
         <tr>
           <th scope="row">Node</th>
           <td data-way="Native staking">
-            Needs your own node<br />
+            Your own node<br />
             <a
               class="compare__link text-link"
               href={DOCUMENTATION_LINKS.RUN_A_PROVISIONER}
@@ -426,11 +426,10 @@
                 >
               {/if}
               {#if rate}
-                stDUSK, {formatDusk(rate, locale)} DUSK each now. It usually rises
-                with rewards, but can fall with a penalty.
+                stDUSK, {formatDusk(rate, locale)} DUSK each now. It can fall with
+                a penalty.
               {:else}
-                stDUSK, your share of Sozu's pool. It usually rises with
-                rewards, but can fall with a penalty.
+                stDUSK, your share of Sozu's pool. It can fall with a penalty.
               {/if}
             </td>
           {/if}
@@ -438,12 +437,12 @@
         {#if sozu.available && fees}
           <tr>
             <th scope="row">Fees</th>
-            <td data-way="Native staking">Network fee only</td>
+            <td data-way="Native staking">Network fee</td>
             <td data-way="Liquid staking (Sozu, third party)">
               {feePercent(fees.reward, locale)} of rewards · {feePercent(
                 fees.deposit,
                 locale,
-              )} of deposits · no unstake fee
+              )} of deposits
             </td>
           </tr>
         {/if}
@@ -452,16 +451,15 @@
           <td data-way="Native staking">Any time, no waiting period</td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">
-              Any time, in the same transaction: no Sozu fee, no waiting
+              Any time, no waiting, no Sozu fee
             </td>
           {/if}
         </tr>
         <tr>
           <th scope="row">Risk</th>
           <td data-way="Native staking">
-            If your node misses its turn, part of your stake gets locked;
-            unstaking returns it. If the node breaks the rules, part can be
-            burned (lost).
+            Node misses a turn: part locked, unstaking returns it. Breaks the
+            rules: part can be burned (lost).
           </td>
           {#if sozu.available}
             <td data-way="Liquid staking (Sozu, third party)">

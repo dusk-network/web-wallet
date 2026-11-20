@@ -134,7 +134,7 @@ export function checkAmount({
     return fail(
       amount > available
         ? "More than you have."
-        : `Too little left for ${keep ? "this fee and the fee to unstake later" : "the fee"}.`,
+        : `Too little left for ${keep ? "the fees" : "the fee"}.`,
     );
   }
 
@@ -142,7 +142,7 @@ export function checkAmount({
     return fail(
       most
         ? feeError({ available, fee, hidden, leastFee, locale })
-        : `${formatFee(needed - available, locale, { max: true })} DUSK short in the public balance, with ${keep ? "this fee and the fee to unstake later" : "the fee"}.`,
+        : `${formatFee(needed - available, locale, { max: true })} DUSK short, ${keep ? "fees" : "fee"} included.`,
     );
   }
 
