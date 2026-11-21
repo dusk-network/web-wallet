@@ -29,7 +29,7 @@
     >Password you unlock with</label
   >
   <Textbox
-    aria-describedby={error ? `${id}-error ${id}-hint` : `${id}-hint`}
+    aria-describedby={error ? `${id}-error` : undefined}
     aria-invalid={error ? "true" : undefined}
     autocomplete="current-password"
     bind:this={field}
@@ -41,9 +41,6 @@
     }}
     type="password"
   />
-  <p class="unlock-password__hint" id="{id}-hint">
-    One password unlocks every wallet in this browser.
-  </p>
   {#if error}
     <p class="unlock-password__error" id="{id}-error" role="alert">
       {error}
@@ -61,12 +58,6 @@
   .unlock-password__label {
     font-size: 0.875rem;
     font-weight: 500;
-  }
-
-  .unlock-password__hint {
-    color: var(--calm-muted);
-    font-size: 0.8125rem;
-    line-height: 1.4;
   }
 
   .unlock-password__error {

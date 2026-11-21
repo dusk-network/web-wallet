@@ -38,6 +38,8 @@
   import {
     HIGHEST_DEFAULT_GAS_LIMIT,
     areValidGasSettings,
+    highFeeText,
+    networkPriceOf,
   } from "$lib/contracts";
   import { forgetBridgeRecords } from "$lib/bridge/forgetBridgeRecords";
   import { deleteContacts } from "$lib/contacts";
@@ -65,18 +67,18 @@
 
   // With one wallet, as before there were more.
   const RESET_ONE = {
-    body: "Resetting clears the cache, settings, contacts and connected EVM wallets, not your funds. You'll need your recovery phrase to restore access, so make sure it's stored securely.",
-    button: "Reset Wallet",
+    body: "Clears the cache, settings, contacts and connected EVM wallets from this browser, not your funds. Only your recovery phrase restores access, so keep it stored securely.",
+    button: "Reset wallet",
     confirm:
-      "Confirm you've saved your recovery phrase before resetting the wallet. Proceed?",
+      "Confirm you've saved your recovery phrase: only it restores access. Reset?",
     heading: "Reset wallet",
   };
 
   const RESET_ALL = {
-    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. You need each wallet's recovery phrase to get back in.",
+    body: "Removes every wallet from this browser, with its settings and contacts. Your funds stay on Dusk. Only each wallet's recovery phrase gets you back in.",
     button: "Reset all wallets",
     confirm:
-      "This removes every wallet from this browser. Confirm you've saved each recovery phrase before resetting. Proceed?",
+      "Confirm you've saved each recovery phrase: only they get you back in. Reset all wallets?",
     heading: "Reset all wallets",
   };
 
@@ -291,6 +293,14 @@
       ? settingsHeight
       : 0n;
   $: hasCustomGas = customGasLimit !== null && customGasPrice !== null;
+  const gasPriceRule = gasPriceStore.rule;
+
+  // Custom gas far above what the network asks: said where it's set, as each
+  // fee it then sets says it.
+  $: customHighFee =
+    customGasPrice !== null
+      ? highFeeText(customGasPrice, networkPriceOf($gasPriceRule), language)
+      : "";
   $: isGasValid =
     customGasLimit !== null && customGasPrice !== null
       ? areValidGasSettings(customGasPrice, customGasLimit)
@@ -491,6 +501,14 @@
                   { max: true },
                 )} DUSK.
               </p>
+              {#if customHighFee}
+                <p
+                  class="settings-group__note settings-group__note--warning"
+                  role="status"
+                >
+                  {customHighFee}
+                </p>
+              {/if}
             {/if}
           {:else}
             <p class="settings-group__note">
@@ -615,25 +633,27 @@
     <article class="settings-group">
       <SectionHead>Support</SectionHead>
       <p>
-        Read the <Anchor
+        Help: <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
-          href="https://docs.dusk.network">Dusk Docs</Anchor
-        >, ask on
+          href="https://docs.dusk.network">Docs</Anchor
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://discord.gg/dusk-official">Discord</Anchor
-        >, or report issues on
+        >
+        ·
         <Anchor
           className="text-link"
           rel="noopener noreferrer"
           target="_blank"
           href="https://github.com/dusk-network/web-wallet/issues"
           >GitHub</Anchor
-        >.
+        >
       </p>
       <p>
         <Anchor
@@ -665,7 +685,7 @@
           disabled={syncStatus.isInProgress}
           data-tooltip-disabled={!syncStatus.isInProgress}
           data-tooltip-id="main-tooltip"
-          data-tooltip-text="Not allowed to reset while syncing"
+          data-tooltip-text="Can't reset while syncing"
           data-tooltip-type="warning"
           on:click={handleResetWalletClick}
           text={reset.button}
@@ -683,11 +703,7 @@
     icon={{ path: mdiArrowLeft }}
     text="Back"
   />
-  <Button
-    on:click={() => lockWallets()}
-    variant="tertiary"
-    text={several ? "Lock" : "Lock Wallet"}
-  />
+  <Button on:click={() => lockWallets()} variant="tertiary" text="Lock" />
 </div>
 
 <style lang="postcss">
@@ -801,6 +817,10 @@
 
         &--error {
           color: var(--badge-error-color);
+        }
+
+        &--warning {
+          color: var(--banner-warning-color);
         }
       }
 

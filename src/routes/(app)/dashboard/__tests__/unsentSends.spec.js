@@ -347,7 +347,7 @@ describe("A send that never went out", () => {
 
   /** It never went out: nothing left the wallet; to send it now, or not. */
   const NOT_SENT = {
-    offers: ["Send it now", "Don't send"],
+    offers: ["Send now", "Don't send"],
     says: [/nothing left/i, { not: /may have|not sent yet/i }],
   };
 
@@ -356,7 +356,7 @@ describe("A send that never went out", () => {
    * still arrive; to send it now, as it is, or not.
    */
   const NOT_SENT_YET = {
-    offers: ["Send it now", "Don't send"],
+    offers: ["Send now", "Don't send"],
     says: [/not sent yet/i, { not: /nothing left/i }],
   };
 
@@ -370,12 +370,12 @@ describe("A send that never went out", () => {
   };
 
   /**
-   * It may have gone out: to check History first, and be done with it;
+   * It may have gone out: to check Activity first, and be done with it;
    * never to send it again.
    */
   const MAY_HAVE_GONE_OUT = {
-    offers: ["Open History", "Done"],
-    says: [/may have reached/i, { not: /nothing left|not sent/i }],
+    offers: ["Open Activity", "Done"],
+    says: [/may have gone out/i, { not: /nothing left|not sent/i }],
   };
 
   /** Sent, as the chain has it: nothing left to do with it. */
@@ -455,7 +455,7 @@ describe("A send that never went out", () => {
     expect(app.transfer).not.toHaveBeenCalled();
 
     // Send it now: Send's review, filled in with it, to send it from there.
-    await after.fireEvent.click(getByRole("button", { name: "Send it now" }));
+    await after.fireEvent.click(getByRole("button", { name: "Send now" }));
 
     expect(app.goto).toHaveBeenCalledWith(
       expect.stringMatching(/\/dashboard\/send$/),
@@ -1079,7 +1079,7 @@ describe("A send that never went out", () => {
 
     try {
       await untilSaid(container, notice("kept only", MAY_HAVE_GONE_OUT));
-      expect(getByRole("link", { name: "Open History" })).toHaveAttribute(
+      expect(getByRole("link", { name: "Open Activity" })).toHaveAttribute(
         "href",
         `/some-base-path/dashboard/transactions?tx=${sentTx.hash}`,
       );
@@ -1225,7 +1225,7 @@ describe("A send that never went out", () => {
       app.sendAgain.mockImplementation(async () => {
         isQueued = true;
       });
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
       expect(app.sendAgain).toHaveBeenCalledExactlyOnceWith({
@@ -1270,7 +1270,7 @@ describe("A send that never went out", () => {
 
     try {
       await untilSaid(container, ...notSentYet);
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await vi.waitFor(() => expect(app.sendAgain).toHaveBeenCalledOnce());
       await vi.waitFor(() => expect(noticesOf(container)).toStrictEqual([]));
@@ -1314,7 +1314,7 @@ describe("A send that never went out", () => {
       app.sendAgain.mockRejectedValueOnce(
         new Error("Tx not accepted: value spent larger than account holds"),
       );
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       // Not sent yet still, to send now or not, and why: refused.
       await untilSaid(
@@ -1323,7 +1323,7 @@ describe("A send that never went out", () => {
       );
 
       app.sendAgain.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       // And why now: the network out of reach.
       await untilSaid(
@@ -1567,7 +1567,7 @@ describe("A send that never went out", () => {
       );
 
       await other.fireEvent.click(
-        otherTab.getByRole("button", { name: "Send it now" }),
+        otherTab.getByRole("button", { name: "Send now" }),
       );
 
       await vi.waitFor(() =>
@@ -1622,7 +1622,7 @@ describe("A send that never went out", () => {
 
         throw outcomeUnknown(new TypeError("Failed to fetch"), sentTx.hash);
       });
-      await page.fireEvent.click(getByRole("button", { name: "Send it now" }));
+      await page.fireEvent.click(getByRole("button", { name: "Send now" }));
 
       await untilSaid(container, notice("lost again", MAY_HAVE_GONE_OUT));
       await vi.waitFor(async () =>
@@ -1688,7 +1688,7 @@ describe("A send that never went out", () => {
 
     try {
       await untilSaid(later.container, notice("cancel race 4", NOT_SENT_YET));
-      expect(later.getByRole("button", { name: "Send it now" })).toBeEnabled();
+      expect(later.getByRole("button", { name: "Send now" })).toBeEnabled();
     } finally {
       later.restore();
     }
@@ -1802,7 +1802,7 @@ describe("A send that never went out", () => {
 
     try {
       // Not sent yet: what, to whom, to send now or not.
-      await findByRole("button", { name: "Send it now" });
+      await findByRole("button", { name: "Send now" });
 
       expect(resultOf(container)).toEqual(notSentYet);
 
@@ -1810,7 +1810,7 @@ describe("A send that never went out", () => {
 
       // It may still arrive: said so still, and kept, never to send again.
       await vi.waitFor(() =>
-        expect(queryByRole("button", { name: "Send it now" })).toBeNull(),
+        expect(queryByRole("button", { name: "Send now" })).toBeNull(),
       );
       expect(resultOf(container)).toEqual(notSentYet);
       await vi.waitFor(async () =>
@@ -1902,7 +1902,7 @@ describe("A send that never went out", () => {
       });
 
     try {
-      const sendNow = await findByRole("button", { name: "Send it now" });
+      const sendNow = await findByRole("button", { name: "Send now" });
 
       expect(resultOf(container)).toEqual(
         naming(/not sent yet/i, "0.01 DUSK to your Profile 2"),
@@ -1928,7 +1928,7 @@ describe("A send that never went out", () => {
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(queryByRole("button", { name: "Send it now" })).toBeNull();
+      expect(queryByRole("button", { name: "Send now" })).toBeNull();
       expect(resultOf(container)).toEqual(
         naming(/sending/i, { not: /not sent/i }, "0.01 DUSK to your Profile 2"),
       );

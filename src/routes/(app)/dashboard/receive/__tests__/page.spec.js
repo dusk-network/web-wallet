@@ -1210,7 +1210,7 @@ describe("Receive", () => {
     });
 
     // Codex's, round 40: as what's further back than the page History has
-    // shown was read, a request older than all of it said nothing matching
+    // shown was read, a request older than all of it said not paid yet
     // had come in, and Copy request asked nothing, though its payment may
     // be about to be found.
     it("should say it's checking, not that nothing came in, for a request older than the history read so far, while the rest of it is read", async () => {
@@ -1256,13 +1256,13 @@ describe("Receive", () => {
 
         expect(stateOf(screen.getByRole("listitem"))).toBe("waiting");
         expect(said()).toMatch(/checking/i);
-        expect(said()).not.toMatch(/nothing matching/i);
+        expect(said()).not.toMatch(/not paid yet/i);
 
         // All of it read: nothing of it came in.
         history.flags?.set({ failed: false, reading: false });
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(said()).toMatch(/nothing matching/i);
+        expect(said()).toMatch(/not paid yet/i);
         expect(said()).not.toMatch(/checking/i);
       } finally {
         history.state?.set({ hasMore: false, rows: [] });
@@ -1297,7 +1297,7 @@ describe("Receive", () => {
         render(Receive);
         await vi.advanceTimersByTimeAsync(0);
 
-        expect(said()).toMatch(/nothing matching/i);
+        expect(said()).toMatch(/not paid yet/i);
 
         // Sent from another profile here, and seen to go out: the history
         // doesn't have it yet.
@@ -1305,7 +1305,7 @@ describe("Receive", () => {
         await vi.advanceTimersByTimeAsync(0);
 
         expect(said()).toMatch(/checking/i);
-        expect(said()).not.toMatch(/nothing matching/i);
+        expect(said()).not.toMatch(/not paid yet/i);
 
         // In the history: what came in.
         history.state?.set({
@@ -1351,7 +1351,7 @@ describe("Receive", () => {
 
         await vi.advanceTimersByTimeAsync(120_000);
 
-        expect(said()).toMatch(/nothing matching/i);
+        expect(said()).toMatch(/not paid yet/i);
       } finally {
         forgetArrivals();
         history.state?.set({ hasMore: false, rows: [] });

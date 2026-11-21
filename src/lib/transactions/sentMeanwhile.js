@@ -374,7 +374,7 @@ export function sayMeanwhile(
       title:
         isChecking && !sends
           ? CHECKING_TEXT
-          : "Your account sent something else while this waited.",
+          : "Meanwhile your account sent something else.",
     };
   }
 
@@ -383,8 +383,8 @@ export function sayMeanwhile(
       checking: false,
       items: [],
       memo: isSame ? "" : described[0].memo,
-      same: isSame ? "That looks like this same payment." : "",
-      title: `Your account sent ${described[0].text} while this waited.`,
+      same: isSame ? "That looks like this payment." : "",
+      title: `Meanwhile your account sent ${described[0].text}.`,
     };
   }
 
@@ -392,8 +392,8 @@ export function sayMeanwhile(
     checking: false,
     items: described,
     memo: "",
-    same: isSame ? "One of them looks like this same payment." : "",
-    title: `Your account sent ${described.length} payments while this waited.`,
+    same: isSame ? "One of them looks like this payment." : "",
+    title: `Meanwhile your account sent ${described.length} payments.`,
   };
 }
 

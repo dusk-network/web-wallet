@@ -246,8 +246,8 @@
   $: fundsErrorMessage = hasEnoughFundsForFees
     ? ""
     : shielded < 0n || unshielded < 0n
-      ? "The amount is more than your balance."
-      : "Your balance is too low to cover the allocation fees.";
+      ? "More than your balance."
+      : "Not enough DUSK for the amount and fee.";
 
   $: isNextButtonDisabled =
     !hasEnoughFundsForFees ||
@@ -274,11 +274,10 @@
           isEditing = false;
         },
         disabled: isNextButtonDisabled,
+        label: "Review",
       }}
     >
       <div class="operation__allocate">
-        <p>Move DUSK between your public and shielded accounts.</p>
-
         <fieldset class="operation__fieldset">
           <p class="operation__label">Public</p>
 
@@ -310,15 +309,15 @@
           <p class="operation__label">
             Shielded<br />
             <small
-              >(<BalanceValue
+              ><BalanceValue
                 exact={formatDuskExact(shieldedBalance.spendable, language)}
                 value={formatDusk(shieldedBalance.spendable, language)}
               />
-              spendable out of
+              of
               <BalanceValue
                 exact={formatDuskExact(shieldedBalance.value, language)}
                 value={formatDusk(shieldedBalance.value, language)}
-              /> total)</small
+              /> spendable</small
             >
           </p>
 
@@ -370,9 +369,7 @@
         />
 
         {#if fundsErrorMessage}
-          <Banner title="Insufficient Funds" variant="error">
-            <p>{fundsErrorMessage}</p>
-          </Banner>
+          <Banner title={fundsErrorMessage} variant="error" />
         {/if}
       </div>
     </WizardStep>
@@ -387,14 +384,14 @@
       nextButton={{
         confirm: true,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: "Send",
+        label: `${isShielding ? "Shield" : "Unshield"} ${formatDuskExact(amount, language)} DUSK`,
         variant: "primary",
       }}
     >
       <div class="operation__allocate">
         <Badge
           className="operation__review-notice"
-          text="Review transaction"
+          text="Review"
           variant="warning"
         />
         <ReviewWallet />
@@ -423,16 +420,12 @@
           </dd>
         </dl>
         <ReviewAmount
-          label="Network fee (at most)"
+          label="Fee up to"
           value={formatFee(fee, language, { max: true })}
         />
         <ReviewAmount
-          label="Total (at most)"
+          label="Total up to"
           value={formatFee(amount + fee, language, { max: true })}
-        />
-        <Banner
-          title={`The fee is paid from your ${isShielding ? "public" : "shielded"} balance.`}
-          variant="info"
         />
       </div>
     </WizardStep>

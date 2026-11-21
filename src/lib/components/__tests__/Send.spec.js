@@ -2793,7 +2793,7 @@ describe("Send", () => {
 
       // Seen by everyone, never said hidden: with no memo, nothing said of
       // one.
-      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).toHaveTextContent(/visible on chain/i);
       expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
       expect(visible()).not.toHaveTextContent(/memo/i);
 
@@ -2802,7 +2802,7 @@ describe("Send", () => {
       });
 
       // With one, the memo too: public as the rest.
-      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).toHaveTextContent(/visible on chain/i);
       expect(visible()).toHaveTextContent(/memo/i);
       expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
 
@@ -2810,7 +2810,7 @@ describe("Send", () => {
       await fireEvent.click(fields.review());
 
       expect(container.querySelector(".send--review")).not.toBeNull();
-      expect(visible()).toHaveTextContent(/everyone/i);
+      expect(visible()).toHaveTextContent(/visible on chain/i);
       expect(visible()).toHaveTextContent(/memo/i);
       expect(visible()).not.toHaveTextContent(/hidden|private|shielded/i);
     });
@@ -3087,11 +3087,11 @@ describe("Send", () => {
       await sendWith(getByRole);
 
       expect(baseProps.execute).toHaveBeenCalledTimes(1);
-      // Failed before it went out, so it can be tried again: with the
-      // failure's own message.
+      // Failed before it went out, so it can be tried again: said not
+      // sent, with the failure's own message.
       expect(
         container.querySelector(".dusk-error-alert__summary"),
-      ).toHaveTextContent(/failed/i);
+      ).toHaveTextContent(/^Not sent$/);
       expect(getByRole("button", { name: "Try again" })).toBeInTheDocument();
       expect(getByText(errorMessage)).toBeInTheDocument();
     });
@@ -3203,7 +3203,7 @@ describe("Send", () => {
         expect(
           container.querySelector(".dusk-error-alert__description"),
         ).toHaveTextContent(/nothing (was sent|left)/i);
-        expect(queryByRole("link", { name: "Open History" })).toBeNull();
+        expect(queryByRole("link", { name: "Open Activity" })).toBeNull();
         expect(baseProps.execute).toHaveBeenCalledOnce();
       });
 
@@ -3263,7 +3263,9 @@ describe("Send", () => {
           container.querySelector(".dusk-error-alert__summary"),
         ).toHaveTextContent(/not confirmed/i);
         expect(queryByRole("button", { name: "Try again" })).toBeNull();
-        expect(getByRole("link", { name: "Open History" })).toBeInTheDocument();
+        expect(
+          getByRole("link", { name: "Open Activity" }),
+        ).toBeInTheDocument();
 
         await pressBack();
 

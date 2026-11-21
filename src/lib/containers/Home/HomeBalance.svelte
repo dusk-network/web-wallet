@@ -124,22 +124,21 @@
     before. -->
   {#if unread && stakeUnread}
     <p class="home-balance__unread">
-      Your balance and stake couldn't be read just now. This total may be out of
-      date. {lastReadText(
+      Balance and stake couldn't be read. This total may be out of date. {lastReadText(
         readAt && stakeReadAt ? Math.min(readAt, stakeReadAt) : null,
         locale,
       )}
     </p>
   {:else if unread}
     <p class="home-balance__unread">
-      Your balance couldn't be read just now. This may be out of date. {lastReadText(
+      Balance couldn't be read. This may be out of date. {lastReadText(
         readAt,
         locale,
       )}
     </p>
   {:else if stakeUnread}
     <p class="home-balance__unread">
-      Your stake couldn't be read just now. This total may be out of date. {lastReadText(
+      Stake couldn't be read. This total may be out of date. {lastReadText(
         stakeReadAt,
         locale,
       )}

@@ -2,10 +2,13 @@
   import { GAS_PRICE_BUSY } from "@dusk-network/app-core/gas";
   import { Button } from "$lib/dusk/components";
   import { GasControls, GasFee } from "$lib/components";
-  import { areValidGasSettings } from "$lib/contracts";
+  import {
+    areValidGasSettings,
+    highFeeText,
+    networkPriceOf,
+  } from "$lib/contracts";
   import { formatDuskExact } from "$lib/dusk/currency";
   import { section } from "$lib/dusk/motion";
-  import { createNumberFormatter } from "$lib/dusk/number";
   import { gasPriceStore, settingsStore } from "$lib/stores";
   import { onMount } from "svelte";
 
@@ -31,11 +34,13 @@
   let isExpanded = false;
 
   $: ({ language } = $settingsStore);
-  $: formatGas = createNumberFormatter(language);
   // The network asks more than the default goes to: one under what it asks
   // may wait, as said, until the price is raised.
   $: ({ busy, median } = $gasPriceRule);
   $: isWaitingLonger = busy && median !== null && price < median;
+  // A price far above what the network asks, as the fee editor or a custom
+  // gas from Settings set it: said, as the extension says a site's.
+  $: highFee = highFeeText(price, networkPriceOf($gasPriceRule), language);
 
   const gasPriceRule = gasPriceStore.rule;
 
@@ -69,17 +74,19 @@
   {#if isWaitingLonger}
     <p class="gas-settings__busy" role="status">{GAS_PRICE_BUSY}</p>
   {/if}
+  {#if highFee}
+    <p class="gas-settings__high" role="status">{highFee}</p>
+  {/if}
   <!-- It opens and closes the same way. -->
   {#if isExpanded}
     <div class="gas-settings" transition:section={{ open: isExpanded }}>
-      <!-- What the fee is, in DUSK, before the gas that makes it. -->
+      <!-- What the fee pays for: the gas that makes it. -->
+      <!-- Under Edit: the most it can cost, exactly; the gas limit and price
+        that make it are the fields under it. -->
       <p class="gas-settings__exact">
         <span class="gas-settings__most"
           >{formatDuskExact(fee, language)} DUSK at most</span
-        >: it pays only for the gas used, up to {formatGas(limit)} gas at {formatGas(
-          price,
-        )}
-        LUX each.
+        >: pays only for the gas used.
       </p>
       <GasControls
         on:gasSettings
@@ -116,7 +123,8 @@
     line-height: 1.45;
   }
 
-  .gas-settings__busy {
+  .gas-settings__busy,
+  .gas-settings__high {
     margin: 0;
     color: var(--banner-warning-color);
     font-size: 0.875rem;

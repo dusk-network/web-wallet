@@ -106,7 +106,7 @@ describe("A transfer's amounts, as its details say them", () => {
   it("gives a transfer out to the last digit, with its fees, and what it'll pay until it has", () => {
     expect(linesOf(transferOut({}), { rows: history })).toStrictEqual({
       "Bridge fee": "1 DUSK",
-      "Network fee": "0.001859281 DUSK",
+      Fee: "0.001859281 DUSK",
       Sent: "3.053082083 DUSK",
       "You receive": "2.053082083 BEP20 DUSK",
     });
@@ -121,7 +121,7 @@ describe("A transfer's amounts, as its details say them", () => {
 
     expect(linesOf(arrived, { rows: history })).toStrictEqual({
       "Bridge fee": "1 DUSK",
-      "Network fee": "0.001859281 DUSK",
+      Fee: "0.001859281 DUSK",
       Received: "2.053082083 BEP20 DUSK",
       Sent: "3.053082083 DUSK",
     });
@@ -139,7 +139,7 @@ describe("A transfer's amounts, as its details say them", () => {
     ]);
 
     expect(linesOf(transferOut({}), { rows: failed })).toStrictEqual({
-      "Network fee": "0.001859281 DUSK",
+      Fee: "0.001859281 DUSK",
     });
   });
 
@@ -207,7 +207,7 @@ describe("A transfer's amounts, as its details say them", () => {
         },
       ),
     ).toStrictEqual({
-      "Gas, approval and migration": "0.000093199001491184 BNB",
+      "Gas, allowance and migration": "0.000093199001491184 BNB",
       Received: "4 DUSK",
       Sent: "4 BEP20 DUSK",
     });
@@ -234,7 +234,7 @@ describe("A transfer's amounts, as its details say them", () => {
     // alone, with no payout still to come.
     expect(lines).toStrictEqual({
       "Bridge fee": "1 DUSK",
-      "Network fee": "0.001859281 DUSK",
+      Fee: "0.001859281 DUSK",
       Received: "0 BEP20 DUSK",
       Sent: "3.053082083 DUSK",
     });
@@ -280,7 +280,7 @@ describe("A transfer's amounts, as its details say them", () => {
         },
       ),
     ).toStrictEqual({
-      "Network fee": "0.002 DUSK",
+      Fee: "0.002 DUSK",
       Received: "0.090082082 DUSK",
       Sent: "0.090082082 DUSK",
     });

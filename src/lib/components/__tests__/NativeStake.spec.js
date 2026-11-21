@@ -191,7 +191,7 @@ describe("checkAmount", () => {
       ok: false,
     });
     expect(check("0")).toMatchObject({
-      error: expect.stringMatching(/greater than 0(?![.,]?[0-9])/),
+      error: expect.stringMatching(/more than 0(?![.,]?[0-9])/),
       ok: false,
     });
     expect(check("999")).toStrictEqual({
@@ -220,7 +220,7 @@ describe("checkAmount", () => {
     });
     // Refused all the same with balances hidden, with no figure.
     expect(hidden).toMatchObject({
-      error: expect.stringMatching(/too little/),
+      error: expect.stringMatching(/too little/i),
       ok: false,
     });
     expect(hidden.error).not.toMatch(/[0-9]/);
@@ -231,7 +231,7 @@ describe("checkAmount", () => {
     // Shown, each says how much more than the balance it is; hidden, why
     // it's refused, with no figure.
     for (const { more, text, why } of [
-      { more: "0.05 DUSK", text: "1483", why: /too little/ },
+      { more: "0.05 DUSK", text: "1483", why: /too little/i },
       { more: "1.05 DUSK", text: "1484", why: /more than/i },
     ]) {
       const hidden = check(text, { hidden: true });
@@ -304,7 +304,7 @@ describe("NativeStake", () => {
     try {
       const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1500" },
       });
 
@@ -361,9 +361,7 @@ describe("NativeStake", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       // 1,482.9, filled in, with no figure in the field.
-      const field = /** @type {HTMLInputElement} */ (
-        getByLabelText("Stake amount")
-      );
+      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
 
       expect(field.value).not.toBe("");
       expect(field.value).not.toMatch(/[0-9]/);
@@ -380,7 +378,7 @@ describe("NativeStake", () => {
       await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: /1,000/ }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByLabelText("Amount")).toHaveValue("1000");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -396,7 +394,7 @@ describe("NativeStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1200.5" },
     });
 
@@ -430,7 +428,7 @@ describe("NativeStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000,5" },
     });
 
@@ -446,7 +444,7 @@ describe("NativeStake", () => {
   it("asks which amount is meant of one that could be either of two, as Send does, with a button for each", async () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1,000" },
     });
 
@@ -456,7 +454,7 @@ describe("NativeStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "1000 DUSK" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1000");
+    expect(getByLabelText("Amount")).toHaveValue("1000");
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
@@ -481,7 +479,7 @@ describe("NativeStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+    expect(getByLabelText("Amount")).toHaveValue("1482.9");
 
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -492,7 +490,7 @@ describe("NativeStake", () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
     // All but this stake's own fee: the most it took before.
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1482.95" },
     });
 
@@ -509,7 +507,7 @@ describe("NativeStake", () => {
 
     expect(review).toBeDisabled();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await afterConfirmDelay();
@@ -529,7 +527,7 @@ describe("NativeStake", () => {
     const { getByLabelText, getByRole } = render(NativeStake, baseProps);
     const stake = () => getByRole("button", { name: showsDusk("1,000") });
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await afterConfirmDelay();
@@ -563,7 +561,7 @@ describe("NativeStake", () => {
         .mockResolvedValue(HASH);
       const view = render(NativeStake, { ...baseProps, execute });
 
-      await fireEvent.input(view.getByLabelText("Stake amount"), {
+      await fireEvent.input(view.getByLabelText("Amount"), {
         target: { value: "1000" },
       });
       await fireEvent.click(view.getByRole("button", { name: "Review" }));
@@ -593,7 +591,7 @@ describe("NativeStake", () => {
       expect(
         getByRole("button", { name: showsDusk("1,000") }),
       ).toBeInTheDocument();
-      expect(getByLabelText("Stake amount")).toHaveValue("1000");
+      expect(getByLabelText("Amount")).toHaveValue("1000");
       expect(execute).toHaveBeenCalledOnce();
 
       await afterConfirmDelay();
@@ -615,7 +613,7 @@ describe("NativeStake", () => {
       );
 
       expect(
-        await findByRole("link", { name: "Open History" }),
+        await findByRole("link", { name: "Open Activity" }),
       ).toBeInTheDocument();
       expect(failureOf()).toHaveTextContent(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
@@ -635,7 +633,7 @@ describe("NativeStake", () => {
     );
     const total = () => totalOf(container);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1000" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));

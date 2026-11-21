@@ -418,11 +418,11 @@
       {/if}
       {#if state === "offline"}
         <p class="network-pill__error">
-          Your balance may be out of date until you're back online. {lastRead}
+          Balance may be out of date until you're back online. {lastRead}
         </p>
       {:else if state === "unreachable"}
         <p class="network-pill__error">
-          Your balance may be out of date. {lastRead}
+          Balance may be out of date. {lastRead}
         </p>
         <Button
           disabled={isRetrying}
@@ -433,7 +433,7 @@
       {:else if state === "error"}
         <p class="network-pill__error">{syncStatus.error?.message}</p>
         <p class="network-pill__error">
-          Your balance may be out of date. {lastRead}
+          Balance may be out of date. {lastRead}
         </p>
         <Button
           disabled={isRetrying}

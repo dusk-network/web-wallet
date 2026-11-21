@@ -1,0 +1,114 @@
+/*
+ * A bridge or migration review, as Send's: its section head, rows of a label
+ * and its value with a thin line between them, the total, then one button
+ * the width of the card, what can't be undone under it, and Back. Nothing
+ * in it has a fixed width: values and addresses wrap, and so does the
+ * button's text, on a phone held upright.
+ */
+.route-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  min-width: 0;
+  padding: 0.5rem;
+}
+
+.route-review .section-head:focus {
+  outline: none;
+}
+
+.route-review__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.route-review__rows > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--calm-line);
+  font-size: 0.875rem;
+}
+
+.route-review__rows dt {
+  color: var(--calm-muted);
+}
+
+.route-review__rows dd {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.125rem;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.route-review__rows--total dd {
+  font-weight: 500;
+}
+
+.route-review__name {
+  overflow-wrap: anywhere;
+}
+
+/* A short ID beside a name: in full on hover and in the wallet. */
+.route-review__code {
+  color: var(--calm-muted);
+  font-family: var(--code-font-family);
+  font-size: 0.75rem;
+}
+
+/* What to check against the wallet: the last row, closed. */
+.route-review__details {
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--calm-line);
+  font-size: 0.875rem;
+}
+
+.route-review__details > summary {
+  color: var(--calm-muted);
+  cursor: pointer;
+}
+
+/*
+ * A thumb's, on a phone held either way, as the buttons around it: its
+ * marker stays.
+ */
+@media (max-width: 30rem), (pointer: coarse) {
+  .route-review__details > summary {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding-block: calc((44px - 1lh) / 2);
+  }
+}
+
+.route-review__public {
+  margin: 0.5rem 0 0;
+  color: var(--calm-muted);
+  font-size: 0.8125rem;
+}
+
+/* One button for the whole width, its text wrapping on a narrow screen. */
+.route-review__primary,
+.route-review__back {
+  width: 100%;
+  min-width: 0;
+}
+
+.route-review__primary > span {
+  white-space: normal;
+}
+
+/* Which of two wallet steps it is, and what can't be undone: under it. */
+.route-review__step,
+.route-review__final {
+  margin: 0;
+  color: var(--calm-muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}

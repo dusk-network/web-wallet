@@ -31,7 +31,7 @@ import {
  *   detail?: string,
  *   detailIsCode?: boolean,
  *   external?: boolean,
- *   group: "Blocks" | "Contacts" | "Pages" | "People" | "Transactions" | "Your profiles",
+ *   group: "Blocks" | "Contacts" | "Pages" | "People" | "Profiles" | "Transactions",
  *   hint?: string,
  *   href?: string,
  *   id: string,
@@ -306,7 +306,7 @@ export function searchLocally(
       .map((p) => ({
         detail: shortAddress(p.account),
         detailIsCode: true,
-        group: "Your profiles",
+        group: "Profiles",
         id: `profile:${p.account}`,
         label: p.name ? `${p.label} · ${p.name}` : p.label,
         value: p.account,
@@ -406,13 +406,13 @@ export function searchLocally(
     }),
   );
 
-  // The rest, in History, where the group can't show them all.
+  // The rest, in Activity, where the group can't show them all.
   if (transactions.length > GROUP_LIMIT) {
     results.push({
       group: "Transactions",
       href: `/dashboard/transactions?q=${encodeURIComponent(query.trim())}`,
       id: "tx:all",
-      label: `See all ${transactions.length} in History`,
+      label: `See all ${transactions.length} in Activity`,
     });
   }
 

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Cut the wallet's text to what each step needs, each warning said once where its risk is, in the words the Dusk apps share: Activity for the page called History, recovery phrase, public account, Fee up to, Details, and Sending, Waiting, Held, Not sent and Not confirmed for where a send is; a recipient shortened on the form and in full at Review, and own addresses shortened where a bridge pays out to one in full
 - Show a stranger's whole memo on Review in a memo's own small, muted style, in quotes, under the amber "This address sent you:"
 - Mask recovery words on a phone as they're typed, in Restore, Add wallet, Unlock and Check your recovery words, their suggestions kept, and show them, and the words to write down, only while Hold to show words is held
 - Say Show my recovery words as a small link under Try again after a check that doesn't match, Try again the one button there
@@ -52,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say above the recovery phrase, wherever it's shown to be written down, to make sure no one can see the screen
+- Say a fee far above the network's price in one line beside it, as the Dusk Wallet extension says a site's: "High fee. It's 50 times the network's price.", from twice that price, whether the fee editor or custom gas in Settings set it; a price raised to what a busy network asks is never one
 - Say what a pasted message gets wrong against its link, as "The message says 0.002 DUSK; its link asks 0.15 DUSK.", and keep what was pasted in To
 - Refuse a pasted request whose line names its .dusk name with a spaced or look-alike dot, says a bare "Total 0.15", or names another's address, unlike its link
 - Read Activity again as soon as the balance moves, and every few seconds until it lists what came, so Home, History and Review know a payment as soon as the balance counts it

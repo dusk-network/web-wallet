@@ -364,42 +364,33 @@
       <p class="transaction-status__what">{what}</p>
     {/if}
     {#if !hash}
-      <p>The wallet updates automatically.</p>
+      <!-- Its title says it: no line that the wallet updates by itself. -->
     {:else if notSent}
       <p>
-        {refusal && !isDropped ? `${refusal} ` : ""}If it still arrives, it will
-        show here.
+        {refusal && !isDropped ? `${refusal} ` : ""}If it still arrives, it
+        shows here.
       </p>
     {:else if isOnItsWay}
-      <p>This usually takes under a minute.</p>
+      <p>Usually under a minute.</p>
     {:else if isUnconfirmed && status === "pending"}
-      <p>
-        It may have reached the network. Wait for it here before you send it
-        again.
-      </p>
+      <p>It may have gone out: wait here before sending it again.</p>
     {:else if isUnconfirmed}
-      <p>
-        It isn't in a block yet. See its status in the explorer before you send
-        it again.
-      </p>
+      <p>Not in a block yet. Check the explorer before sending it again.</p>
     {:else if status === "pending" && $networkReach === "offline"}
-      <p>
-        You're offline. It has left your wallet. This updates once you're back
-        online.
-      </p>
+      <p>Offline. It has left your wallet. Updates once you're back online.</p>
     {:else if status === "pending" && $networkReach === "silent"}
       <p>
-        The network isn't answering. It has left your wallet. This updates once
-        it answers.
+        The network isn't answering. It has left your wallet. Updates once it
+        answers.
       </p>
     {:else if status === "pending"}
-      <p>This usually takes under a minute.</p>
+      <p>Usually under a minute.</p>
     {:else if status === "late"}
-      <p>Still pending. See its status in the explorer.</p>
+      <p>Still sending. Check the explorer.</p>
     {:else if outcome && status === "completed"}
       <p>In block {outcome.blockHeight.toLocaleString()}.</p>
     {:else if outcome}
-      <p>It didn't go through. The network fee was charged.</p>
+      <p>The fee was charged.</p>
     {/if}
   </div>
   {#if isNotSentYet && kept}
@@ -408,7 +399,7 @@
       <Button
         className="transaction-status__button"
         on:click={() => sendItNow(send)}
-        text="Send it now"
+        text="Send now"
         variant="primary"
       />
       <Button
@@ -428,17 +419,17 @@
         <dt>Memo</dt>
         <dd class="transaction-status__memo"><MemoText text={memo} /></dd>
       {/if}
-      <dt>Transaction</dt>
+      <dt>Transaction ID</dt>
       <dd>
-        <WithdrawalHash name="Transaction hash" value={hash} />
+        <WithdrawalHash name="Transaction ID" value={hash} />
       </dd>
       {#if outcome}
-        <dt>Network fee</dt>
+        <dt>Fee</dt>
         <dd>
           <BalanceValue value={formatDuskExact(outcome.fee, language)} /> DUSK
         </dd>
       {:else if maxFee !== undefined}
-        <dt>Network fee (at most)</dt>
+        <dt>Fee up to</dt>
         <dd>
           <BalanceValue value={formatFee(maxFee, language, { max: true })} /> DUSK
         </dd>

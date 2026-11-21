@@ -27,9 +27,7 @@ describe("the password on big sends, in Settings", () => {
 
   /** @param {import("@testing-library/svelte").RenderResult<any>} view */
   const toggle = ({ getByRole }) =>
-    fireEvent.click(
-      getByRole("switch", { name: "Ask for the password on big sends" }),
-    );
+    fireEvent.click(getByRole("switch", { name: "Password for big sends" }));
 
   /**
    * @param {import("@testing-library/svelte").RenderResult<any>} view

@@ -79,7 +79,7 @@ describe("Check your recovery words", () => {
     await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: "not the password" },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
 
     await vi.waitFor(() =>
       expect(getByLabelText("Password you unlock with")).toHaveAttribute(
@@ -97,7 +97,7 @@ describe("Check your recovery words", () => {
     await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const words = B.split(" ");
@@ -121,7 +121,7 @@ describe("Check your recovery words", () => {
     await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const words = B.split(" ");
@@ -205,7 +205,7 @@ describe("Check your recovery words", () => {
       await fireEvent.input(getByLabelText("Password you unlock with"), {
         target: { value: PASSWORD },
       });
-      await fireEvent.click(getByRole("button", { name: "Continue" }));
+      await fireEvent.click(getByRole("button", { name: "Next" }));
       await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
       const [first] = askedIn(container);
@@ -240,7 +240,7 @@ describe("Check your recovery words", () => {
     await fireEvent.input(getByLabelText("Password you unlock with"), {
       target: { value: PASSWORD },
     });
-    await fireEvent.click(getByRole("button", { name: "Continue" }));
+    await fireEvent.click(getByRole("button", { name: "Next" }));
     await vi.waitFor(() => expect(askedIn(container)).toHaveLength(3));
 
     const asked = askedIn(container).map(({ n }) => n);

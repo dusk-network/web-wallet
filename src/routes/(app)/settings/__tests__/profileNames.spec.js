@@ -553,7 +553,7 @@ describe("Settings › Profiles", () => {
 
     await nameProfile(settings, 1, "Savings");
     await fireEvent.click(
-      settings.getByRole("button", { name: "Reset Wallet" }),
+      settings.getByRole("button", { name: "Reset wallet" }),
     );
     await vi.waitFor(() => expect(logoutSpy).toHaveBeenCalled());
     cleanup();

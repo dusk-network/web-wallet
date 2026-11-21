@@ -25,8 +25,8 @@ vi.mock("$lib/bridge/depositActivity", async () => {
   };
 });
 
-/** What the screen says nothing that went out came to: not sent, at no fee. */
-const NOTHING_SENT = /\bnothing was sent\b/i;
+/** What the screen says of what never went out: its status, Not sent. */
+const NOTHING_SENT = /\bnot sent\b/i;
 
 describe("DepositResult", () => {
   afterEach(() => {
@@ -79,8 +79,9 @@ describe("DepositResult", () => {
       operation: Promise.reject(new TypeError("Failed to fetch")),
     });
 
-    expect(await findByText(NOTHING_SENT)).toBeInTheDocument();
-    expect(container).toHaveTextContent(/\bnot sent\b/i);
+    // Its status, Not sent, and that no fee went with it.
+    expect(await findByText("Not sent")).toBeInTheDocument();
+    expect(container).toHaveTextContent(NOTHING_SENT);
     expect(container).toHaveTextContent(/\bno fee\b/i);
     expect(container).not.toHaveTextContent(/\bnot confirmed\b/i);
   });

@@ -194,7 +194,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       following: undefined,
       offersRetry: true,
-      says: saying(/nothing was sent/i),
+      says: saying(/\bnot sent\b(?! yet)/i),
     });
     cleanup();
 
@@ -208,7 +208,7 @@ describe("A send that fails", () => {
     expect(result).toMatchObject({
       following: "pending",
       offersRetry: false,
-      says: saying(/not confirmed/i, /may have reached/i),
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
     expect(result.text).not.toMatch(/try again|transaction failed/i);
     expect(follow.spy).toHaveBeenCalledWith(built.hash, expect.anything());
@@ -293,7 +293,7 @@ describe("A send that fails", () => {
       // After, on the same network: it may have reached it, to wait for.
       await vi.waitFor(() =>
         expect(after.getByRole("status")).toHaveTextContent(
-          naming(/may have reached/i, { not: /nothing has left/i }),
+          naming(/may have gone out/i, { not: /nothing has left/i }),
         ),
       );
     } finally {
@@ -333,9 +333,11 @@ describe("A send that fails", () => {
 
       expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
 
-      // Cancel: it stops at once, with nothing sent, said so: it can be
+      // Don't send: it stops at once, with nothing sent, said so: it can be
       // tried again.
-      await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
+      await act(() =>
+        rendered.getByRole("button", { name: "Don't send" }).click(),
+      );
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
@@ -430,7 +432,7 @@ describe("A send that fails", () => {
       const waiting = () => {
         expect(rendered.getByRole("status")).toHaveTextContent(WAITS);
         expect(
-          rendered.getByRole("button", { name: "Cancel" }),
+          rendered.getByRole("button", { name: "Don't send" }),
         ).toBeInTheDocument();
         expect(rendered.container).not.toHaveTextContent(
           /not sent|failed|try again/i,
@@ -714,7 +716,10 @@ describe("A send that fails", () => {
       expect(
         rendered.getByRole("button", { name: "Don't send" }),
       ).toBeInTheDocument();
-      expect(rendered.queryByRole("button", { name: "Cancel" })).toBeNull();
+      // The hold's own, the only way off: no other Don't send beside it.
+      expect(
+        rendered.getAllByRole("button", { name: "Don't send" }),
+      ).toHaveLength(1);
 
       // It waits for the person, however long.
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1052,7 +1057,9 @@ describe("A send that fails", () => {
       const { gate, rendered, sending } = await gatedTransfer();
 
       await vi.waitFor(() => expect(get(gate.waitsForNetwork)).toBe(true));
-      await act(() => rendered.getByRole("button", { name: "Cancel" }).click());
+      await act(() =>
+        rendered.getByRole("button", { name: "Don't send" }).click(),
+      );
 
       await expect(sending).rejects.toBeInstanceOf(SendCancelledError);
       await vi.waitFor(() =>
@@ -1127,7 +1134,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       following: undefined,
       offersRetry: true,
-      says: saying(/refused/i),
+      says: saying(/\bnot sent\b(?! yet)/i, { not: /may have/i }),
     });
   });
 
@@ -1137,7 +1144,7 @@ describe("A send that fails", () => {
     expect(await shieldResult(false)).toMatchObject({
       following: "pending",
       offersRetry: false,
-      says: saying(/not confirmed/i, /may have reached/i),
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
   });
 
@@ -1151,7 +1158,7 @@ describe("A send that fails", () => {
     expect(await shieldResult()).toMatchObject({
       following: "pending",
       offersRetry: false,
-      says: saying(/not confirmed/i, /may have reached/i),
+      says: saying(/not confirmed/i, /may have gone out/i),
     });
   });
 

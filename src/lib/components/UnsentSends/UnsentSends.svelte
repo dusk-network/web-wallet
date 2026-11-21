@@ -74,7 +74,7 @@
     if (await dontSendHandedOver(send)) {
       toast(
         "info",
-        `Not sent yet: ${whatOf(send, hideBalances)}. If it still arrives, it will show here.`,
+        `Not sent yet: ${whatOf(send, hideBalances)}. If it still arrives, it shows here.`,
         mdiCheck,
       );
     }
@@ -207,10 +207,10 @@
     className="unsent-send unsent-send--found"
     role="status"
     title={wentOut.error
-      ? `Failed: ${whatOf(send, hideBalances)}. The network fee was charged.`
+      ? `Failed: ${whatOf(send, hideBalances)} (fee charged)`
       : send.handedOver?.dismissed
-        ? `${SENT_AFTER_DONT_SEND}: ${whatOf(send, hideBalances)}.`
-        : `Sent: ${whatOf(send, hideBalances)}.`}
+        ? `${SENT_AFTER_DONT_SEND}: ${whatOf(send, hideBalances)}`
+        : `Sent: ${whatOf(send, hideBalances)}`}
     variant={wentOut.error ? "error" : "info"}
   >
     <p class="unsent-send__when">
@@ -230,7 +230,7 @@
     <Banner
       className="unsent-send unsent-send--handed-over"
       role="status"
-      title={`Sending: ${whatOf(send, hideBalances)}.`}
+      title={`Sending: ${whatOf(send, hideBalances)}`}
       variant="info"
     >
       <p class="unsent-send__when">
@@ -243,19 +243,19 @@
     <Banner
       className="unsent-send unsent-send--handed-over"
       role="status"
-      title={`Not sent yet: ${whatOf(send, hideBalances)}.`}
+      title={`Not sent yet: ${whatOf(send, hideBalances)}`}
       variant="warning"
     >
       <p class="unsent-send__when">
         {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
         {formatTime(send.at, { locale: language || undefined })}
       </p>
-      <p>{why ? `${why} ` : ""}If it still arrives, it will show here.</p>
+      <p>{why ? `${why} ` : ""}If it still arrives, it shows here.</p>
       <div class="unsent-send__actions">
         <Button
           on:click={() => sendAgainNow(send)}
           size="small"
-          text="Send it now"
+          text="Send now"
           variant="secondary"
         />
         <Button
@@ -270,7 +270,7 @@
     <Banner
       className="unsent-send unsent-send--handed-over"
       role="status"
-      title={`Not confirmed yet: ${whatOf(send, hideBalances)}.`}
+      title={`Not confirmed: ${whatOf(send, hideBalances)}`}
       variant="warning"
     >
       <p class="unsent-send__when">
@@ -278,8 +278,8 @@
         {formatTime(send.at, { locale: language || undefined })}
       </p>
       <p>
-        It may have reached the network. {hasHistory
-          ? "Check History before you send it again."
+        It may have gone out. {hasHistory
+          ? "Check Activity before sending again."
           : CHECK_BALANCE_FIRST}
       </p>
       <div class="unsent-send__actions">
@@ -287,7 +287,7 @@
           <AppAnchorButton
             href={`/dashboard/transactions?tx=${send.handedOver.hash}`}
             size="small"
-            text="Open History"
+            text="Open Activity"
             variant="secondary"
           />
         {/if}
@@ -317,7 +317,7 @@
     <Banner
       className="unsent-send"
       role="status"
-      title={`Not sent: ${whatOf(send, hideBalances)}.`}
+      title={`Not sent: ${whatOf(send, hideBalances)}`}
       variant="warning"
     >
       <p class="unsent-send__when">
@@ -350,7 +350,7 @@
           disabled={isElsewhere && told.checking}
           on:click={() => sendNow(send)}
           size="small"
-          text={isElsewhere ? "Send it too" : "Send it now"}
+          text={isElsewhere ? "Send it too" : "Send now"}
           variant="secondary"
         />
         <Button

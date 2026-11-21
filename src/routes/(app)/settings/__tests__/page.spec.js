@@ -250,6 +250,31 @@ describe("Settings", () => {
     expect(costSaid()).toHaveTextContent(/(?<![\d.,])0\.003 DUSK\b/);
   });
 
+  it("should warn of custom gas far above the network's price, where it's set", async () => {
+    const rendered = render(Settings);
+    const { getByLabelText, queryByRole } = rendered;
+
+    await setCustomGas(rendered);
+
+    const priceInput = asInput(getByLabelText(/^gas price/i));
+    /** The high-fee warning under custom gas, if it shows. */
+    const highFee = () =>
+      within(advancedOf(rendered)).queryByText(/^High fee\b/);
+
+    // At the network's price, as custom gas starts: no warning.
+    expect(highFee()).toBeNull();
+
+    await fireInput(priceInput, "3");
+
+    expect(highFee()).toHaveAttribute("role", "status");
+    expect(highFee()).toHaveTextContent(/(?<![\d.,])3 times\b/);
+
+    await fireInput(priceInput, "1");
+
+    expect(highFee()).toBeNull();
+    expect(queryByRole("status", { name: /high fee/i })).toBeNull();
+  });
+
   it("should show stored custom gas until the gas settings are reset", async () => {
     settingsStore.update((settings) => ({
       ...settings,
@@ -310,10 +335,10 @@ describe("Settings", () => {
     });
   });
 
-  it("should reset wallet store and navigate to landing page on clicking the Lock Wallet button", async () => {
+  it("should reset wallet store and navigate to landing page on clicking the Lock button", async () => {
     const { getByRole } = render(Settings);
 
-    const button = getByRole("button", { name: "Lock Wallet" });
+    const button = getByRole("button", { name: "Lock" });
 
     await fireEvent.click(button);
     await vi.advanceTimersToNextTimerAsync();

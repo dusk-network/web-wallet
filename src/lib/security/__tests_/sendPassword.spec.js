@@ -334,12 +334,11 @@ describe("the password on big sends", () => {
     it("says why it asks, with the amount chosen, and takes the focus", async () => {
       const { getByLabelText, getByRole, sending } = openDialog();
 
-      // Where it says why: the amount set, whole, 1 DUSK and never 0.1 or 11.
+      // Why it asks is its title: the amount set, whole, 1 DUSK and never
+      // 0.1 or 11.
       expect(
-        getByRole("dialog", { name: "Enter your password" }).querySelector(
-          ".send-password__why",
-        ),
-      ).toHaveTextContent(/(?<![\d.,])1 DUSK\b/);
+        getByRole("dialog", { name: "Password for sends over 1 DUSK" }),
+      ).toBeInTheDocument();
       await vi.waitFor(() =>
         expect(getByLabelText("Password you unlock with")).toHaveFocus(),
       );

@@ -193,7 +193,7 @@ async function resolveL1TransactionHash(remembered, scope) {
   const hash = normalizedTxHash(resolved);
   if (!hash) {
     throw new Error(
-      "The DuskEVM adapter returned no matching transaction for the finalized DuskDS deposit.",
+      "The DuskEVM adapter returned no matching transaction for the finalized Dusk deposit.",
     );
   }
 

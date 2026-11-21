@@ -234,7 +234,7 @@
 
 <article class="settings-group profile-names">
   <SectionHead>Profiles</SectionHead>
-  <h3 class="profile-names__subtitle">Names on this device</h3>
+  <p class="profile-names__note">Names stay on this device.</p>
   <ul class="profile-names__list">
     {#each profiles as profile, i (profile)}
       <li class="profile-names__profile">
@@ -263,7 +263,7 @@
             askedOf[i] = "";
           }}
           on:keydown={(event) => handleKeyDown(event, i)}
-          placeholder="Name, only on this device"
+          placeholder="Name"
           type="text"
         />
         {#if refused[i]}
@@ -298,10 +298,10 @@
 </article>
 
 <style lang="postcss">
-  .profile-names__subtitle {
+  .profile-names__note {
+    margin: 0;
     color: var(--calm-muted);
     font-size: 0.875rem;
-    font-weight: 400;
   }
 
   .profile-names__list {

@@ -96,7 +96,6 @@
     balanceReadAt,
     balanceReadFailed,
     currentProfile,
-    minimumStake,
     stakeInfo,
     stakeReadAt,
     stakeReadFailed,
@@ -271,9 +270,7 @@
           {#if told.same}
             <p>{told.same}</p>
           {/if}
-          <p>
-            Not sent yet: {waitingWhat(send, $settingsStore.hideBalances)}.
-          </p>
+          <p>Held: {waitingWhat(send, $settingsStore.hideBalances)}</p>
           <p class="home__waiting-when">
             {#if send.memo}<MemoText inline text={send.memo} /> ·{/if}
             {timeLabel(send.at, language)}
@@ -301,7 +298,7 @@
         <Banner
           className="home__waiting"
           role="status"
-          title={`${isSending ? "Sending" : "Not sent yet"}: ${waitingWhat(send, $settingsStore.hideBalances)}.`}
+          title={`${isSending ? "Sending" : "Waiting"}: ${waitingWhat(send, $settingsStore.hideBalances)}`}
           variant="info"
         >
           <p class="home__waiting-when">
@@ -309,14 +306,14 @@
             {timeLabel(send.at, language)}
           </p>
           {#if !isSending}
-            <p>It goes out once the network answers.</p>
+            <p>Goes out once the network answers.</p>
           {/if}
           {#if !send.handedOver}
             <Button
               className="home__waiting-cancel"
               on:click={() => cancelSend(send)}
               size="small"
-              text="Cancel"
+              text="Don't send"
               variant="secondary"
             />
           {/if}
@@ -330,7 +327,7 @@
 
     {#if isEnabled("bridge") && migration}
       <p class="home__note">
-        Have DUSK on Ethereum or BNB Smart Chain?
+        DUSK on Ethereum or BNB Smart Chain?
         <a
           class="text-link tap-link"
           href={resolve(`/dashboard/bridge/?route=${migration.id}`)}
@@ -347,11 +344,9 @@
       {hasPastStaking}
       {liquid}
       locale={language}
-      {minimumStake}
       onRetry={readStakeAgain}
       reward={stakeInfo.reward}
       shielded={balance.shielded.value}
-      sozuAvailable={sozuContractsFor(net) !== null}
       stakeEnabled={isEnabled("stake")}
       stakeReadAt={Number.isFinite(stakeLastRead) ? stakeLastRead : null}
       {stakeReading}
@@ -377,8 +372,7 @@
     {:else}
       <SectionHead>Activity</SectionHead>
       <p class="home__note home__note--side">
-        Transaction history isn't available here yet. The Dusk explorer has your
-        transactions.
+        Activity isn't available here yet. The explorer has your transactions.
       </p>
     {/if}
   </aside>

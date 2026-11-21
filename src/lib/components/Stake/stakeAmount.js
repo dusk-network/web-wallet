@@ -113,7 +113,7 @@ export function checkAmount({
   }
 
   if (amount <= 0n) {
-    return fail("Enter an amount greater than 0.");
+    return fail("Enter more than 0.");
   }
 
   if (amount < minimum) {
@@ -134,7 +134,7 @@ export function checkAmount({
     return fail(
       amount > available
         ? "More than you have."
-        : `That leaves too little for ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`,
+        : `Too little left for ${keep ? "the fees" : "the fee"}.`,
     );
   }
 
@@ -142,7 +142,7 @@ export function checkAmount({
     return fail(
       most
         ? feeError({ available, fee, hidden, leastFee, locale })
-        : `That's ${formatFee(needed - available, locale, { max: true })} DUSK more than the public balance, with ${keep ? "this fee and the fee to unstake later" : "the network fee"}.`,
+        : `${formatFee(needed - available, locale, { max: true })} DUSK short, ${keep ? "fees" : "fee"} included.`,
     );
   }
 
@@ -164,8 +164,8 @@ export function feeError({ available, fee, hidden = false, leastFee, locale }) {
     : formatFee(fee - available, locale, { max: true });
   const why =
     available > 0n
-      ? `The public balance doesn't cover the network fee: ${short} DUSK short.`
-      : `The network fee is paid from the public balance, and it's empty: ${short} DUSK short.`;
+      ? `Public balance doesn't cover the fee: ${short} DUSK short.`
+      : `The fee comes from the public balance, which is empty: ${short} DUSK short.`;
 
   return hidden
     ? why

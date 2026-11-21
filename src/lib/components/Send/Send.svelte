@@ -632,7 +632,7 @@
     }
 
     if (amount === 0n) {
-      return "Enter an amount greater than 0.";
+      return "Enter more than 0.";
     }
 
     if (!known) {
@@ -651,8 +651,8 @@
     }
 
     return hidden
-      ? "That leaves too little for the network fee."
-      : `That leaves too little for the network fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
+      ? "Too little left for the fee."
+      : `Too little left for the fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
   }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
@@ -1154,13 +1154,10 @@
       `${name} has no address to send to`,
       "Its owner needs to add one first.",
     ],
-    "not-registered": (name) => [
-      `${name} isn't registered`,
-      "Check the name, or paste the recipient's address instead.",
-    ],
+    "not-registered": (name) => [`${name} isn't registered`, ""],
     "unsupported-network": () => [
       ".dusk names aren't available on this network",
-      "They work on mainnet and testnet. Paste the recipient's address instead.",
+      "They work on Mainnet and Testnet.",
     ],
   };
 
@@ -1713,7 +1710,7 @@
    * @param {string} name
    */
   const yourProfile = (name) =>
-    /^Profile \d/.test(name) ? `Your ${name}` : `Your profile ${name}`;
+    /^Profile \d/.test(name) ? name : `Your profile ${name}`;
 
   $: isNameTyped = sendToAddress && !recipientName && !addressInfo.isValid;
 
@@ -1809,10 +1806,8 @@
   $: own = ownAccounts.find(
     (account) => recipientAddress && account.address === recipientAddress,
   );
-  // "Your Profile 2", where it goes by its number; a name stands on its own.
-  $: ownLabel = /^Profile \d/.test(own?.label ?? "")
-    ? `Your ${own?.label}`
-    : (own?.label ?? "");
+  // "Profile 2", where it goes by its number; a name stands on its own.
+  $: ownLabel = own?.label ?? "";
   // A profile of a wallet kept here, as the From line names its own: on the
   // card, the To line and the Done screen, after a contact or a `.dusk` name
   // entered.
@@ -1954,7 +1949,7 @@
    */
   const sentBefore = (row, known) =>
     row.status === "unknown"
-      ? `Not confirmed yet: ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}. It may have reached the network.`
+      ? `Not confirmed: ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}. It may have gone out.`
       : `You sent ${paymentOf(row, known)}${row.memo?.trim() ? " with this memo" : ""}${
           row.status === "executed" && row.time !== null
             ? ` ${paidInSentence(row.time, known.locale)}.`
@@ -2056,9 +2051,7 @@
     on:stay={() => {
       leaving = null;
     }}
-    text={isFromLink
-      ? "This clears the payment the link filled in."
-      : "This clears your unfinished payment."}
+    text="The form will be cleared."
   />
 {/if}
 
@@ -2104,7 +2097,7 @@
           <AppAnchor
             className="text-link"
             href={`/dashboard/transactions?tx=${row.hash}`}
-            >See in History</AppAnchor
+            >See in Activity</AppAnchor
           >
         </Banner>
       {/each}
@@ -2112,13 +2105,13 @@
         <Banner
           className="send__under-way"
           role="status"
-          title={`Not confirmed yet: ${paymentOf(row, known)}.`}
+          title={`Not confirmed: ${paymentOf(row, known)}.`}
           variant="warning"
         >
           <AppAnchor
             className="text-link"
             href={`/dashboard/transactions?tx=${row.hash}`}
-            >See in History</AppAnchor
+            >See in Activity</AppAnchor
           >
         </Banner>
       {/each}
@@ -2147,13 +2140,15 @@
               isRecipientChecked = true;
               pasted = event.clipboardData?.getData("text") ?? "";
             }}
-            placeholder="Address, .dusk name or payment link"
+            placeholder="Account, .dusk name or link"
             spellcheck="false"
             type="text"
           />
           {#if recipientName && nameLookup?.[nameAddressType]}
             <span class="send__verified"
-              ><Icon path={mdiCheckCircleOutline} />Name found</span
+              ><Icon path={mdiCheckCircleOutline} /><span class="sr-only"
+                >Name found</span
+              ></span
             >
           {/if}
           <!-- With a camera, which ScanQR looks for without asking for
@@ -2233,10 +2228,9 @@
         {:else if isRecipientInvalid}
           <p class="send__error" id={invalidRecipientId} role="alert">
             {#if isValidEvmAddress(sendToAddress)}
-              <strong>That's an EVM address.</strong> To send to an EVM wallet, use
-              the Bridge.
+              <strong>EVM account:</strong> use the Bridge.
             {:else}
-              <strong>Not a valid address.</strong> Check it, or paste it again.
+              <strong>Not a valid address.</strong>
             {/if}
           </p>
         {:else if namedProfiles.length || namedContacts.length}
@@ -2278,14 +2272,13 @@
 
         {#if isRefilled}
           <p class="send__hint" role="status">
-            Filled in from the send that didn't go out. Check it before you
-            send.
+            From the send that didn't go out. Check it.
           </p>
         {:else if isFromLink}
           <p class="send__hint" role="status">
             {isSendBack
-              ? "Filled in to send the payment back. Check it before you send."
-              : "Filled in from the link. Check it before you send."}
+              ? "To send it back. Check it."
+              : "From a link. Check it."}
           </p>
         {:else if isKept}
           <p class="send__hint" role="status">Your unfinished payment.</p>
@@ -2381,11 +2374,7 @@
               {:else if own && !recipientName}
                 {ownLabel}
               {:else if recipientName}
-                {shownName} points to {isChoice
-                  ? "two addresses"
-                  : isShielded
-                    ? "a shielded address"
-                    : "a public account"}
+                {shownName}
               {:else if walletAccount}
                 {walletAccount}
               {:else}
@@ -2471,12 +2460,11 @@
             {/if}
 
             <div class="send__card-footer">
+              <!-- A public send is said so once, under the summary. -->
               <p class="send__privacy">
                 {#if isShielded}
-                  Shielded: not shown on the public chain. The person you pay
-                  sees what you send them.
-                {:else}
-                  Public: the amount and both accounts are visible on chain.
+                  Shielded: hidden on chain. The person you pay sees what you
+                  send.
                 {/if}
               </p>
               <!-- Not for an account of this wallet or another kept here. -->
@@ -2527,7 +2515,7 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="send__hint" role="alert">
-                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Looks like {duskNameIn(contactName) || "a .dusk name"}.
                     Choose another name.
                   </p>
                 {:else if contactNameIssue}
@@ -2545,9 +2533,6 @@
                     />
                   {/if}
                 {/if}
-                <p class="send__hint">
-                  Saved only in this wallet, on this device.
-                </p>
               </form>
             {/if}
           </div>
@@ -2618,18 +2603,17 @@
           Available <BalanceValue
             exact={formatDuskExact(availableBalance, language)}
             value={formatDusk(availableBalance, language)}
-          /> DUSK from your {isShielded ? "shielded" : "public"} balance{waiting >
-          0n
+          /> DUSK ({isShielded ? "shielded" : "public"}{waiting > 0n
             ? ", after what's waiting to go out"
-            : ""}
+            : ""})
         </p>
         {#if leavesTooLittle}
           <p class="send__hint send__keep" role="status">
-            That leaves too little {keepForLater.why}.
+            Too little left {keepForLater.why}.
           </p>
         {:else if isMaxAmount && toKeep > 0n && sendAmountInLux === maxKeeping}
           <p class="send__hint">
-            Max keeps {hideBalances
+            Max leaves {hideBalances
               ? "the fee"
               : `${formatFee(toKeep, language, { max: true })} DUSK`}
             {keepForLater.why}.
@@ -2655,7 +2639,7 @@
           </p>
         {:else if balanceKnown && !isBalanceSufficientForGas && availableBalance > 0n}
           <p class="send__error" role="alert">
-            <strong>Not enough for the network fee.</strong> Add DUSK{canLowerFee
+            <strong>Not enough for the fee.</strong> Add DUSK{canLowerFee
               ? ", or lower the fee under Edit"
               : ""}.
           </p>
@@ -2679,11 +2663,12 @@
         />
         {#if isMemoTooLong}
           <p class="send__error send__memo-error" role="alert" use:staysInView>
-            <strong>That memo is too long.</strong>
-            Take out {charactersOver(transactionMemo)}
-            {charactersOver(transactionMemo) === 1
-              ? "character"
-              : "characters"}.
+            <strong
+              >Memo {charactersOver(transactionMemo)}
+              {charactersOver(transactionMemo) === 1
+                ? "character"
+                : "characters"} too long.</strong
+            >
           </p>
         {:else if isMemoValid === false}
           <p class="send__error" role="alert">
@@ -2696,7 +2681,7 @@
           </p>
         {:else}
           <p class="send__hint">
-            Visible on chain, for good: don't put personal details in it.
+            Public and permanent: no personal details.
             {#if memoRoom <= 100}
               Room for {memoRoom} more
               {memoRoom === 1 ? "character" : "characters"}.
@@ -2780,14 +2765,14 @@
       </dl>
       {#if step === "review" && leavesTooLittle}
         <p class="send__keep" role="status">
-          That leaves too little {keepForLater.why}.
+          Too little left {keepForLater.why}.
         </p>
       {/if}
       {#if addressInfo.isValid && !isShielded}
         <p class="send__visible">
           {transactionMemo
-            ? "Visible to everyone: the amount, both accounts and the memo."
-            : "Visible to everyone: the amount and both accounts."}
+            ? "Public: the amount, both accounts and the memo are visible on chain, for good."
+            : "Public: the amount and both accounts are visible on chain, for good."}
         </p>
       {/if}
       <GasSettings
@@ -2812,9 +2797,9 @@
       />
       <dl class="send__rows send__rows--total">
         <div>
-          <dt>Total</dt>
+          <dt>Total up to</dt>
           <dd>
-            Up to <BalanceValue
+            <BalanceValue
               hidden={isAmountMasked}
               value={formatTotal(totalAmount, availableBalance, language)}
             /> DUSK
@@ -2828,12 +2813,11 @@
         <Banner
           className="send__stranger"
           role="note"
-          title="This address sent you:"
+          title="Not a contact. They sent you:"
           variant="warning"
         >
           <p class="send__stranger-said">
-            “<MemoText inline text={strangerSaid.memo} />” · not in your
-            contacts.
+            “<MemoText inline text={strangerSaid.memo} />”
           </p>
         </Banner>
       {/if}
@@ -2842,7 +2826,7 @@
         <Banner
           className="send__again"
           role="alert"
-          title={`The same send is waiting to go out already: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
+          title={`Same send already waiting to go out: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
           variant="warning"
         />
       {:else if madeAgain && madeAgain.time !== null}
@@ -2868,7 +2852,7 @@
             variant="primary"
           />
         {/key}
-        <p class="send__final">Sends can't be undone.</p>
+        <p class="send__final">Can't be undone.</p>
         <Button
           className="send__back"
           icon={{ path: mdiArrowLeft }}

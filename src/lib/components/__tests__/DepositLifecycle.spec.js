@@ -89,7 +89,7 @@ describe("DepositLifecycle", () => {
     });
 
     // None made up before.
-    expect(detail(container, /network fee/i)).toBeUndefined();
+    expect(detail(container, /^Fee$/)).toBeUndefined();
 
     await act(() =>
       history.state?.set({
@@ -97,6 +97,6 @@ describe("DepositLifecycle", () => {
       }),
     );
 
-    expect(detail(container, /network fee/i)).toBe("0.001987516 DUSK");
+    expect(detail(container, /^Fee$/)).toBe("0.001987516 DUSK");
   });
 });

@@ -320,6 +320,33 @@ describe("Staking", () => {
     );
   });
 
+  it("gives what's available to stake, from the public balance, and what a stDUSK is worth now, as Sozu's pool says", async () => {
+    const { container } = render(Staking);
+    const available = Array.from(
+      container.querySelectorAll(".staking__figures > div"),
+    ).find((row) => textOf(row.querySelector("dt")) === "Available to stake");
+
+    // Its own tile: the amount, and where it comes from.
+    expect(textOf(available?.querySelector(".staking__amount") ?? null)).toBe(
+      "1,172.5 DUSK",
+    );
+    expect(textOf(available?.querySelector(".staking__sub") ?? null)).toBe(
+      "From your public balance",
+    );
+
+    await act(() => sozu.store?.update((s) => ({ ...s, status: SOZU_STATUS })));
+
+    // In the comparison's Rewards row, Sozu's side: a stDUSK's worth now,
+    // live from the pool, and that it can fall.
+    const rewards = Array.from(
+      container.querySelectorAll("table.compare tbody tr"),
+    ).find((row) => textOf(row.querySelector("th")) === "Rewards");
+
+    expect(textOf(rewards?.querySelectorAll("td")[1] ?? null)).toMatch(
+      /(?:^|\s)You get stDUSK\. Each is worth 3\.0751 DUSK now\. It usually rises with rewards, but can fall with a penalty\.$/,
+    );
+  });
+
   it("hides the amounts while balances are hidden", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
@@ -342,7 +369,7 @@ describe("Staking", () => {
       withoutStake(1_483n);
 
       const { getByLabelText, getByRole, queryByRole } = render(Staking);
-      const amount = getByLabelText("Stake amount");
+      const amount = getByLabelText("Amount");
 
       await fireEvent.input(amount, { target: { value: "100" } });
 
@@ -368,7 +395,7 @@ describe("Staking", () => {
 
       const { getByLabelText, getByRole } = render(Staking);
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1483" },
       });
 
@@ -383,7 +410,7 @@ describe("Staking", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByLabelText("Stake amount")).toHaveValue("1482.9");
+      expect(getByLabelText("Amount")).toHaveValue("1482.9");
     });
   });
 
@@ -416,19 +443,19 @@ describe("Staking", () => {
 
     it.each(
       /** @type {const} */ ([
-        ["a native stake", "?flow=native", "stake", "Stake amount", "1000"],
+        ["a native stake", "?flow=native", "stake", "Amount", "1000"],
         [
           "a stake with Sozu",
           "?flow=liquid&action=stake",
           "liquid-stake",
-          "Stake amount",
+          "Amount",
           "100",
         ],
         [
           "an unstake from Sozu",
           "?flow=liquid&action=unstake",
           "liquid-unstake",
-          "Unstake amount",
+          "Amount",
           "100",
         ],
         ["a native unstake", "?flow=unstake", "unstake", "Amount", "100"],
@@ -468,7 +495,7 @@ describe("Staking", () => {
           });
           await fireEvent.click(
             getByRole("button", {
-              name: operation === "unstake" ? "Next" : "Review",
+              name: "Review",
             }),
           );
 
@@ -560,7 +587,7 @@ describe("Staking", () => {
     expect(underWay).toHaveTextContent(wholeFigure("0.1 DUSK"));
     expect(underWay).toHaveTextContent(/ stake /);
     // 172 DUSK less the 0.1 on its way.
-    expect(availableOf(getByLabelText("Stake amount"))).toMatch(
+    expect(availableOf(getByLabelText("Amount"))).toMatch(
       wholeFigure("171.9 DUSK"),
     );
     expect(followTransaction).toHaveBeenCalledExactlyOnceWith("f1".repeat(32));
@@ -588,7 +615,7 @@ describe("Staking", () => {
 
     expect(sozu.load).toHaveBeenCalledWith();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
 
@@ -613,8 +640,8 @@ describe("Staking", () => {
   });
 
   it.each([
-    ["stake", "stakeWithSozu", "Stake amount"],
-    ["unstake", "unstakeFromSozu", "Unstake amount"],
+    ["stake", "stakeWithSozu", "Amount"],
+    ["unstake", "unstakeFromSozu", "Amount"],
   ])(
     "reads Sozu again after a %s's transaction",
     async (action, service, label) => {
@@ -663,7 +690,7 @@ describe("Staking", () => {
       .mockReturnValue(new Promise(() => {}));
     const { getByLabelText, getByRole } = render(Staking);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));

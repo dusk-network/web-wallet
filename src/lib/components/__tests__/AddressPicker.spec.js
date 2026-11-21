@@ -272,7 +272,7 @@ describe("AddressPicker", () => {
       });
 
       const [copyPublic] = getAllByRole("button", {
-        name: "Copy public address",
+        name: "Copy public account",
       });
       const [copyShielded] = getAllByRole("button", {
         name: "Copy shielded address",

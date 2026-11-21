@@ -440,7 +440,7 @@ describe("TransactionDetail", () => {
     expect(textOf(contract?.querySelector(".tx-detail__code"))).toBe(store);
   });
 
-  it("should name a profile of another wallet here as the wallets do, in its headline and its To, and never offer to save it as a contact", () => {
+  it("should name a profile of another wallet here as the wallets do, in its To under a Sent headline, and never offer to save it as a contact", () => {
     const sent = row({
       amount: "10000000",
       contractId: undefined,
@@ -450,8 +450,9 @@ describe("TransactionDetail", () => {
     const { container, queryByRole } = show(sent, { walletNames });
     const to = field(container, /^to$/i);
 
-    expect(textOf(container.querySelector(".tx-detail__headline"))).toMatch(
-      /(?<![\w.-])Wallet 2 · Profile 1$/,
+    // What happened in the headline; whom it went to in the To under it.
+    expect(textOf(container.querySelector(".tx-detail__headline"))).toBe(
+      "Sent",
     );
     expect(textOf(to?.querySelector(".tx-detail__name"))).toBe(
       "Wallet 2 · Profile 1",
@@ -533,11 +534,11 @@ describe("TransactionDetail", () => {
     );
   });
 
-  it("should give the fee paid to the last digit, in its list and under Technical details", () => {
+  it("should give the fee paid to the last digit, in its list, once: Details doesn't repeat it", () => {
     const { container } = show(row({ feePaid: "4419010" }));
 
-    expect(textOf(field(container, /fee/i))).toBe("0.00441901 DUSK");
-    expect(textOf(field(container, /fee/i, "tech"))).toBe("0.00441901 DUSK");
+    expect(textOf(field(container, /^fee$/i))).toBe("0.00441901 DUSK");
+    expect(field(container, /fee/i, "tech")).toBeNull();
   });
 
   it("should say under Technical details the gas used of its limit", () => {
@@ -608,13 +609,11 @@ describe("TransactionDetail", () => {
     });
   });
 
-  it("should show the fee, and hide it with the balances, here and under Technical details", () => {
+  it("should show the fee once, and hide it with the balances", () => {
     const shown = show(row({ amount: "1000000000", feePaid: "1856398" }));
 
-    expect(textOf(field(shown.container, /fee/i))).toBe("0.001856398 DUSK");
-    expect(textOf(field(shown.container, /fee/i, "tech"))).toBe(
-      "0.001856398 DUSK",
-    );
+    expect(textOf(field(shown.container, /^fee$/i))).toBe("0.001856398 DUSK");
+    expect(field(shown.container, /fee/i, "tech")).toBeNull();
     cleanup();
 
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
@@ -624,9 +623,8 @@ describe("TransactionDetail", () => {
         row({ amount: "1000000000", feePaid: "1856398" }),
       );
 
-      // Its rows stay, without the figure.
-      expect(field(container, /fee/i)).not.toBeNull();
-      expect(field(container, /fee/i, "tech")).not.toBeNull();
+      // Its row stays, without the figure.
+      expect(field(container, /^fee$/i)).not.toBeNull();
       expect(container.textContent).not.toContain("0.001856398");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));

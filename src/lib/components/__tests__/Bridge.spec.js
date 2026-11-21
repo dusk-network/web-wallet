@@ -84,18 +84,19 @@ vi.mock("$lib/web3/walletConnection", async () => {
 });
 
 /**
- * A review amount, found by its label's key word.
+ * A review row's figure, found by its label: its value, as shown.
  *
  * @param {ParentNode} container
  * @param {RegExp} label
  */
 const amountOf = (container, label) =>
-  Array.from(container.querySelectorAll(".review-amount"))
+  Array.from(container.querySelectorAll(".route-review__rows > div"))
     .find((row) =>
       label.test(row.querySelector("dt")?.textContent?.trim() ?? ""),
     )
     ?.querySelector("dd")
-    ?.textContent?.trim();
+    ?.textContent?.replace(/\s+/g, " ")
+    .trim();
 
 /**
  * A review row's value, by its label's key word.
@@ -119,7 +120,7 @@ const fieldOf = (container, label) =>
  */
 const termOf = (container, label) =>
   Array.from(
-    container.querySelectorAll(".review-amount dt"),
+    container.querySelectorAll(".route-review__rows dt"),
     (term) => term.textContent?.trim() ?? "",
   ).find((term) => label.test(term)) ?? "";
 
@@ -217,11 +218,15 @@ describe("Bridge", () => {
       await walletStore.init(generator);
     }
 
-    /** @param {import("@testing-library/svelte").RenderResult<any>} view */
+    /**
+     * Its 12 DUSK, reviewed and bridged.
+     *
+     * @param {import("@testing-library/svelte").RenderResult<any>} view
+     */
     async function sendDeposit({ getByRole }) {
-      await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
-      await fireEvent.click(getByRole("button", { name: "Send" }));
+      await fireEvent.click(getByRole("button", { name: "Bridge 12 DUSK" }));
     }
 
     beforeEach(async () => {
@@ -310,16 +315,16 @@ describe("Bridge", () => {
         ).not.toBeNull(),
       );
 
-      // Not confirmed, as it may have reached the network.
+      // Not confirmed, as it may have gone out.
       expect(
         typed.container.querySelector(".dusk-error-alert__summary"),
       ).toHaveTextContent(/not confirmed/i);
       expect(
         typed.container.querySelector(".dusk-error-alert__description"),
-      ).toHaveTextContent(/may have reached the network/i);
+      ).toHaveTextContent(/may have gone out/i);
       expect(
         typed.container.querySelector(".dusk-error-alert__description"),
-      ).not.toHaveTextContent(/nothing was sent/i);
+      ).not.toHaveTextContent(/nothing was sent|not sent/i);
       expect(typed.queryByRole("button", { name: "Try again" })).toBeNull();
 
       await lockAndUnlock();
@@ -438,7 +443,7 @@ describe("Bridge", () => {
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     await vi.waitFor(() =>
       expect(amountOf(container, /fee/i)).toBe("0.0014 DUSK"),
@@ -464,22 +469,32 @@ describe("Bridge", () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    // The amount, and the network fee and the total, each at most, each
-    // under its own label.
+    // The amount, and the fee and the total, each at most, each under its
+    // own label.
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
-    expect(amountOf(container, /^network fee\b/i)).toBe("0.02 DUSK");
+    expect(amountOf(container, /^fee up to$/i)).toBe("0.02 DUSK");
     expect(amountOf(container, /^total\b/i)).toBe("2.52 DUSK");
-    expect(termOf(container, /fee/i)).toBe("Network fee (at most)");
-    expect(termOf(container, /total/i)).toMatch(/\bat most\b/i);
+    expect(termOf(container, /fee/i)).toBe("Fee up to");
+    expect(termOf(container, /total/i)).toMatch(/\bup to\b/i);
     // From this public account to the connected DuskEVM account, through the
     // contract the network's file names, shown shortened.
     expect(addressOf(container, /^from$/i)).toBe(PAID);
     expect(addressOf(container, /^to$/i)).toBe(CONNECTED.address);
-    expect(fieldOf(container, /^contract$/i)).toHaveTextContent(
+    // The named contract under Details, closed: reference, not a step.
+    const details = /** @type {HTMLDetailsElement} */ (
+      container.querySelector("details.route-review__details")
+    );
+
+    expect(details.open).toBe(false);
+    expect(fieldOf(details, /^contract$/i)).toHaveTextContent(
       /(^|\s)2257e5…a1b31d$/,
     );
+    // One button sends it, and under it, that it can't be undone.
+    const bridge = getByRole("button", { name: "Bridge 2.5 DUSK" });
+
+    expect(bridge.nextElementSibling).toHaveTextContent(/^Can't be undone\.$/);
   });
 
   it("should take new default gas, as the node's price, until the review", async () => {
@@ -488,7 +503,7 @@ describe("Bridge", () => {
 
     await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(amountOf(container, /fee/i)).toBe("0.06 DUSK");
 
@@ -522,9 +537,9 @@ describe("Bridge", () => {
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
 
     // The same amount reviewed twice: the first estimate comes back last.
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     estimates[1].resolve(200_000n);
     await settle();
     estimates[0].resolve(100_000n);
@@ -536,7 +551,7 @@ describe("Bridge", () => {
     // Another profile while the estimate runs: the fee isn't its, and the
     // review gives the amount alone.
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ unshieldedAccount: {} });
     estimates[2].resolve(300_000n);
     await settle();
@@ -557,7 +572,7 @@ describe("Bridge", () => {
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
     expect(amountOf(container, /fee/i)).toBeUndefined();
@@ -576,7 +591,7 @@ describe("Bridge", () => {
     expect(container).not.toHaveTextContent("1.5");
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
     expect(amountOf(container, /fee/i)).toBe("0.02 DUSK");
@@ -596,7 +611,7 @@ describe("Bridge", () => {
 
     await fireEvent.input(amount, { target: { value: "2.5" } });
 
-    expect(getByRole("button", { name: "Review bridge" })).toBeEnabled();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
   it("should pick the networks from lists, as the network's routes go", async () => {
@@ -624,16 +639,16 @@ describe("Bridge", () => {
     const { getByRole, queryByRole } = render(Bridge, baseProps);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(getByRole("button", { name: "Bridge 2.5 DUSK" })).toBeEnabled();
 
     /** @type {import("svelte/store").Writable<any>} */ (account).set({
       isConnected: false,
     });
     await tick();
 
-    expect(queryByRole("button", { name: "Send" })).toBeNull();
+    expect(queryByRole("button", { name: "Bridge 2.5 DUSK" })).toBeNull();
     expect(
       getByRole("button", { name: "Connect a DuskEVM wallet" }),
     ).toBeEnabled();

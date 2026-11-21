@@ -227,7 +227,7 @@
       />
       <AppAnchorButton
         href="/settings/check-words"
-        text="Check your recovery words"
+        text="Check recovery phrase"
         variant="tertiary"
       />
     </div>

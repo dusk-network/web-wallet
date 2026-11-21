@@ -255,7 +255,7 @@
     }
 
     if (withdrawal.reprove) {
-      return "Its proof was rejected, so it can't be claimed. Prove it again on Dusk.";
+      return "Proof rejected: it can't be claimed. Prove it again on Dusk.";
     }
 
     const text = claimText(withdrawal.claim, (ms) => fullDateTime(ms, lang));
@@ -330,11 +330,15 @@
               : row.status === "executed"
                 ? { icon: mdiCheck, text: "Completed" }
                 : { icon: mdiTimerSand, text: "Checking the outcome…" };
-  // Sent to whom once it's known it went out: one not confirmed yet only
-  // names whom it's to.
+  // What happened, once: whom with is the row under it. One not confirmed
+  // yet only names whom it's to.
   $: headline =
     p.titleIsAddress || p.icon === "sent" || p.icon === "received"
-      ? `${row.direction === "in" ? "Received from" : p.status === "unknown" ? "To" : "Sent to"} ${p.title}`
+      ? row.direction === "in"
+        ? "Received"
+        : p.status === "unknown"
+          ? `To ${p.title}`
+          : "Sent"
       : p.title;
   $: counterpartyLabel = row.direction === "in" ? "From" : "To";
   $: duskName = row.counterpartyName ?? row.toName;
@@ -557,7 +561,7 @@
                 <FieldLimit limit={40} value={contactName} />
                 {#if isFalseContactName}
                   <p class="tx-detail__note" role="alert">
-                    That looks like {duskNameIn(contactName) || "a .dusk name"}.
+                    Looks like {duskNameIn(contactName) || "a .dusk name"}.
                     Choose another name.
                   </p>
                 {:else if contactNameIssue}
@@ -575,9 +579,6 @@
                     />
                   {/if}
                 {/if}
-                <p class="tx-detail__note">
-                  Saved only in this wallet, on this device.
-                </p>
               </form>
             {/if}
           </dd>
@@ -679,7 +680,7 @@
         </div>
       {/if}
       <div>
-        <dt>Network fee paid</dt>
+        <dt>Fee</dt>
         <dd>
           {#if row.fee !== null}
             <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
@@ -690,34 +691,34 @@
           {/if}
         </dd>
       </div>
-      <div class="tx-detail__wide">
-        <dt>Transaction ID</dt>
-        <dd class="tx-detail__id">
-          <span class="tx-detail__code"
-            >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
-                >{head}</b
-              ><span class="tx-detail__middle">{middle}</span><b
-                class="tx-detail__tail">{tail}</b
-              >{/each}</span
-          >
-          <CopyButton
-            className="tx-detail__copy"
-            name="transaction ID"
-            text="Copy"
-            value={row.hash}
-          />
-        </dd>
-      </div>
     </dl>
 
     <details class="tx-detail__tech">
       <summary
-        >Technical details<Icon
+        >Details<Icon
           className="section-chevron"
           path={mdiChevronDown}
         /></summary
       >
       <dl class="tx-detail__list tx-detail__list--tech">
+        <div class="tx-detail__wide">
+          <dt>Transaction ID</dt>
+          <dd class="tx-detail__id">
+            <span class="tx-detail__code"
+              >{#each [parts(row.hash)] as [head, middle, tail] (tail)}<b
+                  >{head}</b
+                ><span class="tx-detail__middle">{middle}</span><b
+                  class="tx-detail__tail">{tail}</b
+                >{/each}</span
+            >
+            <CopyButton
+              className="tx-detail__copy"
+              name="transaction ID"
+              text="Copy"
+              value={row.hash}
+            />
+          </dd>
+        </div>
         {#if contract}
           <div class="tx-detail__wide">
             <dt>Contract</dt>
@@ -773,14 +774,6 @@
           <div>
             <dt>Gas price</dt>
             <dd>{Number(row.gasPrice).toLocaleString(locale)} LUX</dd>
-          </div>
-        {/if}
-        {#if row.fee !== null}
-          <div>
-            <dt>Fee paid</dt>
-            <dd>
-              <BalanceValue value={formatDuskExact(row.fee, locale)} /> DUSK
-            </dd>
           </div>
         {/if}
         {#if nonce !== null}

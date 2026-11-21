@@ -97,7 +97,7 @@ describe("Unstake", () => {
     expect(navigator.language).not.toMatch(/^de/);
     // A fourth decimal, so that it reads back as 1.123, never as 1123.
     expect(getByRole("textbox", { name: /Amount/ })).toHaveValue("1,1230");
-    expect(getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
   describe("Unstake operation", () => {
@@ -125,7 +125,7 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(getReviewValues(container)).toStrictEqual([
         "278 DUSK",
@@ -151,9 +151,9 @@ describe("Unstake", () => {
       expect(amountInput.value).not.toBe("");
       expect(amountInput.value).not.toMatch(/[0-9]/);
       expect(container.textContent).not.toMatch(/278/);
-      expect(getByRole("button", { name: "Next" })).toBeEnabled();
+      expect(getByRole("button", { name: "Review" })).toBeEnabled();
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(getReviewValues(container)[0]).not.toMatch(/[0-9]/);
       expect(container.textContent).not.toMatch(/278/);
@@ -198,7 +198,7 @@ describe("Unstake", () => {
 
       for (const typed of ["100,5", "100.5"]) {
         await fireEvent.input(amountInput, { target: { value: typed } });
-        await fireEvent.click(getByRole("button", { name: "Next" }));
+        await fireEvent.click(getByRole("button", { name: "Review" }));
 
         expect(getReviewValues(container)[0]).toBe("100.5 DUSK");
 
@@ -208,7 +208,7 @@ describe("Unstake", () => {
       await fireEvent.input(getByRole("textbox", { name: "Amount" }), {
         target: { value: "100,5" },
       });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
@@ -229,7 +229,7 @@ describe("Unstake", () => {
       const errorOf = async (/** @type {string} */ typed) => {
         await fireEvent.input(amountInput, { target: { value: typed } });
 
-        return getByRole("button", { name: "Next" }).hasAttribute("disabled")
+        return getByRole("button", { name: "Review" }).hasAttribute("disabled")
           ? (document.querySelector(".operation__error")?.textContent?.trim() ??
               "")
           : null;
@@ -239,7 +239,7 @@ describe("Unstake", () => {
       expect(await errorOf("ten")).toMatch(wholeFigure("10.5"));
       // More decimals than DUSK's nine.
       expect(await errorOf("1.0000000001")).toMatch(wholeFigure("9 decimals"));
-      expect(await errorOf("0")).toMatch(/greater than 0(?![.,]?[0-9])/);
+      expect(await errorOf("0")).toMatch(/more than 0(?![.,]?[0-9])/);
       // More than is staked.
       expect(await errorOf("278,5")).toMatch(/more than/i);
       // Less than the 1 DUSK a stake must keep, unless it all goes.
@@ -262,7 +262,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
       await rerender({ gasSettings: { gasLimit, gasPrice: 3n } });
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       expect(getReviewValues(container)[1]).toBe("0.06 DUSK");
     });
@@ -275,7 +275,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
@@ -299,7 +299,7 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
 
@@ -323,7 +323,7 @@ describe("Unstake", () => {
       const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       // Next's second click lands where Unstake now is, and so does Enter.
       await fireEvent.click(getByRole("button", { name: "Unstake" }));
@@ -349,7 +349,7 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await rerender({ maxWithdrawAmount: 100_000_000_000n });
 
       expect(getReviewValues(container)[0]).toBe("278 DUSK");
@@ -377,7 +377,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      const nextButton = getByRole("button", { name: "Next" });
+      const nextButton = getByRole("button", { name: "Review" });
 
       expect(nextButton).toBeDisabled();
     });
@@ -413,7 +413,7 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
 
@@ -453,11 +453,11 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
 
-      expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+      expect(await findByRole("link", { name: "Open Activity" })).toBeVisible();
       expect(failureOf()).toHaveTextContent(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
     });
@@ -470,7 +470,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
 
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
@@ -494,7 +494,7 @@ describe("Unstake", () => {
       });
 
       await vi.advanceTimersToNextTimerAsync();
-      await fireEvent.click(getByRole("button", { name: "Next" }));
+      await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: "Claim Rewards" }));
       await rerender({ maxWithdrawAmount: 0n });
@@ -519,7 +519,7 @@ describe("Unstake", () => {
       });
 
       expect(getByRole("alert")).toHaveTextContent(/more than/i);
-      expect(getByRole("button", { name: "Next" })).toBeDisabled();
+      expect(getByRole("button", { name: "Review" })).toBeDisabled();
     });
 
     it("should not allow to claim rewards, if wrong gas settings are provided", async () => {
@@ -534,7 +534,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      const nextButton = getByRole("button", { name: "Next" });
+      const nextButton = getByRole("button", { name: "Review" });
 
       expect(nextButton).toBeDisabled();
     });

@@ -126,11 +126,11 @@ describe("Bridge withdrawal", () => {
     await fireEvent.input(rendered.getByRole("textbox"), {
       target: { value: "1" },
     });
-    await fireEvent.click(
-      rendered.getByRole("button", { name: "Review bridge" }),
-    );
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
     await afterConfirmDelay();
-    await fireEvent.click(rendered.getByRole("button", { name: "Send" }));
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Bridge 1 DUSK" }),
+    );
 
     return rendered;
   }
@@ -143,19 +143,19 @@ describe("Bridge withdrawal", () => {
     await afterConfirmDelay();
 
     // Review's second click lands where Send now is, and so does Enter.
-    await fireEvent.click(getByRole("button", { name: "Review bridge" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }), {
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await fireEvent.click(getByRole("button", { name: "Bridge 1 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: "Bridge 1 DUSK" }), {
       detail: 0,
     });
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Bridge 1 DUSK" }));
 
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
-    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(getByRole("button", { name: "Bridge 1 DUSK" })).toBeEnabled();
 
     await vi.advanceTimersByTimeAsync(1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Bridge 1 DUSK" }));
 
     await vi.waitFor(() =>
       expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
@@ -290,8 +290,7 @@ describe("Bridge withdrawal", () => {
     const notSent = await failureOf(unreached);
 
     // Nothing went out.
-    expect(notSent.heading).toMatch(/not sent/i);
-    expect(notSent.sentence).toMatch(/nothing was sent/i);
+    expect(notSent.heading).toBe("Not sent");
     expect(notSent.sentence).not.toMatch(/may have/i);
     expect(mocks.sendTransaction).not.toHaveBeenCalled();
 
@@ -309,9 +308,10 @@ describe("Bridge withdrawal", () => {
 
     // It may have gone out: not confirmed, and nothing to send it again.
     expect(unknown.heading).toMatch(/not confirmed/i);
-    expect(unknown.sentence).toMatch(/may have reached the network/i);
+    expect(unknown.sentence).toMatch(/may have gone out/i);
     expect(unknown.sentence).toMatch(/check your EVM wallet/i);
-    expect(unknown.sentence).not.toMatch(/nothing was sent/i);
+    expect(unknown.sentence).not.toMatch(/nothing was sent|not sent/i);
+    expect(unknown.heading).not.toMatch(/not sent/i);
     expect(rendered.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
@@ -404,8 +404,7 @@ describe("Bridge withdrawal", () => {
 
       const notSent = await failureOf(rendered);
 
-      expect(notSent.heading).toMatch(/not sent/i);
-      expect(notSent.sentence).toMatch(/nothing was sent/i);
+      expect(notSent.heading).toBe("Not sent");
       expect(notSent.sentence).not.toMatch(/may have/i);
       expect(rendered.getByRole("button", { name: "Try again" })).toBeVisible();
       expect(mocks.sendTransaction).not.toHaveBeenCalled();

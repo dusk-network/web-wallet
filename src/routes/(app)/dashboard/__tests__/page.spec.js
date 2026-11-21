@@ -249,31 +249,38 @@ const waitingBanners = () =>
  * state, what it never says then, and what it offers, by its controls' names.
  */
 
-/** It waits for the network, nothing having left the wallet: to call off. */
+/**
+ * It waits for the network, nothing having left the wallet: Waiting, going
+ * out once the network answers, to call off.
+ */
 const WAITING = {
-  offers: ["Cancel"],
-  says: [/not sent yet/i, { not: /sending/i }],
+  offers: ["Don't send"],
+  says: [
+    /\bwaiting\b/i,
+    /goes out once the network answers/i,
+    { not: /sending/i },
+  ],
 };
 
 /** It's being sent, the node asked to check it: to call off still. */
 const SENDING = {
-  offers: ["Cancel"],
-  says: [/\bsending\b/i, { not: /not sent/i }],
+  offers: ["Don't send"],
+  says: [/\bsending\b/i, { not: /not sent|waiting/i }],
 };
 
 /** Handed over to be broadcast: being sent, with nothing to call off. */
 const HANDED_OVER = {
   offers: [],
-  says: [/\bsending\b/i, { not: /not sent/i }],
+  says: [/\bsending\b/i, { not: /not sent|waiting/i }],
 };
 
 /**
- * Held as its account sent something else while it waited: not sent yet,
+ * Held as its account sent something else while it waited: Held, not sent,
  * to send it too, or not.
  */
 const HELD = {
   offers: ["Send it too", "Don't send"],
-  says: [/your account sent/i, /not sent yet/i, { not: /sending/i }],
+  says: [/your account sent/i, /\bheld\b/i, { not: /sending|waiting/i }],
 };
 
 /**
@@ -314,7 +321,7 @@ describe("Dashboard", () => {
     vi.doUnmock("$lib/sozu");
   });
 
-  it("says a send waits to go out while the network doesn't answer, with Cancel, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
+  it("says a send waits to go out while the network doesn't answer, with Don't send, wherever it was sent from, until it goes out, each with its memo and time to tell them apart", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -452,7 +459,7 @@ describe("Dashboard", () => {
   // Chen's, on slow Wi-Fi: "Not sent yet … It goes out once the network
   // answers. Cancel" for 30 s while the node checked it and took it. Then
   // Lena's: no Cancel while the node's check hung, though nothing had left.
-  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Cancel until it's handed over", async () => {
+  it("says a waiting send is being sent from the moment the node is asked to check it, though the pill finds the network silent, with Don't send until it's handed over", async () => {
     const { keepWaiting, sendGate, waitingSends } =
       await import("$lib/transactions");
     const { setNetworkReach } = await import("$lib/stores/networkReach");
@@ -701,7 +708,7 @@ describe("Dashboard", () => {
         expect(waitingBanners()).toStrictEqual([
           waitingAs(
             HELD,
-            /same payment/i,
+            /looks like this payment/i,
             shortenAddress(ALICE),
             timeLabel(sentAt, "en"),
             "0.01 DUSK",

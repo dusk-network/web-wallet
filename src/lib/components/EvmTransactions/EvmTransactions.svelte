@@ -931,12 +931,12 @@
 
 <SwapCard label="Bridge activity" wide>
   <div class="swap-top" slot="top">
-    <nav aria-label="Bridge and activity" class="swap-tabs">
+    <nav aria-label="Bridge and transfers" class="swap-tabs">
       <a class="swap-tab" href={resolve("/dashboard/bridge/")}>Bridge</a>
       <a
         aria-current="page"
         class="swap-tab"
-        href={resolve("/dashboard/bridge/transactions/")}>Activity</a
+        href={resolve("/dashboard/bridge/transactions/")}>Transfers</a
       >
     </nav>
   </div>
@@ -944,11 +944,8 @@
   <div class="bridge-activity">
     <p class="sr-only" role="status">{finished}</p>
     <p class="bridge-activity__lede">
-      {#if hasDuskEvm}
-        Transfers between Dusk and other chains{#if currentAccount}, for DuskEVM
-          account <b>{shortened(currentAccount)}</b>{/if}.
-      {:else}
-        Transfers between Dusk and other chains.
+      {#if hasDuskEvm && currentAccount}
+        DuskEVM account <b>{shortened(currentAccount)}</b>.
       {/if}
       {#if lastCheckedAt}
         <span class="bridge-activity__checked"
@@ -959,9 +956,7 @@
 
     {#if hasDuskEvm && !currentAccount}
       <div class="bridge-activity__connect">
-        <p>
-          Connect DuskEVM wallet to list its deposits and other withdrawals.
-        </p>
+        <p>Connect a DuskEVM wallet to see its transfers.</p>
         <Button
           icon={{ path: mdiWalletOutline }}
           on:click={() => modal.open()}
@@ -1100,7 +1095,9 @@
           void checkStatus(txHash);
         }}
       >
-        <label for="withdrawal-tx-hash">Find by transaction hash</label>
+        <label for="withdrawal-tx-hash"
+          >Find a withdrawal by its DuskEVM transaction ID</label
+        >
         <div class="bridge-activity__lookup-row">
           <Textbox
             aria-describedby={hashError
@@ -1123,9 +1120,6 @@
             variant="secondary"
           />
         </div>
-        <p class="bridge-activity__hint">
-          A withdrawal's DuskEVM transaction, as its wallet shows it.
-        </p>
         {#if hashError}
           <p class="field-error" id="withdrawal-tx-hash-error" role="alert">
             {hashError}
@@ -1145,8 +1139,7 @@
   }
 
   .bridge-activity__lede,
-  .bridge-activity__note,
-  .bridge-activity__hint {
+  .bridge-activity__note {
     color: var(--calm-muted);
     font-size: 0.875rem;
     line-height: 1.45;
@@ -1161,10 +1154,6 @@
   .bridge-activity__checked {
     display: block;
     color: var(--calm-subtle);
-    font-size: 0.8125rem;
-  }
-
-  .bridge-activity__hint {
     font-size: 0.8125rem;
   }
 

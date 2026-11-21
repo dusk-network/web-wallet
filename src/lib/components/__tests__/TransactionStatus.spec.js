@@ -128,10 +128,12 @@ describe("TransactionStatus", () => {
     );
     // Sending, until a block has it.
     expect(statusOf(container)).toHaveClass("transaction-status--pending");
-    expect(detailOf(container, /^transaction$/i).value).toBe("8dcf6f…3db55e");
+    expect(detailOf(container, /^transaction ID$/i).value).toBe(
+      "8dcf6f…3db55e",
+    );
     // At most so much: no more is known yet.
-    expect(detailOf(container, /network fee/i)).toStrictEqual({
-      term: expect.stringMatching(/at most/i),
+    expect(detailOf(container, /^fee\b/i)).toStrictEqual({
+      term: expect.stringMatching(/up to/i),
       value: "0.0025 DUSK",
     });
   });
@@ -158,8 +160,8 @@ describe("TransactionStatus", () => {
     expect(getByRole("status")).not.toHaveTextContent(/failed/i);
 
     // The fee it was charged, no longer the most it could cost.
-    expect(detailOf(container, /network fee/i)).toStrictEqual({
-      term: expect.not.stringMatching(/at most/i),
+    expect(detailOf(container, /^fee\b/i)).toStrictEqual({
+      term: expect.not.stringMatching(/up to/i),
       value: "0.001854795 DUSK",
     });
   });
@@ -297,7 +299,7 @@ describe("TransactionStatus", () => {
       const following = followNext();
       const { container, getByRole } = render(TransactionStatus, baseProps);
 
-      expect(detailOf(container, /network fee/i).value).not.toMatch(/\d/);
+      expect(detailOf(container, /^fee\b/i).value).not.toMatch(/\d/);
       expect(container.textContent).not.toMatch(/\d DUSK/);
 
       following.resolve({
@@ -310,7 +312,7 @@ describe("TransactionStatus", () => {
         expect(getByRole("status")).toHaveTextContent(naming("4,687,200")),
       );
 
-      expect(detailOf(container, /network fee/i).value).not.toMatch(/\d/);
+      expect(detailOf(container, /^fee\b/i).value).not.toMatch(/\d/);
       expect(container.textContent).not.toContain("0.0019");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
@@ -335,8 +337,8 @@ describe("TransactionStatus", () => {
 
     // The fee it was charged: said so, and how much.
     expect(getByRole("status")).toHaveTextContent(/fee was charged/i);
-    expect(detailOf(container, /network fee/i)).toStrictEqual({
-      term: expect.not.stringMatching(/at most/i),
+    expect(detailOf(container, /^fee\b/i)).toStrictEqual({
+      term: expect.not.stringMatching(/up to/i),
       value: "0.0025 DUSK",
     });
     expect(

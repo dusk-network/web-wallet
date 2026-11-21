@@ -142,6 +142,27 @@ const rowOf = (container, label) =>
   ) ?? "";
 
 /**
+ * The label of a row of the summary, found by its key word.
+ *
+ * @param {HTMLElement} container
+ * @param {RegExp} label
+ */
+const labelOf = (container, label) =>
+  Array.from(container.querySelectorAll(".stake-flow__rows dt"), textOf).find(
+    (term) => label.test(term ?? ""),
+  ) ?? "";
+
+/**
+ * Sozu's fee on deposits, as the form's Fees line gives it: "0.25%".
+ *
+ * @param {HTMLElement} container
+ */
+const depositRateOf = (container) =>
+  /(?<![^ ])([0-9.]+%) of deposits/.exec(
+    textOf(container.querySelector(".liquid-stake__facts")) ?? "",
+  )?.[1] ?? "";
+
+/**
  * What the summary's total says: the most a stake costs, or what an unstake
  * brings back.
  *
@@ -219,7 +240,7 @@ describe("LiquidStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
 
@@ -234,7 +255,8 @@ describe("LiquidStake", () => {
     // each in its row.
     expect(rowOf(container, /stake/i)).toBe("100 DUSK");
     expect(rowOf(container, /you get/i)).toBe("32.4378 stDUSK");
-    expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25%"));
+    // Its rate where Sozu's fees are, its amount in its own row.
+    expect(depositRateOf(container)).toBe("0.25%");
     expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
     expect(totalOf(container)).toMatch(wholeFigure("100.005 DUSK"));
 
@@ -279,7 +301,7 @@ describe("LiquidStake", () => {
   describe("the review before anything goes", () => {
     /** @param {import("@testing-library/svelte").RenderResult<any>["getByLabelText"]} getByLabelText */
     const typed = (getByLabelText) =>
-      fireEvent.input(getByLabelText("Stake amount"), {
+      fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
 
@@ -310,14 +332,11 @@ describe("LiquidStake", () => {
       );
 
       await typed(getByLabelText);
-
-      expect(container.querySelector(".stake-flow__final")).toBeNull();
-
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(container.querySelector(".stake-flow__final")).toHaveTextContent(
-        wholeFigure("0.25 DUSK"),
-      );
+      // In the fee's own row: that it doesn't come back, and how much.
+      expect(labelOf(container, /deposit/i)).toMatch(/not refunded/i);
+      expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
     });
 
     it("hides that amount with the balances, and says it without one where the fee couldn't be read", async () => {
@@ -329,11 +348,9 @@ describe("LiquidStake", () => {
         await typed(hidden.getByLabelText);
         await fireEvent.click(hidden.getByRole("button", { name: "Review" }));
 
-        // No figure: 0.25 DUSK of a stake's 100.
-        const final = hidden.container.querySelector(".stake-flow__final");
-
-        expect(final).not.toBeNull();
-        expect(final).not.toHaveTextContent(/[0-9]/);
+        // Not refunded, said, with no figure: 0.25 DUSK of a stake's 100.
+        expect(labelOf(hidden.container, /deposit/i)).toMatch(/not refunded/i);
+        expect(rowOf(hidden.container, /deposit/i)).not.toMatch(/[0-9]/);
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -348,11 +365,9 @@ describe("LiquidStake", () => {
       await typed(unread.getByLabelText);
       await fireEvent.click(unread.getByRole("button", { name: "Review" }));
 
-      // No figure for a fee it couldn't read.
-      const final = unread.container.querySelector(".stake-flow__final");
-
-      expect(final).not.toBeNull();
-      expect(final).not.toHaveTextContent(/[0-9]/);
+      // Not refunded, said, with no figure for a fee it couldn't read.
+      expect(labelOf(unread.container, /deposit/i)).toMatch(/not refunded/i);
+      expect(rowOf(unread.container, /deposit/i)).not.toMatch(/[0-9]/);
     });
   });
 
@@ -365,7 +380,7 @@ describe("LiquidStake", () => {
         .mockResolvedValue(HASH);
       const view = render(LiquidStake, { ...baseProps, execute });
 
-      await fireEvent.input(view.getByLabelText("Stake amount"), {
+      await fireEvent.input(view.getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(view.getByRole("button", { name: "Review" }));
@@ -392,7 +407,7 @@ describe("LiquidStake", () => {
       expect(
         getByRole("button", { name: showsDusk("100") }),
       ).toBeInTheDocument();
-      expect(getByLabelText("Stake amount")).toHaveValue("100");
+      expect(getByLabelText("Amount")).toHaveValue("100");
       expect(execute).toHaveBeenCalledOnce();
 
       await afterConfirmDelay();
@@ -415,7 +430,7 @@ describe("LiquidStake", () => {
       );
 
       expect(
-        await findByRole("link", { name: "Open History" }),
+        await findByRole("link", { name: "Open Activity" }),
       ).toBeInTheDocument();
       expect(failureOf()).toMatch(/not confirmed/i);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
@@ -429,7 +444,7 @@ describe("LiquidStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0,5" },
     });
 
@@ -446,15 +461,13 @@ describe("LiquidStake", () => {
     try {
       const { container, getByLabelText } = render(LiquidStake, baseProps);
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "50" },
       });
 
       // Its 0.25% rate, and no figure for its 0.125 DUSK.
-      const fee = rowOf(container, /deposit/i);
-
-      expect(fee).toMatch(wholeFigure("0.25%"));
-      expect(fee.replace("0.25%", "")).not.toMatch(/[0-9]/);
+      expect(depositRateOf(container)).toBe("0.25%");
+      expect(rowOf(container, /deposit/i)).not.toMatch(/[0-9]/);
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -472,7 +485,7 @@ describe("LiquidStake", () => {
       },
     });
 
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -531,7 +544,7 @@ describe("LiquidStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -589,7 +602,7 @@ describe("LiquidStake", () => {
       baseProps,
     );
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -623,7 +636,7 @@ describe("LiquidStake", () => {
       });
     const { getByLabelText, getByRole } = unstakeOf(15n * DUSK);
 
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.000000001" },
     });
 
@@ -634,7 +647,7 @@ describe("LiquidStake", () => {
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.000000004" },
     });
 
@@ -648,7 +661,7 @@ describe("LiquidStake", () => {
     // All of a smaller stake burns all its stDUSK.
     const small = unstakeOf(3n);
 
-    await fireEvent.input(small.getByLabelText("Unstake amount"), {
+    await fireEvent.input(small.getByLabelText("Amount"), {
       target: { value: "0.000000003" },
     });
 
@@ -662,7 +675,7 @@ describe("LiquidStake", () => {
   it("refuses a stake too small to get any stDUSK, saying the least", async () => {
     const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.000000001" },
     });
 
@@ -673,7 +686,7 @@ describe("LiquidStake", () => {
     );
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.000000005" },
     });
 
@@ -691,11 +704,15 @@ describe("LiquidStake", () => {
         sozu: { error: null, loading: false, status: statusWith({}, fees) },
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "1" },
       });
 
-      const fee = rowOf(container, /deposit/i);
+      // Its rate where Sozu's fees are, its amount in its own row.
+      const fee = {
+        amount: rowOf(container, /deposit/i),
+        rate: depositRateOf(container),
+      };
 
       cleanup();
 
@@ -705,18 +722,21 @@ describe("LiquidStake", () => {
     // Of 1 DUSK.
     const read = await depositFeeFor(FEES);
 
-    expect(read).toMatch(wholeFigure("0.25%"));
-    expect(read).toMatch(wholeFigure("0.0025 DUSK"));
+    expect(read.rate).toBe("0.25%");
+    expect(read.amount).toMatch(wholeFigure("0.0025 DUSK"));
 
     const raised = await depositFeeFor({
       ...FEES,
       deposit: { denominator: 100n, numerator: 1n },
     });
 
-    expect(raised).toMatch(wholeFigure("1%"));
-    expect(raised).toMatch(wholeFigure("0.01 DUSK"));
+    expect(raised.rate).toBe("1%");
+    expect(raised.amount).toMatch(wholeFigure("0.01 DUSK"));
     // No figure it couldn't read.
-    expect(await depositFeeFor(null)).not.toMatch(/[0-9]/);
+    const unread = await depositFeeFor(null);
+
+    expect(unread.rate).toBe("");
+    expect(unread.amount).not.toMatch(/[0-9]/);
   });
 
   it("doesn't let an amount give away the balance while balances are hidden", async () => {
@@ -725,7 +745,7 @@ describe("LiquidStake", () => {
     try {
       const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
       const refusal = async (/** @type {string} */ value) => {
-        await fireEvent.input(getByLabelText("Stake amount"), {
+        await fireEvent.input(getByLabelText("Amount"), {
           target: { value },
         });
 
@@ -762,9 +782,7 @@ describe("LiquidStake", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       // All but both fees, 171.985: filled in, with no figure in the field.
-      const field = /** @type {HTMLInputElement} */ (
-        getByLabelText("Stake amount")
-      );
+      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
 
       expect(field.value).not.toBe("");
       expect(field.value).not.toMatch(/[0-9]/);
@@ -782,11 +800,11 @@ describe("LiquidStake", () => {
       }
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "5" },
       });
 
-      expect(getByLabelText("Stake amount")).toHaveValue("5");
+      expect(getByLabelText("Amount")).toHaveValue("5");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -799,7 +817,7 @@ describe("LiquidStake", () => {
   it("says when a stake is more than the public balance, with this fee and the fee to unstake later", async () => {
     const { getByLabelText, getByRole } = render(LiquidStake, baseProps);
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "172" },
     });
 
@@ -816,7 +834,7 @@ describe("LiquidStake", () => {
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
       // 1 DUSK, less 0.005 for this stake and 0.01 for the unstake.
-      expect(getByLabelText("Stake amount")).toHaveValue("0.985");
+      expect(getByLabelText("Amount")).toHaveValue("0.985");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
@@ -848,7 +866,7 @@ describe("LiquidStake", () => {
       const { getByLabelText, getByRole } = render(LiquidStake, shown);
 
       // All but this stake's own fee: the most it took before.
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "0.995" },
       });
 
@@ -880,7 +898,7 @@ describe("LiquidStake", () => {
     it("says how much is missing to unstake as the tab opens, before anything is typed", async () => {
       const { getByLabelText, getByRole } = render(LiquidStake, stranded);
 
-      expect(getByLabelText("Unstake amount")).toHaveValue("");
+      expect(getByLabelText("Amount")).toHaveValue("");
       expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.0072 DUSK"));
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
@@ -1067,22 +1085,20 @@ describe("LiquidStake", () => {
       expect(banners[1]).toHaveTextContent(/ unstake /);
 
       // 172 DUSK less the 0.1 on its way.
-      expect(availableOf(getByLabelText("Stake amount"))).toMatch(
+      expect(availableOf(getByLabelText("Amount"))).toMatch(
         wholeFigure("171.9 DUSK"),
       );
 
       // 100 DUSK less the 2 on their way back.
       await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
-      expect(availableOf(getByLabelText("Unstake amount"))).toMatch(
+      expect(availableOf(getByLabelText("Amount"))).toMatch(
         wholeFigure("98 DUSK"),
       );
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(getByRole("textbox", { name: "Unstake amount" })).toHaveValue(
-        "98",
-      );
+      expect(getByRole("textbox", { name: "Amount" })).toHaveValue("98");
     });
 
     it("hides all of it with the balances", () => {
@@ -1114,7 +1130,7 @@ describe("LiquidStake", () => {
       },
     });
 
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "16" },
     });
 
@@ -1124,7 +1140,7 @@ describe("LiquidStake", () => {
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    expect(getByLabelText("Unstake amount")).toHaveValue("15");
+    expect(getByLabelText("Amount")).toHaveValue("15");
     // The amount, and what comes back, its fee apart.
     expect(rowOf(container, /stake/i)).toBe("15 DUSK");
     expect(totalOf(container)).toMatch(wholeFigure("15 DUSK"));
@@ -1149,7 +1165,7 @@ describe("LiquidStake", () => {
     });
 
     expect(getByRole("alert")).toHaveTextContent(/couldn't reach/i);
-    expect(getByLabelText("Stake amount")).toBeDisabled();
+    expect(getByLabelText("Amount")).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "Try again" }));
 
@@ -1163,7 +1179,7 @@ describe("LiquidStake", () => {
       execute,
     });
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1192,21 +1208,21 @@ describe("LiquidStake", () => {
     });
     const warning = () => container.querySelector(".stake-flow__final");
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
 
     expect(totalOf(container)).toMatch(wholeFigure("1.005 DUSK"));
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
 
     expect(totalOf(container)).toMatch(wholeFigure("1 DUSK"));
 
     // So small the fee can take more than comes back: said on the review.
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "0.005" },
     });
 
@@ -1218,7 +1234,7 @@ describe("LiquidStake", () => {
     expect(warning()).toHaveTextContent(wholeFigure("0.01 DUSK"));
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1252,11 +1268,11 @@ describe("LiquidStake", () => {
     });
 
     expect(getByRole("alert")).toHaveTextContent(/paused/i);
-    expect(getByLabelText("Stake amount")).toBeDisabled();
+    expect(getByLabelText("Amount")).toBeDisabled();
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
-    await fireEvent.input(getByLabelText("Unstake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "1" },
     });
 
@@ -1348,7 +1364,7 @@ describe("LiquidStake", () => {
         const { container, getByLabelText, getByRole, recheck } =
           renderReading(next);
 
-        await fireEvent.input(getByLabelText("Stake amount"), {
+        await fireEvent.input(getByLabelText("Amount"), {
           target: { value: "100" },
         });
         await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1385,7 +1401,7 @@ describe("LiquidStake", () => {
       );
       const stake = () => getByRole("button", { name: showsDusk("100") });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1423,7 +1439,7 @@ describe("LiquidStake", () => {
         statusWith({}, FEES, { maintenance: true, synchronization: false }),
       );
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1453,7 +1469,7 @@ describe("LiquidStake", () => {
           { ...baseProps, recheck },
         );
 
-        await fireEvent.input(getByLabelText("Stake amount"), {
+        await fireEvent.input(getByLabelText("Amount"), {
           target: { value: "100" },
         });
         await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1494,7 +1510,7 @@ describe("LiquidStake", () => {
         recheck,
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1515,7 +1531,7 @@ describe("LiquidStake", () => {
         recheck,
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1535,13 +1551,13 @@ describe("LiquidStake", () => {
         recheck,
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
       await afterConfirmDelay();
       await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "50" },
       });
       answer();
@@ -1572,7 +1588,7 @@ describe("LiquidStake", () => {
         recheck,
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1599,7 +1615,7 @@ describe("LiquidStake", () => {
         recheck,
       });
 
-      await fireEvent.input(getByLabelText("Stake amount"), {
+      await fireEvent.input(getByLabelText("Amount"), {
         target: { value: "100" },
       });
       await fireEvent.click(getByRole("button", { name: "Review" }));
@@ -1632,12 +1648,12 @@ describe("LiquidStake", () => {
     });
 
     expect(getByRole("alert")).toHaveTextContent(/couldn't be checked/i);
-    expect(getByLabelText("Stake amount")).toBeDisabled();
+    expect(getByLabelText("Amount")).toBeDisabled();
     expect(getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.click(getByRole("tab", { name: "Unstake" }));
 
-    expect(getByLabelText("Unstake amount")).toBeEnabled();
+    expect(getByLabelText("Amount")).toBeEnabled();
   });
 
   it("says no stake gets stDUSK while Sozu's deposit fee is 100%", async () => {
@@ -1652,7 +1668,7 @@ describe("LiquidStake", () => {
       },
     });
 
-    await fireEvent.input(getByLabelText("Stake amount"), {
+    await fireEvent.input(getByLabelText("Amount"), {
       target: { value: "100" },
     });
 

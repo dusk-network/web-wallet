@@ -224,7 +224,7 @@
   $: typedAmount = amount ?? 0n;
   $: isTypedOff = Boolean(check.error);
   $: minimumText = formatDusk(minimumStake, language);
-  $: liquidText = `Less than ${minimumText} DUSK? Use liquid staking (Sozu, third party)`;
+  $: liquidText = `Under ${minimumText} DUSK? Stake with Sozu (third party)`;
 </script>
 
 {#if sent}
@@ -257,7 +257,7 @@
   >
     <div class="native-stake__field">
       <label class="native-stake__label" for="{id}-amount"
-        >{hasStake ? "Amount to add" : "Stake amount"}</label
+        >{hasStake ? "Amount to add" : "Amount"}</label
       >
       <div class="native-stake__amount">
         <Textbox
@@ -301,16 +301,17 @@
         {hasStake ? "" : `Minimum ${minimumText} DUSK · `}Available <BalanceValue
           exact={formatDuskExact(availableBalance, language)}
           value={formatDusk(availableBalance, language)}
-        /> DUSK from your public balance
+        /> DUSK (public)
       </p>
       {#if isMaxAmount && !check.error}
-        <p class="native-stake__hint">
-          Max keeps {formatFee(maxGasFee + unstakeFee, language, { max: true })} DUSK:
-          up to {formatFee(maxGasFee, language, { max: true })} for this fee and {formatFee(
-            unstakeFee,
-            language,
-            { max: true },
-          )} to unstake later.
+        <!-- The split, for whoever asks: on hover. -->
+        <p
+          class="native-stake__hint"
+          title={`Up to ${formatFee(maxGasFee, language, { max: true })} DUSK for this fee, ${formatFee(unstakeFee, language, { max: true })} DUSK to unstake later`}
+        >
+          Max leaves {formatFee(maxGasFee + unstakeFee, language, {
+            max: true,
+          })} DUSK for this fee and unstaking.
         </p>
       {/if}
       <div id="{id}-error">
@@ -339,10 +340,7 @@
           </div>
         {:else if isBelowMinimum && !amountText}
           <div class="native-stake__note">
-            <p>
-              Your public balance doesn't cover the {minimumText} DUSK minimum, this
-              fee and the fee to unstake later.
-            </p>
+            <p>Not enough for the {minimumText} DUSK minimum and fees.</p>
             {#if liquidHref}
               <a class="native-stake__link text-link" href={resolve(liquidHref)}
                 >{liquidText}</a
@@ -357,7 +355,7 @@
       <li>
         <Icon path={mdiServerOutline} />
         <div>
-          <p class="native-stake__fact">Needs your own Dusk node</p>
+          <p class="native-stake__fact">Needs your own node</p>
           <p>
             <a
               class="native-stake__link text-link"
@@ -371,8 +369,8 @@
       <li>
         <Icon path={mdiClockOutline} />
         <div>
-          <p class="native-stake__fact">Rewards start in about 6 to 12 hours</p>
-          <p>Unstake any time, with no waiting period.</p>
+          <p class="native-stake__fact">Rewards start in about 6–12 hours</p>
+          <p>Unstake any time, no waiting period.</p>
         </div>
       </li>
       {#if hasStake}
@@ -380,21 +378,16 @@
           <Icon path={mdiLockOutline} />
           <div>
             <p class="native-stake__fact">10% of what you add is locked</p>
-            <p>
-              When your stake is already active. It's still yours, and unstaking
-              returns it.
-            </p>
+            <p>When your stake is active. Unstaking returns it.</p>
           </div>
         </li>
       {/if}
       <li>
         <Icon path={mdiAlertCircleOutline} />
         <div>
-          <p class="native-stake__fact">If your node misses its turn</p>
-          <p>
-            Part of your stake gets locked. It's still yours, and unstaking
-            returns it. If the node breaks the rules, part of the stake can be
-            burned (lost).
+          <p class="native-stake__fact">
+            Node misses a turn: part locked, unstaking returns it. Breaks the
+            rules: part can be burned (lost).
           </p>
         </div>
       </li>
@@ -414,13 +407,9 @@
         {#if !hasStake}
           <div>
             <dt>Rewards start</dt>
-            <dd>In about 6 to 12 hours</dd>
+            <dd>In about 6–12 hours</dd>
           </div>
         {/if}
-        <div>
-          <dt>Paid from</dt>
-          <dd>Public balance</dd>
-        </div>
       </dl>
       <GasSettings
         fee={maxGasFee}
@@ -444,9 +433,9 @@
       />
       <dl class="stake-flow__rows stake-flow__rows--total">
         <div>
-          <dt>Total</dt>
+          <dt>Total up to</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            Up to <BalanceValue
+            <BalanceValue
               hidden={isAmountMasked}
               value={formatTotal(
                 typedAmount + maxGasFee,

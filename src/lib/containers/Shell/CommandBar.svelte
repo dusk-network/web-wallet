@@ -287,7 +287,7 @@
               group: "Transactions",
               href: duskExplorerTx(hash),
               id: `lookup:${hash}`,
-              label: `View ${shortAddress(hash)} in Dusk explorer`,
+              label: `View ${shortAddress(hash)} in explorer`,
               value: hash,
             }),
           ],
@@ -413,7 +413,7 @@
         active = 0;
       }}
       on:keydown={handleKeydown}
-      placeholder="Names, addresses, amounts"
+      placeholder="Search"
       role="combobox"
       spellcheck="false"
       type="text"
@@ -501,7 +501,7 @@
     </p>
   {/if}
 
-  <p class="command-bar__note">Enter: open · Shift+Enter: copy</p>
+  <p class="command-bar__note">Enter open · Shift+Enter copy</p>
 </div>
 
 <style lang="postcss">

@@ -137,7 +137,7 @@ describe("HistoryView", () => {
     history.whole.mockResolvedValue(whole);
     await fireEvent.click(getByRole("button", { name: "Export" }));
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" }),
+      getByRole("button", { name: "Staking rewards by year" }),
     );
     await vi.waitFor(() => expect(claimedIn(2026)).toBe("2 DUSK"));
 
@@ -151,13 +151,13 @@ describe("HistoryView", () => {
 
     history.whole.mockReturnValueOnce(late.promise);
     await fireEvent.click(
-      getByRole("button", { name: "Show staking rewards by year" }),
+      getByRole("button", { name: "Staking rewards by year" }),
     );
     await rerender({ account: own });
     late.resolve(whole);
     await vi.waitFor(() =>
       expect(
-        getByRole("button", { name: "Show staking rewards by year" }),
+        getByRole("button", { name: "Staking rewards by year" }),
       ).toBeEnabled(),
     );
 

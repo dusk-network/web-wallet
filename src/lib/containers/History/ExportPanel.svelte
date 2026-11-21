@@ -103,7 +103,7 @@
     const address = typedAddress.trim();
 
     if (!isValidEvmAddress(address)) {
-      addProblem = "That isn't an EVM address.";
+      addProblem = "That isn't an EVM account.";
 
       return;
     }
@@ -379,11 +379,11 @@
   $: feesSaid = !feesKey
     ? ""
     : fees.key !== feesKey
-      ? "Reading which network fees of migrations the file has…"
+      ? "Reading migrations' network fees…"
       : fees.made
         ? migrationFeeWords(fees.made, { saved: false }).join(" ") ||
-          "The file has no network fees of migrations."
-        : "Couldn't read which network fees of migrations the file has.";
+          "No migration network fees in the file."
+        : "Couldn't read migrations' network fees.";
 
   /**
    * Whether a period is one: both days, for dates.
@@ -427,7 +427,7 @@
   {/if}
   <label class="export-panel__option">
     <input bind:checked={withContacts} class="dusk-checkbox" type="checkbox" />
-    Add my contact names
+    Contact names
   </label>
   <label class="export-panel__option">
     <input
@@ -436,15 +436,11 @@
       disabled={!priced}
       type="checkbox"
     />
-    Add each payment's value in {currencyWords(currency).many}, from CoinGecko's
-    prices (the past year)
+    Value in {currencyWords(currency).many} (CoinGecko, past year)
   </label>
-  {#if !priced}
-    <p class="export-panel__note">Test DUSK has no value.</p>
-  {/if}
   <label class="export-panel__option">
     <input bind:checked={excel} class="dusk-checkbox" type="checkbox" />
-    For Excel: keep accents as it opens
+    Excel: keep accents
   </label>
   {#if hasMigrations}
     <div class="export-panel__evm">
@@ -452,7 +448,7 @@
         <p class="export-panel__note" role="status">{feesSaid}</p>
       {/if}
       {#if evm.some(({ why }) => why === "added")}
-        <ul aria-label="EVM addresses added" class="export-panel__added">
+        <ul aria-label="EVM accounts added" class="export-panel__added">
           {#each evm.filter(({ why }) => why === "added") as { address } (address)}
             <li>
               <code title={address}>{shortenAddress(address)}</code>
@@ -471,7 +467,7 @@
       {/if}
       {#if isAdding}
         <label class="export-panel__field">
-          <span>EVM address you migrated from</span>
+          <span>EVM account you migrated from</span>
           <Textbox
             autocapitalize="off"
             autocomplete="off"
@@ -505,15 +501,15 @@
             isAdding = true;
           }}
           size="small"
-          text="Add an EVM address"
+          text="Add an EVM account"
           variant="secondary"
         />
       {/if}
     </div>
   {/if}
   <p class="export-panel__note">
-    One profile's file for tax tools such as Koinly: exact amounts, times in
-    UTC, transfers between your profiles marked.
+    One profile, exact amounts, UTC times, own transfers marked. For tax tools
+    such as Koinly.
   </p>
   {#if problem}
     <p class="export-panel__error" role="alert">{problem}</p>
@@ -531,7 +527,7 @@
       size="small"
       text={busyWith === "rewards"
         ? "Reading your history…"
-        : "Show staking rewards by year"}
+        : "Staking rewards by year"}
       variant="secondary"
     />
     {#if rewards}

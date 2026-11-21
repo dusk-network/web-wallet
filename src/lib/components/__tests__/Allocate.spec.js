@@ -71,19 +71,19 @@ describe("Allocate", () => {
     });
 
     // Next's second click lands where Send now is, and so does Enter.
-    await fireEvent.click(getByRole("button", { name: "Next" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }));
-    await fireEvent.click(getByRole("button", { name: "Send" }), {
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }), {
       detail: 0,
     });
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY - 1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
 
     expect(shield).not.toHaveBeenCalled();
-    expect(getByRole("button", { name: "Send" })).toBeEnabled();
+    expect(getByRole("button", { name: "Shield 500 DUSK" })).toBeEnabled();
 
     await vi.advanceTimersByTimeAsync(1);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
 
     expect(shield).toHaveBeenCalledOnce();
   });
@@ -100,9 +100,9 @@ describe("Allocate", () => {
     await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
       target: { value: "2500" },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
     const tryAgain = await findByRole("button", { name: "Try again" });
 
     // Nothing went out.
@@ -114,7 +114,7 @@ describe("Allocate", () => {
     expect(shield).toHaveBeenCalledOnce();
 
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
 
     expect(shield).toHaveBeenCalledTimes(2);
     expect(shield.mock.calls[1][0]).toBe(500_000_000_000n);
@@ -131,11 +131,11 @@ describe("Allocate", () => {
     await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
       target: { value: "2500" },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
     await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-    await fireEvent.click(getByRole("button", { name: "Send" }));
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
 
-    expect(await findByRole("link", { name: "Open History" })).toBeVisible();
+    expect(await findByRole("link", { name: "Open Activity" })).toBeVisible();
     expect(failureOf()).toHaveTextContent(/not confirmed/i);
     expect(queryByRole("button", { name: "Try again" })).toBeNull();
   });
@@ -164,7 +164,7 @@ describe("Allocate", () => {
     expect(publicInput).toHaveValue("0.5");
     expect(shieldedInput).toHaveValue("3000");
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewValues(container)[0]).toBe("1,000 DUSK");
   });
@@ -174,7 +174,7 @@ describe("Allocate", () => {
     const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewValues(container)).toStrictEqual([
       "500 DUSK",
@@ -195,7 +195,7 @@ describe("Allocate", () => {
     await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
       target: { value: "2500" },
     });
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewValues(container)[1]).toBe(feeAt(3n));
 
@@ -205,7 +205,7 @@ describe("Allocate", () => {
     expect(getReviewValues(container)[1]).toBe(feeAt(3n));
 
     await fireEvent.click(getByRole("button", { name: "Back" }));
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewValues(container)[1]).toBe(feeAt(5n));
   });
@@ -216,7 +216,7 @@ describe("Allocate", () => {
     const { container, getByRole } = render(Allocate, baseProps);
     const publicInput = getByRole("textbox", { name: "Public amount" });
     const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
-    const nextButton = getByRole("button", { name: "Next" });
+    const nextButton = getByRole("button", { name: "Review" });
 
     // Neither balance shows: 1,000 DUSK public, 2,000 DUSK shielded.
     expect(

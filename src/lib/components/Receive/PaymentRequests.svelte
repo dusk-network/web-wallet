@@ -249,9 +249,7 @@
       default:
         return [
           {
-            text: isChecking
-              ? "Checking for payments…"
-              : "Nothing matching has come in.",
+            text: isChecking ? "Checking for payments…" : "Not paid yet.",
           },
         ];
     }
@@ -659,11 +657,11 @@
                   <!-- Together, on the payment's line: never one alone. -->
                   <span class="requests__payment-links">
                     <a
-                      aria-label={`See in History: the payment of ${day}`}
+                      aria-label={`See in Activity: the payment of ${day}`}
                       class="text-link tap-link"
                       href={resolve(
                         `/dashboard/transactions/?tx=${payment.hash}`,
-                      )}>See in History</a
+                      )}>See in Activity</a
                     >
                     {#if refund?.back && !refund.sent}
                       {@const back = refund.back}
@@ -692,11 +690,11 @@
                         value={formatDuskExact(sent.value, language)}
                       /> DUSK{sentAt ? "" : ", on its way"} ·
                       <a
-                        aria-label={`See in History: what was sent back for the payment of ${day}`}
+                        aria-label={`See in Activity: what was sent back for the payment of ${day}`}
                         class="text-link tap-link"
                         href={resolve(
                           `/dashboard/transactions/?tx=${sent.hash}`,
-                        )}>See in History</a
+                        )}>See in Activity</a
                       ></span
                     >
                   {/if}
@@ -709,7 +707,7 @@
               <a
                 class="text-link tap-link"
                 href={resolve(`/dashboard/transactions/?tx=${match.hash}`)}
-                >See in History</a
+                >See in Activity</a
               >
             {/if}
             <!-- Paid already: said beside its Copy and Share. -->

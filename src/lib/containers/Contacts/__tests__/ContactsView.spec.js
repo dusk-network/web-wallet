@@ -349,7 +349,7 @@ describe("ContactsView", () => {
     );
 
     expect(await findByRole("alert")).toHaveTextContent("Alice's shop");
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled(); // The address is already Alice's shop's.
+    expect(getByRole("button", { name: "Save" })).toBeDisabled(); // The address is already Alice's shop's.
 
     resolveName.mockResolvedValueOnce({ account: OTHER, name: "bram.dusk" });
     await fireEvent.input(
@@ -357,7 +357,7 @@ describe("ContactsView", () => {
       { target: { value: "bram.dusk" } },
     );
     await act(() => {});
-    await fireEvent.click(getByRole("button", { name: "Save contact" }));
+    await fireEvent.click(getByRole("button", { name: "Save" }));
 
     const bram = listContacts("bram")[0];
 
@@ -385,7 +385,7 @@ describe("ContactsView", () => {
     );
 
     expect(getByRole("alert")).toBeInTheDocument();
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     await fireEvent.click(getByRole("button", { name: "Delete contact" }));
 
@@ -413,7 +413,7 @@ describe("ContactsView", () => {
         events: { saved },
         props: { own: [OWN], resolveName },
       });
-      const save = () => getByRole("button", { name: "Save contact" });
+      const save = () => getByRole("button", { name: "Save" });
       /**
        * Asks about the contact it may be, by its name and address.
        *
@@ -518,7 +518,7 @@ describe("ContactsView", () => {
 
       // Its own warning alone, of no name.
       expect(other.getByRole("alert")).toBeInTheDocument();
-      expect(other.getByRole("button", { name: "Save contact" })).toBeEnabled();
+      expect(other.getByRole("button", { name: "Save" })).toBeEnabled();
     } finally {
       for (const contact of listContacts()) {
         if (/^(Estudio|Lucas)/.test(contact.name)) {
@@ -549,18 +549,18 @@ describe("ContactsView", () => {
     await name("profile 2");
 
     expect(getByRole("alert")).toHaveTextContent("Profile 2");
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     // A Cyrillic о.
     await name("Pr\u043efile 2");
 
     expect(getByRole("alert")).toHaveTextContent("Profile 2");
-    expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+    expect(getByRole("button", { name: "Save" })).toBeDisabled();
 
     await name("Profile 3");
 
     expect(queryByRole("alert")).toBeNull();
-    expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+    expect(getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it("asks at Save about a name that starts as a profile's, word for word, saving it only once answered", async () => {
@@ -583,7 +583,7 @@ describe("ContactsView", () => {
 
     expect(getByRole("alert")).toHaveTextContent("Lucas");
 
-    await fireEvent.click(getByRole("button", { name: "Save contact" }));
+    await fireEvent.click(getByRole("button", { name: "Save" }));
 
     expect(saved).not.toHaveBeenCalled();
 
@@ -630,7 +630,7 @@ describe("ContactsView", () => {
         });
 
         expect(getByRole("alert")).toBeInTheDocument();
-        expect(getByRole("button", { name: "Save contact" })).toBeDisabled();
+        expect(getByRole("button", { name: "Save" })).toBeDisabled();
       }
 
       await fireEvent.input(getByRole("textbox", { name: "Name" }), {
@@ -638,7 +638,7 @@ describe("ContactsView", () => {
       });
 
       expect(queryByRole("alert")).toBeNull();
-      expect(getByRole("button", { name: "Save contact" })).toBeEnabled();
+      expect(getByRole("button", { name: "Save" })).toBeEnabled();
     } finally {
       removeContact(alice.id);
     }
@@ -685,7 +685,7 @@ describe("ContactsView", () => {
       name: "alice.dusk",
     });
     const { getByRole, queryAllByRole } = render(ContactForm, { resolveName });
-    const save = () => getByRole("button", { name: "Save contact" });
+    const save = () => getByRole("button", { name: "Save" });
     /** What it says of the name as alice.dusk's, as it can say more. */
     const asAlice = () =>
       queryAllByRole("alert").filter((alert) =>

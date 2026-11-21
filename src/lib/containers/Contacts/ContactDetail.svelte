@@ -153,7 +153,6 @@
     locale,
   }).slice(0, 5);
   $: days = groupByDay(activity, ({ row }) => row.time, { locale });
-  $: kind = contact.type === "address" ? "Shielded" : "Public";
   $: checkedAt = contact.checkedAt;
 
   // A new contact, or the same one changed, is checked again; noting when
@@ -185,10 +184,10 @@
     >
     <div class="contact-detail__who">
       <h2 id="contact-detail-title">{contactNameText(contact.name)}</h2>
-      <p class="contact-detail__sub">
-        {#if contact.duskName}<span>{contact.duskName}</span>{/if}
-        <span class="contact-detail__badge">{kind}</span>
-      </p>
+      <!-- Public or shielded is the address's heading, below. -->
+      {#if contact.duskName}
+        <p class="contact-detail__sub"><span>{contact.duskName}</span></p>
+      {/if}
     </div>
     <button
       aria-label="Close the contact"
@@ -316,7 +315,7 @@
     <header class="contact-detail__activity-header">
       <SectionHead level={3}>Activity</SectionHead>
       <a class="text-link" href={resolve("/dashboard/transactions/")}
-        >History <Icon path={mdiChevronRight} /></a
+        >See all <Icon path={mdiChevronRight} /></a
       >
     </header>
     {#if activity.length}
@@ -390,14 +389,6 @@
     margin-top: 0.25rem;
     color: var(--calm-muted);
     font-size: 0.875rem;
-  }
-
-  .contact-detail__badge {
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-    background: var(--calm-s2);
-    color: var(--calm-text);
-    font-size: 0.78125rem;
   }
 
   .contact-detail__close {

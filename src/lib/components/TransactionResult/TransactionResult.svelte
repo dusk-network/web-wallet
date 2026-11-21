@@ -191,7 +191,7 @@
   describeError={describe}
   {errorMessage}
   gap="large"
-  pendingMessage="Processing transaction"
+  pendingMessage="Sending"
   waitFor={shown}
 >
   <svelte:fragment slot="pending-content">
@@ -199,7 +199,11 @@
       <Throbber className="dusk-suspense__throbber" />
     {/if}
     <span class="dusk-suspense__pending-message"
-      >{$gateAsks ? "Not sent yet" : "Processing transaction"}</span
+      >{$gateAsks
+        ? "Held: not sent yet"
+        : isWaiting && gate && !isHandedOver
+          ? "Waiting"
+          : "Sending"}</span
     >
     <!-- Which send it is, however long its answer takes. -->
     {#if what}
@@ -248,14 +252,14 @@
     {:else if isWaiting}
       <p class="transaction-result__waiting" role="status">
         {$networkReach === "offline"
-          ? "You're offline."
+          ? "Offline."
           : $networkReach === "silent"
             ? "The network isn't answering."
             : ""}
         {isHandedOver
-          ? "Your transaction may have reached it: wait for it here before you send it again."
+          ? "It may have gone out: wait here before sending it again."
           : gate
-            ? "Nothing has left your wallet yet. It goes out once the network answers."
+            ? "Nothing has left your wallet yet. Goes out once the network answers."
             : "Nothing has left your wallet yet."}
       </p>
       <!-- A way back while it waits: called off, until the node is asked to
@@ -264,7 +268,7 @@
         <Button
           className="transaction-result__button"
           on:click={() => gate?.cancel()}
-          text="Cancel"
+          text="Don't send"
           variant="secondary"
         />
       {/if}
@@ -300,7 +304,7 @@
         className="transaction-result__button"
         href={`/dashboard/transactions?tx=${hash}`}
         on:click={handleGoHomeClick}
-        text="See in History"
+        text="See in Activity"
         variant="secondary"
       />
     {/if}
@@ -319,7 +323,7 @@
         className="transaction-result__button"
         href="/dashboard/transactions"
         on:click={handleGoHomeClick}
-        text="Open History"
+        text="Open Activity"
         variant="secondary"
       />
     {:else}

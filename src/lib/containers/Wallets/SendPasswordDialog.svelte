@@ -110,11 +110,12 @@
   tabindex="-1"
 >
   <form novalidate on:submit|preventDefault={submit}>
-    <h2 class="send-password__title" id="{id}-title">Enter your password</h2>
-    <p class="send-password__why">
-      This is above the {formatDuskExact(ask.limit, $settingsStore.language)} DUSK
-      you set in Settings.
-    </p>
+    <h2 class="send-password__title" id="{id}-title">
+      Password for sends over {formatDuskExact(
+        ask.limit,
+        $settingsStore.language,
+      )} DUSK
+    </h2>
     <UnlockPasswordField
       bind:error
       bind:this={field}
@@ -169,11 +170,6 @@
   .send-password__title {
     font-size: 1.125rem;
     font-weight: 500;
-  }
-
-  .send-password__why {
-    color: var(--calm-muted);
-    font-size: 0.875rem;
   }
 
   .send-password__actions {

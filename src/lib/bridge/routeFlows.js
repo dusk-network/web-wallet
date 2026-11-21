@@ -17,7 +17,6 @@ import { waitForTransactionReceipt } from "@wagmi/core";
 import { get } from "svelte/store";
 
 import { executeSend } from "$lib/contracts";
-import { formatDuskExact } from "$lib/dusk/currency";
 import { sendPasswordFor } from "$lib/security/sendPassword";
 import { walletStore } from "$lib/stores";
 import { allowance, approve, migrate } from "$lib/web3/migration";
@@ -47,24 +46,6 @@ function stillOnAccount(owner) {
       code: EVM_ACCOUNT_CHANGED,
     });
   }
-}
-
-/**
- * What a transfer to a route's account comes to, in one line, as the
- * wallet extension says it: "2 DUSK sent · 1 DUSK bridge fee · 1 DUSK
- * arrives on BNB Smart Chain", or that nothing arrives when the fee takes
- * it all.
- *
- * @param {{ chain: string, feeLux: bigint, sentLux: bigint }} transfer
- * @param {string} [locale]
- */
-export function serviceLine({ chain, feeLux, sentLux }, locale) {
-  const arrives =
-    sentLux > feeLux
-      ? `${formatDuskExact(sentLux - feeLux, locale)} DUSK arrives on ${chain}`
-      : `Nothing arrives on ${chain}`;
-
-  return `${formatDuskExact(sentLux, locale)} DUSK sent · ${formatDuskExact(feeLux, locale)} DUSK bridge fee · ${arrives}`;
 }
 
 /**

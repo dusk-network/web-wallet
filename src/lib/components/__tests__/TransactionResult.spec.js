@@ -93,7 +93,7 @@ describe("TransactionResult", () => {
     }
   });
 
-  it("should say a send waits for the network it couldn't reach, with Cancel, though the network's pill finds it answering", async () => {
+  it("should say a send waits for the network it couldn't reach, with Don't send, though the network's pill finds it answering", async () => {
     const gate = sendGate();
     const { getByRole } = render(TransactionResult, {
       ...baseProps,
@@ -110,7 +110,7 @@ describe("TransactionResult", () => {
 
     try {
       await vi.waitFor(() =>
-        expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument(),
+        expect(getByRole("button", { name: "Don't send" })).toBeInTheDocument(),
       );
       expect(getByRole("status")).toHaveTextContent(NOTHING_LEFT_YET);
     } finally {
@@ -120,8 +120,8 @@ describe("TransactionResult", () => {
 
   // Lena's, the node silent: "Nothing has left your wallet yet" with only
   // Home for half a minute, as the node's check hung. The check sends
-  // nothing: Cancel stays until the node is asked to broadcast it.
-  it("should offer Cancel while the node checks a send, its answer slow and the network found silent, until it's handed over", async () => {
+  // nothing: Don't send stays until the node is asked to broadcast it.
+  it("should offer Don't send while the node checks a send, its answer slow and the network found silent, until it's handed over", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {
       ...baseProps,
@@ -135,21 +135,21 @@ describe("TransactionResult", () => {
 
       expect(getByRole("status")).toHaveTextContent(NOTHING_LEFT_YET);
       expect(getByRole("status")).not.toHaveTextContent(MAY_HAVE_GONE_OUT);
-      expect(getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+      expect(getByRole("button", { name: "Don't send" })).toBeInTheDocument();
 
       // Handed over: it may go out, with nothing to call off.
       await act(() => gate.handOver());
 
       expect(getByRole("status")).toHaveTextContent(MAY_HAVE_GONE_OUT);
       expect(getByRole("status")).not.toHaveTextContent(NOTHING_LEFT_YET);
-      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(queryByRole("button", { name: "Don't send" })).toBeNull();
     } finally {
       gate.cancel();
       setNetworkReach("answering");
     }
   });
 
-  it("should call off a send the node is checking with Cancel: it's never handed over", async () => {
+  it("should call off a send the node is checking with Don't send: it's never handed over", async () => {
     const gate = sendGate();
     const { getByRole } = render(TransactionResult, {
       ...baseProps,
@@ -160,7 +160,7 @@ describe("TransactionResult", () => {
     try {
       await act(() => setNetworkReach("silent"));
       await act(() => gate.checking());
-      await fireEvent.click(getByRole("button", { name: "Cancel" }));
+      await fireEvent.click(getByRole("button", { name: "Don't send" }));
 
       expect(get(gate)).toBe("cancelled");
       expect(() => gate.handOver()).toThrow(SendCancelledError);
@@ -169,7 +169,7 @@ describe("TransactionResult", () => {
     }
   });
 
-  it("should offer no Cancel once a send was handed over and the network doesn't answer", async () => {
+  it("should offer no Don't send once a send was handed over and the network doesn't answer", async () => {
     const gate = sendGate();
     const { getByRole, queryByRole } = render(TransactionResult, {
       ...baseProps,
@@ -184,7 +184,7 @@ describe("TransactionResult", () => {
 
       expect(getByRole("status")).toHaveTextContent(MAY_HAVE_GONE_OUT);
       expect(getByRole("status")).not.toHaveTextContent(NOTHING_LEFT_YET);
-      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(queryByRole("button", { name: "Don't send" })).toBeNull();
     } finally {
       setNetworkReach("answering");
     }
@@ -557,7 +557,7 @@ describe("TransactionResult", () => {
       expect(status).toHaveTextContent(MAY_HAVE_GONE_OUT);
       expect(status).not.toHaveTextContent(NOTHING_WENT_OUT);
       expect(queryByRole("button", { name: "Try again" })).toBeNull();
-      expect(queryByRole("button", { name: "Cancel" })).toBeNull();
+      expect(queryByRole("button", { name: "Don't send" })).toBeNull();
     });
 
     it("should say a send a block took but failed did, with the fee it was charged, and never offer Try again", async () => {

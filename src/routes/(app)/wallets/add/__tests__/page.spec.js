@@ -161,7 +161,9 @@ describe("Add wallet", () => {
       await fireEvent.click(box);
     }
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(
+      getByRole("button", { name: "Show my recovery phrase" }),
+    );
 
     // The words as the page shows them to be written down.
     const words = Array.from(
@@ -171,7 +173,7 @@ describe("Add wallet", () => {
 
     expect(words).toHaveLength(12);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     // Three of them, as written down: Skip for now until they match. One
     // that doesn't says no more than that (Nandini's and Amélie's), and Show
@@ -200,7 +202,7 @@ describe("Add wallet", () => {
       ),
     ).toStrictEqual(words);
 
-    await fireEvent.click(getByRole("button", { name: "Next" }));
+    await fireEvent.click(getByRole("button", { name: "I wrote it down" }));
 
     for (const label of container.querySelectorAll(".recovery-check__word")) {
       const n = Number(label.textContent?.replace(/\D/g, ""));

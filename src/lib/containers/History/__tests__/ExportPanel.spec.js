@@ -135,7 +135,9 @@ describe("Export's network fees of migrations", () => {
 
     none.resolve(fileWith({}));
 
-    await vi.waitFor(() => expect(said()).toMatch(/\bno network fees\b/i));
+    await vi.waitFor(() =>
+      expect(said()).toMatch(/\bno migration network fees\b/i),
+    );
     expect(said()).not.toMatch(/0x/i);
 
     // Back to all of it, whose migration's chain doesn't answer now.

@@ -16,15 +16,6 @@ vi.mock("$lib/dusk/string", async (importOriginal) => {
   };
 });
 
-/**
- * Matches `value` whole: not inside a longer figure, so "1 LUX" matches
- * neither "11 LUX" nor "0.1 LUX".
- *
- * @param {string} value As the page writes it, as "20,000,000 gas"
- */
-const wholeFigure = (value) =>
-  new RegExp(`(?<![^ ])${value.replaceAll(".", "[.]")}(?![.,]?[0-9])`);
-
 describe("GasSettings", () => {
   const settings = get(settingsStore);
   const duskFormatter = createCurrencyFormatter(settings.language, "DUSK", 9);
@@ -60,16 +51,15 @@ describe("GasSettings", () => {
 
     await fireEvent.click(getByRole("button", { name: "Edit" }));
 
-    // Exactly, then the gas limit and the price that make it.
+    // Exactly, said as the most: one figure, never a typical fee beside it.
     const exact = container.querySelector(".gas-settings__exact");
 
-    // The most it can cost, said as the most.
-    const most = container.querySelector(".gas-settings__most");
-
-    expect(most).toHaveTextContent(wholeFigure("0.002151569 DUSK"));
-    expect(most).toHaveTextContent(/at most/i);
-    expect(exact).toHaveTextContent(wholeFigure("20,000,000 gas"));
-    expect(exact).toHaveTextContent(wholeFigure("1 LUX"));
+    expect(exact?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "0.002151569 DUSK at most: pays only for the gas used.",
+    );
+    // The gas limit and the price that make it, in their own fields.
+    expect(getByRole("textbox", { name: "Gas limit" })).toHaveValue("20000000");
+    expect(getByRole("textbox", { name: "Gas price (LUX)" })).toHaveValue("1");
   });
 
   it("says the network is busy while it asks more than the price, the default stopped at its ceiling, until it's raised to what it asks", async () => {
@@ -164,5 +154,67 @@ describe("GasSettings", () => {
       limit: baseProps.limitLower,
       price: baseProps.price * 2n,
     });
+  });
+
+  /** The high-fee warning beside the fee, if it shows. */
+  const highFee = () =>
+    document.querySelector(".gas-settings__high")?.textContent?.trim();
+
+  it("warns of a fee far above the network's price beside it, from twice that price, as the extension does", async () => {
+    const view = render(GasSettings, baseOptions);
+
+    // At the network's price, and under twice it: no warning.
+    expect(get(gasPriceStore)).toBe(1n);
+    expect(highFee()).toBeUndefined();
+    await view.rerender({ ...baseProps, price: 1n });
+    expect(highFee()).toBeUndefined();
+
+    // Twice, and far above: a high fee, and how many times over.
+    await view.rerender({ ...baseProps, price: 2n });
+    expect(highFee()).toMatch(/^High fee\b/);
+    expect(highFee()).toMatch(/(?<![\d.,])2 times\b/);
+
+    await view.rerender({ ...baseProps, price: 50n });
+    expect(highFee()).toMatch(/(?<![\d.,])50 times\b/);
+    // Beside the fee, not only once Edit opens it.
+    expect(view.queryByRole("textbox")).toBeNull();
+  });
+
+  it("warns of no high fee for a price raised to what a busy network asks, only for twice that", async () => {
+    const connect = vi.spyOn(networkStore, "connect");
+
+    /** @param {bigint} median What the waiting transactions pay */
+    const nodeAsks = async (median) => {
+      connect.mockResolvedValue(
+        /** @type {any} */ ({
+          query: async () => ({
+            mempoolTxs: Array.from({ length: 1_000 }, () => ({
+              gasLimit: 2_500_000,
+              gasPrice: String(median),
+            })),
+          }),
+        }),
+      );
+      await gasPriceStore.refresh();
+    };
+
+    try {
+      await nodeAsks(900n);
+
+      const view = render(GasSettings, {
+        ...baseOptions,
+        props: { ...baseProps, price: 900n },
+      });
+
+      expect(highFee()).toBeUndefined();
+
+      await view.rerender({ ...baseProps, price: 1_800n });
+
+      expect(highFee()).toMatch(/^High fee\b/);
+      expect(highFee()).toMatch(/(?<![\d.,])2 times\b/);
+    } finally {
+      await nodeAsks(1n);
+      connect.mockRestore();
+    }
   });
 });

@@ -41,7 +41,7 @@ const naming = (...values) =>
   );
 
 /** What's said where it looks like the same payment. */
-const SAME = expect.stringMatching(/same payment/i);
+const SAME = expect.stringMatching(/looks like this payment/i);
 
 /** What's said of what it sent, where that isn't known. */
 const SOMETHING_ELSE = expect.stringMatching(/something else/i);

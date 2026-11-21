@@ -2,7 +2,7 @@
 
 <script>
   /**
-   * Check your recovery words: the password first, as for anything that
+   * Check recovery phrase: the password first, as for anything that
    * reads the phrase, then three of the open wallet's words, chosen at
    * random, typed as they were written down (RecoveryWordsCheck). A check
    * that doesn't match shows no word: Show my recovery words, apart from it,
@@ -79,7 +79,7 @@
       if (error instanceof InvalidPasswordError) {
         passwordError = "Wrong password.";
       } else {
-        formError = "Couldn't read your recovery words.";
+        formError = "Couldn't read your recovery phrase.";
       }
     } finally {
       busy = false;
@@ -115,7 +115,7 @@
 
 <section class="check-words">
   <header class="check-words__header">
-    <h1 use:pageTitle>Check your recovery words</h1>
+    <h1 use:pageTitle>Check recovery phrase</h1>
   </header>
   {#if words.length && purpose === "show"}
     <MnemonicPhrase mnemonicPhrase={words} />
@@ -138,7 +138,7 @@
           ? "Opening…"
           : purpose === "show"
             ? RECOVERY_WORDS_SHOW
-            : "Continue"}
+            : "Next"}
         type="submit"
       />
     </form>

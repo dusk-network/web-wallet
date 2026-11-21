@@ -201,6 +201,31 @@ describe("Create", async () => {
     expect(nextButton).toBeEnabled();
   });
 
+  // Persona round 41: nothing said to check that no one sees the screen
+  // while the words show.
+  it("says to make sure no one can see the screen in the backup text, above the words", async () => {
+    const { container, getAllByRole, getByRole, getByText } = render(
+      Create,
+      baseOptions,
+    );
+
+    await fireEvent.click(getByRole("button", { name: "Accept" }));
+    await fireEvent.click(getAllByRole("checkbox")[0]);
+    await fireEvent.click(getAllByRole("checkbox")[1]);
+    await fireEvent.click(getByRole("button", { name: "Next" }));
+
+    const backup = getByText(/no one can see your screen/i);
+    const words = /** @type {HTMLElement} */ (
+      container.querySelector(".dusk-words")
+    );
+
+    // In the text that says to write the phrase down, read before the words.
+    expect(backup).toHaveTextContent(/write your phrase down/i);
+    expect(backup.compareDocumentPosition(words)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   // Marek's, in Firefox for Android: the app switcher and the tab list kept
   // a picture of the words, as nothing hid them again.
   it("hides the words to write down the moment the page is hidden, and what's typed in their check, until Show words", async () => {

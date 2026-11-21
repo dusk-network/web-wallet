@@ -217,7 +217,7 @@
         <Icon path={mdiPlus} />
         <span class="add-wallet__choice-text">
           <span class="add-wallet__choice-title">Create wallet</span>
-          <span class="add-wallet__choice-sub">Get a new recovery phrase</span>
+          <span class="add-wallet__choice-sub">New recovery phrase</span>
         </span>
       </button>
       <button
@@ -229,7 +229,7 @@
         <span class="add-wallet__choice-text">
           <span class="add-wallet__choice-title">Import wallet</span>
           <span class="add-wallet__choice-sub"
-            >Use a recovery phrase you have</span
+            >From a recovery phrase you have</span
           >
         </span>
       </button>
@@ -294,7 +294,7 @@
         on:click={() => {
           step = "phrase";
         }}
-        text="Next"
+        text="Show my recovery phrase"
         variant="primary"
       />
     {:else if step === "phrase"}
@@ -302,7 +302,7 @@
         on:click={() => {
           step = "verify";
         }}
-        text="Next"
+        text="I wrote it down"
         variant="primary"
       />
     {:else if step === "verify"}

@@ -275,7 +275,7 @@
 <div class="history" class:history--open={isDetailShown}>
   <section aria-labelledby="history-title" class="history__main">
     <header class="history__header">
-      <h1 class="history__title" id="history-title" use:pageTitle>History</h1>
+      <h1 class="history__title" id="history-title" use:pageTitle>Activity</h1>
       <Button
         aria-expanded={isExportOpen}
         disabled={!state.rows.length}
@@ -298,7 +298,6 @@
         {shieldedAddress}
       />
     {/if}
-    <p class="history__note">Shown in your local time.</p>
     {#if incomplete}
       <p class="history__incomplete" role="status">
         {incompleteText}
@@ -437,8 +436,10 @@
                             class="history__phone-meta"
                             >{time === null
                               ? ""
-                              : ` · ${timeLabel(time, locale)}`}
-                            · {p.privacy}</span
+                              : ` · ${timeLabel(time, locale)}`}{p.privacy ===
+                            "Shielded"
+                              ? " · Shielded"
+                              : ""}</span
                           >{/if}</span
                       >
                       {#if p.note}
@@ -465,9 +466,12 @@
                       {/if}
                       {#if isDeposit}
                         <span class="history__when"
-                          >{time === null
-                            ? p.privacy
-                            : `${timeLabel(time, locale)} · ${p.privacy}`}</span
+                          >{[
+                            time === null ? "" : timeLabel(time, locale),
+                            p.privacy === "Shielded" ? p.privacy : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}</span
                         >
                       {/if}
                     </span>
@@ -575,12 +579,6 @@
     font-weight: 500;
     letter-spacing: -0.01em;
     line-height: 1.15;
-  }
-
-  .history__note {
-    margin-top: 0.375rem;
-    color: var(--calm-muted);
-    font-size: 0.8125rem;
   }
 
   .history__incomplete {

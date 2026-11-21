@@ -60,8 +60,8 @@
   import RouteStatusLine from "./RouteStatusLine.svelte";
   import RouteTransferResult from "./RouteTransferResult.svelte";
   import FullAddress from "../FullAddress/FullAddress.svelte";
-  import ReviewAmount from "../ReviewAmount/ReviewAmount.svelte";
   import ReviewWallet from "../ReviewWallet/ReviewWallet.svelte";
+  import SectionHead from "../SectionHead/SectionHead.svelte";
   import { amountProblem, readDuskInput } from "../Stake/stakeAmount";
 
   /** @type {import("$lib/bridge/cardRoutes").CardRoute & { kind: "migration" }} */
@@ -106,6 +106,10 @@
 
   /** A step's heading takes focus as it shows, so a screen reader goes there. */
   const takeFocus = (/** @type {HTMLElement} */ node) => node.focus();
+
+  /** A review's heading takes focus as it shows: its section head. */
+  const focusHead = (/** @type {HTMLElement} */ node) =>
+    node.querySelector("h2")?.focus();
 
   const draft = formDraft(`bridge-${route.id}`);
 
@@ -362,7 +366,7 @@
         stillHere,
       });
 
-      note = "The approval is revoked.";
+      note = "The allowance is revoked.";
       leaveRevokeReview();
     } catch (error) {
       const isOtherAccount =
@@ -371,8 +375,8 @@
       note = isOtherAccount
         ? ACCOUNT_CHANGED_NOTE
         : isDeclinedInWallet(error)
-          ? "You cancelled the revoke in your wallet. The approval stands."
-          : "The approval wasn't revoked. Check your EVM wallet's activity before you try again.";
+          ? "You cancelled the revoke in your wallet. The allowance stands."
+          : "The allowance wasn't revoked. Check your EVM wallet's activity before trying again.";
 
       if (isOtherAccount) {
         leaveRevokeReview();
@@ -593,10 +597,10 @@
     if (isDeclinedInWallet(error)) {
       note =
         sending === "approving"
-          ? "You cancelled the approval in your wallet. Nothing moved."
+          ? "You cancelled the allowance in your wallet. Nothing moved."
           : approved
             ? "You cancelled the migration in your wallet. Nothing moved."
-            : "You cancelled the migration in your wallet. The approval went through, so next time it only asks to migrate. Nothing moved.";
+            : "You cancelled the migration in your wallet. The allowance went through, so next time it only asks to migrate. Nothing moved.";
       step = "review";
       readApproval();
 
@@ -622,18 +626,18 @@
       });
 
       return failedOnChain
-        ? { sentence: `${chainName} refused the approval, so nothing moved.` }
+        ? { sentence: `${chainName} refused the allowance, so nothing moved.` }
         : isApprovalShort
           ? {
               sentence:
-                "Your approval no longer covers this amount, so nothing was sent. Approve again to migrate it.",
+                "Your allowance no longer covers this amount. Nothing was sent.",
             }
           : // The approval it sent went through, and paid its fee there.
             said.unreachable && sending === "migrating" && !approved
             ? {
                 ...said,
                 sentence:
-                  "Couldn't reach the network. The approval went through, so next time it only asks to migrate. Nothing moved.",
+                  "Couldn't reach the network. The allowance went through, so next time it only asks to migrate. Nothing moved.",
               }
             : said;
     }
@@ -741,12 +745,7 @@
     hasOpenApproval &&
     amountLux > 0n &&
     /** @type {bigint} */ (openApproval) >= amountLux * WEI_PER_LUX;
-  $: routeLine = [
-    timeText,
-    isCovered
-      ? `migrate, in your ${chainName} wallet`
-      : `approve, then migrate, in your ${chainName} wallet`,
-  ]
+  $: routeLine = [timeText, isCovered ? "" : "approve, then migrate"]
     .filter(Boolean)
     .join(" · ")
     .replace(/^./, (first) => first.toUpperCase());
@@ -773,7 +772,7 @@
                   }
                 : amountLux > balanceLux
                   ? { label: `Not enough ${unit}`, ready: false }
-                  : { label: "Review migration", ready: true };
+                  : { label: "Review", ready: true };
   $: canType = route.running && isConnected && Boolean(balanceLux);
   // A review needs its wallet: without one, back to the form.
   $: if (step === "review" && !isConnected) {
@@ -797,7 +796,35 @@
     note = ACCOUNT_CHANGED_NOTE;
     leaveRevokeReview();
   }
+
+  import "./routeReview.css";
 </script>
+
+<!-- What to check against the EVM wallet, for whoever does: the last row,
+  closed. -->
+{#snippet toCheck(/** @type {string} */ what, /** @type {string} */ where)}
+  <details class="route-review__details">
+    <summary>Details</summary>
+    <dl class="route-review__rows">
+      <div>
+        <dt>Network</dt>
+        <dd>{chainName}, chain ID {route.chain.chainId}</dd>
+      </div>
+      <div>
+        <dt>Migration contract</dt>
+        <dd><FullAddress address={route.contract} /></dd>
+      </div>
+      <div>
+        <dt>Token</dt>
+        <dd>
+          <span class="route-review__name">{unit}</span>
+          <FullAddress address={route.chain.token ?? ""} />
+        </dd>
+      </div>
+    </dl>
+    <p class="route-review__public"><b>{where}</b> {what}</p>
+  </details>
+{/snippet}
 
 {#if step === "form"}
   {#if note}
@@ -805,7 +832,7 @@
   {/if}
   {#if hasOpenApproval && openApproval !== undefined}
     <div class="route-approval">
-      <p class="route-approval__title">Open approval</p>
+      <p class="route-approval__title">Open allowance</p>
       <p>
         {#if openApproval >= NO_LIMIT}
           The migration contract may still take any amount of {unit} from this wallet.
@@ -872,11 +899,11 @@
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
     <div class="swap-foot">
-      <span id="migration-balance-label">Balance on {chainName}:</span>
+      <span id="migration-balance-label">Balance:</span>
       <span class="swap-foot__value">
         <span id="migration-balance">
           {#if !isConnected}
-            connect a wallet to see it
+            connect a wallet
           {:else if balanceLux === undefined}
             {$isAskingToSwitch ? "checking" : "switch network to see it"}
           {:else}
@@ -974,7 +1001,7 @@
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
     <div class="swap-foot"><span>You receive</span></div>
-    <p class="swap-recipient">to your public balance on Dusk</p>
+    <p class="swap-recipient">To your public balance</p>
   </div>
 
   <details class="swap-route">
@@ -988,14 +1015,6 @@
       /></summary
     >
     <dl>
-      <div>
-        <dt>Steps</dt>
-        <dd>
-          {isCovered
-            ? `Migrate, in your ${chainName} wallet: your open approval covers it`
-            : `Approve, if needed, then migrate, in your ${chainName} wallet`}
-        </dd>
-      </div>
       <div>
         <dt>Network fees</dt>
         <dd>On {chainName}, as your wallet shows. No bridge fee</dd>
@@ -1016,69 +1035,67 @@
     />
   </div>
 {:else if step === "review"}
-  <div class="route-review">
-    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
+  <!-- As Send's review: rows of what goes where and what it costs, one
+    button, what can't be undone, then Back. -->
+  <div class="route-review" use:focusHead>
+    <SectionHead tabindex="-1">Review</SectionHead>
     {#if note}
       <p class="route-note" role="alert">{note}</p>
     {/if}
     <ReviewWallet />
-    <ReviewAmount
-      label="Amount"
-      value={isAmountMasked
-        ? BALANCE_MASK
-        : formatDuskExact(amountLux, language)}
-    />
-    <dl class="route-review__ends">
+    <dl class="route-review__rows">
+      <div>
+        <dt>Amount</dt>
+        <dd>
+          {isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)}
+          DUSK
+        </dd>
+      </div>
       <div>
         <dt>From</dt>
         <dd>
-          <span>{chainName}</span>
+          <span class="route-review__name">{chainName}</span>
           <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
         <dt>To</dt>
         <dd>
-          <span>Your public account on Dusk</span>
+          <span class="route-review__name">Your public account</span>
           <FullAddress address={recipient} />
         </dd>
       </div>
-      <div>
-        <dt>Steps</dt>
-        <dd>
-          {approved === undefined
-            ? "Checking what the contract may take…"
-            : approved
-              ? "Migrate, in your wallet"
-              : "Approve the amount, then migrate, in your wallet"}
-        </dd>
-      </div>
-      {#if approved === false}
+      {#if approved === undefined}
         <div>
-          <dt>Approval</dt>
+          <dt>Allowance</dt>
+          <dd>Checking what the contract may take…</dd>
+        </div>
+      {:else if approved === false}
+        <div>
+          <dt>Allowance</dt>
           <dd>
-            You allow the migration contract to take exactly this amount.
-            Nothing moves yet.
+            The migration contract may take exactly this amount. Nothing moves
+            yet.
           </dd>
         </div>
       {:else if approved}
         <div>
-          <dt>Approval</dt>
+          <dt>Allowance</dt>
           <dd>
             <span>
               {#if reviewedApproval >= NO_LIMIT}
-                An earlier approval with no limit covers this, so you aren't
-                asked to approve. It stays approved after it.
+                Covered by an unlimited allowance from before. It stays after
+                this.
               {:else}
-                An earlier approval of <BalanceValue
+                Covered by an allowance of <BalanceValue
                   value={approvalText(reviewedApproval)}
                 />
-                {unit} covers this, so you aren't asked to approve.
+                {unit} from before.
                 {#if approvalLeft > 0n}
                   <BalanceValue value={approvalText(approvalLeft)} />
-                  {unit} stays approved after it.
+                  {unit} stays after this.
                 {:else}
-                  None of it stays approved after it.
+                  None of it stays after this.
                 {/if}
               {/if}
             </span>
@@ -1086,155 +1103,118 @@
         </div>
       {/if}
       <div>
-        <dt>Network fees</dt>
+        <dt>Fee</dt>
         <dd>
           {typeof feeBalance === "bigint"
             ? feeEstimate
-              ? `About ${feeText(feeEstimate)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}. No bridge fee`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for them. No bridge fee`
-            : `On ${chainName}, as your wallet shows. No bridge fee`}
+              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}) · no bridge fee`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
+            : `On ${chainName}, as your wallet shows · no bridge fee`}
         </dd>
       </div>
       {#if timeText}
         <div>
           <dt>Arrives</dt>
-          <dd>
-            {isAmountMasked
-              ? ""
-              : `${formatDuskExact(amountLux, language)} DUSK `}on Dusk in {timeText}
-          </dd>
+          <dd>in {timeText}</dd>
         </div>
       {/if}
     </dl>
-    <details class="route-review__check">
-      <summary>Addresses to check</summary>
-      <dl class="route-review__ends">
-        <div>
-          <dt>Network</dt>
-          <dd>{chainName}, chain ID {route.chain.chainId}</dd>
-        </div>
-        <div>
-          <dt>Migration contract</dt>
-          <dd><FullAddress address={route.contract} /></dd>
-        </div>
-        <div>
-          <dt>Token</dt>
-          <dd>
-            <span>{unit}</span>
-            <FullAddress address={route.chain.token ?? ""} />
-          </dd>
-        </div>
-      </dl>
-      <p class="route-review__public">
-        <b>Public on {chainName} and Dusk, and linked:</b> your {chainName} address,
-        your public account and the amount.
-      </p>
-    </details>
-    <div class="route-review__actions">
+    {@render toCheck(
+      `your ${chainName} account, your public account and the amount.`,
+      `Public on ${chainName} and Dusk, and linked:`,
+    )}
+    {#if feeBalance === 0n}
       <Button
-        icon={{ path: mdiArrowLeft }}
-        on:click={() => {
-          note = "";
-          leaveReview();
-        }}
-        text="Back"
-        variant="secondary"
+        className="route-review__primary"
+        disabled
+        text={`No ${feeUnit} for the network fee`}
+        variant="primary"
       />
-      {#if feeBalance === 0n}
-        <Button
-          disabled
-          text={`No ${feeUnit} for the network fee`}
-          variant="primary"
-        />
-      {:else if chainId === route.chain.chainId}
-        <Button
-          confirm
-          disabled={approved === undefined || !isConnected}
-          icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
-          on:click={send}
-          text="Migrate"
-          variant="primary"
-        />
-      {:else}
-        <Button
-          disabled={!primary.ready}
-          on:click={primaryAction}
-          text={primary.label}
-          variant="primary"
-        />
+    {:else if chainId === route.chain.chainId}
+      <Button
+        className="route-review__primary"
+        confirm
+        disabled={approved === undefined || !isConnected}
+        icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
+        on:click={send}
+        text={`${approved === false ? "Approve" : "Migrate"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+        variant="primary"
+      />
+      {#if approved === false}
+        <!-- Two wallet steps: this is the first, the migration the second. -->
+        <p class="route-review__step">1 of 2</p>
       {/if}
-    </div>
+      <p class="route-review__final">Can't be undone.</p>
+    {:else}
+      <Button
+        className="route-review__primary"
+        disabled={!primary.ready}
+        on:click={primaryAction}
+        text={primary.label}
+        variant="primary"
+      />
+    {/if}
+    <Button
+      className="route-review__back"
+      icon={{ path: mdiArrowLeft }}
+      on:click={() => {
+        note = "";
+        leaveReview();
+      }}
+      text="Back"
+      variant="secondary"
+    />
   </div>
 {:else if step === "revoke"}
-  <div class="route-review">
-    <h2 class="route-review__title" tabindex="-1" use:takeFocus>Review</h2>
+  <div class="route-review" use:focusHead>
+    <SectionHead tabindex="-1">Review</SectionHead>
     {#if note}
       <p class="route-note" role="alert">{note}</p>
     {/if}
     <ReviewWallet />
-    <!-- Hidden with the balances, as the form before it hides it. -->
-    <ReviewAmount
-      label="Approved now"
-      {unit}
-      value={openApproval === undefined
-        ? "…"
-        : openApproval >= NO_LIMIT
-          ? "Any amount of"
-          : hideBalances
-            ? BALANCE_MASK
-            : approvalText(openApproval)}
-    />
-    <dl class="route-review__ends">
+    <dl class="route-review__rows">
+      <!-- Hidden with the balances, as the form before it hides it. -->
+      <div>
+        <dt>Allowance now</dt>
+        <dd>
+          {openApproval === undefined
+            ? "…"
+            : openApproval >= NO_LIMIT
+              ? "Unlimited"
+              : hideBalances
+                ? BALANCE_MASK
+                : approvalText(openApproval)}
+          {unit}
+        </dd>
+      </div>
       <div>
         <dt>From</dt>
         <dd>
-          <span>{chainName}</span>
+          <span class="route-review__name">{chainName}</span>
           <FullAddress address={address ?? ""} />
         </dd>
       </div>
       <div>
-        <dt>Steps</dt>
-        <dd>Revoke, in your wallet: nothing moves</dd>
-      </div>
-      <div>
         <dt>After it</dt>
-        <dd>The migration contract can take no {unit} from this wallet.</dd>
+        <dd>
+          The migration contract can take no {unit} from this wallet. Nothing moves.
+        </dd>
       </div>
       <div>
-        <dt>Network fees</dt>
+        <dt>Fee</dt>
         <dd>
           {typeof revokeFees.balance === "bigint"
             ? revokeFees.fee
-              ? `About ${feeText(revokeFees.fee)} ${feeUnit}, from your ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit}`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for them`
+              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit})`
+              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for it`
             : `On ${chainName}, as your wallet shows`}
         </dd>
       </div>
     </dl>
-    <details class="route-review__check">
-      <summary>Addresses to check</summary>
-      <dl class="route-review__ends">
-        <div>
-          <dt>Network</dt>
-          <dd>{chainName}, chain ID {route.chain.chainId}</dd>
-        </div>
-        <div>
-          <dt>Migration contract</dt>
-          <dd><FullAddress address={route.contract} /></dd>
-        </div>
-        <div>
-          <dt>Token</dt>
-          <dd>
-            <span>{unit}</span>
-            <FullAddress address={route.chain.token ?? ""} />
-          </dd>
-        </div>
-      </dl>
-      <p class="route-review__public">
-        <b>Public on {chainName}:</b> your {chainName} address, and that it revokes
-        its approval.
-      </p>
-    </details>
+    {@render toCheck(
+      `your ${chainName} account, and that it revokes its allowance.`,
+      `Public on ${chainName}:`,
+    )}
     {#if revoking}
       <p role="status">
         {revoking === "signing"
@@ -1242,41 +1222,43 @@
           : `Waiting for ${chainName}…`}
       </p>
     {/if}
-    <div class="route-review__actions">
+    {#if revokeFees.balance === 0n}
       <Button
-        icon={{ path: mdiArrowLeft }}
-        on:click={() => {
-          note = "";
-          leaveRevokeReview();
-        }}
-        text="Back"
-        variant="secondary"
+        className="route-review__primary"
+        disabled
+        text={`No ${feeUnit} for the network fee`}
+        variant="primary"
       />
-      {#if revokeFees.balance === 0n}
-        <Button
-          disabled
-          text={`No ${feeUnit} for the network fee`}
-          variant="primary"
-        />
-      {:else if chainId === route.chain.chainId}
-        <Button
-          confirm
-          disabled={Boolean(revoking) || !isConnected}
-          on:click={revoke}
-          text="Revoke in your wallet"
-          variant="primary"
-        />
-      {:else}
-        <Button
-          disabled={$isAskingToSwitch}
-          on:click={() => askToSwitch(route.chain.chainId)}
-          text={$isAskingToSwitch
-            ? `Switching to ${chainName}…`
-            : `Switch to ${chainName}`}
-          variant="primary"
-        />
-      {/if}
-    </div>
+    {:else if chainId === route.chain.chainId}
+      <Button
+        className="route-review__primary"
+        confirm
+        disabled={Boolean(revoking) || !isConnected}
+        on:click={revoke}
+        text="Revoke in your wallet"
+        variant="primary"
+      />
+    {:else}
+      <Button
+        className="route-review__primary"
+        disabled={$isAskingToSwitch}
+        on:click={() => askToSwitch(route.chain.chainId)}
+        text={$isAskingToSwitch
+          ? `Switching to ${chainName}…`
+          : `Switch to ${chainName}`}
+        variant="primary"
+      />
+    {/if}
+    <Button
+      className="route-review__back"
+      icon={{ path: mdiArrowLeft }}
+      on:click={() => {
+        note = "";
+        leaveRevokeReview();
+      }}
+      text="Back"
+      variant="secondary"
+    />
   </div>
 {:else}
   <div class="route-result" role="status" tabindex="-1" use:takeFocus>
@@ -1285,10 +1267,12 @@
       errorMessage="The migration didn't go through"
       {operation}
       pendingMessage={sending === "approving"
-        ? "Approve the amount in your wallet"
+        ? "Approve in your wallet (1 of 2)"
         : sending === "confirming"
           ? `Waiting for ${chainName}…`
-          : "Migrate in your wallet"}
+          : approved === false
+            ? "Migrate in your wallet (2 of 2)"
+            : "Migrate in your wallet"}
       successMessage={sentHeading}
     >
       <svelte:fragment slot="success-content" let:result={hash}>
@@ -1317,7 +1301,6 @@
 {/if}
 
 <style lang="postcss">
-  .route-review,
   .route-result {
     display: flex;
     flex-direction: column;
@@ -1325,34 +1308,8 @@
     padding: 0.5rem;
   }
 
-  .route-review__title:focus,
   .route-result:focus {
     outline: none;
-  }
-
-  .route-review__check {
-    font-size: 0.875em;
-
-    summary {
-      cursor: pointer;
-      padding-block: 0.25em;
-    }
-  }
-
-  /*
-   * A thumb's, on a phone held either way, as the buttons around it: its
-   * marker stays.
-   */
-  @media (max-width: 30rem), (pointer: coarse) {
-    .route-review__check summary {
-      box-sizing: border-box;
-      min-height: 44px;
-      padding-block: calc((44px - 1lh) / 2);
-    }
-  }
-
-  .route-review__public {
-    margin: 0.5em 0 0;
   }
 
   .route-note {
@@ -1380,44 +1337,6 @@
   .route-approval__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.25rem;
-  }
-
-  .route-review__title {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-  }
-
-  .route-review__ends {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin: 0;
-
-    & > div {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-
-    & dt {
-      color: var(--calm-muted);
-      font-size: 0.8125rem;
-    }
-
-    & dd {
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-      margin: 0;
-    }
-  }
-
-  .route-review__actions {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
     gap: 0.5rem;
     margin-top: 0.25rem;
   }

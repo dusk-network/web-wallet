@@ -145,8 +145,8 @@ export function statusLine(
   const room = !pays
     ? ""
     : short
-      ? `It can pay up to ${pays} DUSK now, less than you're sending, so yours may wait.`
-      : `It can pay up to ${pays} DUSK.`;
+      ? `Can pay up to ${pays} DUSK now, less than you're sending: yours may wait.`
+      : `Can pay up to ${pays} DUSK.`;
 
   return {
     text: [...words, room].filter(Boolean).join(" "),

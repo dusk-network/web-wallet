@@ -10,7 +10,7 @@
  * unable to sign it, or the node out of reach. Those say to try again
  * where that helps. Once the node was asked to broadcast it, or the EVM
  * wallet to send it (outcomeUnknown), it may have gone out: it says to
- * check History first, never to send it again, and only a refusal, which
+ * check Activity first, never to send it again, and only a refusal, which
  * holds once it was handed over too, says otherwise: the node's, or an EVM
  * wallet's that proves it sent nothing. A refusal for what another transaction
  * spent says the same: that one may be an earlier try of this one, whose
@@ -34,39 +34,39 @@ const DECLINED = /UserRejectedRequestError|user rejected|user denied/i;
  */
 const REFUSED = [
   // Declined in the EVM wallet that was to send it.
-  [DECLINED, "It was declined in your EVM wallet, so nothing was sent."],
+  [DECLINED, "Declined in your EVM wallet."],
 
   // The node's reasons for refusing it, where the wallet knows them.
   [
     /gas price lower than (the )?minimum/i,
-    "The network refused it: the gas price is under its minimum. Raise it and try again.",
+    "The gas price is under the network's minimum. Raise it and try again.",
   ],
   [
     /gas limit lower than (the )?minimum/i,
-    "The network refused it: the gas limit is under its minimum. Raise it and try again.",
+    "The gas limit is under the network's minimum. Raise it and try again.",
   ],
   [
     /value spent (larger than account holds|will overflow)/i,
-    "The network refused it: the balance doesn't cover it and its fee. Lower the amount and try again.",
+    "Balance too low for the amount and fee. Lower the amount and try again.",
   ],
 
   // What pays for it doesn't cover it, as the wallet finds before it sends
   // it: its shielded notes, or the EVM wallet's balance for a withdrawal.
   [
     /InsufficientFundsError|insufficient (funds|balance)/i,
-    "The balance doesn't cover it and its fee, so nothing was sent. Lower the amount and try again.",
+    "Balance too low for the amount and fee. Lower the amount and try again.",
   ],
 
   // Its signature or proof, as the node checks them.
   [
     /invalid (proof|signature)|cannot verify the (proof|signature)/i,
-    "The wallet couldn't sign it, so nothing was sent. Reload the page and try again.",
+    "The wallet couldn't sign it. Reload the page.",
   ],
 
   // Refused for a reason the wallet doesn't know: it's under Details.
   [
     /not accepted|this transaction is invalid|preverif/i,
-    "The network refused it. See Details for why.",
+    "The network refused it. See Details.",
   ],
 ];
 
@@ -81,19 +81,19 @@ const NOT_MADE = [
   // waited for the sync, or was built.
   [
     /WalletChangedError|wallet changed meanwhile|wallet not initialized|needs to be initialized|synchroni[sz]ation aborted/i,
-    "The wallet changed or locked before it went out, so nothing was sent. Try again.",
+    "The wallet changed or locked before it went out.",
   ],
 
   // The address, which the wallet reads as it builds the transaction.
   [
     /DriverDeserializeError|failed to deserialize/i,
-    "The wallet couldn't read the address, so nothing was sent. Check it and try again.",
+    "The wallet couldn't read the address. Check it.",
   ],
 
   // Its keys, signature or proof.
   [
     /Driver\w*Error|failed to (archive|unarchive)|unknown error code|\bprov(er|ing)\b|RuntimeError/i,
-    "The wallet couldn't sign it, so nothing was sent. Reload the page and try again.",
+    "The wallet couldn't sign it. Reload the page.",
   ],
 ];
 
@@ -107,11 +107,11 @@ const NOT_MADE = [
 const CAME_FIRST = [
   [
     /nonce repeat|repeating nonce|spendid exists|exists in the (mempool|ledger)/i,
-    "The network refused it: another transaction from this account came first.",
+    "Refused: another transaction from this account came first.",
   ],
   [
     /nullifiers already spent|double nullifiers|repeating nullifiers/i,
-    "The network refused it: some of the shielded DUSK it spends is spent already.",
+    "Refused: some of its shielded DUSK is spent already.",
   ],
 ];
 
@@ -177,11 +177,11 @@ function evmRefusal(error) {
   const isOneOf = (names) => causes.some(({ name }) => names.test(name));
 
   return isOneOf(NOT_ASKED)
-    ? "Your EVM wallet isn't on this account or network, so nothing was sent. Check it and try again."
+    ? "Your EVM wallet isn't on this account or network. Check it."
     : isOneOf(WONT_DO)
-      ? "Your EVM wallet refused it, so nothing was sent. See Details for why."
+      ? "Your EVM wallet refused it. See Details."
       : wouldRevert(causes)
-        ? "The network would refuse it, so nothing was sent. See Details for why."
+        ? "The network would refuse it. See Details."
         : "";
 }
 
@@ -191,11 +191,11 @@ const UNREACHABLE =
 
 /** What to check first where there's no History to: the balance. */
 export const CHECK_BALANCE_FIRST =
-  "Wait a few minutes and check your balance before you send it again.";
+  "Wait a few minutes and check your balance before sending again.";
 
 /** What to check first for a withdrawal, which History doesn't show. */
 export const CHECK_EVM_WALLET_FIRST =
-  "Check your EVM wallet's activity before you send it again.";
+  "Check your EVM wallet's activity before sending again.";
 
 /**
  * Whether the person turned it down in their EVM wallet.
@@ -219,7 +219,7 @@ export const isDeclinedInWallet = (error) =>
  */
 export default function describeFailure(
   error,
-  { checkFirst = "Check History before you send it again." } = {},
+  { checkFirst = "Check Activity before sending again." } = {},
 ) {
   const text = `${error?.name ?? ""}: ${error?.message ?? ""}`;
   const handedOver = isOutcomeUnknown(error);
@@ -228,7 +228,7 @@ export default function describeFailure(
     return {
       canRetry: true,
       heading: "Not sent",
-      sentence: "It waits for your password, so nothing was sent.",
+      sentence: "Needs your password.",
     };
   }
 
@@ -257,13 +257,13 @@ export default function describeFailure(
   );
 
   if (nothingSent) {
-    return { canRetry: true, sentence: nothingSent[1] };
+    return { canRetry: true, heading: "Not sent", sentence: nothingSent[1] };
   }
 
   const refused = evmRefusal(error);
 
   if (refused) {
-    return { canRetry: true, sentence: refused };
+    return { canRetry: true, heading: "Not sent", sentence: refused };
   }
 
   if (handedOver) {
@@ -272,7 +272,7 @@ export default function describeFailure(
       icon: mdiTimerSand,
       mayHaveGoneOut: true,
       outcomeUnknown: true,
-      sentence: `It may have reached the network. ${checkFirst}`,
+      sentence: `It may have gone out. ${checkFirst}`,
     };
   }
 
@@ -280,15 +280,15 @@ export default function describeFailure(
     return {
       canRetry: true,
       heading: "Not sent",
-      sentence:
-        "Couldn't reach the network. Nothing was sent and no fee was charged.",
+      sentence: "Couldn't reach the network. Not sent, no fee charged.",
       unreachable: true,
     };
   }
 
   return {
     canRetry: true,
-    sentence: "Something went wrong before it was sent. Try again.",
+    heading: "Not sent",
+    sentence: "Something went wrong before it was sent.",
   };
 }
 

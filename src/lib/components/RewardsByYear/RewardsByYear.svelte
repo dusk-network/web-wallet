@@ -86,7 +86,7 @@
 
 {#if rewards.years.length}
   <table class="rewards-by-year">
-    <caption>Staking rewards by year</caption>
+    <caption>Rewards by year</caption>
     <thead>
       <tr>
         <th scope="col">Year</th>
@@ -126,12 +126,8 @@
       on:change={() => dispatch("valued", valued)}
       type="checkbox"
     />
-    Add each reward's value in {currencyWords(currency).many}, from CoinGecko's
-    prices
+    Value in {currencyWords(currency).many} (CoinGecko)
   </label>
-  {#if !priced}
-    <p class="rewards-by-year__note">Test DUSK has no value.</p>
-  {/if}
 {:else}
   <p class="rewards-by-year__note">No staking rewards yet.</p>
 {/if}

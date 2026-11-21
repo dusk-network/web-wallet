@@ -16,7 +16,7 @@
   const NAMES = {
     bridgeFee: "Bridge fee",
     gas: "Gas",
-    networkFee: "Network fee",
+    networkFee: "Fee",
     received: "Received",
     sent: "Sent",
   };
@@ -31,7 +31,7 @@
     expected
       ? "You receive"
       : parts
-        ? `Gas, ${parts.includes("approval") ? "approval and migration" : "migration"}`
+        ? `Gas, ${parts.includes("approval") ? "allowance and migration" : "migration"}`
         : NAMES[key];
 </script>
 
