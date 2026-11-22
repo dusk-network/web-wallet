@@ -258,7 +258,7 @@ describe("Staking", () => {
       "Add to Sozu stake",
     ];
 
-    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Unstake native" })).toBeDisabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
 
     for (const name of links) {
@@ -275,7 +275,7 @@ describe("Staking", () => {
       }),
     );
 
-    expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+    expect(getByRole("button", { name: "Unstake native" })).toBeEnabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
 
     for (const name of links) {

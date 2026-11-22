@@ -1,11 +1,18 @@
 <script>
-  import { mdiOpenInNew, mdiServerOutline, mdiWaterOutline } from "@mdi/js";
+  import {
+    mdiChevronDown,
+    mdiChevronRight,
+    mdiOpenInNew,
+    mdiServerOutline,
+    mdiWaterOutline,
+  } from "@mdi/js";
 
   import { lastReadText } from "$lib/activity/present";
   import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { formatDusk, formatDuskExact } from "$lib/dusk/currency";
   import { Button, Icon } from "$lib/dusk/components";
   import {
+    AppAnchor,
     AppAnchorButton,
     BalanceValue,
     RewardsByYear,
@@ -189,26 +196,40 @@
     sozuMaintenance !== true &&
     sozuMaintenance !== false;
 
-  /** @type {{ label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
+  /** @param {number | null | undefined} days */
+  const periodOf = (days) =>
+    days ? `over the last ${days} days` : "estimated across the network";
+
+  // On a phone the comparison waits behind its button: the choices say what
+  // tells them apart.
+  let isComparisonOpen = false;
+
+  /** @type {{ action?: "claim" | "unstake" | "unstakeSozu", label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
   // What is staked comes first, natively and with Sozu. With nothing
   // natively staked, the native stake says there's nothing to unstake or
   // claim, away from Unstake from Sozu; its rewards are the native stake's,
   // as Sozu's are in what is staked there.
   $: figures = [
     {
+      action: hasNative ? "unstake" : undefined,
       label: hasLiquid ? "Staked natively" : "Staked",
       lux: staked,
     },
     ...(hasLiquid && position
       ? [
           {
+            action: /** @type {const} */ ("unstakeSozu"),
             label: "With Sozu",
             lux: position.balance,
             stDusk: position.stDusk,
           },
         ]
       : []),
-    { label: hasLiquid ? "Native rewards" : "Rewards", lux: stakeInfo.reward },
+    {
+      action: hasNative ? "claim" : undefined,
+      label: hasLiquid ? "Native rewards" : "Rewards",
+      lux: stakeInfo.reward,
+    },
     {
       label: "Available to stake",
       lux: publicBalance,
@@ -217,6 +238,13 @@
   ];
   // Unstake and Claim show once there is something natively staked.
   $: hasNative = staked > 0n || stakeInfo.reward > 0n;
+
+  // Over what each rate was measured, said once under both ways on a phone
+  // where it's the same, and on each where it isn't.
+  $: nativePeriod = nativeRate ? periodOf(nativeDays) : "";
+  $: sozuPeriod = sozuRate && fees ? periodOf(sozuDays) : "";
+  $: periods = [...new Set([nativePeriod, sozuPeriod].filter(Boolean))];
+  $: sharedPeriod = periods.length === 1 ? periods[0] : "";
 
   // A new stake earns from the block it becomes eligible at.
   $: eligibility = stakeInfo.amount?.eligibility ?? 0n;
@@ -231,7 +259,7 @@
       <div class="staking__summary-row">
         <dl class="staking__figures">
           {#each figures as figure (figure.label)}
-            <div>
+            <div class:staking__held={figure.action}>
               <dt class="ledger-label">{figure.label}</dt>
               <dd>
                 <span class="staking__amount"
@@ -247,41 +275,43 @@
                     included</span
                   >
                 {/if}
+                {#if figure.action === "unstake"}
+                  <Button
+                    className="staking__act"
+                    disabled={!actions.canUnstake}
+                    on:click={() => goto("/dashboard/stake?flow=unstake")}
+                    size="small"
+                    text={hasLiquid ? "Unstake native" : "Unstake"}
+                    variant="secondary"
+                  />
+                {:else if figure.action === "claim"}
+                  <Button
+                    className="staking__act"
+                    disabled={!actions.canClaim}
+                    on:click={() => goto("/dashboard/stake?flow=claim")}
+                    size="small"
+                    text="Claim rewards"
+                    variant="secondary"
+                  />
+                {:else if figure.action === "unstakeSozu"}
+                  <AppAnchorButton
+                    className="staking__act"
+                    disabled={pending}
+                    href="/dashboard/stake?flow=liquid&action=unstake"
+                    size="small"
+                    text="Unstake from Sozu"
+                    variant="secondary"
+                  />
+                {/if}
               </dd>
             </div>
           {/each}
         </dl>
 
         {#if hasNative || hasLiquid}
-          <div class="staking__actions">
-            <div class="staking__buttons">
-              {#if hasNative}
-                <Button
-                  disabled={!actions.canUnstake}
-                  on:click={() => goto("/dashboard/stake?flow=unstake")}
-                  text="Unstake"
-                  variant="secondary"
-                />
-                <Button
-                  disabled={!actions.canClaim}
-                  on:click={() => goto("/dashboard/stake?flow=claim")}
-                  text="Claim rewards"
-                  variant="secondary"
-                />
-              {/if}
-              {#if hasLiquid}
-                <AppAnchorButton
-                  disabled={pending}
-                  href="/dashboard/stake?flow=liquid&action=unstake"
-                  text="Unstake from Sozu"
-                  variant="secondary"
-                />
-              {/if}
-            </div>
-            {#each actions.reasons as reason (reason)}
-              <p class="staking__reason">{reason}</p>
-            {/each}
-          </div>
+          {#each actions.reasons as reason (reason)}
+            <p class="staking__reason">{reason}</p>
+          {/each}
         {/if}
       </div>
 
@@ -330,21 +360,79 @@
     <SectionHead className="staking__choose">Stake</SectionHead>
 
     <div class="staking__start">
-      <AppAnchorButton
-        className="compare__go"
-        disabled={pending}
+      <AppAnchor
+        aria-describedby="stake-native-facts"
+        aria-disabled={pending}
+        aria-labelledby="stake-native-title"
+        className="dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default compare__go{pending
+          ? ' dusk-anchor-button--disabled'
+          : ''}"
         href="/dashboard/stake?flow=native"
-        text={hasStake ? "Add to native stake" : "Stake natively"}
-        variant="secondary"
-      />
+        tabindex={pending ? "-1" : undefined}
+      >
+        <span class="choice__icon choice__extra"
+          ><Icon path={mdiServerOutline} /></span
+        >
+        <span class="choice__body">
+          <span class="choice__title" id="stake-native-title"
+            >{hasStake ? "Add to native stake" : "Stake natively"}</span
+          >
+          <span class="choice__facts choice__extra" id="stake-native-facts">
+            <span
+              >{hasStake
+                ? "Needs your own node"
+                : `From ${formatDusk(minimumStake, locale)} DUSK · needs your own node`}</span
+            >
+            {#if nativeRate}
+              <span
+                >About {ratePercent(nativeRate, locale)} a year{sharedPeriod
+                  ? ""
+                  : ` ${nativePeriod}`}</span
+              >
+            {/if}
+          </span>
+        </span>
+        <span class="choice__chevron choice__extra"
+          ><Icon path={mdiChevronRight} /></span
+        >
+      </AppAnchor>
       {#if sozu.available}
-        <AppAnchorButton
-          className="compare__go"
-          disabled={pending}
+        <AppAnchor
+          aria-describedby="stake-sozu-facts"
+          aria-disabled={pending}
+          aria-labelledby="stake-sozu-title"
+          className="dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default compare__go{pending
+            ? ' dusk-anchor-button--disabled'
+            : ''}"
           href="/dashboard/stake?flow=liquid"
-          text={hasLiquid ? "Add to Sozu stake" : "Stake with Sozu"}
-          variant="secondary"
-        />
+          tabindex={pending ? "-1" : undefined}
+        >
+          <span class="choice__icon choice__extra"
+            ><Icon path={mdiWaterOutline} /></span
+          >
+          <span class="choice__body">
+            <span class="choice__title" id="stake-sozu-title"
+              >{hasLiquid ? "Add to Sozu stake" : "Stake with Sozu"}</span
+            >
+            <span class="choice__facts choice__extra" id="stake-sozu-facts">
+              <span>Liquid staking by a third party</span>
+              <span>Any amount · no node needed</span>
+              {#if sozuRate && fees}
+                <span
+                  >About {ratePercent(sozuRate, locale)} a year{sharedPeriod
+                    ? ""
+                    : ` ${sozuPeriod}`}, after Sozu's {feePercent(
+                    fees.reward,
+                    locale,
+                  )}</span
+                >
+              {/if}
+            </span>
+          </span>
+          <span class="choice__chevron choice__extra"
+            ><Icon path={mdiChevronRight} /></span
+          >
+        </AppAnchor>
       {/if}
     </div>
     {#if sozu.available && isSozuPaused}
@@ -353,7 +441,31 @@
       <p class="staking__reason">Sozu's deposits couldn't be checked.</p>
     {/if}
 
-    <table class="compare">
+    <p class="staking__terms">
+      {#if periods.length}
+        {sharedPeriod
+          ? `Rates ${sharedPeriod}, not promised.`
+          : "Rates not promised."}
+      {/if}
+      A penalty can lower {sozu.available ? "either stake" : "your stake"}.
+    </p>
+    <button
+      aria-controls="staking-compare"
+      aria-expanded={isComparisonOpen}
+      class="staking__compare"
+      on:click={() => {
+        isComparisonOpen = !isComparisonOpen;
+      }}
+      type="button"
+    >
+      <span>{sozu.available ? "Compare both" : "About native staking"}</span>
+      <Icon path={mdiChevronDown} />
+    </button>
+    <table
+      class="compare"
+      class:compare--open={isComparisonOpen}
+      id="staking-compare"
+    >
       <caption class="sr-only">The ways to stake, side by side</caption>
       <colgroup>
         <col class="compare__labels" />
@@ -586,36 +698,46 @@
     font-size: 0.8125rem;
   }
 
-  .staking__actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.625rem;
+  .staking__figures :global(.staking__act) {
+    align-self: flex-start;
+    margin-top: 0.625rem;
   }
 
-  .staking__buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
+  /* From a tablet: even columns, their actions on one line. */
+  @media (min-width: 48rem) {
+    .staking__figures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.25rem 1rem;
 
-  /* Room for both: the buttons and why they're off beside the figures. */
-  @container (min-width: 52rem) {
-    .staking__summary-row {
-      flex-direction: row;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 2rem;
+      & > div {
+        display: flex;
+        flex-direction: column;
+      }
+
+      & dd {
+        flex: 1;
+      }
+
+      /* Pushed to its column's foot, clear of what's above it. */
+      & :global(.staking__act) {
+        margin-top: auto;
+      }
+
+      & .staking__amount,
+      & .staking__sub {
+        margin-bottom: 0.25rem;
+      }
     }
 
-    .staking__actions {
-      align-items: flex-end;
-      max-width: 26rem;
-      text-align: right;
-    }
+    @container (min-width: 44rem) {
+      .staking__figures {
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      }
 
-    .staking__buttons {
-      justify-content: flex-end;
+      .staking__figures .staking__figure {
+        font-size: 1.5rem;
+      }
     }
   }
 
@@ -746,6 +868,34 @@
     min-height: 44px;
   }
 
+  /* Managing a stake is quieter than the ways to start one. */
+  .staking__figures :global(.staking__act) {
+    min-height: 44px;
+    border-color: var(--calm-line2);
+    background-color: transparent;
+  }
+
+  .staking__figures :global(.staking__act:disabled),
+  .staking__figures :global(.staking__act.dusk-anchor-button--disabled) {
+    opacity: 0.55;
+  }
+
+  .staking__figures :global(button.staking__act:enabled:hover),
+  .staking__figures :global(a.staking__act:hover) {
+    background-color: var(--calm-s2);
+  }
+
+  /* Only a phone's choices say more than their name. */
+  .choice__extra,
+  .staking__terms,
+  .staking__compare {
+    display: none;
+  }
+
+  .staking__start :global(.compare__go > .choice__body) {
+    white-space: nowrap;
+  }
+
   /*
    * Each way's button over its column of the comparison: past the labels'
    * column and the table's edge, and in as far as the column's text.
@@ -811,8 +961,163 @@
     }
   }
 
-  /* Phones: each row of the comparison says which way it is about. */
+  /*
+   * Phones: each way is a row that says what tells it apart, and the
+   * comparison waits behind its button, each of its rows saying which way it
+   * is about.
+   */
   @media (max-width: 47.99rem) {
+    /* The figures in pairs, so both ways to stake show without scrolling. */
+    .staking__figures {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem 0.75rem;
+    }
+
+    .staking__amount {
+      white-space: normal;
+    }
+
+    /* A balance that can be acted on takes a row, its action at the end. */
+    .staking__held {
+      grid-column: 1 / -1;
+
+      & dd {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 0.5rem;
+      }
+
+      /* Under both, so it keeps to one line. */
+      & .staking__sub {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        padding-top: 0.375rem;
+      }
+
+      & :global(.staking__act) {
+        grid-row: 1;
+        grid-column: 2;
+        align-self: center;
+        /* Centred on the amount's line, which it doesn't make taller. */
+        margin-block: -0.5rem;
+      }
+    }
+
+    /* Too narrow for both on a line: the action goes under its balance. */
+    @media (max-width: 22.49rem) {
+      .staking__held dd {
+        display: flex;
+      }
+
+      .staking__held :global(.staking__act) {
+        align-self: flex-start;
+        margin-top: 0.5rem;
+      }
+    }
+
+    .staking__figures .staking__figure {
+      font-size: 1.25rem;
+    }
+
+    .staking__start {
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+
+      & :global(.compare__go),
+      & :global(.compare__go:hover) {
+        justify-content: flex-start;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        border-color: transparent;
+        border-radius: 1rem;
+        background-color: var(--calm-s2);
+        color: var(--calm-text);
+        opacity: 1;
+        text-align: left;
+      }
+
+      & :global(.compare__go.dusk-anchor-button--disabled) {
+        border-color: var(--calm-line2);
+        background-color: transparent;
+        color: var(--calm-subtle);
+      }
+    }
+
+    .staking__start :global(.compare__go > .choice__icon) {
+      display: grid;
+      flex: none;
+      place-items: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: var(--calm-panel);
+    }
+
+    .staking__start :global(.compare__go > .choice__body) {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 0;
+      white-space: normal;
+    }
+
+    .staking__start :global(.compare__go > .choice__chevron) {
+      display: flex;
+      flex: none;
+      color: var(--calm-muted);
+    }
+
+    .choice__title {
+      font-size: 1.0625rem;
+    }
+
+    .choice__facts {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      color: var(--calm-muted);
+      font-size: 0.8125rem;
+      font-weight: 400;
+      line-height: 1.35;
+    }
+
+    .staking__terms {
+      display: block;
+      color: var(--calm-muted);
+      font-size: 0.8125rem;
+    }
+
+    .staking__compare {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 44px;
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--calm-line2);
+      border-radius: 1rem;
+      background: none;
+      color: var(--calm-text);
+      font: inherit;
+      cursor: pointer;
+
+      &[aria-expanded="true"] :global(.dusk-icon) {
+        transform: rotate(180deg);
+      }
+    }
+
+    .compare:not(.compare--open) {
+      display: none;
+    }
+
+    .compare--open {
+      margin-top: 0.5rem;
+    }
+
     .staking__main {
       padding: 1rem 1rem 1rem;
     }
