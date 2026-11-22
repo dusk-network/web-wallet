@@ -378,10 +378,11 @@
             >{hasStake ? "Add to native stake" : "Stake natively"}</span
           >
           <span class="choice__facts choice__extra" id="stake-native-facts">
+            <span>Needs your own node</span>
             <span
               >{hasStake
-                ? "Needs your own node"
-                : `From ${formatDusk(minimumStake, locale)} DUSK · needs your own node`}</span
+                ? "Network fee only"
+                : `From ${formatDusk(minimumStake, locale)} DUSK · network fee only`}</span
             >
             {#if nativeRate}
               <span
@@ -415,8 +416,12 @@
               >{hasLiquid ? "Add to Sozu stake" : "Stake with Sozu"}</span
             >
             <span class="choice__facts choice__extra" id="stake-sozu-facts">
-              <span>Liquid staking by a third party</span>
-              <span>Any amount · no node needed</span>
+              <span>Third party · no node needed</span>
+              <span
+                >Any amount{fees
+                  ? ` · ${feePercent(fees.deposit, locale)} deposit fee`
+                  : ""}</span
+              >
               {#if sozuRate && fees}
                 <span
                   >About {ratePercent(sozuRate, locale)} a year{sharedPeriod
@@ -447,7 +452,9 @@
           ? `Rates ${sharedPeriod}, not promised.`
           : "Rates not promised."}
       {/if}
-      A penalty can lower {sozu.available ? "either stake" : "your stake"}.
+      {sozu.available
+        ? "Penalties can lock or burn part of a native stake, and lower what stDUSK is worth."
+        : "Penalties can lock or burn part of your stake."}
     </p>
     <button
       aria-controls="staking-compare"
@@ -724,9 +731,12 @@
         margin-top: auto;
       }
 
-      & .staking__amount,
-      & .staking__sub {
+      & .staking__amount {
         margin-bottom: 0.25rem;
+      }
+
+      & .staking__sub {
+        margin-bottom: 0.75rem;
       }
     }
 
@@ -999,6 +1009,9 @@
       & :global(.staking__act) {
         grid-row: 1;
         grid-column: 2;
+        /* One width, so their edges line up on both sides. */
+        width: 8.5rem;
+        padding-inline: 0.5rem;
         align-self: center;
         /* Centred on the amount's line, which it doesn't make taller. */
         margin-block: -0.5rem;
@@ -1022,6 +1035,8 @@
     }
 
     .staking__start {
+      /* As tall as each other: neither way looks the bigger one. */
+      grid-auto-rows: 1fr;
       gap: 0.5rem;
       margin-bottom: 0.5rem;
 
