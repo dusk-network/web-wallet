@@ -861,5 +861,10 @@
     .compare tbody tr {
       padding-bottom: 0.625rem;
     }
+
+    /* With the header hidden, the table's own edge is the first row's. */
+    .compare tbody tr:first-child th {
+      border-top: 0 none;
+    }
   }
 </style>
