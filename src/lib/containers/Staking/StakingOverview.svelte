@@ -278,12 +278,22 @@
             <div class:staking__held={figure.action}>
               <dt class="ledger-label">{figure.label}</dt>
               <dd>
+                <!-- The balance, what it's in, then what can be done with
+                  it: in that order for a screen reader, however it shows. -->
                 <span class="staking__line">
                   <span class="staking__amount"
                     ><span class="staking__figure"
                       ><BalanceValue {...amountOf(figure.lux)} /></span
                     > DUSK</span
                   >
+                  {#if figure.sub}
+                    <span class="staking__sub">{figure.sub}</span>
+                  {:else if figure.stDusk !== undefined}
+                    <span class="staking__sub"
+                      ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
+                      included</span
+                    >
+                  {/if}
                   {#if figure.action === "unstake"}
                     <Button
                       className="staking__act"
@@ -314,14 +324,6 @@
                     />
                   {/if}
                 </span>
-                {#if figure.sub}
-                  <span class="staking__sub">{figure.sub}</span>
-                {:else if figure.stDusk !== undefined}
-                  <span class="staking__sub"
-                    ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
-                    included</span
-                  >
-                {/if}
               </dd>
             </div>
           {/each}
@@ -380,7 +382,7 @@
 
     <div class="staking__start">
       <AppAnchor
-        aria-describedby="stake-native-facts"
+        aria-describedby="stake-native-facts staking-terms"
         aria-disabled={pending}
         aria-labelledby="stake-native-title"
         className="dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default compare__go{pending
@@ -421,7 +423,7 @@
         <AppAnchor
           aria-describedby="stake-sozu-facts{isSozuPaused || isSozuUnchecked
             ? ' stake-sozu-notice'
-            : ''}"
+            : ''} staking-terms"
           aria-disabled={pending}
           aria-labelledby="stake-sozu-title"
           className="dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default compare__go{pending
@@ -473,7 +475,8 @@
       </p>
     {/if}
 
-    <p class="staking__terms">
+    <!-- Shown on phones only, and read with each way's facts wherever. -->
+    <p class="staking__terms" id="staking-terms">
       {#if periods.length}
         {sharedPeriod
           ? `Rates ${sharedPeriod}, not promised.`
@@ -1039,8 +1042,15 @@
         gap: 1rem 0.5rem;
       }
 
-      /* Under both, so it keeps to one line. */
+      /*
+       * Under both, so it keeps to one line: a row of its own after the
+       * action's, as near the amount as the column's gap (0.125rem) where
+       * the line's own (1rem) would part them.
+       */
       .staking__held .staking__sub {
+        flex-basis: 100%;
+        order: 2;
+        margin-top: calc(0.125rem - 1rem);
         padding-top: 0.375rem;
       }
 
