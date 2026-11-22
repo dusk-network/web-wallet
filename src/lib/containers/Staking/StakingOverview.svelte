@@ -334,7 +334,7 @@
         className="compare__go"
         disabled={pending}
         href="/dashboard/stake?flow=native"
-        text={hasStake ? "Stake more" : "Stake natively"}
+        text={hasStake ? "Add to native stake" : "Stake natively"}
         variant="secondary"
       />
       {#if sozu.available}
@@ -342,7 +342,7 @@
           className="compare__go"
           disabled={pending}
           href="/dashboard/stake?flow=liquid"
-          text="Stake with Sozu"
+          text={hasLiquid ? "Add to Sozu stake" : "Stake with Sozu"}
           variant="secondary"
         />
       {/if}
@@ -746,6 +746,30 @@
     min-height: 44px;
   }
 
+  /*
+   * Each way's button over its column of the comparison: past the labels'
+   * column and the table's edge, and in as far as the column's text.
+   */
+  @media (min-width: 48rem) {
+    .staking__start {
+      grid-template-columns: 10rem;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: 0;
+      padding-inline: 1px;
+
+      /* The labels' column, empty here. */
+      &::before {
+        content: "";
+      }
+
+      & :global(.compare__go) {
+        width: auto;
+        margin-inline: 1.25rem;
+      }
+    }
+  }
+
   .staking__side {
     position: sticky;
     top: var(--header-height);
@@ -836,6 +860,11 @@
 
     .compare tbody tr {
       padding-bottom: 0.625rem;
+    }
+
+    /* With the header hidden, the table's own edge is the first row's. */
+    .compare tbody tr:first-child th {
+      border-top: 0 none;
     }
   }
 </style>
