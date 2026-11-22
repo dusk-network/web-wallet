@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hide on Shield's review, in its total and on its button what moves while balances are hidden, where it's worked out from the balance the form hides; an amount typed into a side that held nothing still shows, as typed
+- Show 0, never a negative balance, in Shield's other field when more than the balance is typed
 - Hide each transfer's amount in the Bridge's Transfers list while balances are hidden, as its details do
 - Show a look-alike contact's warning and its address, and each transaction's time, privacy and fee, whole in Activity, the Activity panels on Home, Staking and Contacts and the search, on as many lines as they need, never cut short
 - Keep what arrives on the Bridge, Home's total and a transaction's amount in its details whole on one line, set smaller where they're long, never cut or broken inside the number

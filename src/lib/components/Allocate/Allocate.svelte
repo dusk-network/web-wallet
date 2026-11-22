@@ -104,10 +104,14 @@
     hasInvalidInput = false;
     shielded = isShieldedAmount ? lux : totalBalance - lux;
 
+    // What's left for the other: never less than nothing, however much more
+    // than the balance is typed, which the form says it is.
+    const left = totalBalance - lux > 0n ? totalBalance - lux : 0n;
+
     if (isShieldedAmount) {
-      unshieldedText = fieldText(totalBalance - lux);
+      unshieldedText = fieldText(left);
     } else {
-      shieldedText = fieldText(totalBalance - lux);
+      shieldedText = fieldText(left);
     }
   }
 
@@ -218,6 +222,14 @@
   $: ({ hideBalances, language } = $settingsStore);
   $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
   $: isUnshieldedHidden = hideBalances && typedAmount !== "unshielded-amount";
+  // What moves is what was typed only where the field it was typed in held
+  // nothing; else it's worked out from that balance, which the form hides,
+  // and the review hides it too, with the total that would give it away.
+  $: isAmountHidden =
+    hideBalances &&
+    (typedAmount === "shielded-amount"
+      ? initialShielded
+      : totalBalance - initialShielded) !== 0n;
 
   $: isShielding = difference > 0n;
   $: amount = isShielding ? difference : -difference;
@@ -384,7 +396,7 @@
       nextButton={{
         confirm: true,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: `${isShielding ? "Shield" : "Unshield"} ${formatDuskExact(amount, language)} DUSK`,
+        label: `${isShielding ? "Shield" : "Unshield"} ${isAmountHidden ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK`,
         variant: "primary",
       }}
     >
@@ -397,7 +409,9 @@
         <ReviewWallet />
         <ReviewAmount
           label="Amount"
-          value={formatDuskExact(amount, language)}
+          value={isAmountHidden
+            ? BALANCE_MASK
+            : formatDuskExact(amount, language)}
         />
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
@@ -425,7 +439,9 @@
         />
         <ReviewAmount
           label="Total up to"
-          value={formatFee(amount + fee, language, { max: true })}
+          value={isAmountHidden
+            ? BALANCE_MASK
+            : formatFee(amount + fee, language, { max: true })}
         />
       </div>
     </WizardStep>
