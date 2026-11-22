@@ -177,12 +177,11 @@
     font-weight: 400;
   }
 
+  /* What happened, its fee and its time, whole: the line wraps where it must. */
   .activity-row__line {
-    overflow: hidden;
     color: var(--calm-muted);
     font-size: 0.78125rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .activity-row__failed {

@@ -161,7 +161,8 @@
     gap: var(--default-gap);
     width: min(100%, 44rem);
     margin: 0 auto;
-    padding: 2rem 1.5rem 3rem;
+    /* Its title as high as every page's: as Staking's, at each width. */
+    padding: 2.25rem 1.5rem 3rem;
 
     &__header h1 {
       font-size: 1.75rem;
@@ -179,6 +180,18 @@
       color: var(--calm-danger);
       font-size: 0.875rem;
       line-height: 1.4;
+    }
+  }
+
+  @media (max-width: 79.99rem) {
+    .check-words {
+      padding-top: 2rem;
+    }
+  }
+
+  @media (max-width: 63.99rem) {
+    .check-words {
+      padding-top: 1.75rem;
     }
   }
 

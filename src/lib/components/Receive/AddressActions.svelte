@@ -62,8 +62,10 @@
     }
   }
 
+  /* Side by side where both fit, else each a row of its own. */
   .address-actions__row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--small-gap);
     width: 100%;
 

@@ -341,7 +341,8 @@
     gap: var(--default-gap);
     width: min(100%, 44rem);
     margin: 0 auto;
-    padding: 2rem 1.5rem 3rem;
+    /* Its title as high as every page's: as Staking's, at each width. */
+    padding: 2.25rem 1.5rem 3rem;
 
     &__header {
       display: flex;
@@ -429,6 +430,18 @@
       justify-content: space-between;
       gap: var(--default-gap);
       margin-top: 0.5rem;
+    }
+  }
+
+  @media (max-width: 79.99rem) {
+    .add-wallet {
+      padding-top: 2rem;
+    }
+  }
+
+  @media (max-width: 63.99rem) {
+    .add-wallet {
+      padding-top: 1.75rem;
     }
   }
 

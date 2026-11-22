@@ -618,6 +618,15 @@
     color: var(--calm-muted);
   }
 
+  /*
+   * That line whole, a look-alike name's address and warning with it, on as
+   * many lines as it needs; a memo keeps to one, its details have all of it.
+   */
+  .command-bar__sub:not(.command-bar__memo) {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   .command-bar__detail,
   .command-bar__hint {
     color: var(--calm-muted);

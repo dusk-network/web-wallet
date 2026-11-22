@@ -21,6 +21,7 @@
 
   import { Button, Icon } from "$lib/dusk/components";
   import {
+    figureWidth,
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
@@ -450,6 +451,13 @@
         aria-live="off"
         class:swap-amount__empty={arrivesLux === 0n}
         for="service-amount"
+        style:--figure-width={figureWidth(
+          arrivesLux === 0n
+            ? "0"
+            : isAmountMasked
+              ? BALANCE_MASK
+              : formatDuskExact(arrivesLux, language),
+        )}
         >{#if arrivesLux === 0n}0{:else}<BalanceValue
             hidden={isAmountMasked}
             value={formatDuskExact(arrivesLux, language)}

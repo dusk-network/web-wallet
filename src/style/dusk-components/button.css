@@ -85,6 +85,16 @@
   text-overflow: ellipsis;
 }
 
+/*
+ * Beside an icon, the label is as wide as its words, and gives way to a
+ * narrow button: the icon stays by it, the two centred together in a wide
+ * one, never pinned to its far edge.
+ */
+.dusk-icon-button--labeled > span {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
 /* Icon Buttons: an icon alone sits in a circle as tall as a button. */
 .dusk-icon-button:not(.dusk-icon-button--labeled) {
   border-radius: 999px;

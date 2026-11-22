@@ -572,6 +572,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+
+    /* Centred on the title, without making its row taller: the title sits
+       where every page's does. */
+    & > :global(.dusk-button) {
+      margin-block: -0.4rem;
+    }
   }
 
   .history__title {
@@ -733,12 +739,14 @@
     white-space: nowrap;
   }
 
+  /*
+   * The warning and the address it names show whole, on as many lines as
+   * the row leaves room for: never cut short.
+   */
   .history__alike {
-    overflow: hidden;
     color: var(--calm-pending);
     font-size: 0.78125rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .history__code {
@@ -747,12 +755,11 @@
     font-weight: 400;
   }
 
+  /* What happened, its fee and its time, whole: the line wraps where it must. */
   .history__line {
-    overflow: hidden;
     color: var(--calm-muted);
     font-size: 0.78125rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 
     &--failed {
       color: var(--calm-danger);
@@ -867,11 +874,16 @@
 
   .history__claim,
   .history__when {
-    overflow: hidden;
     color: var(--calm-muted);
     font-size: 0.78125rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* The title as high as Staking's, at each width. */
+  @media (max-width: 79.99rem) {
+    .history__main {
+      padding-top: 2rem;
+    }
   }
 
   /* Narrow screens: the details over the list, as a page of their own. */
@@ -904,9 +916,14 @@
       display: none;
     }
 
-    .history__phone-meta,
     .history__narrow {
       display: inline;
+    }
+
+    /* The time and privacy move to the next line together, never split. */
+    .history__phone-meta {
+      display: inline-block;
+      white-space: pre-wrap;
     }
 
     /* A withdrawal's claim date on a line of its own: it doesn't fit after. */

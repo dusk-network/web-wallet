@@ -55,11 +55,14 @@
       width: 100%;
     }
 
-    /* A flow: one column, centred, with room around it. */
+    /*
+     * A flow: one column, centred, with room around it, its title as high
+     * as every page's: as Staking's, at each width.
+     */
     .dashboard--column {
       width: min(100%, 44rem);
       margin: 0 auto;
-      padding: 2rem 1.5rem 0;
+      padding: 2.25rem 1.5rem 0;
     }
 
     /*
@@ -81,6 +84,7 @@
       & .dusk-card__heading-container :is(h1, h3) {
         font-size: 1.75rem;
         font-weight: 500;
+        line-height: 1.15;
       }
 
       & .dusk-card__heading-icons {
@@ -89,6 +93,18 @@
 
       & .dusk-wizard__step-navigation {
         background: var(--calm-s0);
+      }
+    }
+
+    @media (max-width: 79.99rem) {
+      .dashboard--column {
+        padding-top: 2rem;
+      }
+    }
+
+    @media (max-width: 63.99rem) {
+      .dashboard--column {
+        padding-top: 1.75rem;
       }
     }
 

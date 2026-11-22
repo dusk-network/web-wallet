@@ -381,6 +381,13 @@
     }
   }
 
+  /* The narrowest phones: room for a problem's word beside the profile's pill. */
+  @media (max-width: 22.99rem) {
+    .top-bar {
+      gap: 0.125rem;
+    }
+  }
+
   @media (max-width: 24.99rem) {
     a.top-bar__brand :global(.dusk-glyph) {
       display: block;

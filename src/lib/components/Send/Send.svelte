@@ -3345,6 +3345,13 @@
     position: static;
   }
 
+  /* The title as high as Staking's, at each width. */
+  @media (max-width: 79.99rem) {
+    .send {
+      padding-top: 2rem;
+    }
+  }
+
   @media (max-width: 63.99rem) {
     .send {
       padding: 1.75rem 1.5rem 2rem;

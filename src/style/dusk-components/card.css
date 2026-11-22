@@ -5,9 +5,10 @@
   padding: 0.25rem 0;
 }
 
+/* In line with the body: a heading starts where the text and fields under it do. */
 .dusk-card__header-container,
 .dusk-card__footer-container {
-  padding: 0.5rem 1.375rem;
+  padding: 0.5rem 1rem;
 }
 
 .dusk-card__body-container {

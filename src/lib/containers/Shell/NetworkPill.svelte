@@ -521,6 +521,18 @@
   }
 
   /*
+   * With the tabs beside it, a problem leaves the profile's pill no room:
+   * the dot and the word say it, the panel the network's name, as its
+   * button's label does.
+   */
+  @media (min-width: 48rem) and (max-width: 63.99rem) {
+    .network-pill__button--problem .network-pill__name,
+    .network-pill__button--problem :global(.network-pill__chevron) {
+      display: none;
+    }
+  }
+
+  /*
    * Phones: no chevron, as the profile's pill; below 420 px the dot alone,
    * where the profile's pill needs the room, with the network's name still
    * there for screen readers.

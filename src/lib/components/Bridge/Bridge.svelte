@@ -90,6 +90,7 @@
     routeTimeText,
   } from "$lib/bridge/routeTimes";
   import {
+    figureWidth,
     formatDusk,
     formatDuskExact,
     formatFee,
@@ -698,6 +699,9 @@
     $depositActivityStore,
   );
   $: amountLux = readDuskInput(amount, language) ?? 0n;
+  // What arrives, as the To panel says it.
+  $: arrivingText =
+    amountLux === 0n ? "0" : formatDuskExact(amountLux, language);
   // Lux (1e9) in EVM base units (1e18).
   $: amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
   $: totalDepositLux = amountLux + fee;
@@ -972,10 +976,11 @@
         />
       </div>
       <div class="swap-amount">
-        <output class:swap-amount__empty={amountLux === 0n} for="bridge-amount"
-          >{amountLux === 0n
-            ? "0"
-            : formatDuskExact(amountLux, language)}</output
+        <output
+          class:swap-amount__empty={amountLux === 0n}
+          for="bridge-amount"
+          style:--figure-width={figureWidth(arrivingText)}
+          >{arrivingText}</output
         >
         <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
       </div>

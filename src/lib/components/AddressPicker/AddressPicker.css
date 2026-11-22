@@ -243,9 +243,12 @@
   }
 }
 
-/* The top bar's pill, with the profiles in a popover under it. */
+/*
+ * The top bar's pill, with the profiles in a popover under it: never
+ * narrower than its round button, which would spill over what's beside it.
+ */
 .address-picker--compact {
-  min-width: 0;
+  min-width: 44px;
   padding: 0;
   border: 0 none;
   border-radius: 999px;
@@ -418,6 +421,11 @@
   .address-picker--compact .address-picker__compact-name--label,
   .address-picker--compact .address-picker__tld,
   .address-picker--compact .address-picker__chevron {
+    display: none;
+  }
+
+  /* With nothing in it to show, it takes no room: the number stays centred. */
+  .address-picker--compact .address-picker__compact-lines--label {
     display: none;
   }
 

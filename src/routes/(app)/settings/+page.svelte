@@ -711,7 +711,20 @@
     .settings {
       width: min(100%, 44rem);
       margin: 0 auto;
-      padding: 2rem 1.5rem 3rem;
+      padding: 2.25rem 1.5rem 3rem;
+
+      /* Its title as high as every page's: as Staking's, at each width. */
+      @media (max-width: 79.99rem) {
+        padding-top: 2rem;
+      }
+
+      @media (max-width: 63.99rem) {
+        padding-top: 1.75rem;
+      }
+
+      @media (max-width: 47.99rem) {
+        padding-top: 1rem;
+      }
 
       & > * {
         padding: 0;
