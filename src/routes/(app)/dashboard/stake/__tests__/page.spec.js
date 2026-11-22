@@ -255,7 +255,7 @@ describe("Staking", () => {
     const links = [
       "Unstake from Sozu",
       "Add to native stake",
-      "Stake with Sozu",
+      "Add to Sozu stake",
     ];
 
     expect(getByRole("button", { name: "Unstake" })).toBeDisabled();

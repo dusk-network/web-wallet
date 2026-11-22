@@ -342,7 +342,7 @@
           className="compare__go"
           disabled={pending}
           href="/dashboard/stake?flow=liquid"
-          text="Stake with Sozu"
+          text={hasLiquid ? "Add to Sozu stake" : "Stake with Sozu"}
           variant="secondary"
         />
       {/if}
