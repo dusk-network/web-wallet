@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Call topping up a native stake "Add to native stake", not "Stake more", and put each way's button over its column in Staking's comparison
 - Cut the wallet's text to what each step needs, each warning said once where its risk is, in the words the Dusk apps share: Activity for the page called History, recovery phrase, public account, Fee up to, Details, and Sending, Waiting, Held, Not sent and Not confirmed for where a send is; a recipient shortened on the form and in full at Review, and own addresses shortened where a bridge pays out to one in full
 - Show a stranger's whole memo on Review in a memo's own small, muted style, in quotes, under the amber "This address sent you:"
 - Mask recovery words on a phone as they're typed, in Restore, Add wallet, Unlock and Check your recovery words, their suggestions kept, and show them, and the words to write down, only while Hold to show words is held

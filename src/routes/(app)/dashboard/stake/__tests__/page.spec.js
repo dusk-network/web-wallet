@@ -252,7 +252,11 @@ describe("Staking", () => {
     });
 
     const { getByRole } = render(Staking);
-    const links = ["Unstake from Sozu", "Stake more", "Stake with Sozu"];
+    const links = [
+      "Unstake from Sozu",
+      "Add to native stake",
+      "Stake with Sozu",
+    ];
 
     expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
@@ -298,7 +302,7 @@ describe("Staking", () => {
 
     expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
-    expect(getByRole("link", { name: "Stake more" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Add to native stake" })).toHaveAttribute(
       "aria-disabled",
       "false",
     );
@@ -314,7 +318,7 @@ describe("Staking", () => {
 
     expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
-    expect(getByRole("link", { name: "Stake more" })).toHaveAttribute(
+    expect(getByRole("link", { name: "Add to native stake" })).toHaveAttribute(
       "aria-disabled",
       "false",
     );

@@ -253,7 +253,7 @@
       reviewHistory.enter();
       isReviewing = true;
     }}
-    title={hasStake ? "Stake more" : "Native staking"}
+    title={hasStake ? "Add to native stake" : "Native staking"}
   >
     <div class="native-stake__field">
       <label class="native-stake__label" for="{id}-amount"

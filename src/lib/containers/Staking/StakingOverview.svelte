@@ -334,7 +334,7 @@
         className="compare__go"
         disabled={pending}
         href="/dashboard/stake?flow=native"
-        text={hasStake ? "Stake more" : "Stake natively"}
+        text={hasStake ? "Add to native stake" : "Stake natively"}
         variant="secondary"
       />
       {#if sozu.available}
@@ -744,6 +744,30 @@
   .staking__start :global(.compare__go) {
     width: 100%;
     min-height: 44px;
+  }
+
+  /*
+   * Each way's button over its column of the comparison: past the labels'
+   * column and the table's edge, and in as far as the column's text.
+   */
+  @media (min-width: 48rem) {
+    .staking__start {
+      grid-template-columns: 10rem;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
+      gap: 0;
+      padding-inline: 1px;
+
+      /* The labels' column, empty here. */
+      &::before {
+        content: "";
+      }
+
+      & :global(.compare__go) {
+        width: auto;
+        margin-inline: 1.25rem;
+      }
+    }
   }
 
   .staking__side {
