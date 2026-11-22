@@ -258,7 +258,7 @@ describe("Staking", () => {
       "Add to Sozu stake",
     ];
 
-    expect(getByRole("button", { name: "Unstake" })).toBeDisabled();
+    expect(getByRole("button", { name: "Unstake native" })).toBeDisabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeDisabled();
 
     for (const name of links) {
@@ -266,6 +266,12 @@ describe("Staking", () => {
         "aria-disabled",
         "true",
       );
+      // One that kept focus as it went pending still takes Enter: it goes nowhere.
+      expect(
+        getByRole("link", { name }).dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        ),
+      ).toBe(false);
     }
 
     await act(() =>
@@ -275,7 +281,7 @@ describe("Staking", () => {
       }),
     );
 
-    expect(getByRole("button", { name: "Unstake" })).toBeEnabled();
+    expect(getByRole("button", { name: "Unstake native" })).toBeEnabled();
     expect(getByRole("button", { name: "Claim rewards" })).toBeEnabled();
 
     for (const name of links) {
