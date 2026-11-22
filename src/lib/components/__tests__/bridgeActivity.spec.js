@@ -15,6 +15,8 @@ import {
   withdrawalRow,
 } from "../EvmTransactions/bridgeActivity";
 
+/** @typedef {import("../EvmTransactions/bridgeActivity").BridgeActivityRow} BridgeActivityRow */
+
 const SENT = Date.UTC(2026, 9, 26, 4, 49);
 const CLAIM_AT = Date.UTC(2026, 10, 2, 3, 20, 39);
 const options = { locale: "en" };
@@ -684,5 +686,87 @@ describe("an approval no migration spent", () => {
     expect(others).toMatch(whole("1 BEP20 DUSK"));
     expect(othersRevoked).toMatch(/\brevoked\b/i);
     expect(othersRevoked).not.toMatch(/\d BEP20/);
+  });
+});
+
+describe("each row's amount, while balances are hidden", () => {
+  const masked = { ...options, masked: true };
+  const service = /** @type {import("$lib/bridge/cardRoutes").CardRoute} */ (
+    cardRoutes(networks.mainnet).find(({ id }) => id === "dusk-to-bsc")
+  );
+  const migration = /** @type {import("$lib/bridge/cardRoutes").CardRoute} */ (
+    cardRoutes(networks.mainnet).find(({ id }) => id === "bsc-to-dusk")
+  );
+  /** @type {import("$lib/bridge/migrationActivity").RouteTransfer} */
+  const transfer = {
+    amountLux: 12_345_678_900_000n,
+    arrivedAt: SENT,
+    at: SENT - 60_000,
+    feeLux: 1_000_000_000n,
+    hash: "aa".repeat(32),
+    kind: "service",
+    payout: `0x${"bb".repeat(32)}`,
+    recipient: "0x2222222222222222222222222222222222222222",
+    route: service,
+    stage: "arrived",
+  };
+
+  it("should hide the figure, as the row's details do, and keep its unit", () => {
+    const withdrawn = withdrawal("ready_to_finalize");
+    const deposited = deposit("l1_pending", { amountLux: "25000123400000" });
+    /** @type {[BridgeActivityRow, BridgeActivityRow, string][]} */
+    const rows = [
+      [
+        withdrawalRow(withdrawn, options),
+        withdrawalRow(withdrawn, masked),
+        "1 DUSK",
+      ],
+      [
+        depositRow(deposited, options),
+        depositRow(deposited, masked),
+        "25,000.1234 DUSK",
+      ],
+      [
+        routeTransferRow(transfer, options),
+        routeTransferRow(transfer, masked),
+        "12,344.6789 DUSK",
+      ],
+    ];
+
+    for (const [shown, hidden, amount] of rows) {
+      expect(shown.amount).toBe(amount);
+      expect(hidden.amount).not.toMatch(/\d/);
+      expect(hidden.amount).toMatch(/^\S+ DUSK$/);
+      // Nothing else of the row changes.
+      expect({ ...hidden, amount: "" }).toStrictEqual({ ...shown, amount: "" });
+    }
+  });
+
+  it("should hide the gas an approval paid, as its details do, and keep its coin", () => {
+    const approval = {
+      allowance: 1_000_000_000_000_000_000n,
+      at: SENT,
+      block: 8,
+      chain: "BNB Smart Chain",
+      coin: "BNB",
+      contract: `0x${"cc".repeat(20)}`,
+      decimals: 18,
+      gasWei: 46_194_000_739_104n,
+      hash: "0x1",
+      migration: null,
+      owner: `0x${"44".repeat(20)}`,
+      route: "bsc-to-dusk",
+      state: /** @type {const} */ ("unused"),
+    };
+    const shown = approvalRow(approval, { locale: "en", route: migration });
+    const hidden = approvalRow(approval, {
+      locale: "en",
+      masked: true,
+      route: migration,
+    });
+
+    expect(shown?.amount).toMatch(/^0\.0000\d+ BNB$/);
+    expect(hidden?.amount).not.toMatch(/\d/);
+    expect(hidden?.amount).toMatch(/^\S+ BNB$/);
   });
 });

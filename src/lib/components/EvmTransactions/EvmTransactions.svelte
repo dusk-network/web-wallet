@@ -888,11 +888,13 @@
 
     return row ? [row] : [];
   });
+  // Each row's amount hidden while balances are, as its details hide it.
   $: groups = groupBridgeActivity([
     ...approvalRows,
     ...transfers.map((transfer) =>
       routeTransferRow(transfer, {
         locale: language,
+        masked: hideBalances,
         time: routeTime(transfer.route, { net: $nodeNetwork }),
       }),
     ),
@@ -900,6 +902,7 @@
       withdrawalRow(item, {
         account: duskAccount,
         locale: language,
+        masked: hideBalances,
         steps: withdrawalSteps,
         time: routeTime(WITHDRAWAL, $bridgeTimes),
       }),
@@ -907,6 +910,7 @@
     ...deposits.map((item) =>
       depositRow(item, {
         locale: language,
+        masked: hideBalances,
         time: routeTime(DEPOSIT, $bridgeTimes),
       }),
     ),

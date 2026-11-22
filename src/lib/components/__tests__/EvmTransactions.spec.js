@@ -937,6 +937,56 @@ describe("EvmTransactions", () => {
     }
   });
 
+  it("hides each transfer's amount in the list while balances are hidden, as its details do, and shows it again as they're shown", async () => {
+    const depositHash = "ab".repeat(32);
+    const withdrawalHash = `0x${"5c".repeat(32)}`;
+
+    mocks.setAccount({ address: accountAddress, isConnected: true });
+    mocks.setDepositItems([
+      deposit(depositHash, { account: null, amountLux: "25000123400000" }),
+    ]);
+    mocks.setWithdrawalItems([
+      {
+        ...activityItem(withdrawalHash, "ready_to_finalize"),
+        account: null,
+        amountWei: "12345678900000000000000",
+      },
+    ]);
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { findByRole, getByRole } = render(EvmTransactions, {
+        target: document.body,
+      });
+      const depositButton = await findByRole("button", {
+        name: /^Dusk to DuskEVM/,
+      });
+      const withdrawalButton = getByRole("button", {
+        name: /^DuskEVM to Dusk/,
+      });
+
+      // Neither figure: 25,000.1234 DUSK in, 12,345.6789 DUSK out.
+      expect(fieldsOf(depositButton).amount).not.toMatch(/\d/);
+      expect(fieldsOf(withdrawalButton).amount).not.toMatch(/\d/);
+      expect(depositButton).not.toHaveAccessibleName(/\d,\d{3}/);
+      expect(withdrawalButton).not.toHaveAccessibleName(/\d,\d{3}/);
+
+      // As the deposit's details hide it.
+      await fireEvent.click(depositButton);
+
+      expect(detail("transfer-ledger", /^sent$/i)).not.toMatch(/\d/);
+
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+
+      await vi.waitFor(() =>
+        expect(fieldsOf(depositButton).amount).toBe("25,000.1234 DUSK"),
+      );
+      expect(fieldsOf(withdrawalButton).amount).toBe("12,345.6789 DUSK");
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("reads nothing of DuskEVM, nor says it can't, on a network without it as an EVM wallet connects", async () => {
     setNodeNetwork(networks.mainnet);
     mocks.finalizationConfig = {

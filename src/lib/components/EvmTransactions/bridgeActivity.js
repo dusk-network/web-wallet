@@ -50,12 +50,15 @@ import { claimDateOf } from "./withdrawalPresentation";
  * @typedef {{
  *   account?: string,
  *   locale: string,
+ *   masked?: boolean,
  *   steps?: Map<string, { claim?: string, prove?: string }>,
  *   time?: RouteTime | null,
  * }} BridgeActivityOptions
  *   `time` is how long the route takes on this network, where it's known;
  *   `account` the Dusk account the activity is of; `steps` each withdrawal's
- *   proof and claim in that account's history, by the withdrawal's hash.
+ *   proof and claim in that account's history, by the withdrawal's hash;
+ *   `masked` whether balances are hidden, which hides each row's amount, as
+ *   its details hide it.
  */
 
 /** The groups, in order, with their heads. */
@@ -74,15 +77,17 @@ const WEI_PER_LUX = 1_000_000_000n;
 
 /**
  * An amount in Lux or wei, as the wallet writes DUSK: "" when it isn't
- * known.
+ * known, its figure hidden while balances are (`masked`).
  *
  * @param {{ amountLux?: string | null, amountWei?: string | null }} item
- * @param {string} locale
+ * @param {BridgeActivityOptions} options
  */
-function amountOf(item, locale) {
+function amountOf(item, { locale, masked = false }) {
   const lux = luxOfItem(item);
 
-  return lux === null ? "" : `${formatDusk(lux, locale)} DUSK`;
+  return lux === null
+    ? ""
+    : `${masked ? BALANCE_MASK : formatDusk(lux, locale)} DUSK`;
 }
 
 /**
@@ -236,7 +241,7 @@ export function withdrawalRow(item, options) {
         : item.stage === "ready_to_finalize"
           ? "claim"
           : null,
-    amount: amountOf(item, options.locale),
+    amount: amountOf(item, options),
     forOther,
     from: "duskEvm",
     group,
@@ -301,7 +306,7 @@ export function depositRow(item, options) {
 
   return {
     action: null,
-    amount: amountOf(item, options.locale),
+    amount: amountOf(item, options),
     forOther: false,
     from: "duskDs",
     group,
@@ -525,7 +530,7 @@ export function routeTransferRow(transfer, options) {
     action: null,
     amount:
       transfer.amountLux > 0n
-        ? `${formatDusk(shownLux(transfer), options.locale)} DUSK`
+        ? `${options.masked ? BALANCE_MASK : formatDusk(shownLux(transfer), options.locale)} DUSK`
         : "",
     forOther: false,
     from: route.origin,
@@ -638,7 +643,9 @@ export function approvalRow(
 
   return {
     action: null,
-    amount: ledger?.gas ? `${ledger.gas.text} ${ledger.gas.coin}` : "",
+    amount: ledger?.gas
+      ? `${masked ? BALANCE_MASK : ledger.gas.text} ${ledger.gas.coin}`
+      : "",
     forOther: false,
     from: route.origin,
     group: "done",

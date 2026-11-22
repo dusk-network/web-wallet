@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hide each transfer's amount in the Bridge's Transfers list while balances are hidden, as its details do
 - Show a look-alike contact's warning and its address, and each transaction's time, privacy and fee, whole in Activity, the Activity panels on Home, Staking and Contacts and the search, on as many lines as they need, never cut short
 - Keep what arrives on the Bridge, Home's total and a transaction's amount in its details whole on one line, set smaller where they're long, never cut or broken inside the number
 - Keep Settings in reach in the top bar at 768 px while the network has a problem: the profile's pill no longer spills over it, and the problem's pill says the problem without the network's name, which its panel gives
