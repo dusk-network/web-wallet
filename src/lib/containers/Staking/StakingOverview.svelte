@@ -200,11 +200,23 @@
   const periodOf = (days) =>
     days ? `over the last ${days} days` : "estimated across the network";
 
+  /**
+   * A link can't be disabled: one focused as a transaction went pending still
+   * takes Enter, and goes nowhere.
+   *
+   * @param {Event} event
+   */
+  const notWhilePending = (event) => {
+    if (pending) {
+      event.preventDefault();
+    }
+  };
+
   // On a phone the comparison waits behind its button: the choices say what
   // tells them apart.
   let isComparisonOpen = false;
 
-  /** @type {{ action?: "claim" | "unstake" | "unstakeSozu", label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
+  /** @type {{ action?: "claim" | "unstake" | "unstakeSozu", id: string, label: string, lux: bigint, stDusk?: bigint, sub?: string }[]} */
   // What is staked comes first, natively and with Sozu. With nothing
   // natively staked, the native stake says there's nothing to unstake or
   // claim, away from Unstake from Sozu; its rewards are the native stake's,
@@ -212,6 +224,7 @@
   $: figures = [
     {
       action: hasNative ? "unstake" : undefined,
+      id: "staked",
       label: hasLiquid ? "Staked natively" : "Staked",
       lux: staked,
     },
@@ -219,6 +232,7 @@
       ? [
           {
             action: /** @type {const} */ ("unstakeSozu"),
+            id: "sozu",
             label: "With Sozu",
             lux: position.balance,
             stDusk: position.stDusk,
@@ -227,10 +241,12 @@
       : []),
     {
       action: hasNative ? "claim" : undefined,
+      id: "rewards",
       label: hasLiquid ? "Native rewards" : "Rewards",
       lux: stakeInfo.reward,
     },
     {
+      id: "available",
       label: "Available to stake",
       lux: publicBalance,
       sub: "From your public balance",
@@ -258,15 +274,46 @@
     <div class="staking__summary">
       <div class="staking__summary-row">
         <dl class="staking__figures">
-          {#each figures as figure (figure.label)}
+          {#each figures as figure (figure.id)}
             <div class:staking__held={figure.action}>
               <dt class="ledger-label">{figure.label}</dt>
               <dd>
-                <span class="staking__amount"
-                  ><span class="staking__figure"
-                    ><BalanceValue {...amountOf(figure.lux)} /></span
-                  > DUSK</span
-                >
+                <span class="staking__line">
+                  <span class="staking__amount"
+                    ><span class="staking__figure"
+                      ><BalanceValue {...amountOf(figure.lux)} /></span
+                    > DUSK</span
+                  >
+                  {#if figure.action === "unstake"}
+                    <Button
+                      className="staking__act"
+                      disabled={!actions.canUnstake}
+                      on:click={() => goto("/dashboard/stake?flow=unstake")}
+                      size="small"
+                      text={hasLiquid ? "Unstake native" : "Unstake"}
+                      variant="secondary"
+                    />
+                  {:else if figure.action === "claim"}
+                    <Button
+                      className="staking__act"
+                      disabled={!actions.canClaim}
+                      on:click={() => goto("/dashboard/stake?flow=claim")}
+                      size="small"
+                      text="Claim rewards"
+                      variant="secondary"
+                    />
+                  {:else if figure.action === "unstakeSozu"}
+                    <AppAnchorButton
+                      className="staking__act"
+                      disabled={pending}
+                      href="/dashboard/stake?flow=liquid&action=unstake"
+                      on:click={notWhilePending}
+                      size="small"
+                      text="Unstake from Sozu"
+                      variant="secondary"
+                    />
+                  {/if}
+                </span>
                 {#if figure.sub}
                   <span class="staking__sub">{figure.sub}</span>
                 {:else if figure.stDusk !== undefined}
@@ -274,34 +321,6 @@
                     ><BalanceValue {...amountOf(figure.stDusk)} /> stDUSK, rewards
                     included</span
                   >
-                {/if}
-                {#if figure.action === "unstake"}
-                  <Button
-                    className="staking__act"
-                    disabled={!actions.canUnstake}
-                    on:click={() => goto("/dashboard/stake?flow=unstake")}
-                    size="small"
-                    text={hasLiquid ? "Unstake native" : "Unstake"}
-                    variant="secondary"
-                  />
-                {:else if figure.action === "claim"}
-                  <Button
-                    className="staking__act"
-                    disabled={!actions.canClaim}
-                    on:click={() => goto("/dashboard/stake?flow=claim")}
-                    size="small"
-                    text="Claim rewards"
-                    variant="secondary"
-                  />
-                {:else if figure.action === "unstakeSozu"}
-                  <AppAnchorButton
-                    className="staking__act"
-                    disabled={pending}
-                    href="/dashboard/stake?flow=liquid&action=unstake"
-                    size="small"
-                    text="Unstake from Sozu"
-                    variant="secondary"
-                  />
                 {/if}
               </dd>
             </div>
@@ -368,6 +387,7 @@
           ? ' dusk-anchor-button--disabled'
           : ''}"
         href="/dashboard/stake?flow=native"
+        on:click={notWhilePending}
         tabindex={pending ? "-1" : undefined}
       >
         <span class="choice__icon choice__extra"
@@ -399,13 +419,16 @@
       </AppAnchor>
       {#if sozu.available}
         <AppAnchor
-          aria-describedby="stake-sozu-facts"
+          aria-describedby="stake-sozu-facts{isSozuPaused || isSozuUnchecked
+            ? ' stake-sozu-notice'
+            : ''}"
           aria-disabled={pending}
           aria-labelledby="stake-sozu-title"
           className="dusk-anchor-button dusk-anchor-button--variant--primary dusk-anchor-button--size--default compare__go{pending
             ? ' dusk-anchor-button--disabled'
             : ''}"
           href="/dashboard/stake?flow=liquid"
+          on:click={notWhilePending}
           tabindex={pending ? "-1" : undefined}
         >
           <span class="choice__icon choice__extra"
@@ -441,9 +464,13 @@
       {/if}
     </div>
     {#if sozu.available && isSozuPaused}
-      <p class="staking__reason">Sozu has paused deposits.</p>
+      <p class="staking__reason" id="stake-sozu-notice">
+        Sozu has paused deposits.
+      </p>
     {:else if sozu.available && isSozuUnchecked}
-      <p class="staking__reason">Sozu's deposits couldn't be checked.</p>
+      <p class="staking__reason" id="stake-sozu-notice">
+        Sozu's deposits couldn't be checked.
+      </p>
     {/if}
 
     <p class="staking__terms">
@@ -705,7 +732,13 @@
     font-size: 0.8125rem;
   }
 
+  /* The amount and its action: one line on a phone, the figure's first and last from a tablet. */
+  .staking__line {
+    display: contents;
+  }
+
   .staking__figures :global(.staking__act) {
+    order: 1;
     align-self: flex-start;
     margin-top: 0.625rem;
   }
@@ -713,12 +746,12 @@
   /* From a tablet: even columns, their actions on one line. */
   @media (min-width: 48rem) {
     .staking__figures {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1.25rem 1rem;
 
+      /* Even, and never narrower than its amount: a long one wraps the row. */
       & > div {
         display: flex;
+        flex: 1 0 calc(50% - 0.5rem);
         flex-direction: column;
       }
 
@@ -741,8 +774,8 @@
     }
 
     @container (min-width: 44rem) {
-      .staking__figures {
-        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+      .staking__figures > div {
+        flex-basis: 10rem;
       }
 
       .staking__figures .staking__figure {
@@ -979,9 +1012,12 @@
   @media (max-width: 47.99rem) {
     /* The figures in pairs, so both ways to stake show without scrolling. */
     .staking__figures {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1rem 0.75rem;
+
+      & > div {
+        flex: 1 0 calc(50% - 0.375rem);
+        max-width: 100%;
+      }
     }
 
     .staking__amount {
@@ -989,44 +1025,43 @@
     }
 
     /* A balance that can be acted on takes a row, its action at the end. */
-    .staking__held {
-      grid-column: 1 / -1;
+    .staking__figures > .staking__held {
+      flex-basis: 100%;
+    }
 
-      & dd {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+    /* Both on a line, or the action under an amount too long for that. */
+    @media (min-width: 22.5rem) {
+      .staking__held .staking__line {
+        display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        column-gap: 0.5rem;
+        justify-content: space-between;
+        gap: 1rem 0.5rem;
       }
 
       /* Under both, so it keeps to one line. */
-      & .staking__sub {
-        grid-row: 2;
-        grid-column: 1 / -1;
+      .staking__held .staking__sub {
         padding-top: 0.375rem;
       }
 
-      & :global(.staking__act) {
-        grid-row: 1;
-        grid-column: 2;
+      .staking__held :global(.staking__act) {
         /* One width, so their edges line up on both sides. */
         width: 8.5rem;
-        padding-inline: 0.5rem;
-        align-self: center;
-        /* Centred on the amount's line, which it doesn't make taller. */
         margin-block: -0.5rem;
+        margin-left: auto;
+        padding-inline: 0.5rem;
+        /* Centred on the amount's line, which it doesn't make taller. */
+        align-self: center;
       }
     }
 
     /* Too narrow for both on a line: the action goes under its balance. */
     @media (max-width: 22.49rem) {
-      .staking__held dd {
-        display: flex;
-      }
-
       .staking__held :global(.staking__act) {
         align-self: flex-start;
+        width: 8.5rem;
         margin-top: 0.5rem;
+        padding-inline: 0.5rem;
       }
     }
 
@@ -1035,6 +1070,7 @@
     }
 
     .staking__start {
+      grid-template-columns: minmax(0, 1fr);
       /* As tall as each other: neither way looks the bigger one. */
       grid-auto-rows: 1fr;
       gap: 0.5rem;

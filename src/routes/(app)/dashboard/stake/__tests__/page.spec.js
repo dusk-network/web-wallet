@@ -266,6 +266,12 @@ describe("Staking", () => {
         "aria-disabled",
         "true",
       );
+      // One that kept focus as it went pending still takes Enter: it goes nowhere.
+      expect(
+        getByRole("link", { name }).dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        ),
+      ).toBe(false);
     }
 
     await act(() =>
