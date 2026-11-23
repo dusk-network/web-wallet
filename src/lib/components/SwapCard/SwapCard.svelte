@@ -78,6 +78,8 @@
   }
 
   .swap-card {
+    --swap-flip-clear: calc((2.75rem - 0.375rem) / 2 + 0.5rem);
+
     display: flex;
     flex-direction: column;
     width: min(100%, 30rem);
@@ -318,16 +320,33 @@
   }
 
   /*
-   * The From panel's last line clears the flip button below it: its account,
-   * with the finger-sized target of its Change, and what's said under its
-   * amount, as what Max keeps.
+   * The flip button sits on the seam between the panels, 2.75rem tall on a
+   * seam of 0.375rem: it reaches 1.1875rem into each. Each panel keeps it
+   * 0.5rem of clear space more than that (--swap-flip-clear): the From panel
+   * under its balance and Max, the To panel over its network. Where the
+   * From panel's last line reaches further, it keeps that much more: an
+   * account's Change, whose finger-sized target goes 0.75rem past its line,
+   * and Max's on a phone (below). What's said under the amount keeps the
+   * 2rem it had, which clears it.
    */
+  .swap-card :global(.swap-panel:has(~ .swap-flip)) {
+    padding-bottom: var(--swap-flip-clear);
+  }
+
+  .swap-card :global(.swap-flip + .swap-panel) {
+    padding-top: var(--swap-flip-clear);
+  }
+
+  .swap-card
+    :global(.swap-panel:has(~ .swap-flip):has(> .swap-recipient:last-child)) {
+    padding-bottom: calc(var(--swap-flip-clear) + 0.75rem);
+  }
+
   .swap-card
     :global(
       .swap-panel:has(~ .swap-flip):has(
-          > .swap-recipient,
-          > .swap-note,
-          > .swap-error
+          > .swap-note:last-child,
+          > .swap-error:last-child
         )
     ) {
     padding-bottom: 2rem;
@@ -475,6 +494,12 @@
       margin-block: -8px;
       border-block: 8px solid transparent;
       background-clip: padding-box;
+    }
+
+    /* That tap reaches 8 px past its row: the flip button's clear of it too. */
+    .swap-card
+      :global(.swap-panel:has(~ .swap-flip):has(> .swap-foot:last-child)) {
+      padding-bottom: calc(var(--swap-flip-clear) + 8px);
     }
   }
 </style>
