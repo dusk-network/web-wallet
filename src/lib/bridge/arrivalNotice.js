@@ -197,6 +197,12 @@ export function stopArrivalNotice() {
 async function notify({ href, id, onOpen, said }) {
   const icon = `${base}/favicon.png`;
   const registration = await worker();
+
+  // Turned off while the worker got ready: nothing is said.
+  if (get(arrivalNoticeState) !== "on") {
+    return;
+  }
+
   const text = typeof said === "function" ? said() : said;
 
   if (registration) {

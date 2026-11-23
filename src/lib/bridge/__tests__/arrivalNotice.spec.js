@@ -517,6 +517,44 @@ describe("Being told when a transfer arrives", () => {
       expect(get(arrivalTitle)).toMatch(/\bDusk\b/);
     });
 
+    it("says a transfer's end as balances show when it's said, and only once: hiding or showing them after tells nothing again", () => {
+      const deposit = {
+        amountLux: "250000000",
+        stage: "l1_pending",
+        transactionHash: "dd",
+      };
+
+      try {
+        stores.deposits.set([deposit]);
+        stores.deposits.set([{ ...deposit, stage: "completed" }]);
+
+        expect(get(arrivalTitle)).toBe("0.25 DUSK arrived on DuskEVM");
+
+        // Hidden since: the title says it as they show now.
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+        expect(get(arrivalTitle)).toBe("It arrived on DuskEVM");
+
+        // The lists read again, with balances hidden, then shown: nothing
+        // ended anew, so nothing is told.
+        forgetArrivalTitle();
+        stores.deposits.set([{ ...deposit, stage: "completed" }]);
+        stores.transfers.set([service("sent")]);
+        stores.transfers.set([service("arrived")]);
+
+        expect(get(arrivalTitle)).toBe("It arrived on BSC");
+
+        forgetArrivalTitle();
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+        stores.deposits.set([{ ...deposit, stage: "completed" }]);
+        stores.transfers.set([service("arrived")]);
+
+        expect(get(arrivalTitle)).toBe("");
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
     it("opens the transfer's activity from its notification", async () => {
       const { Stand } = browser();
 
@@ -722,6 +760,51 @@ describe("Being told when a transfer arrives", () => {
         fresh.settings.update((store) => ({ ...store, hideBalances: false }));
         fresh.notice.stopArrivalNotice();
       }
+    });
+
+    it("notifies of nothing once they turned it off while the service worker it waits for got ready", async () => {
+      // A page whose service worker isn't registered yet, as on a phone.
+      vi.resetModules();
+
+      const notice = await import("../arrivalNotice");
+      /** @type {PromiseWithResolvers<any>} */
+      const ready = Promise.withResolvers();
+      /** @type {string[]} */
+      const shown = [];
+
+      class Registration {
+        /** @param {string} title */
+        async showNotification(title) {
+          shown.push(title);
+        }
+      }
+
+      browser();
+      onPhone();
+      vi.stubGlobal("ServiceWorkerRegistration", Registration);
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: {
+          addEventListener() {},
+          ready: ready.promise,
+          register: async () => new Registration(),
+          removeEventListener() {},
+        },
+      });
+
+      await notice.chooseArrivalNotice();
+
+      // A deposit ends while they're away; back, they turn it off before
+      // the worker is ready.
+      notice.transferEnded({ id: "deposit-1", title: "1 DUSK arrived" });
+      lookingAtPage(true);
+      notice.stopArrivalNotice();
+      ready.resolve(new Registration());
+      await ready.promise;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(get(notice.arrivalNoticeState)).toBe("offer");
+      expect(shown).toStrictEqual([]);
     });
 
     it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {
