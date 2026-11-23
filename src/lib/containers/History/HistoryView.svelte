@@ -19,6 +19,7 @@
     strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
+  import { BALANCE_MASK } from "$lib/constants";
   import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import { sentAfterDontSend } from "$lib/transactions/sentAfterDontSend";
@@ -192,6 +193,8 @@
     contactNames: contactNamesOf($contactsStore),
     // What went out after Don't send, until it's opened.
     declined: $sentAfterDontSend,
+    // A failed one's fee is hidden in its line while balances are.
+    hidden: $settingsStore.hideBalances,
     locale,
     // What the network's file calls its routes' accounts.
     net: $nodeNetwork,
@@ -399,7 +402,7 @@
                     aria-label={[
                       p.title,
                       alikeAt,
-                      p.line,
+                      p.line.replaceAll(BALANCE_MASK, "hidden"),
                       $settingsStore.hideBalances
                         ? "amount hidden"
                         : `${p.amount.sign}${p.amount.text} DUSK`,

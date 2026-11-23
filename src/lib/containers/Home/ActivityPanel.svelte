@@ -6,7 +6,7 @@
   import { Button, Icon } from "$lib/dusk/components";
   import { SectionHead } from "$lib/components";
   import { describeRow, groupByDay, isOfKind } from "$lib/activity/present";
-  import { walletStore } from "$lib/stores";
+  import { settingsStore, walletStore } from "$lib/stores";
   import { sentAfterDontSend } from "$lib/transactions/sentAfterDontSend";
   import nodeNetwork from "$lib/stores/nodeNetwork";
   import walletAccountNames, { profilesHere } from "$lib/wallets/accountNames";
@@ -65,6 +65,8 @@
     contactNames: contactNamesOf($contactsStore),
     // What went out after Don't send, until it's opened.
     declined: $sentAfterDontSend,
+    // A failed one's fee is hidden in its line while balances are.
+    hidden: $settingsStore.hideBalances,
     locale,
     net: $nodeNetwork,
     walletNames: $walletAccountNames,

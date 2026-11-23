@@ -4,6 +4,7 @@
   import { resolve } from "$app/paths";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue, MemoText } from "$lib/components";
+  import { BALANCE_MASK } from "$lib/constants";
   import {
     fullDateTime,
     shortAddress,
@@ -100,7 +101,11 @@
       title={time === null
         ? undefined
         : fullDateTime(time, locale, { seconds: true })}
-      >{#if failed}<span class="activity-row__failed">{p.line}</span
+      >{#if failed}<span class="activity-row__failed"
+          >{#each p.line.split(BALANCE_MASK) as part, i (i)}{#if i}<BalanceValue
+                hidden
+                value=""
+              />{/if}{part}{/each}</span
         >{#if details.some(Boolean)}{SEPARATOR}{/if}{/if}{details
         .filter(Boolean)
         .join(SEPARATOR)}</span
