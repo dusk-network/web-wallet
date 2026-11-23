@@ -358,4 +358,177 @@ describe("Allocate", () => {
     expect(shieldedInput).toHaveValue("2000");
     expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
+
+  describe("on another profile, or with its balances read again", () => {
+    /** Another profile's: 3,210.987654321 public, 777.777777777 shielded. */
+    const other = {
+      shieldedAddress:
+        "3emRUt2v3fGoBZncWncAYoxP1sDu2iKEqTfFe1FuiN6EFd6YoGDbDuzFdaihVhTLne68CHWydJD6QhiDZAiiERXy",
+      shieldedBalance: {
+        spendable: 777_777_777_777n,
+        value: 777_777_777_777n,
+      },
+      unshieldedAddress:
+        "u1PkM8xGkbjkgxQ4Dfy6nrkxheCwJtR5rkBTv2iZbThUyvRg3McBfJQeehP1RKNjnqTibwJHAGoZS2xyZ3YyyWbrByhQPFo11jzQPMhpNNNRiqM4YjK6jBHHe8B6zgz7NRA",
+      unshieldedBalance: 3_210_987_654_321n,
+    };
+
+    it("should show the balances the wallet has now, not those it opened with", async () => {
+      const { getByRole, rerender } = render(Allocate, baseProps);
+      const publicInput = getByRole("textbox", { name: "Public amount" });
+      const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
+
+      expect(publicInput).toHaveValue("1000");
+      expect(shieldedInput).toHaveValue("2000");
+
+      await rerender(other);
+
+      expect(publicInput).toHaveValue("3210.987654321");
+      expect(shieldedInput).toHaveValue("777.777777777");
+
+      // Read again: what's shielded went up by 0.5.
+      await rerender({
+        shieldedBalance: {
+          spendable: 778_277_777_777n,
+          value: 778_277_777_777n,
+        },
+      });
+
+      expect(shieldedInput).toHaveValue("778.277777777");
+    });
+
+    it("should read what's typed against the balances it has now, and shield that", async () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+
+      const shield = vi
+        .spyOn(walletStore, "shield")
+        .mockReturnValue(new Promise(() => {}));
+      const { container, getByRole, rerender } = render(Allocate, baseProps);
+      const publicInput = getByRole("textbox", { name: "Public amount" });
+
+      await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+        target: { value: "2500" },
+      });
+
+      expect(publicInput).toHaveValue("500");
+
+      await rerender(other);
+
+      // 2,500 of the other's 3,988.765432098: what's left public, and what
+      // moves, 2,500 less its 777.777777777 shielded.
+      expect(publicInput).toHaveValue("1488.765432098");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(getReviewValues(container)[0]).toBe("1,722.222222223 DUSK");
+
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+      await fireEvent.click(
+        getByRole("button", { name: "Shield 1,722.222222223 DUSK" }),
+      );
+
+      expect(shield).toHaveBeenCalledOnce();
+      expect(shield.mock.calls[0][0]).toBe(1_722_222_222_223n);
+    });
+
+    it("should close an open review on a switch of profile, and offer no amount to move, nor its review, until that profile's balances are read", async () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+
+      const shield = vi
+        .spyOn(walletStore, "shield")
+        .mockReturnValue(new Promise(() => {}));
+      const { getByRole, getByText, queryByRole, rerender } = render(
+        Allocate,
+        baseProps,
+      );
+      // The form's fields, as it shows again once a review closes.
+      const publicInput = () => getByRole("textbox", { name: "Public amount" });
+      const shieldedInput = () =>
+        getByRole("textbox", { name: "Shielded amount" });
+
+      await fireEvent.input(shieldedInput(), { target: { value: "2500" } });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(
+        getByRole("button", { name: "Shield 500 DUSK" }),
+      ).toBeInTheDocument();
+
+      // Another profile: its addresses at once, its balances once they're
+      // read; what the wallet has of balances meanwhile is the other's.
+      await rerender({
+        balanceKnown: false,
+        shieldedAddress: other.shieldedAddress,
+        unshieldedAddress: other.unshieldedAddress,
+      });
+
+      expect(queryByRole("button", { name: /^Shield\b/ })).toBeNull();
+      expect(publicInput()).toHaveValue("");
+      expect(publicInput()).toBeDisabled();
+      expect(shieldedInput()).toHaveValue("");
+      expect(shieldedInput()).toBeDisabled();
+      expect(getByText("Reading your balances…")).toBeInTheDocument();
+      expect(getByRole("button", { name: "Review" })).toBeDisabled();
+
+      // Read: 3,000 public and 1,000 shielded. 2,500 shielded moves 1,500.
+      await rerender({
+        balanceKnown: true,
+        shieldedBalance: {
+          spendable: 1_000_000_000_000n,
+          value: 1_000_000_000_000n,
+        },
+        unshieldedBalance: 3_000_000_000_000n,
+      });
+
+      expect(shieldedInput()).toHaveValue("2500");
+      expect(publicInput()).toHaveValue("1500");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+      await fireEvent.click(getByRole("button", { name: "Shield 1,500 DUSK" }));
+
+      expect(shield).toHaveBeenCalledOnce();
+      expect(shield.mock.calls[0][0]).toBe(1_500_000_000_000n);
+    });
+
+    it("should show another profile's balances in both fields where what was typed was erased", async () => {
+      const { getByRole, rerender } = render(Allocate, baseProps);
+      const publicInput = getByRole("textbox", { name: "Public amount" });
+      const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
+
+      await fireEvent.input(shieldedInput, { target: { value: "2500" } });
+
+      expect(publicInput).toHaveValue("500");
+
+      await fireEvent.input(shieldedInput, { target: { value: "" } });
+      await rerender(other);
+
+      // Nothing typed: the 500 left of 2,500 was the other profile's.
+      expect(publicInput).toHaveValue("3210.987654321");
+      expect(shieldedInput).toHaveValue("777.777777777");
+    });
+
+    it("should close an open review once what it would move changes, never moving what wasn't reviewed", async () => {
+      const shield = vi.spyOn(walletStore, "shield");
+      const { getByRole, queryByRole, rerender } = render(Allocate, baseProps);
+
+      await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+        target: { value: "2500" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(
+        getByRole("button", { name: "Shield 500 DUSK" }),
+      ).toBeInTheDocument();
+
+      await rerender(other);
+
+      // The form again, with what's typed, read against the other's.
+      expect(queryByRole("button", { name: /^Shield\b/ })).toBeNull();
+      expect(getByRole("textbox", { name: "Shielded amount" })).toHaveValue(
+        "2500",
+      );
+      expect(getByRole("button", { name: "Review" })).toBeEnabled();
+      expect(shield).not.toHaveBeenCalled();
+    });
+  });
 });

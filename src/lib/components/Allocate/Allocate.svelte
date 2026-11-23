@@ -63,6 +63,13 @@
   /** @type {bigint} */
   export let unshieldedBalance;
 
+  /**
+   * Whether the profile's balances were read since it or the wallet opened:
+   * what moves is worked out from them, so no amount is offered, nor its
+   * review, before they are, as after a switch of profile.
+   */
+  export let balanceKnown = true;
+
   // What's brought back as the form opens is read in it, before what follows
   // it is.
   let { language } = $settingsStore;
@@ -152,6 +159,12 @@
   /** @type {WizardStep} */
   let resultStep;
 
+  /** @type {WizardStep} */
+  let reviewStep;
+
+  /** What the open review is of (`reviewOf`): it closes once that's not it. */
+  let reviewed = "";
+
   /** @type {boolean} */
   let isNextButtonDisabled = false;
 
@@ -178,11 +191,13 @@
    */
   let typedAmount = "";
 
-  // Constant total
-  const totalBalance = shieldedBalance.spendable + unshieldedBalance;
+  // The balances it works from: the profile's, as the wallet has them now.
+  // A switch of profile, or the balances read again, as after a reload,
+  // gives it new ones (followBalances).
+  let totalBalance = shieldedBalance.spendable + unshieldedBalance;
 
-  // Used to keep the difference between the initial shielded balance and the current one
-  const initialShielded = shieldedBalance.spendable;
+  // What's shielded now: what moves is what's typed for it less this.
+  let initialShielded = shieldedBalance.spendable;
 
   // Internal state of the balances
   let shielded = shieldedBalance.spendable;
@@ -201,6 +216,48 @@
       }),
     );
   }
+
+  /**
+   * Takes the balances the wallet has now, where they changed: what's typed
+   * stays, read against them, and the other field says what's left of them;
+   * with nothing typed, both fields show them.
+   *
+   * @param {bigint} spendable The shielded balance that can be spent
+   * @param {bigint} publicBalance
+   */
+  function followBalances(spendable, publicBalance) {
+    if (
+      spendable === initialShielded &&
+      spendable + publicBalance === totalBalance
+    ) {
+      return;
+    }
+
+    totalBalance = spendable + publicBalance;
+    initialShielded = spendable;
+
+    const typedText =
+      typedAmount === "shielded-amount" ? shieldedText : unshieldedText;
+
+    // What's typed and reads as an amount stays, read against them; an
+    // emptied field, or one that doesn't read, is nothing typed: what the
+    // other said was worked out from the balances before.
+    if (typedAmount && readDuskInput(typedText, language) !== null) {
+      handleBalanceChange(
+        /** @type {any} */ ({
+          target: { name: typedAmount, value: typedText },
+        }),
+      );
+    } else {
+      typedAmount = "";
+      hasInvalidInput = false;
+      shielded = spendable;
+      shieldedText = fieldText(spendable);
+      unshieldedText = fieldText(publicBalance);
+    }
+  }
+
+  $: followBalances(shieldedBalance.spendable, unshieldedBalance);
 
   // What's typed, kept as it's typed, for as long as it hasn't gone out.
   $: typed = typedAmount
@@ -223,6 +280,19 @@
 
   $: fee = gasLimit * gasPrice;
   $: difference = shielded - initialShielded;
+
+  // What a review is of: the profile, by its addresses, and what moves,
+  // from balances read for it. Nothing, until they're read.
+  $: reviewOf = balanceKnown
+    ? `${unshieldedAddress} ${shieldedAddress} ${difference}`
+    : "";
+
+  // An open review that no longer shows what it would move, as after a
+  // switch of profile, closes: nothing goes that wasn't reviewed, nor from
+  // a profile whose balances aren't read yet.
+  $: if (!isEditing && !isSent && reviewOf !== reviewed) {
+    reviewStep?.back(new Event("change"));
+  }
 
   // The default gas can change while the form is open, as when the node's
   // price arrives: the form takes it while its gas can be edited, unless it
@@ -249,6 +319,7 @@
       : "Not enough DUSK for the amount and fee.";
 
   $: isNextButtonDisabled =
+    !balanceKnown ||
     !hasEnoughFundsForFees ||
     !isGasValid ||
     difference === 0n || // No change in balance
@@ -270,6 +341,7 @@
       }}
       nextButton={{
         action: () => {
+          reviewed = reviewOf;
           isEditing = false;
         },
         disabled: isNextButtonDisabled,
@@ -288,8 +360,9 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={unshieldedText}
+              value={balanceKnown ? unshieldedText : ""}
               autocomplete="off"
+              disabled={!balanceKnown}
               required
               type="text"
               inputmode="decimal"
@@ -305,19 +378,23 @@
 
           <p class="operation__label">
             Shielded<br />
-            <small
-              ><BalanceValue
-                exact={formatDuskExact(shieldedBalance.spendable, language)}
-                hidden={false}
-                value={formatDusk(shieldedBalance.spendable, language)}
-              />
-              of
-              <BalanceValue
-                exact={formatDuskExact(shieldedBalance.value, language)}
-                hidden={false}
-                value={formatDusk(shieldedBalance.value, language)}
-              /> spendable</small
-            >
+            {#if !balanceKnown}
+              <small role="status">Reading your balances…</small>
+            {:else}
+              <small
+                ><BalanceValue
+                  exact={formatDuskExact(shieldedBalance.spendable, language)}
+                  hidden={false}
+                  value={formatDusk(shieldedBalance.spendable, language)}
+                />
+                of
+                <BalanceValue
+                  exact={formatDuskExact(shieldedBalance.value, language)}
+                  hidden={false}
+                  value={formatDusk(shieldedBalance.value, language)}
+                /> spendable</small
+              >
+            {/if}
           </p>
 
           <div class="operation__address-wrapper">
@@ -328,8 +405,9 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={shieldedText}
+              value={balanceKnown ? shieldedText : ""}
               autocomplete="off"
+              disabled={!balanceKnown}
               required
               type="text"
               inputmode="decimal"
@@ -362,12 +440,13 @@
           }}
         />
 
-        {#if fundsErrorMessage}
+        {#if fundsErrorMessage && balanceKnown}
           <Banner title={fundsErrorMessage} variant="error" />
         {/if}
       </div>
     </WizardStep>
     <WizardStep
+      bind:this={reviewStep}
       step={1}
       {key}
       backButton={{

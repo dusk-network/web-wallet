@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show Shield the balances the wallet has now, after a switch of profile or once they're read again, not those it opened with: its review closes on a switch of profile or if what it would move changes, no amount is offered until the profile's balances are read, and a field emptied shows them again
 - Say a send's arrival in a notification and the tab's title as balances show when they show, also after waiting for the service worker
 - Close the Bridge's review if what it sends changes before it's sent, as a maximum asked for before it opened comes back, and carry no Max amount over a swap of From and To
 - Say a send's amount in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
