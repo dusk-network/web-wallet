@@ -6,6 +6,7 @@
   import { BalanceValue, MemoText } from "$lib/components";
   import {
     fullDateTime,
+    shortAddress,
     strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
@@ -35,6 +36,14 @@
    */
   export let memoAmong = undefined;
 
+  /**
+   * The addresses of the contacts whose names look like another's: a row
+   * that names one says its address, as History does.
+   *
+   * @type {Set<string>}
+   */
+  export let alike = new Set();
+
   const SEPARATOR = " · ";
 
   /**
@@ -58,6 +67,11 @@
         time === null ? "" : timeLabel(time, locale),
         shielded,
       ];
+  // The look-alike contact it names, told apart by its address.
+  $: alikeAt =
+    !withoutCounterparty && p.counterparty && alike.has(p.counterparty)
+      ? `${shortAddress(p.counterparty)} · name looks like another`
+      : "";
   // A withdrawal's claim date, on a line of its own: it doesn't fit after.
   $: note = withoutCounterparty ? null : p.note;
   // A stranger's memo, marked as History marks it: who it's from, then
@@ -78,6 +92,9 @@
       class:activity-row__code={p.titleIsAddress && title === p.title}
       >{title}</span
     >
+    {#if alikeAt}
+      <span class="activity-row__alike">{alikeAt}</span>
+    {/if}
     <span
       class="activity-row__line"
       title={time === null
@@ -180,6 +197,13 @@
   /* What happened, its fee and its time, whole: the line wraps where it must. */
   .activity-row__line {
     color: var(--calm-muted);
+    font-size: 0.78125rem;
+    overflow-wrap: anywhere;
+  }
+
+  /* As History marks it: the warning and the address it names, whole. */
+  .activity-row__alike {
+    color: var(--calm-pending);
     font-size: 0.78125rem;
     overflow-wrap: anywhere;
   }

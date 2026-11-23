@@ -1,6 +1,6 @@
 <script>
   import { resolve } from "$app/paths";
-  import { contactNamesOf, contactsStore } from "$lib/contacts";
+  import { alikeContacts, contactNamesOf, contactsStore } from "$lib/contacts";
   import withdrawalClaims from "$lib/bridge/withdrawalClaims";
   import { mdiChevronRight } from "@mdi/js";
   import { Button, Icon } from "$lib/dusk/components";
@@ -69,6 +69,9 @@
     net: $nodeNetwork,
     walletNames: $walletAccountNames,
   };
+  // Contacts whose names look like another's show their address, as in
+  // History.
+  $: alike = alikeContacts($contactsStore, $profilesHere);
   // Whom a memo that came in isn't a stranger's from, as History has it:
   // the profiles here, every wallet's, and the contacts.
   $: memoAmong = {
@@ -147,6 +150,7 @@
         <h3 class="activity-panel__day">{group.label}</h3>
         {#each group.items as item (item.row.hash)}
           <ActivityRowItem
+            {alike}
             {locale}
             {memoAmong}
             presentation={item.presentation}
