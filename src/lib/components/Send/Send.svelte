@@ -477,9 +477,10 @@
 
   /**
    * The transfer once sent, the most it can cost, what calls it off until
-   * it goes out, and what takes it back to its review where it's held.
+   * it goes out, what takes it back to its review where it's held, and what
+   * says what it was as balances show at the time.
    *
-   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, what: string } | null}
+   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, whatAs: (hidden: boolean) => string } | null}
    */
   let sent = null;
 
@@ -1241,7 +1242,13 @@
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
     const gate = sendGate();
-    const what = `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`;
+    // Said as balances show wherever it's said, then: on its Sent screen, in
+    // the tab's title and a notification once it arrives.
+    const shownAmount = amountText;
+    const shownTo = recipientLabel;
+    /** @param {boolean} hidden */
+    const whatAs = (hidden) =>
+      `${hidden ? BALANCE_MASK : shownAmount} DUSK to ${shownTo}`;
 
     // It goes out now, as far as a reload can tell: nothing brings it back.
     draft.clear();
@@ -1303,7 +1310,7 @@
       memo: transactionMemo,
       operation,
       review,
-      what,
+      whatAs,
     };
     step = "done";
     // From its top, as the review shows: a phone on its side shows little.
@@ -2064,7 +2071,8 @@
     onSendToo={sendTooFromReview}
     operation={sent.operation}
     tellArrival
-    what={sent.what}
+    what={sent.whatAs(hideBalances)}
+    whatAs={sent.whatAs}
   />
 {:else}
   <div

@@ -6,17 +6,21 @@
  * said of it once another wallet opens, or none.
  */
 
+import { get } from "svelte/store";
+
 import { noteSentOutcome } from "$lib/activity";
 import { goto } from "$lib/navigation";
+import settingsStore from "$lib/stores/settingsStore";
 import { followTransaction } from "$lib/transactions";
 
 import { followsWhileAway, transferEnded } from "./arrivalNotice";
 
 /**
- * @typedef {{ hash: string, stillOpen: (value?: unknown) => unknown, what: string }} Send
- *   `what` what was sent and to whom, as "0.5 DUSK to Alice"; `stillOpen`
- *   the check of the wallet it was sent from, `walletStore.whileOpen()`'s,
- *   which throws once another opened
+ * @typedef {{ hash: string, stillOpen: (value?: unknown) => unknown, what: string | ((hidden: boolean) => string) }} Send
+ *   `what` what was sent and to whom, as "0.5 DUSK to Alice", or what says
+ *   it as balances show then, its amount hidden while they're hidden;
+ *   `stillOpen` the check of the wallet it was sent from,
+ *   `walletStore.whileOpen()`'s, which throws once another opened
  */
 
 /**
@@ -54,11 +58,17 @@ export function tellSendEnd(send) {
     return;
   }
 
+  // Said as balances show as it's told, not as they did as it was sent.
+  const said =
+    typeof what === "function"
+      ? what(get(settingsStore).hideBalances === true)
+      : what;
+
   transferEnded({
     href,
     id: `send:${hash}`,
     onOpen: () => goto(href),
-    title: failed ? "It didn't go through" : `Arrived: ${what}`,
+    title: failed ? "It didn't go through" : `Arrived: ${said}`,
   });
 }
 

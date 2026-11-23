@@ -53,6 +53,15 @@
   /** What was sent and to whom, as "0.5 DUSK to Alice (alice.dusk)". */
   export let what = "";
 
+  /**
+   * What says `what` as balances show at the time, its amount hidden while
+   * they're hidden: for telling of its arrival later, when they may not
+   * show as they do now.
+   *
+   * @type {((hidden: boolean) => string) | undefined}
+   */
+  export let whatAs = undefined;
+
   /** The memo it was sent with. */
   export let memo = "";
 
@@ -157,7 +166,7 @@
         failed: ended === "failed",
         hash: /** @type {string} */ (hash),
         stillOpen,
-        what,
+        what: whatAs ?? what,
       });
     }
   }
@@ -227,7 +236,7 @@
 
       // Left before a block took it: the wallet tells, wherever it is.
       if (tellArrival && hash && !outcome && !notSent) {
-        handOverSend({ hash, stillOpen, what });
+        handOverSend({ hash, stillOpen, what: whatAs ?? what });
       }
     };
   });

@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say a send's amount on its Sent screen, in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
 - Hide what a failed transaction paid in Activity's and Home's rows and in what they read out while balances are hidden, as its details do
 - Say a look-alike contact's address where Home's Activity names it, as Activity does, and keep it and the warning whole in the search beside a long .dusk name
 - Read each way to stake with its terms, rates not promised included, and a Sozu stake's stDUSK before Unstake from Sozu, with a screen reader

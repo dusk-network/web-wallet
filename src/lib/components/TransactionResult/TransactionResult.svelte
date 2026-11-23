@@ -46,6 +46,14 @@
   /** What was sent and to whom, as "0.5 DUSK to Alice (alice.dusk)". */
   export let what = "";
 
+  /**
+   * What says `what` as balances show at the time, for telling of its
+   * arrival (TransactionStatus).
+   *
+   * @type {((hidden: boolean) => string) | undefined}
+   */
+  export let whatAs = undefined;
+
   /** The memo it was sent with. */
   export let memo = "";
 
@@ -297,6 +305,7 @@
       {tellArrival}
       {unconfirmed}
       {what}
+      {whatAs}
     />
     <!-- History has nothing of one not sent. -->
     {#if hash && hasHistory && !notSent}

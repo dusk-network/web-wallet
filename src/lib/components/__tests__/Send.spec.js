@@ -2901,6 +2901,30 @@ describe("Send", () => {
       );
     });
 
+    it("should say what it sent as balances show at the time: its amount hidden once they're hidden, though they showed as it was sent", async () => {
+      const { container, getByRole } = render(Send, baseProps);
+
+      await sendWith(getByRole);
+
+      expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
+
+      try {
+        settingsStore.update((store) => ({ ...store, hideBalances: true }));
+        await tick();
+
+        expect(sentWhat(container)).not.toContain("567");
+        expect(sentWhat(container)).toMatch(
+          endingWith(shortenAddress(shieldedAddress)),
+        );
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+
+      await tick();
+
+      expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
+    });
+
     it("should review a transfer before it sends it, and go back to the form", async () => {
       const { container, getByRole, queryByRole } = render(Send, baseProps);
       const fields = fieldsOf(getByRole);
