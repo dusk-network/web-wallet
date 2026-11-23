@@ -317,6 +317,56 @@ describe("Bridge", () => {
       deposit.mockRestore();
     });
 
+    it("should carry no Max amount over a swap of From and To, nor keep one for after a lock", async () => {
+      const view = render(Bridge, baseProps);
+      const amount = () => view.getByLabelText("Amount");
+
+      // The most of the DuskEVM balance, on the way back.
+      await withdraw(view.container);
+      await fireEvent.click(view.getByRole("button", { name: "Max" }));
+      await vi.waitFor(() => expect(amount()).toHaveValue("2.997230463"));
+
+      await fireEvent.click(
+        view.getByRole("button", { name: "Swap From and To" }),
+      );
+
+      // A deposit of it: the public balance's to work out, not the other's.
+      expect(getDirection(view.container)).toStrictEqual(["duskDs", "duskEvm"]);
+      expect(amount()).toHaveValue("");
+
+      await lockAndUnlock();
+
+      expect(render(Bridge, baseProps).getByLabelText("Amount")).toHaveValue(
+        "",
+      );
+    });
+
+    it("should hide an amount kept before it was said whether Max filled it in, while balances are hidden", async () => {
+      const typed = render(Bridge, baseProps);
+
+      await fireEvent.input(typed.getByLabelText("Amount"), {
+        target: { value: "12" },
+      });
+
+      // As the wallet kept it before: no word of Max.
+      const key = Array.from({ length: sessionStorage.length }, (_, i) =>
+        sessionStorage.key(i),
+      ).find((each) => each?.endsWith("-draft-bridge"));
+      const kept = JSON.parse(sessionStorage.getItem(String(key)) ?? "{}");
+
+      delete kept.values.isMax;
+      sessionStorage.setItem(String(key), JSON.stringify(kept));
+
+      await lockAndUnlock();
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const back = render(Bridge, baseProps);
+
+      expect(
+        /** @type {HTMLInputElement} */ (back.getByLabelText("Amount")).value,
+      ).not.toMatch(/\d/);
+    });
+
     it("should go back to its review with Try again when nothing went out, and keep what's typed", async () => {
       const deposit = vi
         .spyOn(walletStore, "depositEvmFunctionCall")
@@ -624,6 +674,48 @@ describe("Bridge", () => {
     expect(amountOf(container, /fee/i)).toBeUndefined();
     // With no fee, no total.
     expect(amountOf(container, /total/i)).toBeUndefined();
+  });
+
+  it("should close an open review whose amount a maximum asked for before it changes, never sending what wasn't reviewed", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByLabelText, getByRole, queryByRole } = render(
+      Bridge,
+      baseProps,
+    );
+    /** @type {PromiseWithResolvers<bigint>} */
+    const estimate = Promise.withResolvers();
+
+    await withdraw(container);
+    await fireEvent.input(getByLabelText("Amount"), { target: { value: "1" } });
+
+    // Max, then Review before its fee is estimated.
+    estimateGas.mockReturnValueOnce(estimate.promise);
+    await fireEvent.click(getByRole("button", { name: "Max" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(getByRole("button", { name: "Bridge 1 DUSK" })).toBeInTheDocument();
+
+    estimate.resolve(withdrawalGas);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    // The review of 1 DUSK closed: nothing on it sends another amount.
+    expect(queryByRole("button", { name: /^Bridge\b/ })).toBeNull();
+    expect(queryByRole("heading", { name: "Review" })).toBeNull();
+  });
+
+  it("should hide what a Max deposit leaves the public balance while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByRole } = render(Bridge, baseProps);
+
+    await fireEvent.click(getByRole("button", { name: "Max" }));
+
+    // Its route's details: what leaves the public balance, 1,000 DUSK.
+    expect(
+      fieldOf(container, /^leaves your public balance$/i),
+    ).not.toHaveTextContent(/\d/);
   });
 
   it("should hide the public balance and the deposit on its way while balances are hidden, but not the Review amounts", async () => {

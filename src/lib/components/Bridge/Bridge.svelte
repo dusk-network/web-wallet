@@ -191,12 +191,20 @@
 
   /**
    * Whether Max filled the amount in: worked out from a balance, it's hidden
-   * with the balances, as Send's is. One typed shows.
+   * with the balances, as Send's is. One typed shows. An amount kept before
+   * this was kept with it may be either: it's taken for Max's, hidden while
+   * balances are.
    */
-  let isMaxAmount = typedBefore?.isMax ?? false;
+  let isMaxAmount =
+    typeof typedBefore?.isMax === "boolean"
+      ? typedBefore.isMax
+      : Boolean(typedBefore?.amount);
 
   /** Whether the review shows the amount Max hid, as asked. */
   let isAmountShown = false;
+
+  /** What the open review shows, in LUX: it closes once that's not it. */
+  let reviewedLux = 0n;
 
   /** @param {Event} event */
   function typeAmount(event) {
@@ -580,6 +588,13 @@
     if (back) {
       routeId = back.id;
       step = "form";
+
+      // A maximum is the other side's balance's: it doesn't come over.
+      if (isMaxAmount) {
+        amount = "";
+        isMaxAmount = false;
+      }
+
       flipped =
         back.kind === "migration"
           ? `From ${back.chain.name} to Dusk`
@@ -622,6 +637,7 @@
   function review() {
     isEditing = false;
     isAmountShown = false;
+    reviewedLux = amountLux;
 
     if (isWithdrawing) {
       prepareWithdrawalReview();
@@ -768,6 +784,13 @@
   // A review needs its EVM wallet: without one, back to the form, which
   // offers to connect it.
   $: if (step === "review" && !isConnected) {
+    edit();
+  }
+
+  // What an open review shows never changes under the person: where what's
+  // sent changes, as a maximum asked for before it opened comes back, it
+  // closes, for that to be reviewed.
+  $: if (step === "review" && amountLux !== reviewedLux) {
     edit();
   }
 
@@ -1062,7 +1085,10 @@
           <div>
             <dt>Leaves your public balance</dt>
             <dd>
-              up to {formatFee(totalDepositLux, language, { max: true })} DUSK
+              up to <BalanceValue
+                hidden={isAmountMasked}
+                value={formatFee(totalDepositLux, language, { max: true })}
+              /> DUSK
             </dd>
           </div>
         {:else}
