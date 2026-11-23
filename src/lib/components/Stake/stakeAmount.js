@@ -66,7 +66,6 @@ export function leastSozuUnstake(pool, staked) {
  *   amount: bigint | null,
  *   available: bigint,
  *   fee: bigint,
- *   hidden?: boolean,
  *   keep?: bigint,
  *   leastFee?: bigint,
  *   locale: string,
@@ -81,7 +80,8 @@ export function leastSozuUnstake(pool, staked) {
  * The amount is paid from `available` with the fee, unless `most` caps it
  * on its own, as what can be unstaked; `keep` stays in `available` after
  * it, as the fee to unstake a stake later; `minimum` is the least it can
- * be, for a stake or, as `action` says, an unstake.
+ * be, for a stake or, as `action` says, an unstake. In the flow the person
+ * started, what it says shows its figures, with balances hidden too.
  *
  * @param {AmountCheck} check
  * @returns {{ error: string, isMinimum: boolean, ok: boolean }}
@@ -91,7 +91,6 @@ export function checkAmount({
   amount,
   available,
   fee,
-  hidden = false,
   keep = 0n,
   leastFee,
   locale,
@@ -129,19 +128,10 @@ export function checkAmount({
 
   const needed = (most ? 0n : amount) + fee + keep;
 
-  // With balances hidden, these don't say what's held.
-  if (needed > available && hidden && !most) {
-    return fail(
-      amount > available
-        ? "More than you have."
-        : `Too little left for ${keep ? "the fees" : "the fee"}.`,
-    );
-  }
-
   if (needed > available) {
     return fail(
       most
-        ? feeError({ available, fee, hidden, leastFee, locale })
+        ? feeError({ available, fee, leastFee, locale })
         : `${formatFee(needed - available, locale, { max: true })} DUSK short, ${keep ? "fees" : "fee"} included.`,
     );
   }

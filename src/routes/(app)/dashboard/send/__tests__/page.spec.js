@@ -453,7 +453,7 @@ describe("Send page", () => {
     expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
   });
 
-  it("should hide the balance it pays from, and what Max fills in, while balances are hidden", async () => {
+  it("should show the balance it pays from, and what Max fills in, while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(SendPage);
@@ -469,23 +469,21 @@ describe("Send page", () => {
       getByRole("textbox", { name: "Amount" })
     );
 
-    expect(container).not.toHaveTextContent(
-      formatDusk(balance.unshielded.value, "en"),
-    );
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
 
     await fireEvent.input(getByRole("textbox", { name: "To" }), {
       target: { value: OTHER },
     });
     await fireEvent.click(getByRole("button", { name: "Max" }));
 
-    // No figure in the field, nor Max's anywhere, nor the balance's.
-    expect(amount.value).not.toMatch(/\d/);
-    expect(container).not.toHaveTextContent(formatDuskExact(max, "en"));
-    expect(container).not.toHaveTextContent(
-      formatDusk(balance.unshielded.value, "en"),
+    // Its figure in the field and the summary, the balance by them.
+    expect(amount).toHaveValue(formatDuskPlain(max));
+    expect(summaryRow(container, /amount/i)).toHaveTextContent(
+      `${formatDuskExact(max, "en")} DUSK`,
     );
+    expect(available(container)).toHaveTextContent(PUBLIC_BALANCE);
 
-    // An amount typed shows.
+    // An amount typed shows too.
     await fireEvent.input(amount, { target: { value: "1" } });
 
     expect(amount).toHaveValue("1");

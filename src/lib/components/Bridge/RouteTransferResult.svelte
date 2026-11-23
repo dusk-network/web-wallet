@@ -26,10 +26,6 @@
   /** @type {string} */
   export let heading;
 
-  /** Whether balances are hidden. */
-  /** @type {boolean} */
-  export let masked;
-
   /** @type {import("$lib/bridge/cardRoutes").CardRoute} */
   export let route;
 
@@ -66,9 +62,9 @@
     (known) => known.hash.toLowerCase() === hash.toLowerCase(),
   );
   $: outcome = transfer
-    ? transferOutcome(transfer, {
+    ? // In the flow that sent it: what it says shows, with balances hidden too.
+      transferOutcome(transfer, {
         locale: $settingsStore.language,
-        masked,
         now,
         time,
       })

@@ -28,7 +28,8 @@
 </script>
 
 <div class="deposit-progress">
-  <DepositLifecycle {deposit} />
+  <!-- In the flow that sent it: its figures show, with balances hidden too. -->
+  <DepositLifecycle {deposit} hidden={false} />
   {#if deposit?.stage !== "completed" && deposit?.stage !== "failed"}
     <ArrivalNotice />
   {/if}

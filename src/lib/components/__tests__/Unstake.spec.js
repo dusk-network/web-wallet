@@ -133,7 +133,7 @@ describe("Unstake", () => {
       ]);
     });
 
-    it("should hide the amount it starts at, all that is staked, while balances are hidden", async () => {
+    it("should show the amount it starts at, all that is staked, while balances are hidden: it's a flow the person started", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       const { container, getByRole } = render(Unstake, {
@@ -146,20 +146,17 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      // All that is staked, 278 DUSK, filled in, with no figure in the field
-      // nor anywhere on the screen.
-      expect(amountInput.value).not.toBe("");
-      expect(amountInput.value).not.toMatch(/[0-9]/);
-      expect(container.textContent).not.toMatch(/278/);
+      // All that is staked, 278 DUSK, filled in, and said under it.
+      expect(amountInput).toHaveValue("278");
+      expect(container.textContent).toMatch(/Staked 278 DUSK/);
       expect(getByRole("button", { name: "Review" })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(getReviewValues(container)[0]).not.toMatch(/[0-9]/);
-      expect(container.textContent).not.toMatch(/278/);
+      expect(getReviewValues(container)[0]).toBe("278 DUSK");
     });
 
-    it("should show the amount once it's typed, not when Max fills it in, while balances are hidden", async () => {
+    it("should show the amount typed and what Max fills in while balances are hidden", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       const { getByRole } = render(Unstake, { ...baseProps, ...unstakeProps });
@@ -169,7 +166,7 @@ describe("Unstake", () => {
 
       await vi.advanceTimersToNextTimerAsync();
 
-      expect(amountInput.value).not.toMatch(/[0-9]/);
+      expect(amountInput).toHaveValue("278");
 
       await fireEvent.input(amountInput, { target: { value: "100" } });
 
@@ -178,15 +175,7 @@ describe("Unstake", () => {
       await fireEvent.input(amountInput, { target: { value: "" } });
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      expect(amountInput.value).not.toBe("");
-      expect(amountInput.value).not.toMatch(/[0-9]/);
-
-      // Deleting a character of what shows clears it.
-      await fireEvent.input(amountInput, {
-        target: { value: amountInput.value.slice(1) },
-      });
-
-      expect(amountInput).toHaveValue("");
+      expect(amountInput).toHaveValue("278");
     });
 
     it("should take an amount as the other amount fields do, with a decimal point or comma", async () => {

@@ -185,7 +185,8 @@
         held?.meanwhile &&
         $sentMeanwhileChecking.has(meanwhileKey(held.meanwhile)),
       ),
-      hidden: $settingsStore.hideBalances,
+      // The end of the flow the person started: what it says shows.
+      hidden: false,
       locale: $settingsStore.language,
       nameOf: $accountNamer,
     },

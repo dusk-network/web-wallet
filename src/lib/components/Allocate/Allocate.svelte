@@ -17,7 +17,7 @@
     formatFee,
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
-  import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { shortenAddress } from "$lib/dusk/string";
   import {
     Badge,
     Icon,
@@ -31,14 +31,12 @@
     GasSettings,
     ReviewAmount,
     ReviewWallet,
-    ShowAmount,
     TransactionResult,
   } from "$lib/components";
   import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
   import { settingsStore, walletStore } from "$lib/stores";
   import { nothingWentOut } from "$lib/transactions";
   import { Gas } from "@dusk/w3sper";
-  import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
   import { readDuskInput } from "../Stake/stakeAmount";
 
@@ -165,9 +163,6 @@
   /** Whether the first step, where the gas can be edited, shows. */
   let isEditing = true;
 
-  /** Whether the review shows what it hides with the balances, as asked. */
-  let isAmountShown = false;
-
   /** Whether the transaction was asked for, and hasn't failed since. */
   let isSent = false;
 
@@ -176,15 +171,12 @@
   let hasInvalidInput = false;
 
   /**
-   * The amount the user last typed. While balances are hidden, it shows,
-   * and the other one, what is left of the balance, stays hidden.
+   * The field the user last typed in: kept with what's typed in it, which a
+   * lock or a reload brings back.
    *
    * @type {string}
    */
   let typedAmount = "";
-
-  // What screen readers read with an amount field that is hidden.
-  const hiddenNoteId = `${randomUUID()}-hidden-note`;
 
   // Constant total
   const totalBalance = shieldedBalance.spendable + unshieldedBalance;
@@ -223,19 +215,8 @@
     draft.save(typed);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
-  $: isUnshieldedHidden = hideBalances && typedAmount !== "unshielded-amount";
-  // What moves is what was typed only where the field it was typed in held
-  // nothing; else it's worked out from that balance, which the form hides,
-  // and the review hides it too, with the total that would give it away.
-  $: isAmountHidden =
-    hideBalances &&
-    (typedAmount === "shielded-amount"
-      ? initialShielded
-      : totalBalance - initialShielded) !== 0n;
-  // Shown on the review when asked, for it to be seen before it's confirmed.
-  $: isAmountMasked = isAmountHidden && !isAmountShown;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
 
   $: isShielding = difference > 0n;
   $: amount = isShielding ? difference : -difference;
@@ -307,9 +288,7 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isUnshieldedHidden ? "" : unshieldedText}
-              placeholder={isUnshieldedHidden ? BALANCE_MASK : undefined}
-              aria-describedby={isUnshieldedHidden ? hiddenNoteId : undefined}
+              value={unshieldedText}
               autocomplete="off"
               required
               type="text"
@@ -329,11 +308,13 @@
             <small
               ><BalanceValue
                 exact={formatDuskExact(shieldedBalance.spendable, language)}
+                hidden={false}
                 value={formatDusk(shieldedBalance.spendable, language)}
               />
               of
               <BalanceValue
                 exact={formatDuskExact(shieldedBalance.value, language)}
+                hidden={false}
                 value={formatDusk(shieldedBalance.value, language)}
               /> spendable</small
             >
@@ -347,9 +328,7 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isShieldedHidden ? "" : shieldedText}
-              placeholder={isShieldedHidden ? BALANCE_MASK : undefined}
-              aria-describedby={isShieldedHidden ? hiddenNoteId : undefined}
+              value={shieldedText}
               autocomplete="off"
               required
               type="text"
@@ -360,9 +339,6 @@
             />
             <DuskIcon />
           </div>
-          {#if hideBalances}
-            <span hidden id={hiddenNoteId}>hidden</span>
-          {/if}
         </fieldset>
 
         <GasSettings
@@ -397,13 +373,12 @@
       backButton={{
         action: () => {
           isEditing = true;
-          isAmountShown = false;
         },
       }}
       nextButton={{
         confirm: true,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: `${isShielding ? "Shield" : "Unshield"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK`,
+        label: `${isShielding ? "Shield" : "Unshield"} ${formatDuskExact(amount, language)} DUSK`,
         variant: "primary",
       }}
     >
@@ -416,16 +391,8 @@
         <ReviewWallet />
         <ReviewAmount
           label="Amount"
-          value={isAmountMasked
-            ? BALANCE_MASK
-            : formatDuskExact(amount, language)}
+          value={formatDuskExact(amount, language)}
         />
-        {#if isAmountHidden}
-          <ShowAmount
-            bind:shown={isAmountShown}
-            said={`Amount ${formatDuskExact(amount, language)} DUSK, total up to ${formatFee(amount + fee, language, { max: true })} DUSK`}
-          />
-        {/if}
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
             <span>From</span>
@@ -452,9 +419,7 @@
         />
         <ReviewAmount
           label="Total up to"
-          value={isAmountMasked
-            ? BALANCE_MASK
-            : formatFee(amount + fee, language, { max: true })}
+          value={formatFee(amount + fee, language, { max: true })}
         />
       </div>
     </WizardStep>
@@ -463,7 +428,6 @@
         maxFee={fee}
         onRetry={(event) => {
           isSent = false;
-          isAmountShown = false;
           resultStep.back(event);
         }}
         operation={allocate()}

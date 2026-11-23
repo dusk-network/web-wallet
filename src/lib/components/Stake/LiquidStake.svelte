@@ -25,7 +25,6 @@
     formatFee,
     formatTotal,
   } from "$lib/dusk/currency";
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { englishWords, getDecimalSeparator } from "$lib/dusk/number";
   import { randomUUID, shortenAddress } from "$lib/dusk/string";
   import { Button, CopyButton, Icon, Textbox } from "$lib/dusk/components";
@@ -146,7 +145,7 @@
   /** The amount typed, and the one typed for the other action. */
   let amountText = typedBefore?.amount ?? "";
 
-  /** Whether Max filled the amount in: it's hidden with the balances. */
+  /** Whether Max filled the amount in: said with what it leaves. */
   let isMaxAmount = typedBefore?.isMax ?? false;
   let isOtherMax = typedBefore?.isOtherMax ?? false;
   let otherText = typedBefore?.other ?? "";
@@ -326,9 +325,7 @@
   /** @param {Event} event */
   function typeAmount(event) {
     forgetTerms();
-    amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
+    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isMaxAmount = false;
   }
 
@@ -484,8 +481,8 @@
         pool,
         what:
           order.action === "stake"
-            ? `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK to Sozu`
-            : `${hideBalances ? BALANCE_MASK : formatDuskExact(order.lux, language)} DUSK from Sozu`,
+            ? `${formatDuskExact(order.lux, language)} DUSK to Sozu`
+            : `${formatDuskExact(order.lux, language)} DUSK from Sozu`,
       };
       reviewHistory.settle(operation, () => {
         canTryAgain = true;
@@ -541,8 +538,8 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   $: ({ status } = sozu);
   // Sozu's switches, each on its own: no deposits while it's under
   // maintenance, or while that can't be checked, and calls that can fail
@@ -618,7 +615,6 @@
     amount,
     available: free,
     fee: maxGasFee,
-    hidden: hideBalances,
     keep: isStake ? unstakeFee : 0n,
     leastFee,
     locale: language,
@@ -642,15 +638,12 @@
       ? feeError({
           available: free,
           fee: maxGasFee,
-          hidden: hideBalances,
           leastFee,
           locale: language,
         })
       : "";
   $: shownAmount = amount !== null && check.ok ? amount : 0n;
-  $: shownText = isAmountMasked
-    ? BALANCE_MASK
-    : formatDuskExact(shownAmount, language);
+  $: shownText = formatDuskExact(shownAmount, language);
   // What is typed shows in the summary, muted while it can't be sent.
   $: typedAmount = amount ?? 0n;
   $: depositFee = depositRate ? sozuFee(typedAmount, depositRate) : null;
@@ -726,7 +719,7 @@
       <Banner
         className="liquid-stake__under-way"
         role="status"
-        title={`Your ${hideBalances ? BALANCE_MASK : formatDuskExact(row.value, language)} DUSK ${row.sozu === "stake" ? "stake" : "unstake"} is on its way.`}
+        title={`Your ${formatDuskExact(row.value, language)} DUSK ${row.sozu === "stake" ? "stake" : "unstake"} is on its way.`}
         variant="info"
       >
         <AppAnchor
@@ -758,6 +751,8 @@
     {/if}
 
     {#if staked > 0n || stDusk > 0n || held.putIn > 0n}
+      <!-- What's held with Sozu: looked at, not acted on, so its figures
+        are hidden while balances are, as the Staking overview's. -->
       <dl class="liquid-stake__position">
         {#if history.whole}
           <div>
@@ -815,12 +810,14 @@
           </div>
         {:else if history.whole && earnedSoFar !== null}
           {@const earned = earnedSoFar < 0n ? -earnedSoFar : earnedSoFar}
+          <!-- A loss's sign is part of the figure: hidden with it. -->
+          {@const sign = earnedSoFar < 0n ? "−" : ""}
           <div>
             <dt>{POSITION_WORDS.earned}</dt>
             <dd>
-              {earnedSoFar < 0n ? "−" : ""}<BalanceValue
-                exact={formatDuskExact(earned, language)}
-                value={formatDusk(earned, language)}
+              <BalanceValue
+                exact={`${sign}${formatDuskExact(earned, language)}`}
+                value={`${sign}${formatDusk(earned, language)}`}
               /> DUSK
             </dd>
           </div>
@@ -875,9 +872,7 @@
         <label class="liquid-stake__label" for="{id}-amount">Amount</label>
         <div class="liquid-stake__amount">
           <Textbox
-            aria-describedby={isAmountMasked
-              ? `${id}-amount-hidden`
-              : `${id}-available ${id}-check`}
+            aria-describedby="{id}-available {id}-check"
             aria-invalid={Boolean(check.error)}
             autocomplete="off"
             className="liquid-stake__input"
@@ -886,11 +881,8 @@
             inputmode="decimal"
             on:input={typeAmount}
             type="text"
-            value={isAmountMasked ? BALANCE_MASK : amountText}
+            value={amountText}
           />
-          {#if isAmountMasked}
-            <span hidden id="{id}-amount-hidden">hidden</span>
-          {/if}
           <span aria-hidden="true" class="liquid-stake__unit">DUSK</span>
           <Button
             disabled={!status || isStakeOff || most <= 0n}
@@ -906,11 +898,13 @@
         <p class="liquid-stake__hint" id="{id}-available">
           {#if isStake}
             Available <BalanceValue
+              hidden={false}
               exact={formatDuskExact(free, language)}
               value={formatDusk(free, language)}
             /> DUSK (public)
           {:else}
             Staked with Sozu <BalanceValue
+              hidden={false}
               exact={formatDuskExact(unstakeable, language)}
               value={formatDusk(unstakeable, language)}
             /> DUSK
@@ -956,17 +950,17 @@
             <div class="liquid-stake__estimate">
               <p>
                 You get about <BalanceValue
-                  hidden={isAmountMasked}
+                  hidden={false}
                   value={formatDusk(estimate, language)}
                 /> stDUSK (≈ <BalanceValue
-                  hidden={isAmountMasked}
+                  hidden={false}
                   value={formatDusk(stake.worth, language)}
                 /> DUSK now).
               </p>
               {#if yearEarned !== null && yearEarned > 0n}
                 <p>
                   About <BalanceValue
-                    hidden={isAmountMasked}
+                    hidden={false}
                     value={formatDusk(yearEarned, language)}
                   /> DUSK in rewards a year at today's rate, after fees.
                 </p>
@@ -1032,7 +1026,7 @@
           <dt>{isStake ? "Stake with Sozu" : "Unstake from Sozu"}</dt>
           <dd class:stake-flow__muted={isTypedOff}>
             <BalanceValue
-              hidden={isAmountMasked}
+              hidden={false}
               value={formatDuskExact(typedAmount, language)}
             /> DUSK
           </dd>
@@ -1045,7 +1039,7 @@
                 —
               {:else}
                 <BalanceValue
-                  hidden={isAmountMasked}
+                  hidden={false}
                   value={formatDusk(estimate, language)}
                 />
               {/if} stDUSK
@@ -1055,7 +1049,10 @@
             <dt>Deposit fee, not refunded</dt>
             <dd class:stake-flow__muted={isTypedOff && depositFee !== null}>
               {#if depositRate && depositFee !== null}
-                <BalanceValue value={formatDuskExact(depositFee, language)} /> DUSK
+                <BalanceValue
+                  hidden={false}
+                  value={formatDuskExact(depositFee, language)}
+                /> DUSK
               {:else}
                 Taken from the deposit
               {/if}
@@ -1129,7 +1126,7 @@
             <dt>Total up to</dt>
             <dd class:stake-flow__muted={isTypedOff}>
               <BalanceValue
-                hidden={isAmountMasked}
+                hidden={false}
                 value={formatTotal(total, free, language)}
               /> DUSK
             </dd>
@@ -1144,7 +1141,7 @@
                 —
               {:else}
                 About <BalanceValue
-                  hidden={isAmountMasked}
+                  hidden={false}
                   value={formatDuskExact(typedAmount, language)}
                 /> DUSK
               {/if}
@@ -1161,6 +1158,7 @@
         {#if !isStake && typedAmount > 0n && typedAmount <= maxGasFee}
           <p class="stake-flow__final">
             The fee, up to <BalanceValue
+              hidden={false}
               value={formatFee(maxGasFee, language, { max: true })}
             /> DUSK, can be more than what comes back.
           </p>

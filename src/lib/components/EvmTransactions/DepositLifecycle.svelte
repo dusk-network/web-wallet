@@ -28,6 +28,14 @@
   /** @type {any} */
   export let deposit;
 
+  /**
+   * Whether its fee is hidden: as balances are where it's browsed, in
+   * Transfers, by default; never in the flow that sent it (false).
+   *
+   * @type {boolean | undefined}
+   */
+  export let hidden = undefined;
+
   /** @type {HTMLElement | null} */
   export let element = null;
 
@@ -113,7 +121,10 @@
       {#if fee !== null}
         <dt>Fee</dt>
         <dd>
-          <BalanceValue value={formatDuskExact(fee, $settingsStore.language)} />
+          <BalanceValue
+            {hidden}
+            value={formatDuskExact(fee, $settingsStore.language)}
+          />
           DUSK
         </dd>
       {/if}

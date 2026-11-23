@@ -1522,7 +1522,7 @@ describe("Send", () => {
       expect(fields.review()).toBeDisabled();
     });
 
-    it("should hide what Max fills in while balances are hidden, send it all the same, and show what's typed", async () => {
+    it("should show what Max fills in while balances are hidden, in the field, on the review and its button, and send it", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
@@ -1537,17 +1537,15 @@ describe("Send", () => {
 
         await fireEvent.click(getByRole("button", { name: "Max" }));
 
-        // No figure in the field, on the page or on Send.
-        expect(
-          /** @type {HTMLInputElement} */ (fields.amount()).value,
-        ).not.toMatch(/\d/);
-        expect(shown()).not.toContain(exact);
-        expect(shown()).not.toContain(
+        // The figure, in the field, with the balance it's from.
+        expect(fields.amount()).toHaveValue(formatDuskPlain(max));
+        expect(shown()).toContain(
           formatDuskExact(baseProps.availableBalance, "en"),
         );
         await fireEvent.click(fields.review());
 
-        expect(fields.send()).not.toHaveAccessibleName(/\d/);
+        expect(shown()).toContain(exact);
+        expect(fields.send()).toHaveAccessibleName(`Send ${exact} DUSK`);
 
         await afterConfirmDelay();
         await fireEvent.click(fields.send());
@@ -1566,28 +1564,24 @@ describe("Send", () => {
       }
     });
 
-    it("should hide an amount sent back while balances are hidden, as Max's, and send it all the same", async () => {
+    it("should show an amount sent back while balances are hidden, and send it", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
         const { container, getByRole } = render(Send, {
           ...baseProps,
           initialAmount: "0.012",
-          initialAmountHidden: true,
           initialMemo: "Refund: Factura 43",
           initialRecipient: otherAccount,
         });
         const fields = fieldsOf(getByRole);
 
-        expect(
-          /** @type {HTMLInputElement} */ (fields.amount()).value,
-        ).not.toMatch(/\d/);
-        expect(container.textContent).not.toContain("0.012");
+        expect(fields.amount()).toHaveValue("0.012");
 
         await fireEvent.click(fields.review());
 
-        expect(fields.send()).not.toHaveAccessibleName(/\d/);
-        expect(container.textContent).not.toContain("0.012");
+        expect(fields.send()).toHaveAccessibleName("Send 0.012 DUSK");
+        expect(container.textContent).toContain("0.012 DUSK");
 
         await afterConfirmDelay();
         await fireEvent.click(fields.send());
@@ -1694,16 +1688,6 @@ describe("Send", () => {
         await fireEvent.click(fields.review());
 
         expect(fields.send()).toHaveAccessibleName(/(^|\s)1 DUSK/);
-
-        await fireEvent.click(getByRole("button", { name: "Back" }));
-
-        // Deleting the dots clears it, on a keyboard that only says so by
-        // changing the field.
-        await fireEvent.click(getByRole("button", { name: "Max" }));
-        await fireEvent.input(fields.amount(), { target: { value: "•••" } });
-
-        expect(fields.amount()).toHaveValue("");
-        expect(fields.review()).toBeDisabled();
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -1923,7 +1907,7 @@ describe("Send", () => {
         expect(queryByRole("status")).toBeNull();
       });
 
-      it("hides the figure with the balances", async () => {
+      it("says the figure while balances are hidden too", async () => {
         settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
         try {
@@ -1934,7 +1918,7 @@ describe("Send", () => {
 
           await fireEvent.click(getByRole("button", { name: "Max" }));
 
-          expect(container).not.toHaveTextContent("0.05");
+          expect(container).toHaveTextContent("0.05");
         } finally {
           settingsStore.update((store) => ({ ...store, hideBalances: false }));
         }
@@ -2011,11 +1995,11 @@ describe("Send", () => {
       expect(fields.review()).toBeEnabled();
     });
 
-    it("should keep the balance out of what it says about the amount while balances are hidden", async () => {
+    it("should say the balance an amount is more than, while balances are hidden too", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
-        const { container, findByRole, getByRole } = render(Send, baseProps);
+        const { findByRole, getByRole } = render(Send, baseProps);
         const fields = fieldsOf(getByRole);
 
         await fireEvent.input(fields.to(), { target: { value: otherAccount } });
@@ -2023,9 +2007,8 @@ describe("Send", () => {
           target: { value: "99999999" },
         });
 
-        // Refused, without the balance it's more than.
-        expect(await findByRole("alert")).toBeInTheDocument();
-        expect(container).not.toHaveTextContent(
+        // Refused, with the balance it's more than.
+        expect(await findByRole("alert")).toHaveTextContent(
           formatDuskExact(baseProps.availableBalance, "en"),
         );
       } finally {
@@ -2214,7 +2197,7 @@ describe("Send", () => {
       expect(statuses[0]).toHaveTextContent(shortenAddress(otherAccount));
     });
 
-    it("should say what's on its way, with no amount while the balances are hidden", () => {
+    it("should say what's on its way, with its amount, while balances are hidden too", () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
@@ -2225,7 +2208,7 @@ describe("Send", () => {
         const status = getByRole("status");
 
         expect(status).toHaveClass("banner--info");
-        expect(status).not.toHaveTextContent("0.0019");
+        expect(status).toHaveTextContent("0.0019");
         expect(status).toHaveTextContent(shortenAddress(otherAccount));
       } finally {
         settingsStore.reset();
@@ -2477,7 +2460,6 @@ describe("Send", () => {
         typed: {
           amount: "0.0019",
           isMax: false,
-          isOwn: false,
           memo: "tab dropped 1",
           picks: {},
           to: otherAccount,
@@ -2901,7 +2883,7 @@ describe("Send", () => {
       );
     });
 
-    it("should say what it sent as balances show at the time: its amount hidden once they're hidden, though they showed as it was sent", async () => {
+    it("should say what it sent with its amount, while balances are hidden too: the Sent screen ends the flow", async () => {
       const { container, getByRole } = render(Send, baseProps);
 
       await sendWith(getByRole);
@@ -2912,7 +2894,7 @@ describe("Send", () => {
         settingsStore.update((store) => ({ ...store, hideBalances: true }));
         await tick();
 
-        expect(sentWhat(container)).not.toContain("567");
+        expect(sentWhat(container)).toMatch(/^567 DUSK\b/);
         expect(sentWhat(container)).toMatch(
           endingWith(shortenAddress(shieldedAddress)),
         );

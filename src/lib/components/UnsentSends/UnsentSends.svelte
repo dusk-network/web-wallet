@@ -39,6 +39,14 @@
   import Banner from "../Banner/Banner.svelte";
   import MemoText from "../MemoText/MemoText.svelte";
 
+  /**
+   * Whether what it says of each send hides its amount: as balances are
+   * where it's browsed, on Home, by default; never in Send's flow (false).
+   *
+   * @type {boolean | undefined}
+   */
+  export let hidden = undefined;
+
   /** Whether History shows the sends: else the balance says what went. */
   const hasHistory = isHistoryEnabled();
 
@@ -72,9 +80,11 @@
    */
   async function dontSendNow(send) {
     if (await dontSendHandedOver(send)) {
+      // A toast is over whatever page shows: its amount as balances show
+      // there, even where this list is drawn in Send's flow.
       toast(
         "info",
-        `Not sent yet: ${whatOf(send, hideBalances)}. If it still arrives, it shows here.`,
+        `Not sent yet: ${whatOf(send, $settingsStore.hideBalances)}. If it still arrives, it shows here.`,
         mdiCheck,
       );
     }
@@ -156,7 +166,8 @@
   $: ({ balance, currentProfile, profiles } = $walletStore);
   $: lookAgainOn(balance);
   $: ({ networkName } = $networkStore);
-  $: ({ hideBalances, language } = $settingsStore);
+  $: ({ language } = $settingsStore);
+  $: hideBalances = hidden ?? $settingsStore.hideBalances;
   // This network's, from a profile the wallet open has.
   $: kept = $unsentSends.filter(
     (send) =>

@@ -43,7 +43,6 @@
   import { sendServiceTransfer } from "$lib/bridge/routeFlows";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import GasSettings from "../GasSettings/GasSettings.svelte";
@@ -124,16 +123,10 @@
   /** @type {string} */
   let amount = typedBefore?.amount ?? "";
 
-  /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = typedBefore?.isMax ?? false;
-
   /** @param {Event} event */
   function typeAmount(event) {
     note = "";
-    amount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
-    isMaxAmount = false;
+    amount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
   }
 
   let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
@@ -249,14 +242,13 @@
   $: typed = {
     amount,
     gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
-    isMax: isMaxAmount,
   };
   $: if (step !== "result") {
     draft.save(typed);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   $: followHistory(Boolean($page.state?.routeReview));
   $: ({ address, isConnected } = $account);
   $: chainName = route.chain.name;
@@ -276,12 +268,8 @@
   $: timeText = routeTimeText(time);
   $: shown = outcomeOf(operation);
   // What the Sent screen says went, and what arrives of it.
-  $: sentWhat = hideBalances
-    ? `${BALANCE_MASK} DUSK`
-    : `${formatDuskExact(amountLux, language)} DUSK`;
-  $: arrivesWhat = hideBalances
-    ? "It"
-    : `${formatDuskExact(arrivesLux, language)} DUSK`;
+  $: sentWhat = `${formatDuskExact(amountLux, language)} DUSK`;
+  $: arrivesWhat = `${formatDuskExact(arrivesLux, language)} DUSK`;
 
   // The node's price can arrive while the form is open: the form takes it,
   // unless the gas was edited here, and keeps the gas a review shows.
@@ -359,7 +347,7 @@
         placeholder="0"
         spellcheck="false"
         type="text"
-        value={isAmountMasked ? BALANCE_MASK : amount}
+        value={amount}
       />
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
@@ -369,6 +357,7 @@
         <span id="service-balance"
           ><BalanceValue
             exact={formatDuskExact(unshieldedBalance, language)}
+            hidden={false}
             value={formatDusk(unshieldedBalance, language)}
           /> DUSK</span
         >
@@ -384,7 +373,6 @@
               ),
               getDecimalSeparator(language),
             );
-            isMaxAmount = true;
           }}
           type="button">Max</button
         >
@@ -398,7 +386,6 @@
         on:choose={(event) => {
           note = "";
           amount = event.detail;
-          isMaxAmount = false;
         }}
         text={amount}
       />
@@ -410,9 +397,7 @@
       </p>
     {:else if keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - total === keepForLater.lux}
       <p class="swap-note">
-        Max leaves {hideBalances
-          ? "the fee"
-          : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+        Max leaves {formatFee(keepForLater.lux, language, { max: true })} DUSK
         {keepForLater.why}.
       </p>
     {/if}
@@ -452,16 +437,11 @@
         class:swap-amount__empty={arrivesLux === 0n}
         for="service-amount"
         style:--figure-width={figureWidth(
-          arrivesLux === 0n
-            ? "0"
-            : isAmountMasked
-              ? BALANCE_MASK
-              : formatDuskExact(arrivesLux, language),
+          arrivesLux === 0n ? "0" : formatDuskExact(arrivesLux, language),
         )}
-        >{#if arrivesLux === 0n}0{:else}<BalanceValue
-            hidden={isAmountMasked}
-            value={formatDuskExact(arrivesLux, language)}
-          />{/if}</output
+        >{arrivesLux === 0n
+          ? "0"
+          : formatDuskExact(arrivesLux, language)}</output
       >
       <span class="swap-token"
         ><NetworkMark id={route.destination} />{route.chain.tokenLabel ??
@@ -516,10 +496,7 @@
       <div>
         <dt>Leaves your public balance</dt>
         <dd>
-          up to <BalanceValue
-            hidden={isAmountMasked}
-            value={formatFee(total, language, { max: true })}
-          /> DUSK
+          up to {formatFee(total, language, { max: true })} DUSK
         </dd>
       </div>
     </dl>
@@ -562,8 +539,7 @@
       <div>
         <dt>Amount</dt>
         <dd>
-          {isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)}
-          DUSK
+          {formatDuskExact(amountLux, language)} DUSK
         </dd>
       </div>
       <div>
@@ -575,7 +551,7 @@
         <dd>
           {arrivesLux === 0n
             ? "Nothing"
-            : `${isAmountMasked ? BALANCE_MASK : formatDuskExact(arrivesLux, language)} DUSK`}
+            : `${formatDuskExact(arrivesLux, language)} DUSK`}
         </dd>
       </div>
       <div>
@@ -611,9 +587,7 @@
       <div>
         <dt>Total up to</dt>
         <dd>
-          {isAmountMasked
-            ? BALANCE_MASK
-            : formatTotal(total, unshieldedBalance, language)} DUSK
+          {formatTotal(total, unshieldedBalance, language)} DUSK
         </dd>
       </div>
     </dl>
@@ -641,7 +615,7 @@
       disabled={arrivesLux === 0n || !isConnected || !isGasValid}
       icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
       on:click={send}
-      text={`Bridge ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+      text={`Bridge ${formatDuskExact(amountLux, language)} DUSK`}
       variant="primary"
     />
     <p class="route-review__final">Can't be undone.</p>
@@ -678,7 +652,6 @@
           <RouteTransferResult
             bind:heading={sentHeading}
             {hash}
-            masked={hideBalances}
             {route}
             sentText={timeText
               ? `${arrivesWhat} arrives on ${chainName} in ${timeText.replace(/^~/, "about ")}.`

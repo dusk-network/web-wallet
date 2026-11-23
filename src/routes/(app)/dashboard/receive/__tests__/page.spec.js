@@ -1580,7 +1580,7 @@ describe("Receive", () => {
       history.state?.set({ hasMore: false, rows: [] });
     });
 
-    it("should say a payment was sent back, offering Send back no more, and open Send back with its amount hidden with the balances", async () => {
+    it("should say a payment was sent back, offering Send back no more, and open Send back filled in from it", async () => {
       const PAYER =
         "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
       const at = Date.now() - 10_000;
@@ -1636,7 +1636,7 @@ describe("Receive", () => {
 
       expect(goto).toHaveBeenCalledWith(
         expect.stringMatching(/^\/some-base-path\/dashboard\/send\/\?/),
-        { state: { amountHidden: true, sendBack: true } },
+        { state: { sendBack: true } },
       );
 
       // Sent back, on its way: at a time this device's clock says, behind

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show amounts inside sends, stakes and other flows while balances are hidden, from the form and Max to the review and the result, and keep them hidden where you browse: Home, Activity, Staking's overview and what's held with Sozu, the Bridge's Transfers, saved requests, the tab's title, notifications and toasts
 - Put each stake's Unstake or Claim rewards beside its balance, quieter than the ways to stake, and on phones say what tells the two ways apart on their buttons, the full comparison behind Compare both
 - Call adding to a stake "Add to native stake" or "Add to Sozu stake", not "Stake more" and "Stake with Sozu", and put each way's button over its column in Staking's comparison
 - Cut the wallet's text to what each step needs, each warning said once where its risk is, in the words the Dusk apps share: Activity for the page called History, recovery phrase, public account, Fee up to, Details, and Sending, Waiting, Held, Not sent and Not confirmed for where a send is; a recipient shortened on the form and in full at Review, and own addresses shortened where a bridge pays out to one in full
@@ -56,16 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Say a send's arrival in a notification and the tab's title as balances show when they show, also after waiting for the service worker
-- Show a hidden amount on Shield's and the Bridge's review by a tap, a click, a key or a screen reader's double tap, say it and its total as it shows, and keep Hide amount where it was pressed
 - Close the Bridge's review if what it sends changes before it's sent, as a maximum asked for before it opened comes back, and carry no Max amount over a swap of From and To
-- Hide on the Bridge, while balances are hidden, an amount kept from before the wallet said whether Max filled it in, and what a Max deposit leaves the public balance
-- Hide what Max fills in on the Bridge while balances are hidden, in From, To and on its review, with Show amount there before it's sent
-- Offer Show amount on Shield's review where it hides what moves while balances are hidden, for it to be seen before it's confirmed: on a phone, while it's held
-- Say a send's amount on its Sent screen, in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
+- Say a send's amount in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
 - Hide what a failed transaction paid in Activity's and Home's rows and in what they read out while balances are hidden, as its details do
 - Say a look-alike contact's address where Home's Activity names it, as Activity does, and keep it and the warning whole in the search beside a long .dusk name
 - Read each way to stake with its terms, rates not promised included, and a Sozu stake's stDUSK before Unstake from Sozu, with a screen reader
-- Hide on Shield's review, in its total and on its button what moves while balances are hidden, where it's worked out from the balance the form hides; an amount typed into a side that held nothing still shows, as typed
 - Show 0, never a negative balance, in Shield's other field when more than the balance is typed
 - Hide each transfer's amount in the Bridge's Transfers list while balances are hidden, as its details do
 - Show a look-alike contact's warning and its address, and each transaction's time, privacy and fee, whole in Activity, the Activity panels on Home, Staking and Contacts and the search, on as many lines as they need, never cut short
@@ -205,7 +201,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refuse a contact's or a profile's name with hidden characters, and show one saved before by their codes, with a note in Contacts
 - Say what came in on every Paid request, as "Its memo matches a payment of 0.02 DUSK", and on each payment of one paid twice
 - Say Sent back on a request's payment once it's sent back, with no Send back for it
-- Hide the amount Send back fills in while balances are hidden
 - Keep a request asked again after it's paid as the one there was, not a new Waiting one
 - Give the export's values in the wallet's currency, as Indian rupees, not always in euros
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave

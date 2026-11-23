@@ -292,15 +292,14 @@ describe("TransactionStatus", () => {
     expect(statusOf(container)).toHaveClass("transaction-status--completed");
   });
 
-  it("should hide the fee with the balances, before the block and after", async () => {
+  it("should say the fee while balances are hidden too, before the block and after: a result ends the flow the person started", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
       const following = followNext();
       const { container, getByRole } = render(TransactionStatus, baseProps);
 
-      expect(detailOf(container, /^fee\b/i).value).not.toMatch(/\d/);
-      expect(container.textContent).not.toMatch(/\d DUSK/);
+      expect(detailOf(container, /^fee\b/i).value).toMatch(/\d DUSK/);
 
       following.resolve({
         blockHeight: 4_687_200n,
@@ -312,8 +311,7 @@ describe("TransactionStatus", () => {
         expect(getByRole("status")).toHaveTextContent(naming("4,687,200")),
       );
 
-      expect(detailOf(container, /^fee\b/i).value).not.toMatch(/\d/);
-      expect(container.textContent).not.toContain("0.0019");
+      expect(detailOf(container, /^fee\b/i).value).toBe("0.001854795 DUSK");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }

@@ -22,7 +22,6 @@
   } from "@wagmi/core";
   import { Gas } from "@dusk/w3sper";
 
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import {
     AppAnchorButton,
@@ -34,7 +33,6 @@
     OperationResult,
     ReviewWallet,
     SectionHead,
-    ShowAmount,
   } from "$lib/components";
   import {
     amountProblem,
@@ -190,27 +188,18 @@
   let amount = typedBefore?.amount ?? "";
 
   /**
-   * Whether Max filled the amount in: worked out from a balance, it's hidden
-   * with the balances, as Send's is. One typed shows. An amount kept before
-   * this was kept with it may be either: it's taken for Max's, hidden while
-   * balances are.
+   * Whether Max filled the amount in, since it was last typed: worked out
+   * from one side's balance, it doesn't come over a swap to the other, also
+   * after a lock or a reload, which keep it with the amount.
    */
-  let isMaxAmount =
-    typeof typedBefore?.isMax === "boolean"
-      ? typedBefore.isMax
-      : Boolean(typedBefore?.amount);
-
-  /** Whether the review shows the amount Max hid, as asked. */
-  let isAmountShown = false;
+  let isMaxAmount = typedBefore?.isMax === true;
 
   /** What the open review shows, in LUX: it closes once that's not it. */
   let reviewedLux = 0n;
 
   /** @param {Event} event */
   function typeAmount(event) {
-    amount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
+    amount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isMaxAmount = false;
   }
 
@@ -636,7 +625,6 @@
 
   function review() {
     isEditing = false;
-    isAmountShown = false;
     reviewedLux = amountLux;
 
     if (isWithdrawing) {
@@ -648,7 +636,6 @@
 
   function edit() {
     isEditing = true;
-    isAmountShown = false;
     step = "form";
   }
 
@@ -838,11 +825,8 @@
     return unsubscribeAccount;
   });
 
-  $: ({ hideBalances, language } = $settingsStore);
-  // What Max filled in gives the balance away: hidden with the balances,
-  // shown on the review when asked, for it to be seen before it's sent.
-  $: isAmountMasked = hideBalances && isMaxAmount;
-  $: isReviewMasked = isAmountMasked && !isAmountShown;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   // The contract a deposit calls on Dusk, as the network's file names it.
   $: ({ name: networkName } = $nodeNetwork ?? { name: "" });
   $: depositContract = networkName ? configuredBridge().bridge : "";
@@ -923,7 +907,7 @@
           placeholder="0"
           spellcheck="false"
           type="text"
-          value={isAmountMasked ? BALANCE_MASK : amount}
+          value={amount}
         />
         <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
       </div>
@@ -936,11 +920,13 @@
             {#if !isWithdrawing}
               <BalanceValue
                 exact={formatDuskExact(unshieldedBalance, language)}
+                hidden={false}
                 value={formatDusk(unshieldedBalance, language)}
               /> DUSK
             {:else if evmDuskBalance}
               <BalanceValue
                 exact={formatDuskExact(evmLux(evmDuskBalance), language)}
+                hidden={false}
                 value={formatDusk(evmLux(evmDuskBalance), language)}
               /> DUSK
             {:else}
@@ -988,9 +974,7 @@
         </p>
       {:else if isDepositing && keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - totalDepositLux === keepForLater.lux}
         <p class="swap-note">
-          Max leaves {hideBalances
-            ? "the fee"
-            : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+          Max leaves {formatFee(keepForLater.lux, language, { max: true })} DUSK
           {keepForLater.why}.
         </p>
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
@@ -1032,10 +1016,8 @@
         <output
           class:swap-amount__empty={amountLux === 0n}
           for="bridge-amount"
-          style:--figure-width={figureWidth(
-            isAmountMasked ? BALANCE_MASK : arrivingText,
-          )}
-          ><BalanceValue hidden={isAmountMasked} value={arrivingText} /></output
+          style:--figure-width={figureWidth(arrivingText)}
+          >{arrivingText}</output
         >
         <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
       </div>
@@ -1045,6 +1027,7 @@
           <span class="swap-foot__value"
             >+ <BalanceValue
               exact={formatDuskExact(incomingDepositLux, language)}
+              hidden={false}
               value={formatDusk(incomingDepositLux, language)}
             /> DUSK on its way</span
           >
@@ -1085,10 +1068,7 @@
           <div>
             <dt>Leaves your public balance</dt>
             <dd>
-              up to <BalanceValue
-                hidden={isAmountMasked}
-                value={formatFee(totalDepositLux, language, { max: true })}
-              /> DUSK
+              up to {formatFee(totalDepositLux, language, { max: true })} DUSK
             </dd>
           </div>
         {:else}
@@ -1141,10 +1121,7 @@
         <div>
           <dt>Amount</dt>
           <dd>
-            <BalanceValue
-              hidden={isReviewMasked}
-              value={formatDuskExact(amountLux, language)}
-            /> DUSK
+            {formatDuskExact(amountLux, language)} DUSK
           </dd>
         </div>
         <div>
@@ -1183,25 +1160,12 @@
           </div>
         {/if}
       </dl>
-      {#if isAmountMasked}
-        <ShowAmount
-          bind:shown={isAmountShown}
-          said={`Amount ${formatDuskExact(amountLux, language)} DUSK${isDepositing ? `, total up to ${formatTotal(totalDepositLux, unshieldedBalance, language)} DUSK` : ""}`}
-        />
-      {/if}
       {#if isDepositing}
         <dl class="route-review__rows route-review__rows--total">
           <div>
             <dt>Total up to</dt>
             <dd>
-              <BalanceValue
-                hidden={isReviewMasked}
-                value={formatTotal(
-                  totalDepositLux,
-                  unshieldedBalance,
-                  language,
-                )}
-              /> DUSK
+              {formatTotal(totalDepositLux, unshieldedBalance, language)} DUSK
             </dd>
           </div>
         </dl>
@@ -1236,7 +1200,7 @@
         disabled={isNextButtonDisabled || !isConnected}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}
-        text={`Bridge ${isReviewMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+        text={`Bridge ${formatDuskExact(amountLux, language)} DUSK`}
         variant="primary"
       />
       <p class="route-review__final">Can't be undone.</p>
@@ -1254,7 +1218,7 @@
         onRetry={tryAgain}
         onSeen={keepSeenDeposit}
         {operation}
-        what={`${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK to DuskEVM`}
+        what={`${formatDuskExact(amountLux, language)} DUSK to DuskEVM`}
       />
     </div>
   {:else}

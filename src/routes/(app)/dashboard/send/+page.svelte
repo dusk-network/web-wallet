@@ -164,7 +164,6 @@
     {gasSettings}
     {historyRows}
     initialAmount={asked?.amount ?? ""}
-    initialAmountHidden={Boolean($page.state?.amountHidden)}
     initialElsewhere={asked?.elsewhere ?? null}
     initialMemo={asked?.memo ?? ""}
     initialProblem={asked?.problem ?? ""}

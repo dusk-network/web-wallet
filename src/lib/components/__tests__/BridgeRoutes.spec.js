@@ -266,7 +266,7 @@ describe("the Bridge card's routes to and from other chains", () => {
     settingsStore.update((store) => ({ ...store, hideBalances: false }));
   });
 
-  it("hides what Max fills in on a route while balances are hidden, there and on its review", async () => {
+  it("shows what Max fills in on a route while balances are hidden, there and on its review: a flow the person started", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -279,21 +279,21 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      // The 10 DUSK less the fee, 9.9975, of which 8.9975 arrives: neither
-      // said, in the field or what it gives.
-      expect(amount.value).not.toMatch(/\d/);
-      expect(container.querySelector("output")).not.toHaveTextContent(/\d/);
+      // The 10 DUSK less the fee, 9.9975, of which 8.9975 arrives: each said,
+      // in the field and what it gives.
+      expect(amount).toHaveValue("9.9975");
+      expect(container.querySelector("output")).toHaveTextContent("8.9975");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      expect(container).not.toHaveTextContent("9.9975");
-      expect(container).not.toHaveTextContent("8.9975");
+      expect(container).toHaveTextContent("9.9975 DUSK");
+      expect(container).toHaveTextContent("8.9975 DUSK");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("hides what Max fills in on a migration while balances are hidden", async () => {
+  it("shows what Max fills in on a migration while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -313,14 +313,9 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      // The 5 BEP20 DUSK the wallet holds, said nowhere.
-      expect(/** @type {HTMLInputElement} */ (amount).value).not.toMatch(/\d/);
-      expect(container.querySelector("output")).not.toHaveTextContent(/\d/);
-
-      // What hides it is no amount.
-      await fireEvent.input(amount, { target: { value: "•••" } });
-
-      expect(amount).toHaveValue("");
+      // The 5 BEP20 DUSK the wallet holds, in the field and what it gives.
+      expect(amount).toHaveValue("5");
+      expect(container.querySelector("output")).toHaveTextContent("5");
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -805,7 +800,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       ).toStrictEqual([]);
     });
 
-    it("hides the amount with the balances, and says one with no limit as that, there and on a review", async () => {
+    it("says the amount while balances are hidden too, and one with no limit as that, there and on a review", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       mocks.allowance.mockResolvedValue(HALF);
 
@@ -813,7 +808,7 @@ describe("the Bridge card's routes to and from other chains", () => {
 
       await hidden.findByRole("button", { name: "Revoke" });
 
-      expect(panel(hidden.container)).not.toHaveTextContent("0.5");
+      expect(panel(hidden.container)).toHaveTextContent("0.5");
       cleanup();
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
 
@@ -963,7 +958,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(approval).not.toHaveTextContent(/from before/i);
     });
 
-    it("hides what an approval leaves on the review with the balances", async () => {
+    it("says what an approval leaves on the review while balances are hidden too", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       mocks.allowance.mockResolvedValue(HALF);
 
@@ -978,8 +973,8 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(getByRole("button", { name: MIGRATE })).toBeEnabled(),
       );
 
-      expect(container).not.toHaveTextContent("0.3 BEP20");
-      expect(container).not.toHaveTextContent("0.5 BEP20");
+      expect(container).toHaveTextContent("0.3 BEP20");
+      expect(container).toHaveTextContent("0.5 BEP20");
     });
 
     describe("Revoke", () => {
@@ -1113,13 +1108,13 @@ describe("the Bridge card's routes to and from other chains", () => {
         expect(revokeIn(view)).toBeDisabled();
       });
 
-      it("hides what's approved now with the balances, as the form before it does", async () => {
+      it("says what's approved now while balances are hidden too, as the form before it does", async () => {
         settingsStore.update((store) => ({ ...store, hideBalances: true }));
         mocks.allowance.mockResolvedValue(HALF);
 
         const view = await toRevoke();
 
-        expect(view.container).not.toHaveTextContent("0.5 BEP20");
+        expect(view.container).toHaveTextContent("0.5 BEP20");
       });
 
       it("says the approval stands when it's declined in the wallet", async () => {
@@ -1664,20 +1659,19 @@ describe("the Bridge card's routes to and from other chains", () => {
       );
     });
 
-    it("keeps amounts hidden while balances are", async () => {
+    it("says its amounts while balances are hidden too: the end of the flow the person started", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       const { container } = await sendOut();
 
       mocks.transfers?.set([out({ payout: "0xcc", stage: "arrived" })]);
 
-      // Arrived on BNB Smart Chain, with no figure.
+      // Arrived: the 1 DUSK, on BNB Smart Chain.
       await vi.waitFor(() =>
         expect(headingOf(container)).toMatch(/^arrived$/i),
       );
+      expect(sentenceOf(container)).toMatch(/^1 DUSK\b/);
       expect(sentenceOf(container)).toMatch(/\bBNB Smart Chain\b/);
-      expect(sentenceOf(container)).not.toMatch(/\d/);
-      expect(resultOf(container)).not.toHaveTextContent("1 DUSK");
     });
   });
 
@@ -1758,7 +1752,7 @@ describe("the Bridge card's routes to and from other chains", () => {
       expect(view.queryByRole("button", { name: MIGRATE })).toBeNull();
     });
 
-    it("keeps what the wallet holds hidden while balances are", async () => {
+    it("says what the wallet holds for the fee while balances are hidden too", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
       mocks.allowance.mockResolvedValue(5n * DUSK * DUSK);
       mocks.getNativeBalance.mockResolvedValueOnce(12_345n * 10n ** 14n);
@@ -1766,13 +1760,15 @@ describe("the Bridge card's routes to and from other chains", () => {
       const { container, findByRole } = await reviewMigration();
 
       await findByRole("button", { name: MIGRATE });
-      // The fee, said once what the wallet holds is read, and not that.
+      // The fee, said once what the wallet holds is read, and that.
       await vi.waitFor(() =>
         expect(fieldOf(container, /^fee$/i)).toHaveTextContent(
           /\babout 0\.00012 ETH\b/i,
         ),
       );
-      expect(container).not.toHaveTextContent("1.2345");
+      expect(fieldOf(container, /^fee$/i)).toHaveTextContent(
+        /\byou have 1\.2345 ETH\b/i,
+      );
     });
 
     it("goes by the last review's reading, however late an older one answers", async () => {

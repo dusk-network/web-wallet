@@ -3,7 +3,6 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { formatFee } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { settingsStore, walletStore } from "$lib/stores";
-import { onAPhone } from "$lib/test-helpers";
 import { outcomeUnknown } from "$lib/transactions";
 
 import { Allocate } from "..";
@@ -211,55 +210,45 @@ describe("Allocate", () => {
     expect(getReviewValues(container)[1]).toBe(feeAt(5n));
   });
 
-  it("should hide the balances while they're hidden, and show what the user types, checked against them", async () => {
+  it("should show both balances, what's left of them and every figure of its review while balances are hidden: it's a flow the person started", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockReturnValue(new Promise(() => {}));
     const { container, getByRole } = render(Allocate, baseProps);
     const publicInput = getByRole("textbox", { name: "Public amount" });
     const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
-    const nextButton = getByRole("button", { name: "Review" });
 
-    // Neither balance shows: 1,000 DUSK public, 2,000 DUSK shielded.
+    // 1,000 DUSK public, 2,000 DUSK shielded, as they are.
     expect(
       container.querySelector(".operation__label small"),
-    ).not.toHaveTextContent(/[0-9]/);
-    expect(publicInput).toHaveValue("");
-    expect(shieldedInput).toHaveValue("");
-
-    await fireEvent.input(publicInput, { target: { value: "3500" } });
-
-    // More than both balances: refused, and the other side, which would
-    // give the total away, still not shown.
-    expect(publicInput).toHaveValue("3500");
-    expect(shieldedInput).toHaveValue("");
-    expect(nextButton).toBeDisabled();
-    expect(container.querySelector(".banner--error")).toHaveTextContent(
-      /more than/i,
-    );
+    ).toHaveTextContent("2,000 of 2,000 spendable");
+    expect(publicInput).toHaveValue("1000");
+    expect(shieldedInput).toHaveValue("2000");
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
 
-    expect(shieldedInput).toHaveValue("2500");
-    expect(publicInput).toHaveValue("");
-    expect(nextButton).toBeEnabled();
+    // What's left of the public balance.
+    expect(publicInput).toHaveValue("500");
 
-    await fireEvent.click(nextButton);
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    // What moves is the 2,500 typed less the hidden 2,000: it, and the total
-    // with it, would give the balance away. The fee doesn't.
-    const [amount, fee, total] = getReviewValues(container);
+    expect(getReviewValues(container)).toStrictEqual([
+      "500 DUSK",
+      "0.02 DUSK",
+      "500.02 DUSK",
+    ]);
 
-    expect(amount).not.toMatch(/\d/);
-    expect(amount).toMatch(/ DUSK$/);
-    expect(fee).toBe("0.02 DUSK");
-    expect(total).not.toMatch(/\d/);
-    expect(total).toMatch(/ DUSK$/);
-    expect(getByRole("button", { name: /^Shield\b/ })).not.toHaveAccessibleName(
-      /\d/,
-    );
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
+
+    expect(shield).toHaveBeenCalledOnce();
+    expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
   });
 
-  it("should hide what moves wherever it's worked out from a hidden balance, from either field", async () => {
+  it("should show what moves when it's typed in Public too, while balances are hidden", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(Allocate, {
@@ -271,109 +260,20 @@ describe("Allocate", () => {
       unshieldedBalance: 1_000_500_000_000n,
     });
 
-    // What stays public, typed: what moves is the hidden 1,000.5 less it.
+    // What stays public, typed: what moves is the 1,000.5 less it.
     await fireEvent.input(getByRole("textbox", { name: "Public amount" }), {
       target: { value: "250.25" },
     });
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
-    const [amount, fee, total] = getReviewValues(container);
-
-    expect(amount).not.toMatch(/\d/);
-    expect(fee).toBe("0.02 DUSK");
-    expect(total).not.toMatch(/\d/);
-    // Not 750.25, the public balance less what was typed.
-    expect(getByRole("button", { name: /^Shield\b/ })).not.toHaveAccessibleName(
-      /\d/,
-    );
-  });
-
-  it("should show what the review hides when asked, before it's confirmed, and shield it all the same", async () => {
-    vi.useFakeTimers({ toFake: ["performance"] });
-    settingsStore.update((store) => ({ ...store, hideBalances: true }));
-
-    const shield = vi
-      .spyOn(walletStore, "shield")
-      .mockReturnValue(new Promise(() => {}));
-    const { container, getByRole } = render(Allocate, baseProps);
-
-    // 2,500 typed over the hidden 2,000: what moves, 500, is hidden.
-    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
-      target: { value: "2500" },
-    });
-    await fireEvent.click(getByRole("button", { name: "Review" }));
-
-    expect(getReviewValues(container)[0]).not.toMatch(/\d/);
-
-    await fireEvent.click(getByRole("button", { name: "Show amount" }));
-
     expect(getReviewValues(container)).toStrictEqual([
-      "500 DUSK",
+      "750.25 DUSK",
       "0.02 DUSK",
-      "500.02 DUSK",
+      "750.27 DUSK",
     ]);
-
-    const confirm = getByRole("button", { name: "Shield 500 DUSK" });
-
-    expect(confirm).toBeEnabled();
-
-    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-    await fireEvent.click(confirm);
-
-    expect(shield).toHaveBeenCalledOnce();
-    expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
-  });
-
-  it("should show what the review hides on a phone too, as a tap or a screen reader's double tap presses it, say it, and keep the focus where it was pressed", async () => {
-    vi.useFakeTimers({ toFake: ["performance"] });
-    settingsStore.update((store) => ({ ...store, hideBalances: true }));
-
-    const phone = onAPhone();
-    const shield = vi
-      .spyOn(walletStore, "shield")
-      .mockReturnValue(new Promise(() => {}));
-
-    try {
-      const { container, getAllByRole, getByRole } = render(
-        Allocate,
-        baseProps,
-      );
-
-      await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
-        target: { value: "2500" },
-      });
-      await fireEvent.click(getByRole("button", { name: "Review" }));
-
-      expect(getReviewValues(container)[0]).not.toMatch(/\d/);
-
-      const show = getByRole("button", { name: "Show amount" });
-
-      // A screen reader's double tap: a click, with no finger held.
-      show.focus();
-      await fireEvent.click(show);
-
-      expect(getReviewValues(container)).toStrictEqual([
-        "500 DUSK",
-        "0.02 DUSK",
-        "500.02 DUSK",
-      ]);
-      // Said as it shows, the amount and the total; the focus stays on what
-      // showed it, which hides it again.
-      expect(
-        getAllByRole("status").map((status) => status.textContent),
-      ).toContainEqual(expect.stringMatching(/500 DUSK.*500\.02 DUSK/));
-      expect(document.activeElement).toBe(
-        getByRole("button", { name: "Hide amount" }),
-      );
-
-      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-      await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
-
-      expect(shield).toHaveBeenCalledOnce();
-      expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
-    } finally {
-      phone.mockRestore();
-    }
+    expect(
+      getByRole("button", { name: "Shield 750.25 DUSK" }),
+    ).toBeInTheDocument();
   });
 
   it("should show what's typed on the review where it's all that moves, into a side that held nothing", async () => {
