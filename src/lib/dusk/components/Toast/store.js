@@ -34,22 +34,43 @@ function addToast(type, message, icon, ms = get(toastTimer)) {
     ];
   });
 
-  const timeoutID = window.setTimeout(() => {
-    deleteToast(id, timeoutID);
-  }, ms);
+  timers.set(
+    id,
+    window.setTimeout(() => {
+      deleteToast(id);
+    }, ms),
+  );
 }
 
 /**
- * @param {string} id
- * @param {number} timeout
+ * The timer that takes each toast away, by its id: one that's dismissed
+ * leaves none behind.
+ *
+ * @type {Map<string, number>}
  */
-function deleteToast(id, timeout) {
-  window.clearTimeout(timeout);
+const timers = new Map();
+
+/**
+ * @param {string} id
+ */
+function deleteToast(id) {
+  window.clearTimeout(timers.get(id));
+  timers.delete(id);
 
   // Deletes toast from store queue
   toastList.update((store) => {
     return store.filter((toast) => toast.id !== id);
   });
+}
+
+/**
+ * Takes every toast away now, with the timers that would have: nothing of
+ * them is left to run, as once a test is done with the page.
+ */
+export function dismissToasts() {
+  for (const id of [...timers.keys()]) {
+    deleteToast(id);
+  }
 }
 
 export const toast = addToast;

@@ -22,6 +22,7 @@ import {
   MediaQueryList,
   MediaQueryListEvent,
 } from "./src/lib/dusk/mocks";
+import { dismissToasts } from "./src/lib/dusk/components/Toast/store";
 
 // Mocking wallet connection modules
 vi.mock("@reown/appkit");
@@ -137,9 +138,11 @@ if (!Element.prototype.getAnimations) {
 // Add custom jest matchers
 expect.extend(matchers);
 
-// What a tab keeps goes with it: each test is a tab of its own.
+// What a tab keeps goes with it: each test is a tab of its own. Its toasts
+// go too, with their timers, which would otherwise outlive the page.
 afterEach(() => {
   sessionStorage.clear();
+  dismissToasts();
 });
 
 // Mock SvelteKit runtime module $app/environment
