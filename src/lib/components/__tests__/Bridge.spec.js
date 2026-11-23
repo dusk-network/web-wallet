@@ -271,6 +271,52 @@ describe("Bridge", () => {
       deposit.mockRestore();
     });
 
+    it("should hide what Max fills in while balances are hidden, there and on its review, show it there when asked, and bridge it all the same", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const deposit = vi
+        .spyOn(walletStore, "depositEvmFunctionCall")
+        .mockReturnValue(new Promise(() => {}));
+      const { container, getByLabelText, getByRole } = render(
+        Bridge,
+        baseProps,
+      );
+      const arriving = () =>
+        container.querySelector(".swap-amount output")?.textContent ?? "";
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      // The public balance past the fee, 999.98: in no field, nor read out.
+      expect(
+        /** @type {HTMLInputElement} */ (getByLabelText("Amount")).value,
+      ).not.toMatch(/\d/);
+      expect(arriving()).not.toMatch(/\d/);
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(amountOf(container, /^amount$/i)).not.toMatch(/\d/);
+      expect(amountOf(container, /^total\b/i)).not.toMatch(/\d/);
+      expect(
+        getByRole("button", { name: /^Bridge\b/ }),
+      ).not.toHaveAccessibleName(/\d/);
+
+      await fireEvent.click(getByRole("button", { name: "Show amount" }));
+
+      expect(amountOf(container, /^amount$/i)).toBe("999.98 DUSK");
+      expect(amountOf(container, /^total\b/i)).toBe("1,000 DUSK");
+
+      const bridge = getByRole("button", { name: "Bridge 999.98 DUSK" });
+
+      expect(bridge).toBeEnabled();
+
+      await afterConfirmDelay();
+      await fireEvent.click(bridge);
+
+      expect(deposit).toHaveBeenCalledOnce();
+      expect(deposit.mock.calls[0][1]).toBe(999_980_000_000n);
+      deposit.mockRestore();
+    });
+
     it("should go back to its review with Try again when nothing went out, and keep what's typed", async () => {
       const deposit = vi
         .spyOn(walletStore, "depositEvmFunctionCall")

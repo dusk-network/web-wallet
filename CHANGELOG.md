@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Hide what Max fills in on the Bridge while balances are hidden, in From, To and on its review, with Show amount there before it's sent
 - Offer Show amount on Shield's review where it hides what moves while balances are hidden, for it to be seen before it's confirmed: on a phone, while it's held
 - Say a send's amount on its Sent screen, in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
 - Hide what a failed transaction paid in Activity's and Home's rows and in what they read out while balances are hidden, as its details do
