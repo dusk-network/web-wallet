@@ -1184,7 +1184,10 @@
         {/if}
       </dl>
       {#if isAmountMasked}
-        <ShowAmount bind:shown={isAmountShown} />
+        <ShowAmount
+          bind:shown={isAmountShown}
+          said={`Amount ${formatDuskExact(amountLux, language)} DUSK${isDepositing ? `, total up to ${formatTotal(totalDepositLux, unshieldedBalance, language)} DUSK` : ""}`}
+        />
       {/if}
       {#if isDepositing}
         <dl class="route-review__rows route-review__rows--total">

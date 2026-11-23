@@ -324,7 +324,7 @@ describe("Allocate", () => {
     expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
   });
 
-  it("should show what the review hides on a phone only while it's held, and shield it all the same", async () => {
+  it("should show what the review hides on a phone too, as a tap or a screen reader's double tap presses it, say it, and keep the focus where it was pressed", async () => {
     vi.useFakeTimers({ toFake: ["performance"] });
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
@@ -334,17 +334,10 @@ describe("Allocate", () => {
       .mockReturnValue(new Promise(() => {}));
 
     try {
-      const { container, getByRole } = render(Allocate, baseProps);
-      /** @param {string} type */
-      const finger = (type) =>
-        fireEvent(
-          getByRole("button", { name: "Hold to show amount" }),
-          Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
-            button: 0,
-            pointerId: 1,
-            pointerType: "touch",
-          }),
-        );
+      const { container, getAllByRole, getByRole } = render(
+        Allocate,
+        baseProps,
+      );
 
       await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
         target: { value: "2500" },
@@ -353,17 +346,28 @@ describe("Allocate", () => {
 
       expect(getReviewValues(container)[0]).not.toMatch(/\d/);
 
-      await finger("pointerdown");
+      const show = getByRole("button", { name: "Show amount" });
 
-      expect(getReviewValues(container)[0]).toBe("500 DUSK");
-      expect(getByRole("button", { name: "Shield 500 DUSK" })).toBeEnabled();
+      // A screen reader's double tap: a click, with no finger held.
+      show.focus();
+      await fireEvent.click(show);
 
-      await finger("pointerup");
-
-      expect(getReviewValues(container)[0]).not.toMatch(/\d/);
+      expect(getReviewValues(container)).toStrictEqual([
+        "500 DUSK",
+        "0.02 DUSK",
+        "500.02 DUSK",
+      ]);
+      // Said as it shows, the amount and the total; the focus stays on what
+      // showed it, which hides it again.
+      expect(
+        getAllByRole("status").map((status) => status.textContent),
+      ).toContainEqual(expect.stringMatching(/500 DUSK.*500\.02 DUSK/));
+      expect(document.activeElement).toBe(
+        getByRole("button", { name: "Hide amount" }),
+      );
 
       await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
-      await fireEvent.click(getByRole("button", { name: /^Shield\b/ }));
+      await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
 
       expect(shield).toHaveBeenCalledOnce();
       expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);

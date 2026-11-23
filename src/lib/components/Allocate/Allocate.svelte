@@ -421,7 +421,10 @@
             : formatDuskExact(amount, language)}
         />
         {#if isAmountHidden}
-          <ShowAmount bind:shown={isAmountShown} />
+          <ShowAmount
+            bind:shown={isAmountShown}
+            said={`Amount ${formatDuskExact(amount, language)} DUSK, total up to ${formatFee(amount + fee, language, { max: true })} DUSK`}
+          />
         {/if}
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">

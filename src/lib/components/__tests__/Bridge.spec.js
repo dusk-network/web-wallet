@@ -300,10 +300,24 @@ describe("Bridge", () => {
         getByRole("button", { name: /^Bridge\b/ }),
       ).not.toHaveAccessibleName(/\d/);
 
-      await fireEvent.click(getByRole("button", { name: "Show amount" }));
+      const show = getByRole("button", { name: "Show amount" });
+
+      // Pressed from the keyboard or a screen reader: the focus is on it.
+      show.focus();
+      await fireEvent.click(show);
 
       expect(amountOf(container, /^amount$/i)).toBe("999.98 DUSK");
       expect(amountOf(container, /^total\b/i)).toBe("1,000 DUSK");
+      // Said as it shows; the focus stays where it was pressed.
+      expect(
+        Array.from(
+          container.querySelectorAll("[role='status']"),
+          (status) => status.textContent,
+        ),
+      ).toContainEqual(expect.stringMatching(/999\.98 DUSK.*1,000 DUSK/));
+      expect(document.activeElement).toBe(
+        getByRole("button", { name: "Hide amount" }),
+      );
 
       const bridge = getByRole("button", { name: "Bridge 999.98 DUSK" });
 

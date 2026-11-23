@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show a hidden amount on Shield's and the Bridge's review by a tap, a click, a key or a screen reader's double tap, say it and its total as it shows, and keep Hide amount where it was pressed
 - Close the Bridge's review if what it sends changes before it's sent, as a maximum asked for before it opened comes back, and carry no Max amount over a swap of From and To
 - Hide on the Bridge, while balances are hidden, an amount kept from before the wallet said whether Max filled it in, and what a Max deposit leaves the public balance
 - Hide what Max fills in on the Bridge while balances are hidden, in From, To and on its review, with Show amount there before it's sent
