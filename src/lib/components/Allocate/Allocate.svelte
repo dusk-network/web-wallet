@@ -31,6 +31,7 @@
     GasSettings,
     ReviewAmount,
     ReviewWallet,
+    ShowAmount,
     TransactionResult,
   } from "$lib/components";
   import { formDraft, gasToKeep, keptGas } from "$lib/navigation";
@@ -164,6 +165,9 @@
   /** Whether the first step, where the gas can be edited, shows. */
   let isEditing = true;
 
+  /** Whether the review shows what it hides with the balances, as asked. */
+  let isAmountShown = false;
+
   /** Whether the transaction was asked for, and hasn't failed since. */
   let isSent = false;
 
@@ -230,6 +234,8 @@
     (typedAmount === "shielded-amount"
       ? initialShielded
       : totalBalance - initialShielded) !== 0n;
+  // Shown on the review when asked, for it to be seen before it's confirmed.
+  $: isAmountMasked = isAmountHidden && !isAmountShown;
 
   $: isShielding = difference > 0n;
   $: amount = isShielding ? difference : -difference;
@@ -391,12 +397,13 @@
       backButton={{
         action: () => {
           isEditing = true;
+          isAmountShown = false;
         },
       }}
       nextButton={{
         confirm: true,
         icon: { path: mdiArrowUpBoldBoxOutline, position: "before" },
-        label: `${isShielding ? "Shield" : "Unshield"} ${isAmountHidden ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK`,
+        label: `${isShielding ? "Shield" : "Unshield"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK`,
         variant: "primary",
       }}
     >
@@ -409,10 +416,13 @@
         <ReviewWallet />
         <ReviewAmount
           label="Amount"
-          value={isAmountHidden
+          value={isAmountMasked
             ? BALANCE_MASK
             : formatDuskExact(amount, language)}
         />
+        {#if isAmountHidden}
+          <ShowAmount bind:shown={isAmountShown} />
+        {/if}
         <dl class="operation__review-transaction">
           <dt class="review-transaction__label">
             <span>From</span>
@@ -439,7 +449,7 @@
         />
         <ReviewAmount
           label="Total up to"
-          value={isAmountHidden
+          value={isAmountMasked
             ? BALANCE_MASK
             : formatFee(amount + fee, language, { max: true })}
         />
@@ -450,6 +460,7 @@
         maxFee={fee}
         onRetry={(event) => {
           isSent = false;
+          isAmountShown = false;
           resultStep.back(event);
         }}
         operation={allocate()}

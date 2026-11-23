@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render } from "@testing-library/svelte";
 import { formatFee } from "$lib/dusk/currency";
 import { CONFIRM_DELAY } from "$lib/dusk/motion";
 import { settingsStore, walletStore } from "$lib/stores";
+import { onAPhone } from "$lib/test-helpers";
 import { outcomeUnknown } from "$lib/transactions";
 
 import { Allocate } from "..";
@@ -285,6 +286,90 @@ describe("Allocate", () => {
     expect(getByRole("button", { name: /^Shield\b/ })).not.toHaveAccessibleName(
       /\d/,
     );
+  });
+
+  it("should show what the review hides when asked, before it's confirmed, and shield it all the same", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockReturnValue(new Promise(() => {}));
+    const { container, getByRole } = render(Allocate, baseProps);
+
+    // 2,500 typed over the hidden 2,000: what moves, 500, is hidden.
+    await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+      target: { value: "2500" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(getReviewValues(container)[0]).not.toMatch(/\d/);
+
+    await fireEvent.click(getByRole("button", { name: "Show amount" }));
+
+    expect(getReviewValues(container)).toStrictEqual([
+      "500 DUSK",
+      "0.02 DUSK",
+      "500.02 DUSK",
+    ]);
+
+    const confirm = getByRole("button", { name: "Shield 500 DUSK" });
+
+    expect(confirm).toBeEnabled();
+
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(confirm);
+
+    expect(shield).toHaveBeenCalledOnce();
+    expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
+  });
+
+  it("should show what the review hides on a phone only while it's held, and shield it all the same", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const phone = onAPhone();
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockReturnValue(new Promise(() => {}));
+
+    try {
+      const { container, getByRole } = render(Allocate, baseProps);
+      /** @param {string} type */
+      const finger = (type) =>
+        fireEvent(
+          getByRole("button", { name: "Hold to show amount" }),
+          Object.assign(new Event(type, { bubbles: true, cancelable: true }), {
+            button: 0,
+            pointerId: 1,
+            pointerType: "touch",
+          }),
+        );
+
+      await fireEvent.input(getByRole("textbox", { name: "Shielded amount" }), {
+        target: { value: "2500" },
+      });
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(getReviewValues(container)[0]).not.toMatch(/\d/);
+
+      await finger("pointerdown");
+
+      expect(getReviewValues(container)[0]).toBe("500 DUSK");
+      expect(getByRole("button", { name: "Shield 500 DUSK" })).toBeEnabled();
+
+      await finger("pointerup");
+
+      expect(getReviewValues(container)[0]).not.toMatch(/\d/);
+
+      await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+      await fireEvent.click(getByRole("button", { name: /^Shield\b/ }));
+
+      expect(shield).toHaveBeenCalledOnce();
+      expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
+    } finally {
+      phone.mockRestore();
+    }
   });
 
   it("should show what's typed on the review where it's all that moves, into a side that held nothing", async () => {
