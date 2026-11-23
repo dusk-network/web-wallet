@@ -58,6 +58,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Send no notification of a transfer's end once Turn off is pressed, also one that waited for the wallet's service worker to be ready
 - Close the Bridge's review once its route, the EVM account or the profile changes, as its tab's link changes a route a link opened, and send a withdrawal from the EVM account and to the profile it was reviewed for or not at all, also where another is picked while the password is asked; carry no Max amount over to the other side however the route changes
+- Keep a long amount typed on the Bridge whole: set smaller where it doesn't fit its line, its token's pill under it, as the amount that arrives is, never scrolled out of sight
+- Keep the profile's number in the top bar's pill on a phone with more than one wallet while the network has a problem, where "Main · Profile 1" has no room
+- Give a contact's See the new address and Try again a tap of 44 × 44 px on phones
 - Say a Bridge transfer's end in its notification and the tab's title as balances show when it's told, and tell it once: hiding or showing balances after tells nothing again
 - Show the recovery words on a phone to a screen reader too, whose double tap can't hold Hold to show words: pressed so, they show until it's pressed again, the focus goes anywhere but the button and the words, the page is pressed elsewhere or it's left, also after the button was held with a key
 - Quote a withdrawal's fee on DuskEVM as the most it can cost, its L1 data and operator fees with its gas, keep that aside with Max, and ask the EVM wallet for the gas limit and price caps it's quoted at, from an estimate of that very call: with none, nothing goes out; where the fee its review is quoted leaves too little for the amount, say so and offer no Bridge, and work an amount Max filled in out again

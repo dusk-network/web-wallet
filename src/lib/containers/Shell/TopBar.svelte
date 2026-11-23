@@ -397,4 +397,35 @@
       display: none;
     }
   }
+
+  /*
+   * Below 420 px with more than one wallet, the pill says "Main · Profile 1"
+   * in words. Beside a network problem said in words there's no room for
+   * that: the profile's number, as with one wallet, so the pill never loses
+   * which profile it is. Its menu names the wallet.
+   */
+  @media (max-width: 26.24rem) {
+    .top-bar:has(:global(.network-pill__button--problem))
+      :global(.address-picker--compact .address-picker__trigger--wallet) {
+      padding: 0 0.3125rem;
+    }
+
+    .top-bar:has(:global(.network-pill__button--problem))
+      :global(
+        .address-picker--compact
+          .address-picker__trigger--wallet
+          .address-picker__avatar
+      ) {
+      display: grid;
+    }
+
+    .top-bar:has(:global(.network-pill__button--problem))
+      :global(
+        .address-picker--compact
+          .address-picker__trigger--wallet
+          .address-picker__compact-lines
+      ) {
+      display: none;
+    }
+  }
 </style>

@@ -183,25 +183,39 @@
   }
 
   /*
-   * What arrives shows whole: where it's too long for its line it's set
-   * smaller, by how wide it is in em at most (--figure-width), and the
-   * token's pill goes under it where the two don't fit side by side.
+   * What arrives, and what's typed, shows whole: where it's too long for its
+   * line it's set smaller, by how wide it is in em at most (--figure-width),
+   * and the token's pill goes under it where the two don't fit side by side.
+   * A field is never narrower than what's typed in it, so it never scrolls
+   * the start of a number out of sight.
    */
-  .swap-card :global(.swap-amount:has(> output)) {
+  .swap-card :global(.swap-amount:has(> output)),
+  .swap-card :global(.swap-amount:has(> input)) {
     container-type: inline-size;
     flex-wrap: wrap;
     row-gap: 0.375rem;
   }
 
-  .swap-card :global(.swap-amount > output) {
+  .swap-card :global(.swap-amount > output),
+  .swap-card :global(.swap-amount > input) {
     --swap-amount-size: 2.25rem;
 
     font-size: min(var(--swap-amount-size), 100cqi / var(--figure-width, 1));
-    overflow: visible;
     text-overflow: clip;
   }
 
-  .swap-card :global(.swap-amount > output ~ .swap-token) {
+  .swap-card :global(.swap-amount > output) {
+    overflow: visible;
+  }
+
+  /* As wide as what's typed, at least, and the rest of its line. */
+  .swap-card :global(.swap-amount > input) {
+    flex: 1 1 0;
+    min-width: min(calc(var(--figure-width, 0) * 1em + 2px), 100%);
+  }
+
+  .swap-card :global(.swap-amount > output ~ .swap-token),
+  .swap-card :global(.swap-amount > input ~ .swap-token) {
     margin-left: auto;
   }
 
@@ -447,10 +461,7 @@
   }
 
   @media (max-width: 40rem) {
-    .swap-card :global(.swap-amount input) {
-      font-size: 1.875rem;
-    }
-
+    .swap-card :global(.swap-amount > input),
     .swap-card :global(.swap-amount > output) {
       --swap-amount-size: 1.875rem;
     }
