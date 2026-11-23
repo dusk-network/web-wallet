@@ -15,7 +15,10 @@
   } from "@mdi/js";
   import { formatUnits } from "viem";
   import {
+    call as callEvm,
     estimateGas,
+    estimateMaxPriorityFeePerGas,
+    getBlock,
     getGasPrice,
     sendTransaction,
     switchChain,
@@ -80,6 +83,7 @@
     trackWithdrawalTransaction,
   } from "$lib/bridge/withdrawalActivity";
   import { withdrawalStart } from "$lib/bridge/withdrawals";
+  import { GAS_PRICE_ORACLE, duskEvmFee } from "$lib/bridge/duskEvmFee";
   import bridgeTimes from "$lib/bridge/bridgeTimes";
   import { beforeProofText } from "@dusk-network/networks/duskevm";
   import {
@@ -119,12 +123,15 @@
   const EVM_TO_LUX_SCALE_FACTOR =
     10n ** BigInt(duskEvm.nativeCurrency.decimals - 9);
 
-  /**
-   * What Max leaves on DuskEVM for the withdrawal's fee while it can't be
-   * estimated: 0.01 DUSK, several times a usual one.
-   */
-  const WITHDRAWAL_FEE_RESERVE_WEI = 10n ** 16n;
   const WITHDRAWAL_TX_HASH_PATTERN = /^0x[0-9a-fA-F]{64}$/;
+
+  /** Why a withdrawal didn't go: its fee wasn't worked out for it. */
+  const NO_FEE =
+    "The network fee couldn't be worked out for this withdrawal, so nothing was sent.";
+
+  /** Why a withdrawal didn't go: it was reviewed for other accounts. */
+  const ACCOUNT_CHANGED =
+    "The EVM account or the profile changed after the review, so nothing was sent.";
 
   /** @type {ContractGasSettings} */
   export let gasSettings;
@@ -194,8 +201,14 @@
    */
   let isMaxAmount = typedBefore?.isMax === true;
 
-  /** What the open review shows, in LUX: it closes once that's not it. */
-  let reviewedLux = 0n;
+  /** What the open review is of (`reviewOf`): it closes once that's not it. */
+  let reviewed = "";
+
+  /**
+   * Whether Max was worked out again at a review's fee, more than the one
+   * it left aside: the form says so.
+   */
+  let isMaxLower = false;
 
   /** @param {Event} event */
   function typeAmount(event) {
@@ -227,11 +240,20 @@
   let defaultGas = gasSettings;
 
   /**
-   * The DuskEVM fee of the withdrawal, estimated for its review, in wei.
+   * The withdrawal's quote for its review: the call it was quoted for, from
+   * the EVM account and to the public account it was reviewed for, the most
+   * DuskEVM can charge it, in wei, and the gas limit and price caps the EVM
+   * wallet is asked for as it sends it, which keep the fee to that. Nothing
+   * goes out without it.
    *
-   * @type {bigint | null}
+   * @type {(import("$lib/bridge/duskEvmFee").DuskEvmQuote & { account: `0x${string}`, call: { data: `0x${string}`, to: `0x${string}`, value: bigint }, feeWei: bigint, recipient: string }) | null}
    */
-  let withdrawalFeeWei = null;
+  let withdrawalQuote = null;
+
+  /** Whether the review's quote couldn't be read: nothing goes out. */
+  let isQuoteMissing = false;
+
+  $: withdrawalFeeWei = withdrawalQuote?.feeWei ?? null;
 
   /** How many times the maximum was asked for: only the last one applies. */
   let maxRequests = 0;
@@ -247,30 +269,44 @@
     getGasPrice(wagmiConfig, { chainId: duskEvm.id });
 
   /**
-   * Estimates the DuskEVM fee of a withdrawal of the given amount: the gas it
-   * needs at the current gas price. The EVM wallet sets the fee it pays.
+   * Quotes the DuskEVM fee of a withdrawal of the given amount: the most the
+   * chain can charge it, its L1 data and operator fees included, at the gas
+   * limit the EVM wallet is then asked for.
    *
    * @param {bigint} value The amount, in wei: whole lux.
-   * @returns {Promise<bigint>}
    */
   async function estimateWithdrawalFee(value) {
+    const sender = /** @type {`0x${string}`} */ ($account.address);
+    const recipient = unshieldedAddress;
     const call = withdrawalStart({
       amountWei: value,
-      sender: /** @type {string} */ ($account.address),
-      to: unshieldedAddress,
+      sender,
+      to: recipient,
     });
-    const [gas, price] = await Promise.all([
-      estimateGas(wagmiConfig, {
-        account: $account.address,
-        chainId: duskEvm.id,
-        data: call.data,
-        to: call.to,
-        value: call.value,
-      }),
-      loadEvmGasPrice(),
-    ]);
+    const chainId = duskEvm.id;
 
-    return gas * price;
+    const quote = await duskEvmFee(
+      {
+        baseFee: async () =>
+          (await getBlock(wagmiConfig, { chainId })).baseFeePerGas ?? null,
+        estimateGas: () =>
+          estimateGas(wagmiConfig, {
+            account: sender,
+            chainId,
+            data: call.data,
+            to: call.to,
+            value: call.value,
+          }),
+        gasPrice: loadEvmGasPrice,
+        oracle: async (data) =>
+          (await callEvm(wagmiConfig, { chainId, data, to: GAS_PRICE_ORACLE }))
+            .data,
+        tip: () => estimateMaxPriorityFeePerGas(wagmiConfig, { chainId }),
+      },
+      call.data,
+    );
+
+    return { ...quote, account: sender, call, recipient };
   }
 
   /** Gets the fee a withdrawal's review shows. */
@@ -278,18 +314,30 @@
     reviewRequests += 1;
 
     const request = reviewRequests;
-    const scope = maxScope;
 
-    withdrawalFeeWei = null;
+    withdrawalQuote = null;
+    isQuoteMissing = false;
     estimateWithdrawalFee(amountWei)
-      .then((feeWei) => {
-        // Only for the review asked for last, of the amount, the direction
-        // and the wallets it was asked for.
-        if (request === reviewRequests && scope === maxScope) {
-          withdrawalFeeWei = feeWei;
+      .then(
+        (quote) => quote,
+        () => null,
+      )
+      .then((quote) => {
+        // Only for the review asked for last, while it's open: one that
+        // closed since, as what it's of changed, is asked for again as it
+        // opens again.
+        if (request !== reviewRequests) {
+          return;
         }
-      })
-      .catch(() => {});
+
+        const { feeWei, maxFeePerGas, maxPriorityFeePerGas } = quote ?? {};
+
+        if (quote && feeWei && maxFeePerGas && maxPriorityFeePerGas !== null) {
+          withdrawalQuote = { ...quote, feeWei };
+        } else {
+          isQuoteMissing = true;
+        }
+      });
   }
 
   /**
@@ -305,10 +353,12 @@
 
   /**
    * Bridges all it can: on DuskDS what the public balance holds past the
-   * fee, on DuskEVM what is left after the withdrawal's estimated fee, with
-   * room for it to change.
+   * fee, on DuskEVM what is left after the most the withdrawal's fee can be.
+   * With no quote of that, there's no maximum.
    */
   async function setMaxAmount() {
+    isMaxLower = false;
+
     if (isDepositing) {
       const all = unshieldedBalance - fee;
 
@@ -328,22 +378,43 @@
     const request = maxRequests;
     const scope = maxScope;
     // A lux's withdrawal takes the gas any other amount does.
-    const feeWei = await estimateWithdrawalFee(EVM_TO_LUX_SCALE_FACTOR).catch(
+    const quote = await estimateWithdrawalFee(EVM_TO_LUX_SCALE_FACTOR).catch(
       () => null,
     );
 
     // The amount, the direction or a wallet changed while the fee was
-    // estimated, or the maximum was asked for again: this one is dropped.
-    if (request !== maxRequests || scope !== maxScope || !evmDuskBalance) {
+    // quoted, or the maximum was asked for again: this one is dropped.
+    if (
+      request !== maxRequests ||
+      scope !== maxScope ||
+      !evmDuskBalance ||
+      !quote?.feeWei
+    ) {
       return;
     }
 
-    const reserveWei = feeWei ? feeWei * 2n : WITHDRAWAL_FEE_RESERVE_WEI;
-
     amount = toAmountText(
-      (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR,
+      (evmDuskBalance.value - quote.feeWei) / EVM_TO_LUX_SCALE_FACTOR,
     );
     isMaxAmount = true;
+  }
+
+  /**
+   * Works Max out again at a review's fee, which leaves too little of the
+   * DuskEVM balance for what Max filled in: the review closes, as its amount
+   * changes, for the new one to be reviewed.
+   *
+   * @param {bigint} feeWei
+   */
+  function maxAtReviewFee(feeWei) {
+    if (!evmDuskBalance) {
+      return;
+    }
+
+    amount = toAmountText(
+      (evmDuskBalance.value - feeWei) / EVM_TO_LUX_SCALE_FACTOR,
+    );
+    isMaxLower = true;
   }
 
   /**
@@ -354,19 +425,13 @@
   const evmLux = (balance) => balance.value / EVM_TO_LUX_SCALE_FACTOR;
 
   /**
-   * The most a withdrawal's fee is taken to be, in whole LUX, for what the
-   * password goes by: the EVM wallet sets what it pays, in DUSK. Twice the
-   * estimate, as Max leaves, or what Max leaves with none, if that's more.
+   * The most a withdrawal's fee can be, in whole LUX, as its review quoted
+   * it: what the password goes by, and what Max leaves.
+   *
+   * @param {bigint} feeWei
    */
-  function withdrawalFeeBound() {
-    const estimated = (withdrawalFeeWei ?? 0n) * 2n;
-    const wei =
-      estimated > WITHDRAWAL_FEE_RESERVE_WEI
-        ? estimated
-        : WITHDRAWAL_FEE_RESERVE_WEI;
-
-    return (wei + EVM_TO_LUX_SCALE_FACTOR - 1n) / EVM_TO_LUX_SCALE_FACTOR;
-  }
+  const withdrawalFeeBound = (feeWei) =>
+    (feeWei + EVM_TO_LUX_SCALE_FACTOR - 1n) / EVM_TO_LUX_SCALE_FACTOR;
 
   // What this screen sends, it sends from the wallet it was drawn for, and
   // keeps for that wallet.
@@ -383,36 +448,74 @@
       throw new Error("DuskEVM account is not available.");
     }
 
+    // It goes as it was reviewed, or not at all: the very call its review
+    // was quoted for, at that quote, from the EVM account and to the public
+    // account of this wallet it was reviewed for.
+    const quote = withdrawalQuote;
+
+    if (!quote) {
+      throw new Error(NO_FEE);
+    }
+
+    /** Whether the EVM wallet and the profile are still the review's. */
+    const isAsReviewed = () =>
+      $account.address?.toLowerCase() === quote.account.toLowerCase() &&
+      unshieldedAddress === quote.recipient;
+
+    if (!isAsReviewed()) {
+      throw new Error(ACCOUNT_CHANGED);
+    }
+
+    const withdrawal = withdrawalStart({
+      amountWei,
+      sender: quote.account,
+      to: quote.recipient,
+    });
+
+    if (
+      quote.call.data !== withdrawal.data ||
+      quote.call.to !== withdrawal.to ||
+      quote.call.value !== withdrawal.value
+    ) {
+      throw new Error(NO_FEE);
+    }
+
     // Above the amount chosen in Settings, with its fee, the password comes
     // first.
     await sendPasswordFor(
-      amountLux + withdrawalFeeBound(),
+      amountLux + withdrawalFeeBound(quote.feeWei),
       $walletStore.walletKey,
     );
     stillOpen();
 
-    // It pays this wallet's public account.
-    const withdrawal = withdrawalStart({
-      amountWei,
-      sender: $account.address,
-      to: unshieldedAddress,
-    });
-
     await switchChain(wagmiConfig, { chainId: duskEvm.id });
     stillOpen();
 
+    // Another account picked in the EVM wallet, or another profile here,
+    // while the password was asked: nothing goes.
+    if (!isAsReviewed()) {
+      throw new Error(ACCOUNT_CHANGED);
+    }
+
     // Once the EVM wallet was asked to send it, it may have, whatever
-    // went wrong but its own refusals (describeFailure).
+    // went wrong but its own refusals (describeFailure). It's asked to send
+    // it from the account reviewed, whichever it shows now, for the gas
+    // limit and the price caps the review's fee was quoted at, which keep
+    // the fee to it.
     const hash = await sendTransaction(wagmiConfig, {
+      account: quote.account,
       chainId: duskEvm.id,
       data: withdrawal.data,
+      gas: quote.gasLimit,
+      maxFeePerGas: /** @type {bigint} */ (quote.maxFeePerGas),
+      maxPriorityFeePerGas: /** @type {bigint} */ (quote.maxPriorityFeePerGas),
       to: withdrawal.to,
       value: withdrawal.value,
     }).catch((error) => {
       throw outcomeUnknown(error);
     });
 
-    rememberWithdrawalTxHash(hash);
+    rememberWithdrawalTxHash(hash, quote);
     return hash;
   }
 
@@ -522,8 +625,10 @@
 
   /**
    * @param {string | undefined} hash
+   * @param {{ account: `0x${string}`, recipient: string }} sent The accounts
+   *   it was sent from and to, as reviewed
    */
-  function rememberWithdrawalTxHash(hash) {
+  function rememberWithdrawalTxHash(hash, { account: from, recipient }) {
     if (!browser || !WITHDRAWAL_TX_HASH_PATTERN.test(hash ?? "")) {
       return hash;
     }
@@ -534,7 +639,7 @@
     // wallet's public account.
     const remembered = rememberWithdrawalTransaction(
       /** @type {`0x${string}`} */ (lastWithdrawalTxHash),
-      { account: $account.address, amountWei, recipient: unshieldedAddress },
+      { account: from, amountWei, recipient },
       records,
     );
 
@@ -625,7 +730,7 @@
 
   function review() {
     isEditing = false;
-    reviewedLux = amountLux;
+    reviewed = reviewOf;
 
     if (isWithdrawing) {
       prepareWithdrawalReview();
@@ -637,6 +742,8 @@
   function edit() {
     isEditing = true;
     step = "form";
+    // A fee asked for a review that closed is for none: a review asks again.
+    reviewRequests += 1;
   }
 
   function send() {
@@ -717,9 +824,23 @@
     originNetwork === "duskEvm" && destinationNetwork === "duskDs";
   $: ({ address: evmAddress, isConnected } = $account);
 
-  // What the maximum and a review's fee are asked for: new whenever the
-  // amount, the direction or a wallet changes, so that an answer for an
-  // older one is dropped.
+  /** The side the amount is typed on, once the card shows one. */
+  let amountSide = "";
+
+  // A maximum is its side's balance's: it doesn't come over to the other,
+  // however the direction changes, by the swap, a pick or a link to the
+  // card that takes it to another route.
+  $: if (originNetwork !== amountSide) {
+    if (amountSide && isMaxAmount) {
+      amount = "";
+      isMaxAmount = false;
+    }
+
+    amountSide = originNetwork;
+  }
+
+  // What the maximum is asked for: new whenever the amount, the direction
+  // or a wallet changes, so that an answer for an older one is dropped.
   $: maxScope = { amount, evmAddress, isWithdrawing, unshieldedAccount };
   $: incomingDepositLux = pendingDepositAmountLux(
     $account.address,
@@ -768,17 +889,43 @@
             ? { label: "Check the network fee", ready: false }
             : { label: "Review", ready: true };
 
-  // A review needs its EVM wallet: without one, back to the form, which
-  // offers to connect it.
-  $: if (step === "review" && !isConnected) {
+  /**
+   * What a review is of: the route and its direction, the EVM account and
+   * the public account it goes between, the amount, and a deposit's fee. A
+   * withdrawal's fee is its review's own, read as it opens.
+   */
+  $: reviewOf = [
+    route?.id ?? "",
+    originNetwork,
+    destinationNetwork,
+    evmAddress ?? "",
+    unshieldedAddress,
+    amountLux,
+    isDepositing ? fee : "",
+  ].join(" ");
+
+  // What an open review shows never changes under the person: once any of
+  // what it's of changes, as with another account in the EVM wallet, another
+  // profile, a link to the card that takes it to another route, or a
+  // maximum worked out again, it closes, for that to be reviewed. Without
+  // its EVM wallet too: the form offers to connect it.
+  $: if (step === "review" && (!isConnected || reviewOf !== reviewed)) {
     edit();
   }
 
-  // What an open review shows never changes under the person: where what's
-  // sent changes, as a maximum asked for before it opened comes back, it
-  // closes, for that to be reviewed.
-  $: if (step === "review" && amountLux !== reviewedLux) {
-    edit();
+  // The review's fee, the most the chain can take for it, with the amount:
+  // more than the DuskEVM balance, and the chain refuses it. It's never
+  // offered: an amount Max filled in is worked out again at that fee, and
+  // another is said to be more than there is.
+  $: isShortOfFee =
+    step === "review" &&
+    isWithdrawing &&
+    withdrawalQuote !== null &&
+    Boolean(evmDuskBalance) &&
+    amountWei + withdrawalQuote.feeWei >
+      /** @type {{ value: bigint }} */ (evmDuskBalance).value;
+  $: if (isShortOfFee && isMaxAmount && withdrawalQuote) {
+    maxAtReviewFee(withdrawalQuote.feeWei);
   }
 
   // How long each way takes on this network: what its chains said, or none.
@@ -977,6 +1124,10 @@
           Max leaves {formatFee(keepForLater.lux, language, { max: true })} DUSK
           {keepForLater.why}.
         </p>
+      {:else if isMaxAmount && isMaxLower}
+        <p class="swap-note" role="status">
+          The network fee went up, so Max is less now.
+        </p>
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
         <p class="swap-error" role="alert">
           {isDepositing
@@ -1153,9 +1304,11 @@
           </div>
         {:else if withdrawalFeeWei !== null}
           <div>
-            <dt>Fee on DuskEVM, about</dt>
+            <dt>Fee on DuskEVM, up to</dt>
             <dd>
-              {formatFee(withdrawalFeeWei / EVM_TO_LUX_SCALE_FACTOR, language)} DUSK
+              {formatFee(withdrawalFeeBound(withdrawalFeeWei), language, {
+                max: true,
+              })} DUSK
             </dd>
           </div>
         {/if}
@@ -1194,13 +1347,43 @@
           </dl>
         </details>
       {/if}
+      {#if isShortOfFee && !isMaxAmount && evmDuskBalance}
+        <p class="route-review__final" role="alert">
+          Not enough DUSK on DuskEVM for this and its network fee: you have {formatDuskExact(
+            evmLux(evmDuskBalance),
+            language,
+          )} DUSK.
+        </p>
+      {/if}
+      {#if isWithdrawing && !withdrawalQuote}
+        {#if isQuoteMissing}
+          <p class="route-review__final" role="alert">
+            Couldn't work out the network fee.
+          </p>
+          <Button
+            className="route-review__back"
+            on:click={prepareWithdrawalReview}
+            text="Try again"
+            variant="secondary"
+          />
+        {:else}
+          <p class="route-review__final" role="status">
+            Working out the network fee…
+          </p>
+        {/if}
+      {/if}
       <Button
         className="route-review__primary"
         confirm
-        disabled={isNextButtonDisabled || !isConnected}
+        disabled={isNextButtonDisabled ||
+          !isConnected ||
+          (isWithdrawing && !withdrawalQuote) ||
+          isShortOfFee}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}
-        text={`Bridge ${formatDuskExact(amountLux, language)} DUSK`}
+        text={isShortOfFee
+          ? "Not enough DUSK"
+          : `Bridge ${formatDuskExact(amountLux, language)} DUSK`}
         variant="primary"
       />
       <p class="route-review__final">Can't be undone.</p>

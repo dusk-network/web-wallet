@@ -15,22 +15,42 @@ import { Bridge } from "..";
 import { networks } from "@dusk-network/networks";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
+import { decodeFunctionData, encodeAbiParameters, parseAbi } from "viem";
 
-const { CONNECTED, estimateGas, getGasPrice, pendingDepositAmountLux } =
-  vi.hoisted(() => ({
-    CONNECTED: {
-      address: "0x2222222222222222222222222222222222222222",
-      chainId: 745,
-      isConnected: true,
-    },
-    estimateGas: vi.fn(),
-    getGasPrice: vi.fn(),
-    pendingDepositAmountLux: vi.fn(() => 0n),
-  }));
+/** DuskEVM's GasPriceOracle, as the quote asks it. */
+const ORACLE = parseAbi([
+  "function getL1FeeUpperBound(uint256 unsignedTxSize) view returns (uint256)",
+  "function getOperatorFee(uint256 gasUsed) view returns (uint256)",
+]);
+
+const {
+  CONNECTED,
+  call,
+  estimateGas,
+  estimateMaxPriorityFeePerGas,
+  getBlock,
+  getGasPrice,
+  pendingDepositAmountLux,
+} = vi.hoisted(() => ({
+  CONNECTED: {
+    address: "0x2222222222222222222222222222222222222222",
+    chainId: 745,
+    isConnected: true,
+  },
+  call: vi.fn(),
+  estimateGas: vi.fn(),
+  estimateMaxPriorityFeePerGas: vi.fn(),
+  getBlock: vi.fn(),
+  getGasPrice: vi.fn(),
+  pendingDepositAmountLux: vi.fn(() => 0n),
+}));
 
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  call,
   estimateGas,
+  estimateMaxPriorityFeePerGas,
+  getBlock,
   getGasPrice,
 }));
 
@@ -172,6 +192,24 @@ describe("Bridge", () => {
   const withdrawalGas = 138_463n;
   const evmGasPrice = 10_001_000_000n;
 
+  /**
+   * What DuskEVM testnet's GasPriceOracle answers: an L1 data fee of 379 wei
+   * at most, and Jovian's operator fee, gas × 1,328,571,429 × 100 + 0.002
+   * DUSK.
+   *
+   * @param {unknown} _config
+   * @param {{ data: `0x${string}` }} asked
+   */
+  const oracle = async (_config, { data }) => {
+    const { args, functionName } = decodeFunctionData({ abi: ORACLE, data });
+    const answer =
+      functionName === "getL1FeeUpperBound"
+        ? 379n
+        : BigInt(args[0]) * 1_328_571_429n * 100n + 2_000_000_000_000_000n;
+
+    return { data: encodeAbiParameters([{ type: "uint256" }], [answer]) };
+  };
+
   /** @param {HTMLElement} container */
   const getDirection = (container) =>
     ["from", "to"].map((side) =>
@@ -193,6 +231,9 @@ describe("Bridge", () => {
     setNodeNetwork(networks.testnet);
     estimateGas.mockResolvedValue(withdrawalGas);
     getGasPrice.mockResolvedValue(evmGasPrice);
+    getBlock.mockResolvedValue({ baseFeePerGas: 10_000_000_000n });
+    estimateMaxPriorityFeePerGas.mockResolvedValue(1_000_000n);
+    call.mockImplementation(oracle);
     setTimes(TESTNET_TIMES);
   });
 
@@ -315,7 +356,7 @@ describe("Bridge", () => {
       // The most of the DuskEVM balance, on the way back.
       await withdraw(view.container);
       await fireEvent.click(view.getByRole("button", { name: "Max" }));
-      await vi.waitFor(() => expect(amount()).toHaveValue("2.997230463"));
+      await vi.waitFor(() => expect(amount()).toHaveValue("2.972601701"));
 
       await fireEvent.click(
         view.getByRole("button", { name: "Swap From and To" }),
@@ -338,7 +379,7 @@ describe("Bridge", () => {
       await withdraw(view.container);
       await fireEvent.click(view.getByRole("button", { name: "Max" }));
       await vi.waitFor(() =>
-        expect(view.getByLabelText("Amount")).toHaveValue("2.997230463"),
+        expect(view.getByLabelText("Amount")).toHaveValue("2.972601701"),
       );
       await lockAndUnlock();
 
@@ -347,7 +388,7 @@ describe("Bridge", () => {
       const amount = back.getByLabelText("Amount");
 
       expect(getDirection(back.container)).toStrictEqual(["duskEvm", "duskDs"]);
-      expect(amount).toHaveValue("2.997230463");
+      expect(amount).toHaveValue("2.972601701");
 
       await fireEvent.click(
         back.getByRole("button", { name: "Swap From and To" }),
@@ -476,8 +517,8 @@ describe("Bridge", () => {
 
     await fireEvent.click(getByRole("button", { name: "Max" }));
     await vi.waitFor(() =>
-      // 3 DUSK, less twice the estimated fee.
-      expect(getByLabelText("Amount")).toHaveValue("2.997230463"),
+      // 3 DUSK, less the most the withdrawal's fee can be: 0.027398298591692779.
+      expect(getByLabelText("Amount")).toHaveValue("2.972601701"),
     );
   });
 
@@ -525,20 +566,23 @@ describe("Bridge", () => {
     expect(amount).toHaveValue("1.5");
   });
 
-  it("should show a withdrawal's estimated fee, and when it can be proved and claimed on Dusk, before it is sent", async () => {
+  it("should show the most a withdrawal's fee can be, and when it can be proved and claimed on Dusk, before it is sent", async () => {
     const { container, getByRole } = render(Bridge, baseProps);
 
     await withdraw(container);
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review" }));
 
+    // Its gas limit, a fifth over the 138,463 estimated, at twice the base
+    // fee and the tip; the L1 fee and a Lux; and the operator fee at that limit:
+    // 0.027398298591692779 DUSK, rounded up. Not the gas at its price alone,
+    // "0.0014".
     await vi.waitFor(() =>
-      expect(amountOf(container, /fee/i)).toBe("0.0014 DUSK"),
+      expect(amountOf(container, /fee/i)).toBe("0.0274 DUSK"),
     );
     expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
-    // The fee is an estimate, never said as the most it costs.
-    expect(termOf(container, /fee/i)).toMatch(/\babout\b/i);
-    expect(termOf(container, /fee/i)).not.toMatch(/\bat most\b/i);
+    expect(termOf(container, /fee/i)).toMatch(/\bup to\b/i);
+    expect(termOf(container, /fee/i)).not.toMatch(/\babout\b/i);
 
     // Prove about 30 minutes after sending, then claim 7 days after
     // proving: never before.
@@ -601,7 +645,10 @@ describe("Bridge", () => {
   });
 
   it("should show the fee of the withdrawal reviewed last, whichever estimate comes back last", async () => {
-    const { container, getByRole, rerender } = render(Bridge, baseProps);
+    const { container, getByRole, queryByRole, rerender } = render(
+      Bridge,
+      baseProps,
+    );
 
     /** @type {PromiseWithResolvers<bigint>[]} */
     const estimates = [];
@@ -632,21 +679,33 @@ describe("Bridge", () => {
     estimates[0].resolve(100_000n);
     await settle();
 
-    // 200,000 gas at 10.001 gwei.
-    expect(amountOf(container, /fee/i)).toBe("0.002 DUSK");
+    // 200,000 gas: the most at a limit of 240,000.
+    expect(amountOf(container, /fee/i)).toBe("0.0387 DUSK");
 
-    // Another profile while the estimate runs: the fee isn't its, and the
-    // review gives the amount alone.
+    // The profile's balances read again while the estimate runs: the same
+    // withdrawal, and its fee.
     await fireEvent.click(getByRole("button", { name: "Back" }));
     await fireEvent.click(getByRole("button", { name: "Review" }));
     await rerender({ unshieldedAccount: {} });
     estimates[2].resolve(300_000n);
     await settle();
 
-    expect(amountOf(container, /^amount$/i)).toBe("2.5 DUSK");
-    expect(amountOf(container, /fee/i)).toBeUndefined();
-    // With no fee, no total.
-    expect(amountOf(container, /total/i)).toBeUndefined();
+    expect(amountOf(container, /fee/i)).toBe("0.0571 DUSK");
+
+    // Another profile while the estimate runs: the review closes, for one to
+    // that profile's account, and the fee that comes back for it is for none.
+    await fireEvent.click(getByRole("button", { name: "Back" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+    await rerender({
+      unshieldedAccount: {},
+      unshieldedAddress:
+        "u1PkM8xGkbjkgxQ4Dfy6nrkxheCwJtR5rkBTv2iZbThUyvRg3McBfJQeehP1RKNjnqTibwJHAGoZS2xyZ3YyyWbrByhQPFo11jzQPMhpNNNRiqM4YjK6jBHHe8B6zgz7NRA",
+    });
+    estimates[3].resolve(400_000n);
+    await settle();
+
+    expect(queryByRole("heading", { name: "Review" })).toBeNull();
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 
   it("should show only the amount when reviewing a withdrawal whose fee can't be estimated", async () => {
