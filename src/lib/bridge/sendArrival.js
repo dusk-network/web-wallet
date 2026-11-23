@@ -58,8 +58,9 @@ export function tellSendEnd(send) {
     return;
   }
 
-  // Said as balances show as it's told, not as they did as it was sent.
-  const said =
+  // Said as balances show as it's shown, in the tab's title and in a
+  // notification, not as they did as it was sent or told.
+  const said = () =>
     typeof what === "function"
       ? what(get(settingsStore).hideBalances === true)
       : what;
@@ -68,7 +69,7 @@ export function tellSendEnd(send) {
     href,
     id: `send:${hash}`,
     onOpen: () => goto(href),
-    title: failed ? "It didn't go through" : `Arrived: ${said}`,
+    title: failed ? "It didn't go through" : () => `Arrived: ${said()}`,
   });
 }
 

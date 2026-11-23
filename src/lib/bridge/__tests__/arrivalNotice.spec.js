@@ -665,6 +665,65 @@ describe("Being told when a transfer arrives", () => {
       }
     });
 
+    it("decides what a notification of a send says as it shows, once the service worker it waits for is ready: hidden, if balances were hidden meanwhile", async () => {
+      // A page whose service worker isn't registered yet, as on a phone.
+      vi.resetModules();
+
+      const fresh = {
+        notice: await import("../arrivalNotice"),
+        send: await import("../sendArrival"),
+        settings: (await import("$lib/stores/settingsStore")).default,
+      };
+      /** @type {PromiseWithResolvers<any>} */
+      const ready = Promise.withResolvers();
+      /** @type {string[]} */
+      const shown = [];
+
+      class Registration {
+        /** @param {string} title */
+        async showNotification(title) {
+          shown.push(title);
+        }
+      }
+
+      browser();
+      onPhone();
+      vi.stubGlobal("ServiceWorkerRegistration", Registration);
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: {
+          addEventListener() {},
+          ready: ready.promise,
+          register: async () => new Registration(),
+          removeEventListener() {},
+        },
+      });
+
+      try {
+        await fresh.notice.chooseArrivalNotice();
+
+        // It arrives while balances show; they're hidden before the worker
+        // is ready.
+        fresh.send.tellSendEnd({
+          failed: false,
+          hash: "8f".repeat(32),
+          stillOpen: () => {},
+          what: (hidden) => `${hidden ? "••••" : "0.02"} DUSK to Lucas`,
+        });
+        fresh.settings.update((store) => ({ ...store, hideBalances: true }));
+        ready.resolve(new Registration());
+
+        await vi.waitFor(() => expect(shown).toHaveLength(1));
+
+        expect(shown[0]).toMatch(/\bDUSK to Lucas$/);
+        expect(shown[0]).not.toMatch(/\d/);
+        expect(get(fresh.notice.arrivalTitle)).not.toMatch(/\d/);
+      } finally {
+        fresh.settings.update((store) => ({ ...store, hideBalances: false }));
+        fresh.notice.stopArrivalNotice();
+      }
+    });
+
     it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {
       const opened = writable({ ...get(walletStore), walletKey: "wallet-a" });
       let session = 1;
