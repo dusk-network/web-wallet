@@ -62,6 +62,9 @@ const initialState = {
   // read these settings.
   gasLimit: LEGACY_DEFAULT_GAS_LIMIT,
   gasPrice: BigInt(import.meta.env.VITE_GAS_PRICE_DEFAULT ?? 1),
+
+  // Whether Home's Activity is folded away, where it's a column of its own.
+  hideActivity: false,
   hideBalances: false,
   userId: "",
   walletCreationBlockHeight: 0n,
@@ -126,11 +129,25 @@ function migrateCurrency(settings) {
 }
 
 /**
+ * Settings from before Home's Activity could be folded away show it, as
+ * those versions did.
+ *
+ * @param {any} settings The stored settings, possibly from an older version.
+ * @returns {any}
+ */
+const migrateHideActivity = (settings) => ({
+  ...settings,
+  hideActivity: settings.hideActivity === true,
+});
+
+/**
  * @param {any} settings The stored settings, possibly from an older version.
  * @returns {SettingsStoreContent}
  */
 const migrate = (settings) => {
-  const migrated = migrateCurrency(migrateGasPrice(migrateGasLimit(settings)));
+  const migrated = migrateHideActivity(
+    migrateCurrency(migrateGasPrice(migrateGasLimit(settings))),
+  );
 
   return AUTO_LOCK_MINUTES.includes(migrated.autoLockMinutes) ||
     migrated.autoLockMinutes === 0
