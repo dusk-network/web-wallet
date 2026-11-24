@@ -1,6 +1,8 @@
 <script>
   import {
     mdiCheck,
+    mdiChevronDoubleLeft,
+    mdiChevronDoubleRight,
     mdiEyeOffOutline,
     mdiLayersOutline,
     mdiSendOutline,
@@ -40,6 +42,18 @@
 
   /** @type {import("./$types").PageData} */
   export let data;
+
+  // Where Activity is a column of its own, from 64rem, it can be folded away
+  // to a rail with its button, which brings it back: kept on this device.
+  $: hideActivity = $settingsStore.hideActivity;
+  $: activityToggleLabel = hideActivity ? "Show activity" : "Hide activity";
+
+  function toggleActivity() {
+    settingsStore.update((settings) => ({
+      ...settings,
+      hideActivity: !settings.hideActivity,
+    }));
+  }
 
   /** @type {number | undefined} */
   let fiatPrice;
@@ -196,7 +210,7 @@
   }
 </script>
 
-<div class="home">
+<div class="home" class:home--activity-hidden={hideActivity}>
   <div class="home__main">
     <HomeBalance
       fiatCurrency={currency}
@@ -357,24 +371,42 @@
   </div>
 
   <aside class="home__side">
-    {#if isHistoryEnabled()}
-      <ActivityPanel
-        locale={language}
-        onRetry={() => {
-          const session = walletStore.startHistory();
+    <!-- At the end of the panel's header, and in the same place on the rail
+      the panel folds to, as the one thing there. -->
+    <Button
+      aria-controls="home-activity"
+      aria-expanded={!hideActivity}
+      aria-label={activityToggleLabel}
+      className="home__side-toggle"
+      data-tooltip-id="main-tooltip"
+      data-tooltip-text={activityToggleLabel}
+      icon={{
+        path: hideActivity ? mdiChevronDoubleLeft : mdiChevronDoubleRight,
+      }}
+      on:click={toggleActivity}
+      size="small"
+      variant="tertiary"
+    />
+    <div class="home__side-panel" id="home-activity">
+      {#if isHistoryEnabled()}
+        <ActivityPanel
+          locale={language}
+          onRetry={() => {
+            const session = walletStore.startHistory();
 
-          session?.refresh().catch(() => {});
-          session?.readMissing({ again: true });
-        }}
-        state={$activityState}
-        whole={$wholeActivity}
-      />
-    {:else}
-      <SectionHead>Activity</SectionHead>
-      <p class="home__note home__note--side">
-        Activity isn't available here yet. The explorer has your transactions.
-      </p>
-    {/if}
+            session?.refresh().catch(() => {});
+            session?.readMissing({ again: true });
+          }}
+          state={$activityState}
+          whole={$wholeActivity}
+        />
+      {:else}
+        <SectionHead>Activity</SectionHead>
+        <p class="home__note home__note--side">
+          Activity isn't available here yet. The explorer has your transactions.
+        </p>
+      {/if}
+    </div>
   </aside>
 </div>
 
@@ -420,6 +452,42 @@
 
   .home__note--side {
     margin-top: 0.75rem;
+  }
+
+  /*
+   * The button that folds Activity away, at the end of the panel's header
+   * row, which is 2.75rem tall: centred in it, over the panel's padding.
+   * The header keeps it room (--activity-panel-header-end). Where touch is
+   * likely it takes 44 px, the row's height.
+   */
+  .home__side {
+    --activity-panel-header-end: 3rem;
+  }
+
+  .home__side :global(.home__side-toggle) {
+    position: absolute;
+    top: calc(1.5rem + (2.75rem - 2.25rem) / 2);
+    right: 1.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+  }
+
+  @media (pointer: coarse) {
+    .home__side :global(.home__side-toggle) {
+      top: 1.5rem;
+    }
+  }
+
+  /* Folded away: a rail with the button where it was, Home the width. */
+  @media (min-width: 64rem) {
+    .home--activity-hidden {
+      grid-template-columns: minmax(0, 1fr) calc(2.25rem + 2 * 1.5rem);
+    }
+
+    .home--activity-hidden .home__side-panel {
+      display: none;
+    }
   }
 
   .home__main :global(.home__waiting-cancel) {
@@ -475,6 +543,13 @@
       border-left: 0 none;
       background: none;
       padding: 0.5rem 1.5rem 2rem;
+
+      --activity-panel-header-end: 0;
+    }
+
+    /* Under the actions, Activity always shows: no button. */
+    .home__side :global(.home__side-toggle) {
+      display: none;
     }
   }
 

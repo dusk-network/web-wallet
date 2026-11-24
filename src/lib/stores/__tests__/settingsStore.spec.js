@@ -179,6 +179,66 @@ describe("Settings store", () => {
       expect(get(reloadedStore).hideBalances).toBe(false);
     });
 
+    it("should remember Home's Activity folded away, which shows by default, again after a reset, and where settings were kept before it could be", async () => {
+      expect(settingsStoreContent.hideActivity).toBe(false);
+
+      settingsStore.update((store) => ({ ...store, hideActivity: true }));
+      vi.resetModules();
+
+      const reloadedStore = (await import("../settingsStore")).default;
+
+      expect(get(reloadedStore).hideActivity).toBe(true);
+
+      reloadedStore.reset();
+
+      expect(get(reloadedStore).hideActivity).toBe(false);
+
+      // Kept by a version with no such setting.
+      const older = Object.fromEntries(
+        Object.entries(settingsStoreContent).filter(
+          ([key]) => key !== "hideActivity",
+        ),
+      );
+
+      localStorage.setItem(
+        `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`,
+        serializeProperty({ ...older, hideBalances: true }),
+      );
+      vi.resetModules();
+
+      expect(get((await import("../settingsStore")).default)).toMatchObject({
+        hideActivity: false,
+        hideBalances: true,
+      });
+    });
+
+    it("should keep another tab's change as this one changes another setting: balances hidden in one stay hidden as Activity is folded away in a tab that read them shown", async () => {
+      // Two tabs, both opened with balances shown.
+      const first = settingsStore;
+
+      vi.resetModules();
+
+      const second = (await import("../settingsStore")).default;
+
+      first.update((store) => ({ ...store, hideBalances: true }));
+      second.update((store) => ({ ...store, hideActivity: true }));
+
+      // Both kept, as the first tab finds them reloaded, and the second has
+      // them too.
+      vi.resetModules();
+
+      const reloaded = get((await import("../settingsStore")).default);
+
+      expect(reloaded).toMatchObject({
+        hideActivity: true,
+        hideBalances: true,
+      });
+      expect(get(second)).toMatchObject({
+        hideActivity: true,
+        hideBalances: true,
+      });
+    });
+
     describe("Gas limit", () => {
       const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`;
 
@@ -336,6 +396,7 @@ describe("Settings store", () => {
         darkMode: !settingsStoreContent.darkMode,
         dashboardTransactionLimit:
           settingsStoreContent.dashboardTransactionLimit + 1,
+        hideActivity: !settingsStoreContent.hideActivity,
         hideBalances: !settingsStoreContent.hideBalances,
         language: "FAKE LANGUAGE",
         userId: "FAKE USER ID",

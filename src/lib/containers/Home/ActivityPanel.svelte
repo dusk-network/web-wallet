@@ -174,6 +174,8 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
+    /* Room at its end for a control set there, as Home's to hide it. */
+    padding-inline-end: var(--activity-panel-header-end, 0);
   }
 
   .activity-panel__more {
