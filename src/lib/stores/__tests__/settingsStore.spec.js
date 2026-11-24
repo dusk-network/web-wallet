@@ -212,6 +212,33 @@ describe("Settings store", () => {
       });
     });
 
+    it("should keep another tab's change as this one changes another setting: balances hidden in one stay hidden as Activity is folded away in a tab that read them shown", async () => {
+      // Two tabs, both opened with balances shown.
+      const first = settingsStore;
+
+      vi.resetModules();
+
+      const second = (await import("../settingsStore")).default;
+
+      first.update((store) => ({ ...store, hideBalances: true }));
+      second.update((store) => ({ ...store, hideActivity: true }));
+
+      // Both kept, as the first tab finds them reloaded, and the second has
+      // them too.
+      vi.resetModules();
+
+      const reloaded = get((await import("../settingsStore")).default);
+
+      expect(reloaded).toMatchObject({
+        hideActivity: true,
+        hideBalances: true,
+      });
+      expect(get(second)).toMatchObject({
+        hideActivity: true,
+        hideBalances: true,
+      });
+    });
+
     describe("Gas limit", () => {
       const key = `${CONFIG.LOCAL_STORAGE_APP_KEY}-preferences`;
 

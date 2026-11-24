@@ -177,7 +177,25 @@ const createPersistedStore = (
     });
   }
 
-  return store;
+  /** The settings as kept now, as they were written: none where none are. */
+  const kept = () => {
+    const storedValue = browser ? localStorage.getItem(key) : null;
+
+    return storedValue ? deserializeProperty(storedValue) : {};
+  };
+
+  return {
+    ...store,
+
+    /**
+     * Changes the settings as they're kept now, over what this tab read:
+     * another tab's change since, as balances hidden there, stays.
+     *
+     * @param {import("svelte/store").Updater<SettingsStoreContent>} change
+     */
+    update: (change) =>
+      store.update((current) => change({ ...current, ...kept() })),
+  };
 };
 
 const settingsStore = createPersistedStore(
