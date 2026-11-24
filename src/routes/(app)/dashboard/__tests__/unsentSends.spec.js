@@ -152,6 +152,11 @@ describe("A send that never went out", () => {
     useWalletData("");
     cleanups.push(testing.cleanup);
 
+    // Each page has a store of toasts of its own: they go with it.
+    const toasts = await import("$lib/dusk/components/Toast/store");
+
+    cleanups.push(toasts.dismissToasts);
+
     return {
       Home: (await import("../+page.svelte")).default,
       // The wallet's pages' own frame, whichever page shows in it.

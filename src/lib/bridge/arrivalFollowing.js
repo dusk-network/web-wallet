@@ -58,23 +58,53 @@ function whatOf({ amountLux, amountWei }) {
 const DIDNT = "It didn't go through";
 
 /**
- * What a transfer between Dusk and another chain says it ended as: "" while
- * it's under way.
+ * @typedef {{ key: string, says: () => string } | null} End What a transfer
+ *   ended as: the kind of end, which a change of it is news by, and what says
+ *   it as balances show when it's said; null while it's under way.
+ */
+
+/**
+ * An end, said as `say` says it when it's said.
+ *
+ * @param {string} key
+ * @param {() => string} say
+ * @returns {End}
+ */
+const endAs = (key, say) => ({ key, says: say });
+
+/**
+ * What a transfer between Dusk and another chain says of how it went, as
+ * balances show now.
  *
  * @param {import("./migrationActivity").RouteTransfer} transfer
  */
-function routeTransferEnd(transfer) {
+function routeOutcome(transfer) {
   const { hideBalances, language } = get(settingsStore);
-  const outcome = transferOutcome(transfer, {
+
+  return transferOutcome(transfer, {
     locale: language,
     masked: hideBalances,
   });
+}
 
-  return !outcome?.heading
-    ? ""
-    : outcome.heading === "Arrived"
-      ? outcome.sentence.replace(/\.$/, "")
-      : outcome.heading;
+/**
+ * What a transfer between Dusk and another chain ended as.
+ *
+ * @param {import("./migrationActivity").RouteTransfer} transfer
+ * @returns {End}
+ */
+function routeTransferEnd(transfer) {
+  const heading = routeOutcome(transfer)?.heading;
+
+  return heading
+    ? endAs(heading, () => {
+        const outcome = routeOutcome(transfer);
+
+        return outcome?.heading === "Arrived"
+          ? outcome.sentence.replace(/\.$/, "")
+          : (outcome?.heading ?? heading);
+      })
+    : null;
 }
 
 /** How long ago a transfer may have ended for its end to be news: a day. */
@@ -92,41 +122,51 @@ function routeTransferNews(transfer) {
   const endedAt = transfer.paidAt ?? transfer.arrivedAt ?? null;
 
   return endedAt !== null && Date.now() - endedAt > NEWS_FOR_MS
-    ? ""
+    ? null
     : routeTransferEnd(transfer);
 }
 
-/** @param {any} deposit */
+/**
+ * @param {any} deposit
+ * @returns {End}
+ */
 const depositEnd = (deposit) =>
   deposit.stage === "completed"
-    ? `${whatOf(deposit)} arrived on DuskEVM`
+    ? endAs("completed", () => `${whatOf(deposit)} arrived on DuskEVM`)
     : deposit.stage === "failed"
-      ? DIDNT
-      : "";
+      ? endAs("failed", () => DIDNT)
+      : null;
 
-/** @param {any} withdrawal */
+/** What a withdrawal's step that asks something says. */
+const WITHDRAWAL_STEPS = /** @type {Record<string, string>} */ ({
+  failed: DIDNT,
+  ready_to_finalize: "Ready to claim on Dusk",
+  ready_to_prove: "Ready to prove on Dusk",
+});
+
+/**
+ * @param {any} withdrawal
+ * @returns {End}
+ */
 function withdrawalEnd(withdrawal) {
-  switch (withdrawal.stage) {
-    case "finalized":
-      return `${whatOf(withdrawal)} arrived on Dusk`;
-    case "failed":
-      return DIDNT;
-    case "ready_to_prove":
-      return "Ready to prove on Dusk";
-    case "ready_to_finalize":
-      return "Ready to claim on Dusk";
-    default:
-      return "";
-  }
+  const { stage } = withdrawal;
+
+  return stage === "finalized"
+    ? endAs(stage, () => `${whatOf(withdrawal)} arrived on Dusk`)
+    : WITHDRAWAL_STEPS[stage]
+      ? endAs(stage, () => WITHDRAWAL_STEPS[stage])
+      : null;
 }
 
 /**
- * Says each change a list makes from one thing to another that ends something.
+ * Says each change a list makes from one thing to another that ends
+ * something: by the kind of end, so that balances shown or hidden since say
+ * nothing new, in words decided as they're said.
  *
  * @template T
  * @param {(item: T) => string} idOf
  * @param {(item: T) => string} hashOf
- * @param {(item: T) => string} endOf What it ended as: "" while it's under way
+ * @param {(item: T) => End} endOf What it ended as
  */
 function watcher(idOf, hashOf, endOf) {
   /** @type {Map<string, string>} */
@@ -139,16 +179,16 @@ function watcher(idOf, hashOf, endOf) {
       const end = endOf(item);
       const before = seen.get(id);
 
-      seen.set(id, end);
+      seen.set(id, end?.key ?? "");
 
-      if (before !== undefined && end && end !== before) {
+      if (before !== undefined && end && end.key !== before) {
         const href = `/dashboard/bridge/transactions?tx=${hashOf(item)}`;
 
         transferEnded({
           href,
           id,
           onOpen: () => goto(href),
-          title: end,
+          title: end.says,
         });
       }
     }

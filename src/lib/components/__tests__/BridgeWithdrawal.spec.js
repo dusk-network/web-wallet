@@ -13,6 +13,8 @@ import {
 } from "$lib/security/sendPassword";
 import vault from "$lib/vault";
 
+import { account } from "$lib/web3/walletConnection";
+
 import { Bridge } from "..";
 import { decodeFunctionData, parseAbi } from "viem";
 import { networks } from "@dusk-network/networks";
@@ -21,10 +23,34 @@ import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 import { PAID } from "$lib/bridge/__tests__/fixtures/withdrawal-recipient";
 
 const mocks = vi.hoisted(() => ({
-  estimateGas: vi.fn(
-    /** @returns {Promise<bigint>} */ () =>
-      Promise.reject(new Error("No estimate")),
-  ),
+  // DuskEVM testnet's GasPriceOracle: an L1 data fee of 379 wei at most, and
+  // Jovian's operator fee, gas × 1,328,571,429 × 100 + 0.002 DUSK.
+  call: vi.fn(async (_config, /** @type {{ data: `0x${string}` }} */ asked) => {
+    const { decodeFunctionData, encodeAbiParameters, parseAbi } =
+      await import("viem");
+    const { args, functionName } = decodeFunctionData({
+      abi: parseAbi([
+        "function getL1FeeUpperBound(uint256) view returns (uint256)",
+        "function getOperatorFee(uint256) view returns (uint256)",
+      ]),
+      data: asked.data,
+    });
+
+    return {
+      data: encodeAbiParameters(
+        [{ type: "uint256" }],
+        [
+          functionName === "getL1FeeUpperBound"
+            ? 379n
+            : BigInt(args[0]) * 1_328_571_429n * 100n + 2_000_000_000_000_000n,
+        ],
+      ),
+    };
+  }),
+  // A withdrawal's gas on testnet.
+  estimateGas: vi.fn(/** @returns {Promise<bigint>} */ async () => 138_463n),
+  estimateMaxPriorityFeePerGas: vi.fn(async () => 1_000_000n),
+  getBlock: vi.fn(async () => ({ baseFeePerGas: 10_000_000_000n })),
   getGasPrice: vi.fn(async () => 1n),
   sendTransaction: vi.fn(),
   switchChain: vi.fn(),
@@ -39,11 +65,12 @@ vi.mock("$lib/bridge/bridgeTimes", async () => {
   };
 });
 
+// The connected EVM account: another can be picked in the wallet meanwhile.
 vi.mock("$lib/web3/walletConnection", async () => {
-  const { readable } = await import("svelte/store");
+  const { writable } = await import("svelte/store");
 
   return {
-    account: readable({
+    account: writable({
       address: "0x2222222222222222222222222222222222222222",
       chainId: 745,
       isConnected: true,
@@ -60,7 +87,10 @@ vi.mock("$lib/web3/walletConnection", async () => {
 
 vi.mock("@wagmi/core", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  call: mocks.call,
   estimateGas: mocks.estimateGas,
+  estimateMaxPriorityFeePerGas: mocks.estimateMaxPriorityFeePerGas,
+  getBlock: mocks.getBlock,
   getGasPrice: mocks.getGasPrice,
   sendTransaction: mocks.sendTransaction,
   switchChain: mocks.switchChain,
@@ -73,6 +103,21 @@ vi.mock("$lib/bridge/withdrawalActivity", () => ({
   resumeWithdrawalTracking: vi.fn(),
   trackWithdrawalTransaction: vi.fn(),
 }));
+
+/** The EVM account connected, and another the wallet can switch to. */
+const CONNECTED = {
+  address: "0x2222222222222222222222222222222222222222",
+  chainId: 745,
+  isConnected: true,
+};
+const OTHER_EVM = {
+  ...CONNECTED,
+  address: "0x3333333333333333333333333333333333333333",
+};
+
+/** Another profile's public account, which a withdrawal can pay. */
+const OTHER_PROFILE =
+  "u1PkM8xGkbjkgxQ4Dfy6nrkxheCwJtR5rkBTv2iZbThUyvRg3McBfJQeehP1RKNjnqTibwJHAGoZS2xyZ3YyyWbrByhQPFo11jzQPMhpNNNRiqM4YjK6jBHHe8B6zgz7NRA";
 
 describe("Bridge withdrawal", () => {
   const props = {
@@ -107,6 +152,7 @@ describe("Bridge withdrawal", () => {
     cleanup();
     vi.clearAllMocks();
     vi.useRealTimers();
+    /** @type {any} */ (account).set(CONNECTED);
   });
 
   it("takes up tracking the connected wallet's withdrawals as it opens", () => {
@@ -258,6 +304,327 @@ describe("Bridge withdrawal", () => {
     });
   });
 
+  // The quote the review shows, carried through it to the wallet's request:
+  // DuskEVM's figures moving after it change nothing of what's asked.
+  it("asks the EVM wallet for the gas limit and the price caps its review was quoted at, though DuskEVM's figures moved since", async () => {
+    const rendered = render(Bridge, props);
+
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Swap From and To" }),
+    );
+    await fireEvent.input(rendered.getByRole("textbox"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+    await vi.waitFor(() =>
+      expect(rendered.container).toHaveTextContent(/up to 0\.0274 DUSK/),
+    );
+
+    // Since: twice the gas, twice the base fee and a tip of 0.
+    mocks.estimateGas.mockResolvedValue(276_926n);
+    mocks.getBlock.mockResolvedValue({ baseFeePerGas: 20_000_000_000n });
+    mocks.estimateMaxPriorityFeePerGas.mockResolvedValue(0n);
+
+    try {
+      await afterConfirmDelay();
+      await fireEvent.click(
+        rendered.getByRole("button", { name: "Bridge 1 DUSK" }),
+      );
+      await vi.waitFor(() =>
+        expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
+      );
+
+      // The review's: from its account, the 138,463 estimated and a fifth
+      // more, twice its base fee of 10 gwei and its tip of 0.001.
+      expect(mocks.sendTransaction.mock.calls[0][1]).toMatchObject({
+        account: CONNECTED.address,
+        gas: 166_156n,
+        maxFeePerGas: 20_001_000_000n,
+        maxPriorityFeePerGas: 1_000_000n,
+        value: 10n ** 18n,
+      });
+      // Quoted for that very call: from its account, to its contract, with
+      // its data and its value.
+      const sent = mocks.sendTransaction.mock.calls[0][1];
+
+      expect(mocks.estimateGas).toHaveBeenCalledExactlyOnceWith(
+        expect.anything(),
+        {
+          account: CONNECTED.address,
+          chainId: 745,
+          data: sent.data,
+          to: sent.to,
+          value: sent.value,
+        },
+      );
+    } finally {
+      mocks.estimateGas.mockResolvedValue(138_463n);
+      mocks.getBlock.mockResolvedValue({ baseFeePerGas: 10_000_000_000n });
+      mocks.estimateMaxPriorityFeePerGas.mockResolvedValue(1_000_000n);
+    }
+  });
+
+  it("sends nothing before the call's gas is estimated, nor where it can't be: no guess is sent as its limit", async () => {
+    /** @type {PromiseWithResolvers<bigint>} */
+    const estimate = Promise.withResolvers();
+
+    mocks.estimateGas.mockReturnValueOnce(estimate.promise);
+
+    const rendered = render(Bridge, props);
+    const bridge = () =>
+      rendered.getByRole("button", { name: "Bridge 1 DUSK" });
+
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Swap From and To" }),
+    );
+    await fireEvent.input(rendered.getByRole("textbox"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+    await afterConfirmDelay();
+
+    // Its estimate under way: Bridge takes no press.
+    expect(bridge()).toBeDisabled();
+    expect(rendered.container).toHaveTextContent(
+      /working out the network fee/i,
+    );
+
+    // It can't be estimated: still none, and why.
+    estimate.reject(new Error("execution reverted"));
+
+    await vi.waitFor(() =>
+      expect(rendered.getByRole("alert")).toHaveTextContent(
+        /couldn't work out the network fee/i,
+      ),
+    );
+
+    expect(bridge()).toBeDisabled();
+    expect(rendered.container).not.toHaveTextContent(/fee on DuskEVM, up to/i);
+    expect(mocks.sendTransaction).not.toHaveBeenCalled();
+
+    // Read again: the fee, and Bridge once its press is due.
+    await fireEvent.click(rendered.getByRole("button", { name: "Try again" }));
+    await vi.waitFor(() =>
+      expect(rendered.container).toHaveTextContent(/up to 0\.0274 DUSK/),
+    );
+    await afterConfirmDelay();
+
+    expect(bridge()).toBeEnabled();
+  });
+
+  it("works an amount Max filled in out again at its review's fee, where DuskEVM's base fee rose since, and sends what that whole fee leaves", async () => {
+    const rendered = render(Bridge, {
+      ...props,
+      linkedRoute: "dusk-evm-to-dusk",
+    });
+    const field = rendered.getByRole("textbox");
+
+    // At a base fee of 10 gwei, 0.027398298591693158 DUSK at most: Max
+    // leaves that of the 3 DUSK.
+    await fireEvent.click(rendered.getByRole("button", { name: "Max" }));
+    await vi.waitFor(() => expect(field).toHaveValue("2.972601701"));
+
+    // 11 gwei by Review: 0.027730610591693158 DUSK at most, which that
+    // amount leaves too little for.
+    mocks.getBlock.mockResolvedValue({ baseFeePerGas: 11_000_000_000n });
+
+    try {
+      await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+
+      // Closed, the maximum at that fee in its place, for it to be reviewed.
+      await vi.waitFor(() =>
+        expect(rendered.getByRole("textbox")).toHaveValue("2.972269389"),
+      );
+      expect(rendered.queryByRole("heading", { name: "Review" })).toBeNull();
+      expect(rendered.container).toHaveTextContent(
+        /network fee went up, so Max is less now/i,
+      );
+
+      await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+      await vi.waitFor(() =>
+        expect(rendered.container).toHaveTextContent(/up to 0\.0278 DUSK/),
+      );
+      await afterConfirmDelay();
+      await fireEvent.click(
+        rendered.getByRole("button", { name: "Bridge 2.972269389 DUSK" }),
+      );
+      await vi.waitFor(() =>
+        expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
+      );
+
+      // What goes and the most its fee can be come to no more than there is.
+      const { gas, maxFeePerGas, value } =
+        mocks.sendTransaction.mock.calls[0][1];
+      const operatorFee = gas * 1_328_571_429n * 100n + 2_000_000_000_000_000n;
+
+      expect(value).toBe(2_972_269_389_000_000_000n);
+      expect(
+        value + gas * maxFeePerGas + operatorFee + 2n * 379n,
+      ).toBeLessThanOrEqual(3_000_000_000_000_000_000n);
+    } finally {
+      mocks.getBlock.mockResolvedValue({ baseFeePerGas: 10_000_000_000n });
+    }
+  });
+
+  it("offers no Bridge where its review's fee leaves too little for an amount typed, and says so", async () => {
+    const rendered = render(Bridge, {
+      ...props,
+      linkedRoute: "dusk-evm-to-dusk",
+    });
+
+    // 2.9726 DUSK fits beside the most its fee can be at 10 gwei, not at 11.
+    mocks.getBlock.mockResolvedValue({ baseFeePerGas: 11_000_000_000n });
+
+    try {
+      await fireEvent.input(rendered.getByRole("textbox"), {
+        target: { value: "2.9726" },
+      });
+      await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+      await vi.waitFor(() =>
+        expect(rendered.getByRole("alert")).toHaveTextContent(
+          /not enough DUSK on DuskEVM for this and its network fee: you have 3 DUSK/i,
+        ),
+      );
+      await afterConfirmDelay();
+
+      expect(
+        rendered.getByRole("button", { name: "Not enough DUSK" }),
+      ).toBeDisabled();
+      expect(rendered.queryByRole("button", { name: /^Bridge \d/ })).toBeNull();
+      // What's typed stays: it's the person's.
+      expect(rendered.container).toHaveTextContent(/2\.9726 DUSK/);
+      expect(mocks.sendTransaction).not.toHaveBeenCalled();
+    } finally {
+      mocks.getBlock.mockResolvedValue({ baseFeePerGas: 10_000_000_000n });
+    }
+  });
+
+  /**
+   * Opens the review of a withdrawal of 1 DUSK, from the card as a link to
+   * the route opens it, and waits for its fee.
+   *
+   * @param {Record<string, unknown>} [more] Props besides the card's own
+   */
+  async function reviewWithdrawal(more = {}) {
+    const rendered = render(Bridge, {
+      ...props,
+      linkedRoute: "dusk-evm-to-dusk",
+      ...more,
+    });
+
+    await fireEvent.input(rendered.getByRole("textbox"), {
+      target: { value: "1" },
+    });
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+
+    return rendered;
+  }
+
+  /** @param {import("@testing-library/svelte").RenderResult<any>} rendered */
+  const isReviewOpen = (rendered) =>
+    rendered.queryByRole("heading", { name: "Review" }) !== null;
+
+  // Each changes what the review would send: it closes, for that to be
+  // reviewed, and nothing goes.
+  it.each([
+    [
+      "the Bridge tab's link takes the card to the other route",
+      (/** @type {any} */ rendered) => rendered.rerender({ linkedRoute: null }),
+    ],
+    [
+      "another account is picked in the EVM wallet",
+      () => /** @type {any} */ (account).set(OTHER_EVM),
+    ],
+    [
+      "another profile is opened, which it would pay",
+      (/** @type {any} */ rendered) =>
+        rendered.rerender({
+          unshieldedAccount: new Uint8Array(96).fill(1),
+          unshieldedAddress: OTHER_PROFILE,
+        }),
+    ],
+  ])("closes an open review once %s, and sends nothing", async (_, change) => {
+    const rendered = await reviewWithdrawal();
+
+    await vi.waitFor(() =>
+      expect(rendered.container).toHaveTextContent(/up to 0\.0274 DUSK/),
+    );
+    expect(isReviewOpen(rendered)).toBe(true);
+
+    await change(rendered);
+
+    await vi.waitFor(() => expect(isReviewOpen(rendered)).toBe(false));
+    expect(rendered.queryByRole("button", { name: /^Bridge \d/ })).toBeNull();
+    expect(mocks.sendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("closes a review still working out its fee once another profile is opened, and reviews the withdrawal to that one's account once asked again", async () => {
+    /** @type {PromiseWithResolvers<bigint>} */
+    const estimate = Promise.withResolvers();
+
+    mocks.estimateGas.mockReturnValueOnce(estimate.promise);
+
+    const rendered = await reviewWithdrawal();
+
+    expect(rendered.container).toHaveTextContent(
+      /working out the network fee/i,
+    );
+
+    await rendered.rerender({
+      unshieldedAccount: new Uint8Array(96).fill(1),
+      unshieldedAddress: OTHER_PROFILE,
+    });
+
+    // Closed, and the estimate asked for it, coming in late, is for none.
+    await vi.waitFor(() => expect(isReviewOpen(rendered)).toBe(false));
+    estimate.resolve(138_463n);
+    await vi.waitFor(() => expect(mocks.estimateGas).toHaveBeenCalledOnce());
+    expect(isReviewOpen(rendered)).toBe(false);
+
+    // Asked again: the fee, and Bridge, for the profile open now.
+    await fireEvent.click(rendered.getByRole("button", { name: "Review" }));
+    await vi.waitFor(() =>
+      expect(rendered.container).toHaveTextContent(/up to 0\.0274 DUSK/),
+    );
+    await afterConfirmDelay();
+    await fireEvent.click(
+      rendered.getByRole("button", { name: "Bridge 1 DUSK" }),
+    );
+    await vi.waitFor(() =>
+      expect(mocks.sendTransaction).toHaveBeenCalledOnce(),
+    );
+
+    const [[, sent]] = mocks.sendTransaction.mock.calls;
+    const { args } = decodeFunctionData({
+      abi: parseAbi(["function bridgeETHTo(address, uint32, bytes)"]),
+      data: sent.data,
+    });
+
+    expect(duskRecipientOf(args[2])).toStrictEqual({
+      account: OTHER_PROFILE,
+      kind: "account",
+    });
+  });
+
+  it("empties an amount Max filled in once the Bridge tab's link takes the card to the other route, as the swap does", async () => {
+    const rendered = render(Bridge, {
+      ...props,
+      linkedRoute: "dusk-evm-to-dusk",
+    });
+
+    await fireEvent.click(rendered.getByRole("button", { name: "Max" }));
+    await vi.waitFor(() =>
+      expect(rendered.getByRole("textbox")).not.toHaveValue(""),
+    );
+
+    // DuskEVM's balance's: nothing of it for a deposit from Dusk.
+    await rendered.rerender({ linkedRoute: null });
+
+    await vi.waitFor(() =>
+      expect(rendered.getByRole("textbox")).toHaveValue(""),
+    );
+  });
+
   /**
    * The failure screen's heading and sentence, once it shows.
    *
@@ -347,7 +714,6 @@ describe("Bridge withdrawal", () => {
 
     describe("with the fee counted, in DUSK as it's paid", () => {
       const AMOUNT = 1_000_000_000n;
-      const RESERVE = 10_000_000n;
 
       /**
        * Whether a withdrawal of 1 DUSK asks, with `limit` as the amount chosen:
@@ -377,23 +743,35 @@ describe("Bridge withdrawal", () => {
         expect(await asksAt(AMOUNT)).toBe(true);
       });
 
-      it("goes by the most a fee is taken to be with no estimate, as Max does", async () => {
-        expect(await asksAt(AMOUNT + RESERVE - 1n)).toBe(true);
-        expect(await asksAt(AMOUNT + RESERVE)).toBe(false);
+      it("goes by the most the review quoted its fee at, in whole lux, as Max leaves", async () => {
+        // 138,463 gas: 0.027398298591692779 DUSK at most, 27,398,299 lux.
+        expect(await asksAt(AMOUNT + 27_398_298n)).toBe(true);
+        expect(await asksAt(AMOUNT + 27_398_299n)).toBe(false);
       });
+    });
 
-      it("goes by twice the estimate, in whole lux, as the EVM wallet sets what it pays", async () => {
-        // 0.02 DUSK and a wei: twice that is above what's taken with no estimate.
-        mocks.estimateGas.mockResolvedValue(20_000_000_000_000_001n);
+    it("sends nothing where another EVM account was picked while it was asked, says so, and reviews it again from that one", async () => {
+      const rendered = await sendWithdrawal();
 
-        try {
-          expect(await asksAt(AMOUNT + 40_000_000n)).toBe(true);
-          expect(await asksAt(AMOUNT + 40_000_001n)).toBe(false);
-        } finally {
-          mocks.estimateGas.mockReset();
-          mocks.estimateGas.mockRejectedValue(new Error("No estimate"));
-        }
-      });
+      await vi.waitFor(() => expect(get(sendPasswordAsk)).not.toBeNull());
+      /** @type {any} */ (account).set(OTHER_EVM);
+      await get(sendPasswordAsk)?.answer(PASSWORD);
+
+      const notSent = await failureOf(rendered);
+
+      expect(notSent.heading).toBe("Not sent");
+      expect(notSent.sentence).toMatch(
+        /EVM account or the profile changed after the review/i,
+      );
+      expect(mocks.sendTransaction).not.toHaveBeenCalled();
+
+      // Again: a review of it from the account picked now.
+      await fireEvent.click(
+        rendered.getByRole("button", { name: "Try again" }),
+      );
+
+      expect(rendered.getByRole("heading", { name: "Review" })).toBeVisible();
+      expect(rendered.container).toHaveTextContent(OTHER_EVM.address);
     });
 
     it("sends nothing when it isn't given, and offers to try again", async () => {

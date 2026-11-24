@@ -84,6 +84,14 @@ const NOT_MADE = [
     "The wallet changed or locked before it went out.",
   ],
 
+  // Another account in the EVM wallet, or another profile here, than the
+  // ones a withdrawal was reviewed for, before it was asked of the EVM
+  // wallet.
+  [
+    /changed after the review/i,
+    "The EVM account or the profile changed after the review.",
+  ],
+
   // The address, which the wallet reads as it builds the transaction.
   [
     /DriverDeserializeError|failed to deserialize/i,

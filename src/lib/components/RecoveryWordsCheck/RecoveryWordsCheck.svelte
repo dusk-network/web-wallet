@@ -319,6 +319,7 @@
     <div
       class="recovery-check__words"
       class:recovery-check__words--hidden={isMasked}
+      id="{id}-words"
     >
       {#each asked as place, i (place)}
         {@const isSuggesting = suggesting === i && suggestions.length > 0}
@@ -369,7 +370,11 @@
     </div>
     {#if $touchOnly}
       <!-- Under the boxes: the thumb holding it hides none of them. -->
-      <HoldToShow bind:held={isHeld} className="recovery-check__show-typed" />
+      <HoldToShow
+        bind:held={isHeld}
+        className="recovery-check__show-typed"
+        controls="{id}-words"
+      />
     {/if}
     <!-- The check's own button leads: Skip for now, where a flow has it,
       is quieter. -->

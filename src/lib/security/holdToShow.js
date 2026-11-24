@@ -14,7 +14,14 @@
  * in Firefox for Android: holding, then touching its toolbar with another
  * finger left all twelve words shown once both fingers were off) ends with
  * the next touch on the page, or the minute. A tap shows them for as long as
- * the finger stays; nothing toggles, and a press that ends a hold starts none.
+ * the finger stays, and a press that ends a hold starts none.
+ *
+ * A screen reader can't hold: its double tap on a phone, or its Enter in
+ * browse mode, is a click with no press of the button's own before it. Such
+ * a click shows the words until it's pressed again, and every end a hold has
+ * but letting go ends that too: another press on the page, the focus gone
+ * anywhere but the button and the words it shows (its aria-controls), also
+ * where the button never had it, the page out of sight, the minute.
  */
 
 import onPageHidden from "./onPageHidden";
@@ -56,6 +63,25 @@ export default function holdToShow(button, show) {
   let began = /** @type {Event | null} */ (null);
   let cut = /** @type {Event | null} */ (null);
 
+  /**
+   * Whether the button's own press, a finger's or a key's, came since its
+   * last click: the click that follows it is the press's, never a toggle.
+   * A key's press is held with its default prevented, so no browser clicks
+   * after it: once it's let go, the next click is a screen reader's.
+   */
+  let pressed = false;
+
+  /** What forgets a key's press once it's let go: see `pressed`. */
+  let releasing = /** @type {ReturnType<typeof setTimeout> | undefined} */ (
+    undefined
+  );
+
+  /** The button's own press: its click, if one follows, is the press's. */
+  const pressedNow = () => {
+    clearTimeout(releasing);
+    pressed = true;
+  };
+
   const doc = button.ownerDocument;
 
   const end = () => set(false);
@@ -71,6 +97,41 @@ export default function holdToShow(button, show) {
   /** @param {PointerEvent} event */
   const onPageEnd = (event) => {
     if (event.pointerId === pointer) {
+      // Let go off the button, or taken away, as by a scroll: no click of
+      // the press comes to it.
+      if (
+        event.type === "pointercancel" ||
+        !(event.target instanceof Node && button.contains(event.target))
+      ) {
+        pressed = false;
+      }
+
+      end();
+    }
+  };
+
+  /**
+   * The words the button shows, as it says it controls them: the focus can
+   * go to them while they show.
+   */
+  const words = () =>
+    (button.getAttribute("aria-controls") ?? "")
+      .split(/\s+/)
+      .flatMap((id) => (id ? (doc.getElementById(id) ?? []) : []));
+
+  /**
+   * The focus gone anywhere but the button and its words, or nowhere, also
+   * where the button never had it: as the button's blur.
+   *
+   * @param {FocusEvent} event
+   */
+  const onFocusMove = (event) => {
+    const to = event.type === "focusin" ? event.target : event.relatedTarget;
+
+    if (
+      !(to instanceof Node) ||
+      !(button.contains(to) || words().some((each) => each.contains(to)))
+    ) {
       end();
     }
   };
@@ -101,6 +162,8 @@ export default function holdToShow(button, show) {
     ["pointercancel", onPageEnd, true],
     ["touchstart", onTouches, true],
     ["contextmenu", onMenu, false],
+    ["focusin", onFocusMove, true],
+    ["focusout", onFocusMove, true],
   ];
 
   /** @param {boolean} on */
@@ -144,6 +207,7 @@ export default function holdToShow(button, show) {
     }
 
     event.preventDefault();
+    pressedNow();
 
     // A second touch, or the first after a hold whose end the page never
     // heard: that hold is over, and this press shows nothing.
@@ -172,6 +236,7 @@ export default function holdToShow(button, show) {
     }
 
     event.preventDefault();
+    pressedNow();
 
     // A key held on past the minute repeats: only a new press shows again.
     if (!isHeld && !event.repeat) {
@@ -183,23 +248,51 @@ export default function holdToShow(button, show) {
   function keyUp(event) {
     if (isHoldKey(event)) {
       end();
+      // No click comes of it: a browser that sent one would have by the
+      // end of this task.
+      clearTimeout(releasing);
+      releasing = setTimeout(() => {
+        pressed = false;
+      });
     }
   }
 
-  /** A long press is the hold, never the browser's menu; a click toggles nothing. */
+  /** A long press is the hold, never the browser's menu. */
   const prevent = (/** @type {Event} */ event) => event.preventDefault();
+
+  /** A press taken away, as by a scroll: no click comes of it. */
+  function cancel() {
+    pressed = false;
+    end();
+  }
+
+  /**
+   * A click: the end of the button's own press, which did all, or a screen
+   * reader's, which shows the words, or hides them again.
+   *
+   * @param {Event} event
+   */
+  function click(event) {
+    event.preventDefault();
+
+    if (pressed) {
+      pressed = false;
+    } else {
+      set(!isHeld);
+    }
+  }
 
   /** @type {Array<[string, (event: any) => void]>} */
   const own = [
     ["pointerdown", press],
     ["pointerup", end],
-    ["pointercancel", end],
+    ["pointercancel", cancel],
     ["lostpointercapture", end],
-    ["blur", end],
+    ["blur", onFocusMove],
     ["keydown", keyDown],
     ["keyup", keyUp],
     ["contextmenu", prevent],
-    ["click", prevent],
+    ["click", click],
   ];
 
   for (const [type, listener] of own) {
@@ -216,6 +309,7 @@ export default function holdToShow(button, show) {
 
     destroy() {
       end();
+      clearTimeout(releasing);
       stopWatchingPage();
 
       for (const [type, listener] of own) {

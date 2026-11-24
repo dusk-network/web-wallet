@@ -488,6 +488,7 @@
     bind:this={grid}
     class="mnemonic-input__grid"
     class:mnemonic-input__grid--hidden={isMasked}
+    id="{id}-words"
     on:focusout={handleFocusOut}
     role="group"
   >
@@ -543,7 +544,11 @@
   </div>
   {#if $touchOnly}
     <!-- Under the words: the thumb holding it hides none of them. -->
-    <HoldToShow bind:held={isHeld} className="mnemonic-input__hold" />
+    <HoldToShow
+      bind:held={isHeld}
+      className="mnemonic-input__hold"
+      controls="{id}-words"
+    />
   {/if}
   {#if said}
     <p class="mnemonic-input__problem" id="{id}-problem" role="alert">

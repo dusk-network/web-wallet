@@ -514,6 +514,27 @@
     }
   }
 
+  /*
+   * On phones, held either way, a tap across 44 × 44 px at least around it,
+   * which doesn't move it, as the app's small controls have
+   * (tap-targets.css).
+   */
+  @media (max-width: 30rem), (pointer: coarse) {
+    .contact-detail__link {
+      position: relative;
+    }
+
+    .contact-detail__link::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+
   .contact-detail__activity-header {
     display: flex;
     align-items: baseline;

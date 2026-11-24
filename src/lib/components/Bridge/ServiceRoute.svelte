@@ -347,6 +347,7 @@
         placeholder="0"
         spellcheck="false"
         type="text"
+        style:--figure-width={figureWidth(amount || "0")}
         value={amount}
       />
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>

@@ -16,6 +16,14 @@
   /** Whether it's held now. */
   export let held = false;
 
+  /**
+   * The ID of what holds the words it shows: the focus can go there while
+   * they show, and nowhere else (holdToShow).
+   *
+   * @type {string | undefined}
+   */
+  export let controls = undefined;
+
   /** @type {string | undefined} */
   export let className = undefined;
 
@@ -73,6 +81,7 @@
 
 <button
   bind:this={button}
+  aria-controls={controls}
   aria-pressed={held}
   class={makeClassName([
     "dusk-button",

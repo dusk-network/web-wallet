@@ -6,6 +6,7 @@
    * switcher can keep a picture of the page as it's left.
    */
   import { onMount } from "svelte";
+  import { randomUUID } from "$lib/dusk/string";
 
   import { Button, Words } from "$lib/dusk/components";
   import { HoldToShow } from "$lib/components";
@@ -26,6 +27,9 @@
   /** Whether Hold to show words is held, on a phone. */
   let isHeld = false;
 
+  /** The words', which Hold to show words shows. */
+  const wordsId = `${randomUUID()}-words`;
+
   if (mnemonicPhrase.length === 0) {
     mnemonicPhrase = generateMnemonic().split(" ");
   }
@@ -45,9 +49,13 @@
     Please make sure to write your phrase down and save it in a secure location.
     Make sure no one can see your screen.
   </p>
-  <Words words={shown} />
+  <Words id={wordsId} words={shown} />
   {#if $touchOnly}
-    <HoldToShow bind:held={isHeld} className="mnemonic-card__show" />
+    <HoldToShow
+      bind:held={isHeld}
+      className="mnemonic-card__show"
+      controls={wordsId}
+    />
   {:else if isHidden}
     <Button
       className="mnemonic-card__show"

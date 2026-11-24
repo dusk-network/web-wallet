@@ -231,6 +231,187 @@ describe("holdToShow", () => {
     expect(isShown()).toBe(false);
   });
 
+  /** A click as a screen reader gives it: no press of the button's own. */
+  const click = () =>
+    button.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+
+  // A screen reader can't hold: VoiceOver's and TalkBack's double tap, and
+  // a screen reader's Enter in browse mode, are a click alone.
+  it("shows the words on a screen reader's click until it's pressed again", () => {
+    click();
+
+    expect(isShown()).toBe(true);
+
+    click();
+
+    expect(isShown()).toBe(false);
+    expect(told).toStrictEqual([true, false]);
+  });
+
+  it.each([
+    ["the button's focus gone", () => button.dispatchEvent(new Event("blur"))],
+    [
+      "a press on the page",
+      () =>
+        document.body.dispatchEvent(pointer("pointerdown", { pointerId: 2 })),
+    ],
+    ["the page left", () => window.dispatchEvent(new Event("pagehide"))],
+    [
+      "the page out of sight",
+      () => {
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+        document.dispatchEvent(new Event("visibilitychange"));
+      },
+    ],
+    ["the minute", () => vi.advanceTimersByTime(HOLD_LONGEST_MS)],
+  ])(
+    "ends what a screen reader's click showed as a hold ends: %s",
+    (_, end) => {
+      vi.useFakeTimers();
+      click();
+
+      expect(isShown()).toBe(true);
+
+      end();
+
+      expect(isShown()).toBe(false);
+    },
+  );
+
+  it("never shows on the click a finger's own press ends with", () => {
+    press();
+    button.dispatchEvent(pointer("pointerup"));
+    click();
+
+    expect(isShown()).toBe(false);
+    expect(told).toStrictEqual([true, false]);
+  });
+
+  /**
+   * Holds the button with a key and lets go, as a browser gives it: its
+   * press prevented, which no browser follows with a click.
+   *
+   * @param {string} key
+   */
+  const holdKey = (key) => {
+    const down = new KeyboardEvent("keydown", { cancelable: true, key });
+
+    button.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    button.dispatchEvent(new KeyboardEvent("keyup", { key }));
+  };
+
+  it.each([" ", "Enter"])(
+    "shows the words on a screen reader's click after a hold with %j, which ends with no click of its own",
+    (key) => {
+      vi.useFakeTimers();
+      holdKey(key);
+
+      expect(told).toStrictEqual([true, false]);
+
+      // Later, a screen reader's.
+      vi.advanceTimersByTime(1);
+      click();
+
+      expect(isShown()).toBe(true);
+    },
+  );
+
+  it("never shows on a click a browser would send with a key's release, after its prevented press", () => {
+    vi.useFakeTimers();
+    holdKey(" ");
+    click();
+
+    expect(isShown()).toBe(false);
+    expect(told).toStrictEqual([true, false]);
+  });
+
+  it("takes a screen reader's click as its own after a press taken away, as by a scroll, which no click ends", () => {
+    press();
+    button.dispatchEvent(pointer("pointercancel"));
+    click();
+
+    expect(isShown()).toBe(true);
+  });
+
+  describe("beside its words, and other controls", () => {
+    /** @type {HTMLElement} */
+    let words;
+
+    /** @type {HTMLInputElement} */
+    let word;
+
+    /** @type {HTMLButtonElement} */
+    let other;
+
+    /** @type {HTMLInputElement} */
+    let third;
+
+    beforeEach(() => {
+      words = Object.assign(document.createElement("div"), { id: "words" });
+      word = document.createElement("input");
+      other = document.createElement("button");
+      third = document.createElement("input");
+      words.append(word);
+      document.body.append(words, other, third);
+      button.setAttribute("aria-controls", "words");
+    });
+
+    afterEach(() => {
+      words.remove();
+      other.remove();
+      third.remove();
+    });
+
+    // A screen reader's click on the button where the focus was elsewhere:
+    // the button never had it, and never loses it.
+    it("ends what a screen reader's click showed once the focus goes anywhere but the button and its words, where the button never had it", () => {
+      other.focus();
+      click();
+
+      expect(isShown()).toBe(true);
+
+      // To the words, to read them: they stay.
+      word.focus();
+
+      expect(isShown()).toBe(true);
+
+      third.focus();
+
+      expect(isShown()).toBe(false);
+    });
+
+    it("ends what a screen reader's click showed once the focus goes nowhere", () => {
+      other.focus();
+      click();
+      other.blur();
+
+      expect(isShown()).toBe(false);
+    });
+
+    it("keeps what a screen reader's click showed as the focus goes from the button to its words, and ends it as it goes on from there", () => {
+      button.focus();
+      click();
+      word.focus();
+
+      expect(isShown()).toBe(true);
+
+      other.focus();
+
+      expect(isShown()).toBe(false);
+    });
+  });
+
+  it("takes a screen reader's click as its own after a press let go off the button, which no click ends", () => {
+    press();
+    document.body.dispatchEvent(pointer("pointerup"));
+    click();
+
+    expect(isShown()).toBe(true);
+  });
+
   it("listens to the page only while it's held, and to nothing once gone", () => {
     press();
     hold.destroy();

@@ -97,6 +97,18 @@ const wanted = () => {
   }
 };
 
+/**
+ * Whether they're to be told now, as this device keeps it: another tab may
+ * have turned it off since this one last looked.
+ */
+const isOn = () => {
+  const notifications = api();
+
+  return Boolean(
+    notifications && wanted() && notifications.permission === "granted",
+  );
+};
+
 const looking = () =>
   document.visibilityState === "visible" && document.hasFocus();
 
@@ -197,6 +209,13 @@ export function stopArrivalNotice() {
 async function notify({ href, id, onOpen, said }) {
   const icon = `${base}/favicon.png`;
   const registration = await worker();
+
+  // Turned off while the worker got ready, here or in another tab:
+  // nothing is said.
+  if (!isOn()) {
+    return;
+  }
+
   const text = typeof said === "function" ? said() : said;
 
   if (registration) {
@@ -240,7 +259,7 @@ export function transferEnded({
 
   title.set(said);
 
-  if (get(arrivalNoticeState) !== "on") {
+  if (!isOn()) {
     return;
   }
 

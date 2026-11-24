@@ -18,7 +18,7 @@
     { customGasLimit, customGasPrice },
     $gasPriceStore,
   );
-  $: ({ balance, currentProfile } = $walletStore);
+  $: ({ balance, balanceRead, currentProfile } = $walletStore);
   $: shieldedAddress = currentProfile ? currentProfile.address.toString() : "";
   $: unshieldedAddress = currentProfile
     ? currentProfile.account.toString()
@@ -30,6 +30,7 @@
   {unshieldedAddress}
   shieldedBalance={balance.shielded}
   unshieldedBalance={balance.unshielded.value}
+  balanceKnown={balanceRead !== false}
   {gasLimits}
   {gasSettings}
   on:operationChange
