@@ -6,7 +6,11 @@ export const TYPING_FIELDS =
  * Keeps `--keyboard-inset` on the node, and on the document for its scroll
  * padding, at the height a phone's keyboard covers at the bottom of the
  * window, from the visual viewport: what sticks to the bottom stays above
- * the keyboard.
+ * the keyboard. Only a keyboard counts, while a field one types in has the
+ * focus and the page isn't pinch-zoomed: an in-app browser's own toolbars
+ * and sheets, as X's, which come and go as the page scrolls, and a zoom
+ * make the visual viewport shorter too, and what sticks to the bottom would
+ * ride up with them.
  *
  * When the window's height changes, as when the keyboard opens, the field
  * being typed in is brought back into view, clear of what sticks to the
@@ -46,10 +50,20 @@ export default function keyboardInset(node) {
   };
 
   const update = () => {
-    const inset = `${Math.max(
-      0,
-      Math.round(window.innerHeight - viewport.height - viewport.offsetTop),
-    )}px`;
+    const isTyping =
+      document.activeElement instanceof Element &&
+      document.activeElement.matches(TYPING_FIELDS);
+    const isZoomed = Math.abs(viewport.scale - 1) > 0.01;
+    const inset = `${
+      isTyping && !isZoomed
+        ? Math.max(
+            0,
+            Math.round(
+              window.innerHeight - viewport.height - viewport.offsetTop,
+            ),
+          )
+        : 0
+    }px`;
 
     node.style.setProperty("--keyboard-inset", inset);
     root.style.setProperty("--keyboard-inset", inset);
@@ -60,15 +74,32 @@ export default function keyboardInset(node) {
     keepFieldInView();
   };
 
+  /** @type {number | undefined} */
+  let afterFocus;
+
+  // Once the focus has moved, in the next frame: a tap on a button at the
+  // bottom moves the focus before it clicks, and the button, moved at once,
+  // would leave its click to what was under it. A field left for the next
+  // keeps the keyboard's inset.
+  const focusMoved = () => {
+    cancelAnimationFrame(afterFocus ?? 0);
+    afterFocus = requestAnimationFrame(update);
+  };
+
   viewport.addEventListener("resize", resize);
   viewport.addEventListener("scroll", update);
+  document.addEventListener("focusin", focusMoved);
+  document.addEventListener("focusout", focusMoved);
   update();
 
   return {
     destroy() {
       cancelAnimationFrame(frame ?? 0);
+      cancelAnimationFrame(afterFocus ?? 0);
       viewport.removeEventListener("resize", resize);
       viewport.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", focusMoved);
+      document.removeEventListener("focusout", focusMoved);
       root.style.removeProperty("--keyboard-inset");
     },
   };

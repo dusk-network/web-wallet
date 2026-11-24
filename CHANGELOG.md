@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep the buttons at the foot of Send, staking and the wallet's other flows at the bottom of the screen in an in-app browser, as X's, and while zoomed in, where its toolbars or the zoom lifted them over the form; above the keyboard while typing, as before
 - Keep a setting changed in another tab, as balances hidden there, when this tab changes another one, as by folding Activity away: a tab no longer writes back what it read before
 - Keep 8 px between the Bridge's swap button and what's above and below it, which it touched or covered: Max, an account's Change and the To card's network, on every route and at every width
 - Send no notification of a transfer's end once Turn off is pressed, in this tab or another, also one that waited for the wallet's service worker to be ready
