@@ -242,6 +242,27 @@ describe("Being told when a transfer arrives", () => {
     expect(Stand.last.close).toHaveBeenCalledOnce();
   });
 
+  it("notifies of nothing once another tab turned it off, though this one, its state followed, last saw it on", async () => {
+    const { shown } = browser();
+    // A page that shows the state, as a transfer's screen does.
+    const following = arrivalNoticeState.subscribe(() => {});
+
+    try {
+      await chooseArrivalNotice();
+
+      expect(get(arrivalNoticeState)).toBe("on");
+
+      // Turn off pressed in another tab: what this device keeps.
+      localStorage.removeItem(`${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`);
+      transferEnded({ id: "b", title: "1 DUSK arrived on Dusk" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(shown).toStrictEqual([]);
+    } finally {
+      following();
+    }
+  });
+
   it("stays chosen on this device, until it's turned off", async () => {
     const { shown } = browser();
 
@@ -805,6 +826,55 @@ describe("Being told when a transfer arrives", () => {
 
       expect(get(notice.arrivalNoticeState)).toBe("offer");
       expect(shown).toStrictEqual([]);
+    });
+
+    it("notifies of nothing once another tab turned it off while this one's service worker got ready", async () => {
+      vi.resetModules();
+
+      const notice = await import("../arrivalNotice");
+      /** @type {PromiseWithResolvers<any>} */
+      const ready = Promise.withResolvers();
+      /** @type {string[]} */
+      const shown = [];
+
+      class Registration {
+        /** @param {string} title */
+        async showNotification(title) {
+          shown.push(title);
+        }
+      }
+
+      browser();
+      onPhone();
+      vi.stubGlobal("ServiceWorkerRegistration", Registration);
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: {
+          addEventListener() {},
+          ready: ready.promise,
+          register: async () => new Registration(),
+          removeEventListener() {},
+        },
+      });
+
+      // A page that shows the state, as a transfer's screen does.
+      const following = notice.arrivalNoticeState.subscribe(() => {});
+
+      try {
+        await notice.chooseArrivalNotice();
+        notice.transferEnded({ id: "deposit-2", title: "1 DUSK arrived" });
+        // Turn off pressed in another tab before this one's worker is ready.
+        localStorage.removeItem(
+          `${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`,
+        );
+        ready.resolve(new Registration());
+        await ready.promise;
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(shown).toStrictEqual([]);
+      } finally {
+        following();
+      }
     });
 
     it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {
