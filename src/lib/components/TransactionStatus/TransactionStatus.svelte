@@ -53,6 +53,15 @@
   /** What was sent and to whom, as "0.5 DUSK to Alice (alice.dusk)". */
   export let what = "";
 
+  /**
+   * What says `what` as balances show at the time, its amount hidden while
+   * they're hidden: for telling of its arrival later, when they may not
+   * show as they do now.
+   *
+   * @type {((hidden: boolean) => string) | undefined}
+   */
+  export let whatAs = undefined;
+
   /** The memo it was sent with. */
   export let memo = "";
 
@@ -73,7 +82,9 @@
 
   /**
    * More of what it did, said with its fee once it's known, as the stDUSK a
-   * stake with Sozu got: each hidden with the balances, or not.
+   * stake with Sozu got. A result is the end of the flow the person started:
+   * each shows, with balances hidden too, whatever its `hidden` says of
+   * where it's browsed.
    *
    * @type {{ hidden: boolean, term: string, unit: string, value: string }[]}
    */
@@ -157,7 +168,7 @@
         failed: ended === "failed",
         hash: /** @type {string} */ (hash),
         stillOpen,
-        what,
+        what: whatAs ?? what,
       });
     }
   }
@@ -227,7 +238,7 @@
 
       // Left before a block took it: the wallet tells, wherever it is.
       if (tellArrival && hash && !outcome && !notSent) {
-        handOverSend({ hash, stillOpen, what });
+        handOverSend({ hash, stillOpen, what: whatAs ?? what });
       }
     };
   });
@@ -426,21 +437,24 @@
       {#if outcome}
         <dt>Fee</dt>
         <dd>
-          <BalanceValue value={formatDuskExact(outcome.fee, language)} /> DUSK
+          <BalanceValue
+            hidden={false}
+            value={formatDuskExact(outcome.fee, language)}
+          /> DUSK
         </dd>
       {:else if maxFee !== undefined}
         <dt>Fee up to</dt>
         <dd>
-          <BalanceValue value={formatFee(maxFee, language, { max: true })} /> DUSK
+          <BalanceValue
+            hidden={false}
+            value={formatFee(maxFee, language, { max: true })}
+          /> DUSK
         </dd>
       {/if}
       {#each extra as line (line.term)}
         <dt>{line.term}</dt>
         <dd>
-          <BalanceValue
-            hidden={line.hidden ? undefined : false}
-            value={line.value}
-          />
+          <BalanceValue hidden={false} value={line.value} />
           {line.unit}
         </dd>
       {/each}

@@ -3,8 +3,10 @@
   import { mdiEyeOffOutline, mdiEyeOutline } from "@mdi/js";
   import { Icon } from "$lib/dusk/components";
   import { BalanceValue } from "$lib/components";
+  import { BALANCE_MASK } from "$lib/constants";
   import {
     createCurrencyFormatter,
+    figureWidth,
     formatDusk,
     formatDuskExact,
     luxToDusk,
@@ -61,6 +63,7 @@
 
   // Everything held: what's staked too.
   $: total = shielded + unshielded + staked;
+  $: totalText = formatDusk(total, locale);
 
   /**
    * A part's share of the total, in percent to a tenth.
@@ -109,10 +112,14 @@
     </button>
   </div>
   <p class="home-balance__total">
-    <span class="home-balance__amount"
+    <span
+      class="home-balance__amount"
+      style:--figure-width={figureWidth(
+        hideBalances ? BALANCE_MASK : totalText,
+      )}
       ><BalanceValue
         exact={formatDuskExact(total, locale)}
-        value={formatDusk(total, locale)}
+        value={totalText}
       /></span
     >
     <span class="home-balance__unit">DUSK</span>
@@ -240,6 +247,7 @@
   }
 
   .home-balance__total {
+    container-type: inline-size;
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
@@ -248,11 +256,16 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /*
+   * One number, never broken: a total too long for the line is set smaller,
+   * by how wide it is in em at most (--figure-width), its DUSK free to go
+   * under it.
+   */
   .home-balance__amount {
-    font-size: clamp(2.625rem, 6vw, 4rem);
+    font-size: min(clamp(2.625rem, 6vw, 4rem), 100cqi / var(--figure-width, 1));
     line-height: 1.04;
     letter-spacing: -0.015em;
-    overflow-wrap: anywhere;
+    white-space: nowrap;
   }
 
   .home-balance__unit {

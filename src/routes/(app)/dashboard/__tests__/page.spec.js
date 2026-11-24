@@ -6,8 +6,10 @@ import { rowOf } from "$lib/activity/__tests__/fixtures/rows";
 import {
   NOT_CONFIRMED_YET,
   lastReadText,
+  shortAddress,
   timeLabel,
 } from "$lib/activity/present";
+import { removeContact, saveContact } from "$lib/contacts";
 import mockedWalletStore from "$lib/mocks/mockedWalletStore";
 import { settingsStore } from "$lib/stores";
 
@@ -119,6 +121,8 @@ vi.mock("$lib/sozu", async (importOriginal) => {
 
 const ALICE =
   "26JfWKvhYdVY71bdSPVLNJ51Buy4GjimCT7zcsoxNQtydDbdoH2AwZaH8W7rjcAc9riAu39Vw9Lx1w7yrkBgotSjWmUdkSyQuaTKDZWVCKp9g1GxiEnnksv3W3onToB5NsNi";
+const OTHER =
+  "21KL9R1h2CWF4Su1RGkf6MucN92yUKMRKgBE4gns9mV1r8BW46APhvBBVX4Ut7f5Zxf639KTZUb2zanB4UZiYsEJkzkwoNJ1GQuKKPBNQkUGKwKq5iudjQJ2UiQFHZ71rMvN";
 const NOW = Date.now();
 
 // Sent from here, on its way; received; and failed.
@@ -1319,23 +1323,62 @@ describe("Dashboard", () => {
     expect(row?.querySelector(".activity-row__status--pending")).toBeNull();
   });
 
-  it("hides amounts while balances are hidden, but not a fee", async () => {
+  it("hides amounts while balances are hidden, a failed send's fee too, as its details do, and says them once they're shown", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
     await setHistory({ rows: [rows[2]] });
 
     render(Dashboard, props);
 
-    const row = document.querySelector(".activity-row");
+    const row = () => document.querySelector(".activity-row");
 
-    // Hidden: the total, and what the failed send was for; shown: the fee
-    // it paid, which is no balance.
+    // Hidden: the total, what the failed send was for, and the fee it paid,
+    // in the row and in what the live list reads out.
     expect(totalOf()).not.toMatch(/\d/);
-    expect(textOf(row?.querySelector(".activity-row__amount"))).not.toMatch(
+    expect(textOf(row()?.querySelector(".activity-row__amount"))).not.toMatch(
       /\d/,
     );
-    expect(textOf(row?.querySelector(".activity-row__failed"))).toEqual(
+    expect(textOf(row()?.querySelector(".activity-row__failed"))).toEqual(
+      naming(/\bfee\b/i, { not: /\d/ }),
+    );
+    expect(
+      textOf(row()?.closest("[aria-live]")?.querySelector(".activity-row")),
+    ).not.toMatch(/\d DUSK/);
+    expect(get(settingsStore).hideBalances).toBe(true);
+
+    await act(() =>
+      settingsStore.update((store) => ({ ...store, hideBalances: false })),
+    );
+
+    expect(textOf(row()?.querySelector(".activity-row__failed"))).toEqual(
       naming(/\bfee\b/i, "0.0037 DUSK"),
     );
-    expect(get(settingsStore).hideBalances).toBe(true);
+  });
+
+  it("says a look-alike contact's address where a row names it, as Activity does", async () => {
+    const { openTestContacts } = await import("$lib/test-helpers");
+
+    await openTestContacts();
+
+    // Alice, and a contact whose name looks like hers: a Cyrillic е.
+    const saved = [
+      saveContact({ address: ALICE, name: "Alice" }),
+      saveContact({ address: OTHER, name: "Alicе" }),
+    ];
+
+    try {
+      await setHistory({ rows: [rows[1]] });
+
+      render(Dashboard, props);
+
+      // The row names Alice: her address tells her from the other one, in
+      // the row and in its name.
+      expect(textOf(document.querySelector(".activity-row"))).toEqual(
+        naming("Alice", shortAddress(ALICE)),
+      );
+    } finally {
+      for (const contact of saved) {
+        removeContact(contact.id);
+      }
+    }
   });
 });

@@ -326,6 +326,9 @@
       <span
         aria-hidden="true"
         class="address-picker__compact-lines"
+        class:address-picker__compact-lines--label={!shownName &&
+          !isNamedHere &&
+          !walletName}
         class:address-picker__compact-lines--wallet={Boolean(walletName)}
       >
         {#if shownName}

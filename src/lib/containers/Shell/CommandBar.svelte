@@ -444,6 +444,7 @@
         aria-selected={i === active}
         class="command-bar__result"
         class:command-bar__result--active={i === active}
+        class:command-bar__result--contact={result.group === "Contacts"}
         id={`command-${result.id}`}
         on:click={() => activate(result)}
         on:keydown={() => {}}
@@ -618,6 +619,15 @@
     color: var(--calm-muted);
   }
 
+  /*
+   * That line whole, a look-alike name's address and warning with it, on as
+   * many lines as it needs; a memo keeps to one, its details have all of it.
+   */
+  .command-bar__sub:not(.command-bar__memo) {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
   .command-bar__detail,
   .command-bar__hint {
     color: var(--calm-muted);
@@ -628,6 +638,21 @@
   .command-bar__hint,
   .command-bar__detail--end {
     margin-left: auto;
+  }
+
+  /*
+   * A contact's .dusk name goes under its name where both don't fit, so a
+   * look-alike's warning and address keep the row's width; it breaks only
+   * where it's longer than the row.
+   */
+  .command-bar__result--contact {
+    flex-wrap: wrap;
+
+    & .command-bar__detail {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
   }
 
   .command-bar__code {

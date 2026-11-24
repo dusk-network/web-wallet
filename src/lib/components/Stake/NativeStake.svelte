@@ -13,11 +13,7 @@
     mdiServerOutline,
   } from "@mdi/js";
 
-  import {
-    BALANCE_MASK,
-    DOCUMENTATION_LINKS,
-    withoutBalanceMask,
-  } from "$lib/constants";
+  import { DOCUMENTATION_LINKS } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -82,7 +78,7 @@
 
   let amountText = typedBefore?.amount ?? "";
 
-  /** Whether Max filled the amount in: it's hidden with the balances. */
+  /** Whether Max filled the amount in: said with what it leaves. */
   let isMaxAmount = typedBefore?.isMax ?? false;
   let isReviewing = false;
   let { gasLimit, gasPrice } = keptGas(typedBefore?.gas, gasSettings);
@@ -112,9 +108,7 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
-    amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
+    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isMaxAmount = false;
   }
 
@@ -128,7 +122,7 @@
       sent = {
         maxFee: maxGasFee,
         operation,
-        what: `${hideBalances ? BALANCE_MASK : formatDuskExact(amount, language)} DUSK to your stake`,
+        what: `${formatDuskExact(amount, language)} DUSK to your stake`,
       };
       reviewHistory.settle(operation, () => {
         canTryAgain = true;
@@ -191,8 +185,8 @@
     isGasValid = areValidGasSettings(gasPrice, gasLimit, gasLimits);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   $: maxGasFee = gasLimit * gasPrice;
   // Max keeps this fee, and the one to unstake later: all of it staked, there
   // would be no way to pay for getting it back.
@@ -208,7 +202,6 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
-    hidden: hideBalances,
     keep: unstakeFee,
     locale: language,
     minimum,
@@ -261,9 +254,7 @@
       >
       <div class="native-stake__amount">
         <Textbox
-          aria-describedby={isAmountMasked
-            ? `${id}-amount-hidden`
-            : `${id}-available ${id}-error`}
+          aria-describedby="{id}-available {id}-error"
           aria-invalid={Boolean(check.error)}
           autocomplete="off"
           className="native-stake__input"
@@ -272,11 +263,8 @@
           on:input={typeAmount}
           placeholder="0"
           type="text"
-          value={isAmountMasked ? BALANCE_MASK : amountText}
+          value={amountText}
         />
-        {#if isAmountMasked}
-          <span hidden id="{id}-amount-hidden">hidden</span>
-        {/if}
         <span aria-hidden="true" class="native-stake__unit">DUSK</span>
         <Button
           disabled={maxStake <= 0n}
@@ -300,6 +288,7 @@
       <p class="native-stake__hint" id="{id}-available">
         {hasStake ? "" : `Minimum ${minimumText} DUSK · `}Available <BalanceValue
           exact={formatDuskExact(availableBalance, language)}
+          hidden={false}
           value={formatDusk(availableBalance, language)}
         /> DUSK (public)
       </p>
@@ -398,10 +387,7 @@
         <div>
           <dt>{hasStake ? "Add to stake" : "Stake"}</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            <BalanceValue
-              hidden={isAmountMasked}
-              value={formatDuskExact(typedAmount, language)}
-            /> DUSK
+            {formatDuskExact(typedAmount, language)} DUSK
           </dd>
         </div>
         {#if !hasStake}
@@ -435,14 +421,7 @@
         <div>
           <dt>Total up to</dt>
           <dd class:stake-flow__muted={isTypedOff}>
-            <BalanceValue
-              hidden={isAmountMasked}
-              value={formatTotal(
-                typedAmount + maxGasFee,
-                availableBalance,
-                language,
-              )}
-            /> DUSK
+            {formatTotal(typedAmount + maxGasFee, availableBalance, language)} DUSK
           </dd>
         </div>
       </dl>
@@ -455,7 +434,7 @@
           disabled={!canStake}
           on:click={stake}
           text={canStake
-            ? `Stake ${isAmountMasked ? BALANCE_MASK : formatDuskExact(shownAmount, language)} DUSK`
+            ? `Stake ${formatDuskExact(shownAmount, language)} DUSK`
             : "Stake"}
           variant="primary"
         />

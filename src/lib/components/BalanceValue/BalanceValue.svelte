@@ -20,8 +20,8 @@
   export let exact = undefined;
 
   /**
-   * Whether it's hidden, where that isn't simply while balances are: an
-   * amount typed stays, one Max filled in doesn't.
+   * Whether it's hidden, where that isn't simply while balances are: false
+   * inside a flow the person started, which shows its figures.
    *
    * @type {boolean | undefined}
    */

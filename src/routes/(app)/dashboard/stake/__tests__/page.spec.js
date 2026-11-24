@@ -412,6 +412,42 @@ describe("Staking", () => {
       expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.1 DUSK"));
     });
 
+    it("shows its figures while balances are hidden, what's available, Max's and the review's, and hides them again back on the overview", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+      open("?flow=native");
+      withoutStake(1_483n);
+
+      const { getByLabelText, getByRole } = render(Staking);
+      const amount = getByLabelText("Amount");
+
+      expect(availableOf(amount)).toMatch(wholeFigure("1,483 DUSK"));
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      expect(amount).toHaveValue("1482.9");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(
+        getByRole("button", { name: showsDusk("1,482.9") }),
+      ).toBeInTheDocument();
+
+      // Out of the flow: browsed, so hidden.
+      cleanup();
+      open("");
+
+      const { container } = render(Staking);
+      const figures = Array.from(
+        container.querySelectorAll(".staking__figure"),
+        textOf,
+      );
+
+      expect(figures).not.toHaveLength(0);
+      for (const figure of figures) {
+        expect(figure).not.toMatch(/[0-9]/);
+      }
+    });
+
     it("keeps the fee to unstake, at this network's gas, with Max", async () => {
       open("?flow=native");
       withoutStake(1_483n);

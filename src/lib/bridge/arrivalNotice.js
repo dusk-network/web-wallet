@@ -14,6 +14,8 @@ import { dev } from "$app/environment";
 import { base } from "$app/paths";
 import { derived, get, writable } from "svelte/store";
 
+import settingsStore from "$lib/stores/settingsStore";
+
 const KEY = `${CONFIG.LOCAL_STORAGE_APP_KEY}-arrival-notice`;
 
 /** What's said for each state, after the offer's button in "offer". */
@@ -101,7 +103,12 @@ const looking = () =>
 /** Whether the browser refused, since this page opened. */
 const refused = writable(false);
 
-/** What the tab's title says first: "" for its own. */
+/**
+ * What the tab's title says first: "" for its own. What says it as it's
+ * shown, where that's a function: as balances show then.
+ *
+ * @type {import("svelte/store").Writable<string | (() => string)>}
+ */
 const title = writable("");
 
 /** Bumped as they choose or stop, for the state to be asked again. */
@@ -127,8 +134,13 @@ export const arrivalNoticeState = derived([refused, chosen], ([$refused]) => {
       : "offer";
 });
 
-/** What the tab's title says first, while they're away from what ended. */
-export const arrivalTitle = { subscribe: title.subscribe };
+/**
+ * What the tab's title says first, while they're away from what ended: said
+ * anew as balances are shown or hidden.
+ */
+export const arrivalTitle = derived([title, settingsStore], ([$title]) =>
+  typeof $title === "function" ? $title() : $title,
+);
 
 /**
  * Whether a transfer is followed with the page hidden: once they asked to be
@@ -177,16 +189,18 @@ export function stopArrivalNotice() {
 
 /**
  * Notifies of what ended: through the service worker, which brings the wallet
- * to `href` as it's pressed, or else from the page.
+ * to `href` as it's pressed, or else from the page. What it says is decided
+ * as it shows, once the worker is ready, not before.
  *
- * @param {{ href: string, id: string, onOpen: () => void, said: string }} ended
+ * @param {{ href: string, id: string, onOpen: () => void, said: string | (() => string) }} ended
  */
 async function notify({ href, id, onOpen, said }) {
   const icon = `${base}/favicon.png`;
   const registration = await worker();
+  const text = typeof said === "function" ? said() : said;
 
   if (registration) {
-    await registration.showNotification(said, {
+    await registration.showNotification(text, {
       data: { url: `${location.origin}${base}${href}` },
       icon,
       tag: id,
@@ -195,7 +209,7 @@ async function notify({ href, id, onOpen, said }) {
     return;
   }
 
-  const notice = new /** @type {typeof Notification} */ (api())(said, {
+  const notice = new /** @type {typeof Notification} */ (api())(text, {
     icon,
     tag: id,
   });
@@ -210,8 +224,9 @@ async function notify({ href, id, onOpen, said }) {
 /**
  * A transfer ended. Whoever is looking at the page sees it there.
  *
- * @param {{ href?: string, id: string, onOpen?: () => void, title: string }} ended
- *   `href` the page of the wallet that shows it, without the base path
+ * @param {{ href?: string, id: string, onOpen?: () => void, title: string | (() => string) }} ended
+ *   `href` the page of the wallet that shows it, without the base path;
+ *   `title` what says it, or what says it as it's shown
  */
 export function transferEnded({
   href = "/dashboard",

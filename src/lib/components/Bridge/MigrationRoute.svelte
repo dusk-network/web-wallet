@@ -22,6 +22,7 @@
 
   import { Button, Icon } from "$lib/dusk/components";
   import {
+    figureWidth,
     formatDusk,
     formatDuskExact,
     formatDuskPlain,
@@ -50,7 +51,6 @@
   import { describeFailure, isDeclinedInWallet } from "$lib/transactions";
   import { routeTime, routeTimeText } from "$lib/bridge/routeTimes";
 
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import BalanceValue from "../BalanceValue/BalanceValue.svelte";
   import AddDusk from "./AddDusk.svelte";
@@ -119,9 +119,6 @@
   /** @type {string} */
   let amount = typedBefore?.amount ?? "";
 
-  /** Whether Max filled the amount in: it's hidden with the balances. */
-  let isMaxAmount = typedBefore?.isMax ?? false;
-
   /**
    * An amount of the chain's own currency, rounded as a wallet shows it.
    *
@@ -142,10 +139,7 @@
   /** @param {Event} event */
   function typeAmount(event) {
     note = "";
-    amount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
-    isMaxAmount = false;
+    amount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
   }
 
   /** The token's balance in the wallet, in wei, once read. */
@@ -336,7 +330,6 @@
       formatDuskPlain(finishLux),
       getDecimalSeparator(language),
     );
-    isMaxAmount = true;
     note = "";
     await tick();
 
@@ -700,17 +693,15 @@
   }
 
   // What's typed, kept as it's typed, for as long as it hasn't gone out.
-  $: toKeep = { amount, isMax: isMaxAmount };
+  $: toKeep = { amount };
   $: if (step !== "result") {
     draft.save(toKeep);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isAmountMasked = hideBalances && isMaxAmount;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   // What the Sent screen says is on its way.
-  $: sentWhat = hideBalances
-    ? "It"
-    : `${formatDuskExact(amountLux, language)} DUSK`;
+  $: sentWhat = `${formatDuskExact(amountLux, language)} DUSK`;
   $: ({ address, chainId, isConnected } = $account);
   $: follow(isConnected ? address : undefined, chainId);
   $: followHistory(Boolean($page.state?.routeReview));
@@ -838,6 +829,7 @@
           The migration contract may still take any amount of {unit} from this wallet.
         {:else}
           The migration contract may still take <BalanceValue
+            hidden={false}
             value={approvalText(openApproval)}
           />
           {unit} from this wallet.
@@ -894,7 +886,7 @@
         placeholder="0"
         spellcheck="false"
         type="text"
-        value={isAmountMasked ? BALANCE_MASK : amount}
+        value={amount}
       />
       <span class="swap-token"><NetworkMark id={route.origin} />{unit}</span>
     </div>
@@ -909,6 +901,7 @@
           {:else}
             <BalanceValue
               exact={formatDuskExact(balanceLux, language)}
+              hidden={false}
               value={formatDusk(balanceLux, language)}
             />
             {unit}
@@ -922,7 +915,6 @@
               formatDuskPlain(balanceLux ?? 0n),
               getDecimalSeparator(language),
             );
-            isMaxAmount = true;
           }}
           type="button">Max</button
         >
@@ -936,7 +928,6 @@
         on:choose={(event) => {
           note = "";
           amount = event.detail;
-          isMaxAmount = false;
         }}
         text={amount}
       />
@@ -993,10 +984,10 @@
         aria-live="off"
         class:swap-amount__empty={amountLux === 0n}
         for="migration-amount"
-        >{#if amountLux === 0n}0{:else}<BalanceValue
-            hidden={isAmountMasked}
-            value={formatDuskExact(amountLux, language)}
-          />{/if}</output
+        style:--figure-width={figureWidth(
+          amountLux === 0n ? "0" : formatDuskExact(amountLux, language),
+        )}
+        >{amountLux === 0n ? "0" : formatDuskExact(amountLux, language)}</output
       >
       <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
     </div>
@@ -1047,8 +1038,7 @@
       <div>
         <dt>Amount</dt>
         <dd>
-          {isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)}
-          DUSK
+          {formatDuskExact(amountLux, language)} DUSK
         </dd>
       </div>
       <div>
@@ -1088,11 +1078,15 @@
                 this.
               {:else}
                 Covered by an allowance of <BalanceValue
+                  hidden={false}
                   value={approvalText(reviewedApproval)}
                 />
                 {unit} from before.
                 {#if approvalLeft > 0n}
-                  <BalanceValue value={approvalText(approvalLeft)} />
+                  <BalanceValue
+                    hidden={false}
+                    value={approvalText(approvalLeft)}
+                  />
                   {unit} stays after this.
                 {:else}
                   None of it stays after this.
@@ -1107,8 +1101,8 @@
         <dd>
           {typeof feeBalance === "bigint"
             ? feeEstimate
-              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit}) · no bridge fee`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
+              ? `About ${feeText(feeEstimate)} ${feeUnit} (you have ${feeText(feeBalance)} ${feeUnit}) · no bridge fee`
+              : `You have ${feeText(feeBalance)} ${feeUnit} for it · no bridge fee`
             : `On ${chainName}, as your wallet shows · no bridge fee`}
         </dd>
       </div>
@@ -1137,7 +1131,7 @@
         disabled={approved === undefined || !isConnected}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}
-        text={`${approved === false ? "Approve" : "Migrate"} ${isAmountMasked ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+        text={`${approved === false ? "Approve" : "Migrate"} ${formatDuskExact(amountLux, language)} DUSK`}
         variant="primary"
       />
       {#if approved === false}
@@ -1181,9 +1175,7 @@
             ? "…"
             : openApproval >= NO_LIMIT
               ? "Unlimited"
-              : hideBalances
-                ? BALANCE_MASK
-                : approvalText(openApproval)}
+              : approvalText(openApproval)}
           {unit}
         </dd>
       </div>
@@ -1205,8 +1197,8 @@
         <dd>
           {typeof revokeFees.balance === "bigint"
             ? revokeFees.fee
-              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit})`
-              : `You have ${hideBalances ? BALANCE_MASK : feeText(revokeFees.balance)} ${feeUnit} for it`
+              ? `About ${feeText(revokeFees.fee)} ${feeUnit} (you have ${feeText(revokeFees.balance)} ${feeUnit})`
+              : `You have ${feeText(revokeFees.balance)} ${feeUnit} for it`
             : `On ${chainName}, as your wallet shows`}
         </dd>
       </div>
@@ -1279,7 +1271,6 @@
         <RouteTransferResult
           bind:heading={sentHeading}
           {hash}
-          masked={hideBalances}
           {route}
           sentText={timeText
             ? `${sentWhat} arrives on Dusk in ${timeText}.`

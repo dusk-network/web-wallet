@@ -271,6 +271,93 @@ describe("Bridge", () => {
       deposit.mockRestore();
     });
 
+    it("should show what Max fills in while balances are hidden, in the field, what arrives, the route's details and the review, and bridge it", async () => {
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      const deposit = vi
+        .spyOn(walletStore, "depositEvmFunctionCall")
+        .mockReturnValue(new Promise(() => {}));
+      const { container, getByLabelText, getByRole } = render(
+        Bridge,
+        baseProps,
+      );
+
+      await fireEvent.click(getByRole("button", { name: "Max" }));
+
+      // The public balance past the fee: a flow the person started shows it.
+      expect(getByLabelText("Amount")).toHaveValue("999.98");
+      expect(container.querySelector(".swap-amount output")).toHaveTextContent(
+        "999.98",
+      );
+      expect(
+        fieldOf(container, /^leaves your public balance$/i),
+      ).toHaveTextContent("up to 1,000 DUSK");
+
+      await fireEvent.click(getByRole("button", { name: "Review" }));
+
+      expect(amountOf(container, /^amount$/i)).toBe("999.98 DUSK");
+      expect(amountOf(container, /^total\b/i)).toBe("1,000 DUSK");
+
+      const bridge = getByRole("button", { name: "Bridge 999.98 DUSK" });
+
+      await afterConfirmDelay();
+      await fireEvent.click(bridge);
+
+      expect(deposit).toHaveBeenCalledOnce();
+      expect(deposit.mock.calls[0][1]).toBe(999_980_000_000n);
+      deposit.mockRestore();
+    });
+
+    it("should carry no Max amount over a swap of From and To, nor keep one for after a lock", async () => {
+      const view = render(Bridge, baseProps);
+      const amount = () => view.getByLabelText("Amount");
+
+      // The most of the DuskEVM balance, on the way back.
+      await withdraw(view.container);
+      await fireEvent.click(view.getByRole("button", { name: "Max" }));
+      await vi.waitFor(() => expect(amount()).toHaveValue("2.997230463"));
+
+      await fireEvent.click(
+        view.getByRole("button", { name: "Swap From and To" }),
+      );
+
+      // A deposit of it: the public balance's to work out, not the other's.
+      expect(getDirection(view.container)).toStrictEqual(["duskDs", "duskEvm"]);
+      expect(amount()).toHaveValue("");
+
+      await lockAndUnlock();
+
+      expect(render(Bridge, baseProps).getByLabelText("Amount")).toHaveValue(
+        "",
+      );
+    });
+
+    it("should carry no Max amount over a swap after a lock or a reload either", async () => {
+      const view = render(Bridge, baseProps);
+
+      await withdraw(view.container);
+      await fireEvent.click(view.getByRole("button", { name: "Max" }));
+      await vi.waitFor(() =>
+        expect(view.getByLabelText("Amount")).toHaveValue("2.997230463"),
+      );
+      await lockAndUnlock();
+
+      // Kept for after the lock as it was, on the way back.
+      const back = render(Bridge, baseProps);
+      const amount = back.getByLabelText("Amount");
+
+      expect(getDirection(back.container)).toStrictEqual(["duskEvm", "duskDs"]);
+      expect(amount).toHaveValue("2.997230463");
+
+      await fireEvent.click(
+        back.getByRole("button", { name: "Swap From and To" }),
+      );
+
+      // The DuskEVM balance's maximum doesn't come over to the deposit.
+      expect(getDirection(back.container)).toStrictEqual(["duskDs", "duskEvm"]);
+      expect(amount).toHaveValue("");
+    });
+
     it("should go back to its review with Try again when nothing went out, and keep what's typed", async () => {
       const deposit = vi
         .spyOn(walletStore, "depositEvmFunctionCall")
@@ -580,15 +667,44 @@ describe("Bridge", () => {
     expect(amountOf(container, /total/i)).toBeUndefined();
   });
 
-  it("should hide the public balance and the deposit on its way while balances are hidden, but not the Review amounts", async () => {
+  it("should close an open review whose amount a maximum asked for before it changes, never sending what wasn't reviewed", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByLabelText, getByRole, queryByRole } = render(
+      Bridge,
+      baseProps,
+    );
+    /** @type {PromiseWithResolvers<bigint>} */
+    const estimate = Promise.withResolvers();
+
+    await withdraw(container);
+    await fireEvent.input(getByLabelText("Amount"), { target: { value: "1" } });
+
+    // Max, then Review before its fee is estimated.
+    estimateGas.mockReturnValueOnce(estimate.promise);
+    await fireEvent.click(getByRole("button", { name: "Max" }));
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(getByRole("button", { name: "Bridge 1 DUSK" })).toBeInTheDocument();
+
+    estimate.resolve(withdrawalGas);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tick();
+
+    // The review of 1 DUSK closed: nothing on it sends another amount.
+    expect(queryByRole("button", { name: /^Bridge\b/ })).toBeNull();
+    expect(queryByRole("heading", { name: "Review" })).toBeNull();
+  });
+
+  it("should show the public balance, the deposit on its way and the review's amounts while balances are hidden: the Bridge is a flow the person started", async () => {
     pendingDepositAmountLux.mockReturnValue(1_500_000_000n);
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     const { container, getByRole } = render(Bridge, baseProps);
 
-    // Neither the public balance's 1,000 DUSK nor the 1.5 on its way.
-    expect(container).not.toHaveTextContent("1,000");
-    expect(container).not.toHaveTextContent("1.5");
+    // The public balance's 1,000 DUSK, and the 1.5 on its way.
+    expect(container).toHaveTextContent(/(^|\s)1,000 DUSK/);
+    expect(container).toHaveTextContent(/\+ 1\.5 DUSK on its way/);
 
     await fireEvent.input(getByRole("textbox"), { target: { value: "2.5" } });
     await fireEvent.click(getByRole("button", { name: "Review" }));

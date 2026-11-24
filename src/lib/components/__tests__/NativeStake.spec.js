@@ -212,36 +212,23 @@ describe("checkAmount", () => {
 
   it("keeps what a stake must leave for its way out, and says so", () => {
     const keep = 50_000_000n;
-    const hidden = check("1482.95", { hidden: true, keep });
 
     expect(check("1482.95", { keep })).toMatchObject({
       error: expect.stringMatching(wholeFigure("0.05 DUSK")),
       ok: false,
     });
-    // Refused all the same with balances hidden, with no figure.
-    expect(hidden).toMatchObject({
-      error: expect.stringMatching(/too little/i),
-      ok: false,
-    });
-    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("1482.9", { keep }).ok).toBe(true);
   });
 
-  it("doesn't let an amount give away the balance while balances are hidden", () => {
-    // Shown, each says how much more than the balance it is; hidden, why
-    // it's refused, with no figure.
-    for (const { more, text, why } of [
-      { more: "0.05 DUSK", text: "1483", why: /too little/i },
-      { more: "1.05 DUSK", text: "1484", why: /more than/i },
+  it("says by how much an amount is over the balance: the forms it's for are flows, which show their figures", () => {
+    for (const { more, text } of [
+      { more: "0.05 DUSK", text: "1483" },
+      { more: "1.05 DUSK", text: "1484" },
     ]) {
-      const hidden = check(text, { hidden: true });
-
-      expect(check(text).error).toMatch(wholeFigure(more));
-      expect(hidden).toMatchObject({
-        error: expect.stringMatching(why),
+      expect(check(text)).toMatchObject({
+        error: expect.stringMatching(wholeFigure(more)),
         ok: false,
       });
-      expect(hidden.error).not.toMatch(/[0-9]/);
     }
   });
 
@@ -267,10 +254,6 @@ describe("checkAmount", () => {
       });
     }
 
-    const hidden = check("5", { ...short, hidden: true });
-
-    expect(hidden.ok).toBe(false);
-    expect(hidden.error).not.toMatch(/[0-9]/);
     expect(check("5", { minimum: 0n, most }).ok).toBe(true);
   });
 
@@ -298,7 +281,7 @@ describe("NativeStake", () => {
     vi.useRealTimers();
   });
 
-  it("doesn't say by how much a stake is over the balance while balances are hidden", async () => {
+  it("says by how much a stake is over the balance while balances are hidden too", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -308,72 +291,28 @@ describe("NativeStake", () => {
         target: { value: "1500" },
       });
 
-      // Refused, with no figure: shown, it would say 17.1 DUSK more than
-      // the balance.
-      expect(getByRole("alert")).toHaveTextContent(/more than/i);
-      expect(getByRole("alert")).not.toHaveTextContent(/[0-9]/);
+      // Refused, with what's missing: 17.1 DUSK, fees included.
+      expect(getByRole("alert")).toHaveTextContent(wholeFigure("17.1 DUSK"));
       expect(getByRole("button", { name: "Review" })).toBeDisabled();
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("hides what Max fills in while balances are hidden, not the minimum it can fill in", async () => {
+  it("shows what Max fills in while balances are hidden, there and on its review, as the minimum it can fill in", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
-      const { container, getByLabelText, getByRole } = render(
-        NativeStake,
-        baseProps,
-      );
-
-      /**
-       * The figures shown anywhere on the form that give away what Max filled
-       * in, 1,482.9, or the 1,483 balance it's from: exact, grouped or not, or
-       * rounded, as 1,482 or 1,483. Each figure is read both ways it can be
-       * meant: its last mark a decimal point, or every mark a grouping.
-       */
-      const giveAways = () =>
-        (
-          container.textContent?.match(/[0-9](?:[0-9.,']|\s(?=[0-9]))*/g) ?? []
-        ).filter((figure) => {
-          const digits = figure.replace(/[^0-9.,]/g, "");
-          const mark = Math.max(
-            digits.lastIndexOf("."),
-            digits.lastIndexOf(","),
-          );
-          const read = [Number(digits.replace(/[.,]/g, ""))];
-
-          if (mark >= 0) {
-            read.push(
-              Number(
-                `${digits.slice(0, mark).replace(/[.,]/g, "")}.${digits.slice(mark + 1)}`,
-              ),
-            );
-          }
-
-          return read.some(
-            (value) =>
-              Math.abs(value - 1482.9) < 1 || Math.abs(value - 1483) < 1,
-          );
-        });
+      const { getByLabelText, getByRole } = render(NativeStake, baseProps);
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      // 1,482.9, filled in, with no figure in the field.
-      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
-
-      expect(field.value).not.toBe("");
-      expect(field.value).not.toMatch(/[0-9]/);
-      expect(giveAways()).toStrictEqual([]);
+      // 1,482.9: in the field, and on the review and its button.
+      expect(getByLabelText("Amount")).toHaveValue("1482.9");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      const stake = getByRole("button", { name: /DUSK/ });
-
-      expect(stake).toBeEnabled();
-      expect(stake).not.toHaveAccessibleName(/[0-9]/);
-      expect(giveAways()).toStrictEqual([]);
+      expect(getByRole("button", { name: showsDusk("1,482.9") })).toBeEnabled();
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.click(getByRole("button", { name: /1,000/ }));

@@ -339,7 +339,7 @@ describe("LiquidStake", () => {
       expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
     });
 
-    it("hides that amount with the balances, and says it without one where the fee couldn't be read", async () => {
+    it("says that amount while balances are hidden too, and says it without one where the fee couldn't be read", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
@@ -348,9 +348,9 @@ describe("LiquidStake", () => {
         await typed(hidden.getByLabelText);
         await fireEvent.click(hidden.getByRole("button", { name: "Review" }));
 
-        // Not refunded, said, with no figure: 0.25 DUSK of a stake's 100.
+        // Not refunded, said, with its figure: 0.25 DUSK of a stake's 100.
         expect(labelOf(hidden.container, /deposit/i)).toMatch(/not refunded/i);
-        expect(rowOf(hidden.container, /deposit/i)).not.toMatch(/[0-9]/);
+        expect(rowOf(hidden.container, /deposit/i)).toMatch(/\b0\.25 DUSK\b/);
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -455,7 +455,7 @@ describe("LiquidStake", () => {
     expect(getByRole("button", { name: showsDusk("0.5") })).toBeEnabled();
   });
 
-  it("hides the DUSK of Sozu's deposit fee with the balances, not its rate", async () => {
+  it("says the DUSK of Sozu's deposit fee and its rate while balances are hidden too", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -465,9 +465,9 @@ describe("LiquidStake", () => {
         target: { value: "50" },
       });
 
-      // Its 0.25% rate, and no figure for its 0.125 DUSK.
+      // Its 0.25% rate, and its 0.125 DUSK.
       expect(depositRateOf(container)).toBe("0.25%");
-      expect(rowOf(container, /deposit/i)).not.toMatch(/[0-9]/);
+      expect(rowOf(container, /deposit/i)).toMatch(/\b0\.125 DUSK\b/);
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
@@ -739,7 +739,7 @@ describe("LiquidStake", () => {
     expect(unread.amount).not.toMatch(/[0-9]/);
   });
 
-  it("doesn't let an amount give away the balance while balances are hidden", async () => {
+  it("says by how much an amount is over the balance while balances are hidden too", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -754,23 +754,20 @@ describe("LiquidStake", () => {
         return getByRole("alert");
       };
 
-      // Refused, with no figure: shown, these would say 0.015 and 827.015
-      // DUSK more than the balance.
+      // Refused, with what's missing: 0.015 and 827.015 DUSK.
       const tooLittle = await refusal("172");
 
-      expect(tooLittle).toHaveTextContent(/too little/i);
-      expect(tooLittle).not.toHaveTextContent(/[0-9]/);
+      expect(tooLittle).toHaveTextContent(wholeFigure("0.015 DUSK"));
 
       const tooMuch = await refusal("999");
 
-      expect(tooMuch).toHaveTextContent(/more than/i);
-      expect(tooMuch).not.toHaveTextContent(/[0-9]/);
+      expect(tooMuch).toHaveTextContent(wholeFigure("827.015 DUSK"));
     } finally {
       settingsStore.update((store) => ({ ...store, hideBalances: false }));
     }
   });
 
-  it("hides what Max fills in while balances are hidden, and shows what's typed over it", async () => {
+  it("shows what Max fills in while balances are hidden, there and on its review, and what's typed over it", async () => {
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
     try {
@@ -781,23 +778,13 @@ describe("LiquidStake", () => {
 
       await fireEvent.click(getByRole("button", { name: "Max" }));
 
-      // All but both fees, 171.985: filled in, with no figure in the field.
-      const field = /** @type {HTMLInputElement} */ (getByLabelText("Amount"));
-
-      expect(field.value).not.toBe("");
-      expect(field.value).not.toMatch(/[0-9]/);
-      expect(textOf(container)).not.toContain("171.985");
+      // All but both fees, 171.985: in the field, and on the review.
+      expect(getByLabelText("Amount")).toHaveValue("171.9850");
 
       await fireEvent.click(getByRole("button", { name: "Review" }));
 
-      const stake = getByRole("button", { name: /DUSK/ });
-
-      expect(stake).toBeEnabled();
-      expect(stake).not.toHaveAccessibleName(/[0-9]/);
-      expect(textOf(container)).not.toContain("171.985");
-      for (const row of container.querySelectorAll(".stake-flow__rows dd")) {
-        expect(textOf(row)).not.toMatch(/\d (st)?DUSK/);
-      }
+      expect(getByRole("button", { name: showsDusk("171.985") })).toBeEnabled();
+      expect(textOf(container)).toContain("171.985");
 
       await fireEvent.click(getByRole("button", { name: "Back" }));
       await fireEvent.input(getByLabelText("Amount"), {
@@ -934,7 +921,7 @@ describe("LiquidStake", () => {
       expect(getByRole("alert")).toHaveTextContent(wholeFigure("0.0012 DUSK"));
     });
 
-    it("says what's missing of an empty balance too, and hides the figure, which gives a balance away, with the balances", () => {
+    it("says what's missing of an empty balance too, and with balances hidden", () => {
       const empty = render(LiquidStake, { ...stranded, availableBalance: 0n });
 
       expect(empty.getByRole("alert")).toHaveTextContent(
@@ -947,8 +934,10 @@ describe("LiquidStake", () => {
       try {
         const hidden = render(LiquidStake, stranded);
 
-        // No figure: shown, it would say 0.0072 DUSK short.
-        expect(hidden.getByRole("alert")).not.toHaveTextContent(/[0-9]/);
+        // In the flow, the figure: 0.0072 DUSK short.
+        expect(hidden.getByRole("alert")).toHaveTextContent(
+          wholeFigure("0.0072 DUSK"),
+        );
       } finally {
         settingsStore.update((store) => ({ ...store, hideBalances: false }));
       }
@@ -1026,6 +1015,39 @@ describe("LiquidStake", () => {
       });
     });
 
+    it("says rewards that came to less than nothing with their sign, and hides the sign with the figure while balances are hidden", async () => {
+      const { container } = render(LiquidStake, {
+        ...baseProps,
+        sozu: {
+          ...baseProps.sozu,
+          status: statusWith({ balance: 90n * DUSK, stDusk: 30n * DUSK }),
+        },
+        history: {
+          facts: new Map([["a1", /** @type {any} */ ({ fee: DUSK / 4n })]]),
+          reading: false,
+          rows: [call({ value: 100n * DUSK })],
+          whole: true,
+        },
+      });
+
+      // 100 put in, 0.25 of it in fees, 90 worth now: 9.75 less than nothing.
+      expect(positionOf(container)[POSITION_WORDS.earned]).toBe("−9.75 DUSK");
+
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        // Nothing of it shows, its sign neither: that it's a loss is part of
+        // the figure.
+        await vi.waitFor(() =>
+          expect(positionOf(container)[POSITION_WORDS.earned]).toBe(
+            "•••• hidden DUSK",
+          ),
+        );
+      } finally {
+        settingsStore.reset();
+      }
+    });
+
     it("says deposit fees it could only work out are about that, and what's on its way isn't counted yet", () => {
       const { container } = render(LiquidStake, {
         ...baseProps,
@@ -1101,19 +1123,93 @@ describe("LiquidStake", () => {
       expect(getByRole("textbox", { name: "Amount" })).toHaveValue("98");
     });
 
-    it("hides all of it with the balances", () => {
+    it("hides what's held while balances are hidden, as the Staking overview does, and shows each figure of the forms, their review and result", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
-      const { container } = render(LiquidStake, {
-        ...baseProps,
-        ...held,
-        history: { reading: false, rows: [call()], whole: true },
-      });
+      try {
+        const { container, getByLabelText, getByRole } = render(LiquidStake, {
+          ...baseProps,
+          ...held,
+          history: {
+            facts: new Map([["a1", /** @type {any} */ ({ fee: DUSK / 4n })]]),
+            reading: false,
+            rows: [
+              call(),
+              call({ hash: "a2", sozu: "unstake", value: 5n * DUSK }),
+            ],
+            whole: true,
+          },
+        });
 
-      expect(
-        textOf(container.querySelector(".liquid-stake__position")),
-      ).not.toMatch(/\d/);
-      settingsStore.reset();
+        // Each figure of what's held, there as with balances shown, hidden:
+        // 90 put in, 5 taken out, 100 worth now, 0.25 in fees, 15.25 earned
+        // and 32 stDUSK.
+        expect(positionOf(container)).toStrictEqual({
+          [POSITION_WORDS.putIn]: "•••• hidden DUSK",
+          [POSITION_WORDS.takenOut]: "•••• hidden DUSK",
+          [POSITION_WORDS.worthNow]: "•••• hidden DUSK",
+          [POSITION_WORDS.depositFees]: "•••• hidden DUSK",
+          [POSITION_WORDS.earned]: "•••• hidden DUSK",
+          [POSITION_WORDS.stDusk]: "•••• hidden stDUSK",
+        });
+
+        // The unstake form: what's staked with Sozu, Max of it, and what
+        // that brings back.
+        await fireEvent.click(getByRole("tab", { name: "Unstake" }));
+
+        expect(availableOf(getByLabelText("Amount"))).toMatch(
+          wholeFigure("100 DUSK"),
+        );
+
+        await fireEvent.click(getByRole("button", { name: "Max" }));
+
+        expect(getByLabelText("Amount")).toHaveValue("100");
+        expect(rowOf(container, /unstake/i)).toBe("100 DUSK");
+        expect(totalOf(container)).toBe("About 100 DUSK");
+
+        // The stake form: what's available, what 100 gets, its fees and
+        // total, the review and what's on its way.
+        await fireEvent.click(getByRole("tab", { name: "Stake" }));
+
+        expect(availableOf(getByLabelText("Amount"))).toMatch(
+          wholeFigure("172 DUSK"),
+        );
+
+        await fireEvent.input(getByLabelText("Amount"), {
+          target: { value: "100" },
+        });
+
+        const estimate = container.querySelector(".liquid-stake__estimate");
+
+        expect(estimate).toHaveTextContent(wholeFigure("32.4378 stDUSK"));
+        expect(estimate).toHaveTextContent(wholeFigure("99.75 DUSK"));
+        expect(rowOf(container, /stake/i)).toBe("100 DUSK");
+        expect(rowOf(container, /you get/i)).toBe("32.4378 stDUSK");
+        expect(rowOf(container, /deposit/i)).toMatch(wholeFigure("0.25 DUSK"));
+        expect(totalOf(container)).toMatch(wholeFigure("100.005 DUSK"));
+
+        await fireEvent.click(getByRole("button", { name: "Review" }));
+        await afterConfirmDelay();
+        await fireEvent.click(getByRole("button", { name: showsDusk("100") }));
+
+        await vi.waitFor(() =>
+          expect(baseProps.execute).toHaveBeenCalledExactlyOnceWith(
+            "stake",
+            POOL,
+            100n * DUSK,
+            1n,
+            5_000_000n,
+          ),
+        );
+        await vi.waitFor(() =>
+          expect(
+            document.querySelector(".transaction-status--pending"),
+          ).not.toBeNull(),
+        );
+        expect(goingOf()).toMatch(wholeFigure("100 DUSK"));
+      } finally {
+        settingsStore.reset();
+      }
     });
   });
 

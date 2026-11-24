@@ -35,7 +35,7 @@
   import { beforeNavigate, goto as navigateTo } from "$app/navigation";
   import { page } from "$app/stores";
   import { resolve } from "$app/paths";
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
+  import { BALANCE_MASK } from "$lib/constants";
   import {
     askedWith,
     formDraft,
@@ -194,12 +194,6 @@
    */
   export let initialElsewhere = null;
 
-  /**
-   * Whether the amount the page was opened with is the wallet's own, as a
-   * payment that came in sent back: it's hidden with the balances, as Max's.
-   */
-  export let initialAmountHidden = false;
-
   /** Whether the page was opened to send a payment back, filled in from it. */
   export let isSendBack = false;
 
@@ -247,7 +241,6 @@
       typed.gas
     ),
     isMax: typed.isMax === true,
-    isOwn: typed.isOwn === true,
     memo: typeof typed.memo === "string" ? typed.memo : memo,
     picks: /** @type {Record<string, "account" | "address">} */ (
       typed.picks && typeof typed.picks === "object" ? typed.picks : {}
@@ -287,11 +280,8 @@
   /** The amount as typed, in DUSK: nothing until it is. */
   let sendAmount = typedBefore?.amount ?? initialAmount;
 
-  /** Whether Max filled the amount in: it's hidden with the balances. */
+  /** Whether Max filled the amount in: said with what it leaves. */
   let isMaxAmount = typedBefore?.isMax ?? false;
-
-  /** Whether the amount is the wallet's own otherwise: hidden as Max's is. */
-  let isOwnAmount = typedBefore?.isOwn ?? initialAmountHidden;
 
   /** @type {string} */
   let sendToAddress = typedBefore?.to ?? initialRecipient;
@@ -377,7 +367,6 @@
     if (carried.fields.includes("amount")) {
       sendAmount = "";
       isMaxAmount = false;
-      isOwnAmount = false;
     }
 
     if (carried.fields.includes("memo")) {
@@ -477,9 +466,10 @@
 
   /**
    * The transfer once sent, the most it can cost, what calls it off until
-   * it goes out, and what takes it back to its review where it's held.
+   * it goes out, what takes it back to its review where it's held, and what
+   * says what it was as balances show at the time.
    *
-   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, what: string } | null}
+   * @type {{ gate: import("$lib/transactions/sendGate").SendGate, maxFee: bigint, memo: string, operation: Promise<string>, review: () => import("$lib/transactions/unsentSends").UnsentSend | null, whatAs: (hidden: boolean) => string } | null}
    */
   let sent = null;
 
@@ -616,12 +606,12 @@
    *
    * @param {string} text
    * @param {bigint | null} amount
-   * @param {{ available: bigint, hidden: boolean, known: boolean, locale: string, maxSpendable: bigint }} balance
+   * @param {{ available: bigint, known: boolean, locale: string, maxSpendable: bigint }} balance
    */
   function amountErrorOf(
     text,
     amount,
-    { available, hidden, known, locale, maxSpendable },
+    { available, known, locale, maxSpendable },
   ) {
     if (!text.trim()) {
       return "";
@@ -639,20 +629,15 @@
       return "";
     }
 
-    // With balances hidden, these don't say what's held.
     if (amount > available) {
-      return hidden
-        ? "More than you have."
-        : `More than your ${formatDuskExact(available, locale)} DUSK.`;
+      return `More than your ${formatDuskExact(available, locale)} DUSK.`;
     }
 
     if (amount <= maxSpendable) {
       return "";
     }
 
-    return hidden
-      ? "Too little left for the fee."
-      : `Too little left for the fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
+    return `Too little left for the fee: send up to ${formatDuskExact(maxSpendable, locale)} DUSK.`;
   }
 
   /** Whether the recipient is being saved to the contacts, and as what. */
@@ -719,7 +704,6 @@
     typedLength = typed.to.length;
     sendAmount = typed.amount;
     isMaxAmount = typed.isMax;
-    isOwnAmount = typed.isOwn;
     memo = typed.memo;
     namePicks = typed.picks;
     ({ gasLimit, gasPrice } = keptGas(typed.gas, gasSettings));
@@ -751,11 +735,8 @@
 
   /** @param {Event} event */
   function typeAmount(event) {
-    sendAmount = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
+    sendAmount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isMaxAmount = false;
-    isOwnAmount = false;
     typedOver("amount");
   }
 
@@ -884,7 +865,6 @@
 
     if (asked) {
       isMaxAmount = false;
-      isOwnAmount = false;
       isKept = false;
       sendAmount = asked.amount;
       memo = asked.memo;
@@ -1241,7 +1221,13 @@
   function send() {
     const toName = recipientName ? nameLookup?.name : undefined;
     const gate = sendGate();
-    const what = `${hideBalances ? BALANCE_MASK : amountText} DUSK to ${recipientLabel}`;
+    // Said in full on its Sent screen, the flow's end; in the tab's title and
+    // a notification once it arrives, as balances show then.
+    const shownAmount = amountText;
+    const shownTo = recipientLabel;
+    /** @param {boolean} hidden */
+    const whatAs = (hidden) =>
+      `${hidden ? BALANCE_MASK : shownAmount} DUSK to ${shownTo}`;
 
     // It goes out now, as far as a reload can tell: nothing brings it back.
     draft.clear();
@@ -1277,7 +1263,6 @@
           amount: typed.amount,
           gas: typed.gas,
           isMax: typed.isMax,
-          isOwn: typed.isOwn,
           memo: typed.memo,
           picks: typed.picks,
           to: typed.to,
@@ -1303,7 +1288,7 @@
       memo: transactionMemo,
       operation,
       review,
-      what,
+      whatAs,
     };
     step = "done";
     // From its top, as the review shows: a phone on its side shows little.
@@ -1380,7 +1365,6 @@
     amount: sendAmount,
     gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
     isMax: isMaxAmount,
-    isOwn: isOwnAmount,
     link: openedFor,
     memo,
     picks: namePicks,
@@ -1431,7 +1415,6 @@
   // before the balance was read is checked against it once it is.
   $: amountError = amountErrorOf(sendAmount, parsedAmount, {
     available: availableBalance,
-    hidden: hideBalances,
     known: balanceKnown,
     locale: language,
     maxSpendable: maxSpendableAmount,
@@ -1957,23 +1940,22 @@
         }`;
 
   /**
-   * A payment sent, in a line: "0.01 DUSK to Profile 2", nothing of the
-   * amount with the balances hidden.
+   * A payment sent, in a line: "0.01 DUSK to Profile 2".
    *
    * @param {ActivityRow} row
-   * @param {{ contacts: Contact[], hidden: boolean, locale: string, ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
+   * @param {{ contacts: Contact[], locale: string, ownAccounts: { address: string, label: string }[], walletNames: Map<string, string> }} known
    */
   const paymentOf = (row, known) =>
-    `${known.hidden ? BALANCE_MASK : formatDuskExact(row.value, known.locale)} DUSK to ${nameOf(
+    `${formatDuskExact(row.value, known.locale)} DUSK to ${nameOf(
       row.counterparty ?? "",
       row.toName,
       known,
     )}`;
 
-  $: ({ hideBalances, language } = $settingsStore);
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   $: known = {
     contacts,
-    hidden: hideBalances,
     locale: language,
     ownAccounts,
     walletNames: $walletAccountNames,
@@ -2033,7 +2015,6 @@
   // Said on the button too, which then sends it again.
   $: isRepeat =
     Boolean(madeAgain && madeAgain.time !== null) || Boolean(waitingAgain);
-  $: isAmountMasked = hideBalances && (isMaxAmount || isOwnAmount);
   $: amountText = formatDuskExact(sendAmountInLux, language);
   $: isShielded = addressInfo.type === "address";
 
@@ -2064,7 +2045,8 @@
     onSendToo={sendTooFromReview}
     operation={sent.operation}
     tellArrival
-    what={sent.what}
+    what={sent.whatAs(false)}
+    whatAs={sent.whatAs}
   />
 {:else}
   <div
@@ -2116,7 +2098,8 @@
         </Banner>
       {/each}
 
-      <UnsentSends />
+      <!-- In the flow: what it says of each shows its amount. -->
+      <UnsentSends hidden={false} />
 
       <div class="send__field">
         <label class="send__label" for="{id}-to">To</label>
@@ -2566,9 +2549,7 @@
         <label class="send__label" for="{id}-amount">Amount</label>
         <div class="send__amount">
           <Textbox
-            aria-describedby={isAmountMasked
-              ? `${id}-amount-hidden`
-              : `${id}-amount-error`}
+            aria-describedby="{id}-amount-error"
             aria-invalid={amountError ? "true" : undefined}
             autocomplete="off"
             className="send__amount-input"
@@ -2579,11 +2560,8 @@
             placeholder="0"
             required
             type="text"
-            value={isAmountMasked ? BALANCE_MASK : sendAmount}
+            value={sendAmount}
           />
-          {#if isAmountMasked}
-            <span hidden id="{id}-amount-hidden">hidden</span>
-          {/if}
           <span aria-hidden="true" class="send__unit">DUSK</span>
           <Button
             disabled={isReadingLink}
@@ -2596,12 +2574,12 @@
         <!-- What it comes to in the person's money, once it reads. -->
         <AmountInCurrency
           className="send__hint send__in-currency"
-          hidden={isAmountMasked}
           lux={parsedAmount}
         />
         <p class="send__hint">
           Available <BalanceValue
             exact={formatDuskExact(availableBalance, language)}
+            hidden={false}
             value={formatDusk(availableBalance, language)}
           /> DUSK ({isShielded ? "shielded" : "public"}{waiting > 0n
             ? ", after what's waiting to go out"
@@ -2613,9 +2591,7 @@
           </p>
         {:else if isMaxAmount && toKeep > 0n && sendAmountInLux === maxKeeping}
           <p class="send__hint">
-            Max leaves {hideBalances
-              ? "the fee"
-              : `${formatFee(toKeep, language, { max: true })} DUSK`}
+            Max leaves {formatFee(toKeep, language, { max: true })} DUSK
             {keepForLater.why}.
           </p>
         {/if}
@@ -2628,7 +2604,6 @@
             on:choose={(event) => {
               sendAmount = event.detail;
               isMaxAmount = false;
-              isOwnAmount = false;
               typedOver("amount");
             }}
             text={sendAmount}
@@ -2746,10 +2721,9 @@
         <div>
           <dt>Amount</dt>
           <dd>
-            <BalanceValue hidden={isAmountMasked} value={amountText} /> DUSK
+            {amountText} DUSK
             <AmountInCurrency
               className="send__summary-currency"
-              hidden={isAmountMasked}
               lux={parsedAmount}
             />
           </dd>
@@ -2799,10 +2773,7 @@
         <div>
           <dt>Total up to</dt>
           <dd>
-            <BalanceValue
-              hidden={isAmountMasked}
-              value={formatTotal(totalAmount, availableBalance, language)}
-            /> DUSK
+            {formatTotal(totalAmount, availableBalance, language)} DUSK
           </dd>
         </div>
       </dl>
@@ -2826,7 +2797,7 @@
         <Banner
           className="send__again"
           role="alert"
-          title={`Same send already waiting to go out: ${waitingText(waitingAgain, { hidden: hideBalances, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
+          title={`Same send already waiting to go out: ${waitingText(waitingAgain, { hidden: false, locale: language })}${waitingAgain.memo.trim() ? ", with this memo" : ""}.`}
           variant="warning"
         />
       {:else if madeAgain && madeAgain.time !== null}
@@ -2848,7 +2819,7 @@
             confirm
             disabled={!canSend}
             on:click={send}
-            text={`Send${sendAmountInLux > 0n ? ` ${isAmountMasked ? BALANCE_MASK : amountText} DUSK` : ""}${isRepeat ? " again" : ""}`}
+            text={`Send${sendAmountInLux > 0n ? ` ${amountText} DUSK` : ""}${isRepeat ? " again" : ""}`}
             variant="primary"
           />
         {/key}
@@ -3343,6 +3314,13 @@
 
   .send--review .send__summary {
     position: static;
+  }
+
+  /* The title as high as Staking's, at each width. */
+  @media (max-width: 79.99rem) {
+    .send {
+      padding-top: 2rem;
+    }
   }
 
   @media (max-width: 63.99rem) {

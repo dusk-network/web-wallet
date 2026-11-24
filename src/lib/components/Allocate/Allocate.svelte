@@ -17,7 +17,7 @@
     formatFee,
   } from "$lib/dusk/currency";
   import { getDecimalSeparator } from "$lib/dusk/number";
-  import { randomUUID, shortenAddress } from "$lib/dusk/string";
+  import { shortenAddress } from "$lib/dusk/string";
   import {
     Badge,
     Icon,
@@ -37,7 +37,6 @@
   import { settingsStore, walletStore } from "$lib/stores";
   import { nothingWentOut } from "$lib/transactions";
   import { Gas } from "@dusk/w3sper";
-  import { BALANCE_MASK } from "$lib/constants";
   import Banner from "../Banner/Banner.svelte";
   import { readDuskInput } from "../Stake/stakeAmount";
 
@@ -104,10 +103,14 @@
     hasInvalidInput = false;
     shielded = isShieldedAmount ? lux : totalBalance - lux;
 
+    // What's left for the other: never less than nothing, however much more
+    // than the balance is typed, which the form says it is.
+    const left = totalBalance - lux > 0n ? totalBalance - lux : 0n;
+
     if (isShieldedAmount) {
-      unshieldedText = fieldText(totalBalance - lux);
+      unshieldedText = fieldText(left);
     } else {
-      shieldedText = fieldText(totalBalance - lux);
+      shieldedText = fieldText(left);
     }
   }
 
@@ -168,15 +171,12 @@
   let hasInvalidInput = false;
 
   /**
-   * The amount the user last typed. While balances are hidden, it shows,
-   * and the other one, what is left of the balance, stays hidden.
+   * The field the user last typed in: kept with what's typed in it, which a
+   * lock or a reload brings back.
    *
    * @type {string}
    */
   let typedAmount = "";
-
-  // What screen readers read with an amount field that is hidden.
-  const hiddenNoteId = `${randomUUID()}-hidden-note`;
 
   // Constant total
   const totalBalance = shieldedBalance.spendable + unshieldedBalance;
@@ -215,9 +215,8 @@
     draft.save(typed);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isShieldedHidden = hideBalances && typedAmount !== "shielded-amount";
-  $: isUnshieldedHidden = hideBalances && typedAmount !== "unshielded-amount";
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
 
   $: isShielding = difference > 0n;
   $: amount = isShielding ? difference : -difference;
@@ -289,9 +288,7 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isUnshieldedHidden ? "" : unshieldedText}
-              placeholder={isUnshieldedHidden ? BALANCE_MASK : undefined}
-              aria-describedby={isUnshieldedHidden ? hiddenNoteId : undefined}
+              value={unshieldedText}
               autocomplete="off"
               required
               type="text"
@@ -311,11 +308,13 @@
             <small
               ><BalanceValue
                 exact={formatDuskExact(shieldedBalance.spendable, language)}
+                hidden={false}
                 value={formatDusk(shieldedBalance.spendable, language)}
               />
               of
               <BalanceValue
                 exact={formatDuskExact(shieldedBalance.value, language)}
+                hidden={false}
                 value={formatDusk(shieldedBalance.value, language)}
               /> spendable</small
             >
@@ -329,9 +328,7 @@
           <div class="operation__input-wrapper">
             <Textbox
               className="operation__input-field"
-              value={isShieldedHidden ? "" : shieldedText}
-              placeholder={isShieldedHidden ? BALANCE_MASK : undefined}
-              aria-describedby={isShieldedHidden ? hiddenNoteId : undefined}
+              value={shieldedText}
               autocomplete="off"
               required
               type="text"
@@ -342,9 +339,6 @@
             />
             <DuskIcon />
           </div>
-          {#if hideBalances}
-            <span hidden id={hiddenNoteId}>hidden</span>
-          {/if}
         </fieldset>
 
         <GasSettings

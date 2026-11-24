@@ -1,7 +1,8 @@
 .banner {
   width: 100%;
   display: flex;
-  align-items: center;
+  /* The icon marks the title: on its first line, however long the text. */
+  align-items: flex-start;
   padding: 0.875em 1.125em;
   background-color: var(--calm-s1);
   border-radius: 0.875rem;
@@ -29,6 +30,15 @@
 .banner__icon {
   margin-right: var(--default-gap);
   flex-shrink: 0;
+}
+
+/*
+ * The text starts lower by half of what the icon (1.8em, large in
+ * icon.css) is taller than a line (1.5em): its first line is centred on
+ * the icon, and a banner of one line is as it was.
+ */
+.banner > div {
+  padding-block: 0.15em;
 }
 
 .banner__icon--info {

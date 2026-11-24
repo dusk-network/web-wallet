@@ -5,7 +5,6 @@
   import AmountQuestion from "../AmountQuestion/AmountQuestion.svelte";
   import { createEventDispatcher, onMount } from "svelte";
 
-  import { BALANCE_MASK, withoutBalanceMask } from "$lib/constants";
   import { areValidGasSettings, followDefaultGas } from "$lib/contracts";
   import {
     formatDusk,
@@ -98,14 +97,11 @@
   let amountText = typedBefore?.amount || asTyped(maxWithdrawAmount);
 
   /**
-   * Whether the user typed an amount or used the maximum. The amount
-   * starts at all they can withdraw, so while balances are hidden, it
-   * stays hidden until they do.
+   * Whether the user typed an amount: the one it starts with, all they can
+   * withdraw, isn't kept for after a lock or a reload, which works it out
+   * again.
    */
   let isAmountChosen = Boolean(typedBefore?.amount);
-
-  // What screen readers read with the amount while it's hidden.
-  const hiddenNoteId = `${id}-hidden-note`;
 
   /**
    * What the review shows and its button sends: the amount and the gas as
@@ -150,16 +146,14 @@
 
   function setMaxAmount() {
     amountText = asTyped(maxWithdrawAmount);
-    // Hidden with the balances, as it starts: nothing was typed.
+    // As it starts: nothing was typed.
     isAmountChosen = false;
     document.getElementById(`${id}-amount`)?.focus();
   }
 
   /** @param {Event} event */
   function setWithdrawAmount(event) {
-    amountText = withoutBalanceMask(
-      /** @type {HTMLInputElement} */ (event.currentTarget).value,
-    );
+    amountText = /** @type {HTMLInputElement} */ (event.currentTarget).value;
     isAmountChosen = true;
   }
 
@@ -208,8 +202,8 @@
     draft.save(typed);
   }
 
-  $: ({ hideBalances, language } = $settingsStore);
-  $: isAmountHidden = hideBalances && !isAmountChosen;
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   $: isUnstake = minStakeRequirement !== undefined;
 
   // Calculate the maximum gas fee based on the gas limit and gas price.
@@ -239,7 +233,6 @@
     amount,
     available: availableBalance,
     fee: maxGasFee,
-    hidden: hideBalances,
     locale: language,
     most: {
       amount: maxWithdrawAmount,
@@ -291,9 +284,7 @@
         <label class="operation__label" for="{id}-amount">Amount</label>
         <div class="operation__amount">
           <Textbox
-            aria-describedby={isAmountHidden
-              ? hiddenNoteId
-              : `${id}-available ${id}-check`}
+            aria-describedby="{id}-available {id}-check"
             aria-invalid={Boolean(check.error)}
             autocomplete="off"
             className="operation__input"
@@ -301,7 +292,7 @@
             inputmode="decimal"
             on:input={setWithdrawAmount}
             type="text"
-            value={isAmountHidden ? BALANCE_MASK : amountText}
+            value={amountText}
           />
           <span aria-hidden="true" class="operation__unit">DUSK</span>
           <Button
@@ -312,14 +303,12 @@
             title={isUnstake ? "All you have staked" : "All your rewards"}
             variant="secondary"
           />
-          {#if isAmountHidden}
-            <span hidden id={hiddenNoteId}>hidden</span>
-          {/if}
         </div>
         <p class="operation__hint" id="{id}-available">
           {isUnstake ? "Staked" : "Rewards"}
           <BalanceValue
             exact={formatDuskExact(maxWithdrawAmount, language)}
+            hidden={false}
             value={formatDusk(maxWithdrawAmount, language)}
           /> DUSK
         </p>
@@ -380,9 +369,7 @@
           <ReviewWallet />
           <ReviewAmount
             label={operationOverviewLabel}
-            value={isAmountHidden
-              ? BALANCE_MASK
-              : formatDuskExact(reviewed.amount, language)}
+            value={formatDuskExact(reviewed.amount, language)}
           />
           <ReviewAmount
             label="Fee up to"

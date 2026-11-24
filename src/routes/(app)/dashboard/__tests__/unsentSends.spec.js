@@ -56,6 +56,8 @@ const app = vi.hoisted(() => ({
 
 vi.mock("$app/navigation", async (importOriginal) => ({
   .../** @type {object} */ (await importOriginal()),
+  // Send's form asks to hear of the page being left: nothing leaves here.
+  beforeNavigate: () => {},
   goto: app.goto,
 }));
 
@@ -117,6 +119,22 @@ describe("A send that never went out", () => {
   const props = { data: { currentPrice: Promise.resolve({}) } };
   const LOCK = `${CONFIG.LOCAL_STORAGE_APP_KEY}-sending:`;
 
+  /** Send's form as its page draws it, with the wallet open here. */
+  const sendProps = {
+    availableBalance: 1_000_000_000_000n,
+    execute: vi.fn(),
+    gasLimits: {
+      gasLimitLower: 10_000_000n,
+      gasLimitUpper: 2_900_000_000n,
+      gasPriceLower: 1n,
+    },
+    gasSettings: { gasLimit: 20_000_000n, gasPrice: 1n },
+    publicAddress: from,
+    resolveName: vi.fn(),
+    shieldedAddress: String(currentProfile.address),
+    shieldedBalance: 0n,
+  };
+
   /** What the pages drawn here leave, to clear after each test. */
   let cleanups = /** @type {Array<() => void>} */ ([]);
 
@@ -143,6 +161,8 @@ describe("A send that never went out", () => {
       TransactionResult: (
         await import("$lib/components/TransactionResult/TransactionResult.svelte")
       ).default,
+      // Send's form, which says the sends not sent yet in its flow.
+      Send: (await import("$lib/components/Send/Send.svelte")).default,
       errors: await import("$lib/errors"),
       fireEvent: testing.fireEvent,
       /**
@@ -151,6 +171,7 @@ describe("A send that never went out", () => {
        */
       render: (Component, given = props) => testing.render(Component, given),
       toasts: await import("$lib/dusk/components/Toast/store"),
+      settingsStore: (await import("$lib/stores")).settingsStore,
       transactions: await import("$lib/transactions"),
       unsent: await import("$lib/transactions/unsentSends"),
       within: testing.within,
@@ -225,7 +246,6 @@ describe("A send that never went out", () => {
         typed: {
           amount: "0.01",
           isMax: false,
-          isOwn: false,
           memo,
           picks: {},
           to,
@@ -483,6 +503,36 @@ describe("A send that never went out", () => {
 
     await untilSaid(laterPage, notice("tab dropped 1", NOT_SENT));
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("hides its amount on Home while balances are hidden, where it's browsed, and shows it on Send's page, in the flow", async () => {
+    const reloads = Promise.withResolvers();
+    const before = await openPage();
+
+    await sendWaiting(before, "tab dropped 1", reloads.promise);
+    reloads.resolve(undefined);
+
+    const after = await openPage();
+
+    after.settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { container } = after.render(after.Home);
+
+      await untilSaid(container, {
+        offers: NOT_SENT.offers,
+        says: naming(...NOT_SENT.says, "your Profile 2", "tab dropped 1", {
+          not: /0\.01/,
+        }),
+      });
+
+      const { container: onSend } = after.render(after.Send, sendProps);
+
+      await untilSaid(onSend, notice("tab dropped 1", NOT_SENT));
+      expect(app.transfer).not.toHaveBeenCalled();
+    } finally {
+      after.settingsStore.reset();
+    }
   });
 
   // Chen's, on two phones, the tab dropped: the send waiting on phone A
@@ -1106,10 +1156,10 @@ describe("A send that never went out", () => {
    * whether its mempool has it (`queued()`), the chain that its account's
    * nonce is `nonce()`, and the archive which transactions of its account
    * took which nonce in final blocks (`taken()`, none by default). It shows
-   * Home, or the wallet's pages' frame alone (`shows`), as a page with no
-   * notice of the send would.
+   * Home, Send's form, or the wallet's pages' frame alone (`shows`), as a
+   * page with no notice of the send would.
    *
-   * @param {{ inBlock?: () => { blockHeight: number, err: string | null } | null, nonce: () => bigint, queued: () => boolean, shows?: "Home" | "Layout", taken?: () => Array<{ hash: string, nonce: number }> }} node
+   * @param {{ inBlock?: () => { blockHeight: number, err: string | null } | null, nonce: () => bigint, queued: () => boolean, shows?: "Home" | "Layout" | "Send", taken?: () => Array<{ hash: string, nonce: number }> }} node
    */
   async function reopenWithNode({
     inBlock = () => null,
@@ -1184,7 +1234,9 @@ describe("A send that never went out", () => {
       },
       ...(shows === "Home"
         ? page.render(page.Home)
-        : page.render(page.Layout, {})),
+        : shows === "Send"
+          ? page.render(page.Send, sendProps)
+          : page.render(page.Layout, {})),
     };
   }
 
@@ -1424,6 +1476,55 @@ describe("A send that never went out", () => {
     }
 
     expect(app.transfer).not.toHaveBeenCalled();
+  });
+
+  it("says Don't send's toast without its amount while balances are hidden, though Send's page, a flow, shows it", async () => {
+    const dies = Promise.withResolvers();
+
+    await sendThrough(await openPage(), "not wanted", dies.promise, "kept");
+    dies.resolve(undefined);
+
+    const { container, getByRole, page, restore } = await reopenWithNode({
+      nonce: () => 106n,
+      queued: () => false,
+      shows: "Send",
+    });
+    /** Every toast's message, as each shows. */
+    const said = /** @type {string[]} */ ([]);
+    const listening = page.toasts.toastList.subscribe((list) =>
+      said.push(...list.map(({ message }) => message)),
+    );
+
+    page.settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      // On Send's page, its figure.
+      await untilSaid(container, notice("not wanted", NOT_SENT_YET));
+      await page.fireEvent.click(getByRole("button", { name: "Don't send" }));
+
+      // Over any page: none.
+      await vi.waitFor(() =>
+        expect(said).toContainEqual(
+          naming(/not sent yet/i, "your Profile 2", { not: /0\.01/ }),
+        ),
+      );
+      expect(said.filter((message) => message.includes("0.01"))).toStrictEqual(
+        [],
+      );
+      // Done with it before the next test: kept as not to send, nothing
+      // left to write.
+      await vi.waitFor(async () =>
+        expect(await keptNow()).toStrictEqual([
+          expect.objectContaining({
+            handedOver: expect.objectContaining({ dismissed: true }),
+          }),
+        ]),
+      );
+    } finally {
+      listening();
+      page.settingsStore.reset();
+      restore();
+    }
   });
 
   // Codex's, round 40: Don't send, the wallet locked, the payment landed

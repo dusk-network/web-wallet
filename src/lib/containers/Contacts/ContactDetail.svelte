@@ -22,6 +22,7 @@
     saveContact,
   } from "$lib/contacts";
   import { addBasePath } from "$lib/navigation";
+  import { settingsStore } from "$lib/stores";
 
   import ActivityRowItem from "../Home/ActivityRowItem.svelte";
   import { groupByDay } from "$lib/activity/present";
@@ -150,6 +151,7 @@
 
   $: activity = activityWith(rows, contact.address, {
     contactNames: contactNamesOf($contactsStore),
+    hidden: $settingsStore.hideBalances,
     locale,
   }).slice(0, 5);
   $: days = groupByDay(activity, ({ row }) => row.time, { locale });

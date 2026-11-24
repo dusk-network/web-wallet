@@ -106,6 +106,41 @@ describe("HistoryView", () => {
     }
   });
 
+  it("should leave a failed transaction's fee out of its row and its name while balances are hidden, as its details do", () => {
+    const failed = {
+      ...state,
+      rows: [
+        row("a3".repeat(32), WINTER, { feePaid: "3700000", status: "failed" }),
+      ],
+    };
+    const shownOf = (/** @type {HTMLElement} */ container) => ({
+      line: container.querySelector(".history__line")?.textContent ?? "",
+      name:
+        container.querySelector(".history__open")?.getAttribute("aria-label") ??
+        "",
+    });
+    const shown = render(HistoryView, { locale: "en", state: failed });
+
+    // What it paid, with balances shown.
+    expect(shownOf(shown.container).name).toMatch(figure("0.0037 DUSK"));
+    shown.unmount();
+
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    try {
+      const { line, name } = shownOf(
+        render(HistoryView, { locale: "en", state: failed }).container,
+      );
+
+      expect(line).toMatch(/\bfee\b/);
+      expect(line).not.toMatch(/\d DUSK/);
+      expect(name).toMatch(/\bfee\b/);
+      expect(name).not.toMatch(/\d DUSK/);
+    } finally {
+      settingsStore.update((store) => ({ ...store, hideBalances: false }));
+    }
+  });
+
   it("should show staking rewards by year for the profile shown only: none of the one before once another is, nor any read for it that comes after", async () => {
     const other = { address: "other-account", label: "Profile 2" };
     const own = { address: ACCOUNT, label: "Profile 1" };

@@ -41,8 +41,10 @@
     strangersMemo,
     timeLabel,
   } from "$lib/activity/present";
+  import { BALANCE_MASK } from "$lib/constants";
+  import { settingsStore } from "$lib/stores";
   import nodeNetwork from "$lib/stores/nodeNetwork";
-  import { formatDuskExact } from "$lib/dusk/currency";
+  import { figureWidth, formatDuskExact } from "$lib/dusk/currency";
   import { shortenAddress } from "$lib/dusk/string";
   import { addBasePath } from "$lib/navigation";
   import {
@@ -456,13 +458,18 @@
       </div>
     </div>
 
-    <p
-      class="tx-detail__amount"
-      class:tx-detail__amount--muted={p.amount.muted}
-    >
-      {p.amount.sign}<BalanceValue value={p.amount.exact} />
-      <span class="tx-detail__unit">DUSK</span>
-    </p>
+    <div class="tx-detail__amount-box">
+      <p
+        class="tx-detail__amount"
+        class:tx-detail__amount--muted={p.amount.muted}
+        style:--figure-width={figureWidth(
+          `${p.amount.sign}${$settingsStore.hideBalances ? BALANCE_MASK : p.amount.exact}`,
+        )}
+      >
+        {p.amount.sign}<BalanceValue value={p.amount.exact} />
+        <span class="tx-detail__unit">DUSK</span>
+      </p>
+    </div>
 
     <dl class="tx-detail__list">
       <div>
@@ -910,11 +917,19 @@
     }
   }
 
+  .tx-detail__amount-box {
+    container-type: inline-size;
+  }
+
+  /*
+   * One number, never broken: an amount too long for the line is set
+   * smaller, by how wide it is in em at most (--figure-width), its DUSK free
+   * to go under it.
+   */
   .tx-detail__amount {
-    font-size: 2.5rem;
+    font-size: min(2.5rem, 100cqi / var(--figure-width, 1));
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
 
     &--muted {
       color: var(--calm-subtle);

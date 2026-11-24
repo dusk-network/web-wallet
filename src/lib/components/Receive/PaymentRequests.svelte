@@ -363,9 +363,8 @@
   }
 
   /**
-   * Opens Send filled in to pay a payment back, its amount hidden with the
-   * balances, as what came in is: a link of its own, opened elsewhere, shows
-   * what it asks.
+   * Opens Send filled in to pay a payment back: a link of its own, opened
+   * elsewhere, shows what it asks too.
    *
    * @param {MouseEvent} event
    * @param {string} path Send's, with what it's filled in with
@@ -379,7 +378,7 @@
       !event.altKey
     ) {
       event.preventDefault();
-      goto(path, { state: { amountHidden: true, sendBack: true } });
+      goto(path, { state: { sendBack: true } });
     }
   }
 

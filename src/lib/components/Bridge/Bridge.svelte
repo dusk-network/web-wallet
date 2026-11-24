@@ -22,7 +22,6 @@
   } from "@wagmi/core";
   import { Gas } from "@dusk/w3sper";
 
-  import { BALANCE_MASK } from "$lib/constants";
   import { AnchorButton, Button, Icon } from "$lib/dusk/components";
   import {
     AppAnchorButton,
@@ -90,6 +89,7 @@
     routeTimeText,
   } from "$lib/bridge/routeTimes";
   import {
+    figureWidth,
     formatDusk,
     formatDuskExact,
     formatFee,
@@ -186,6 +186,22 @@
 
   /** @type {string} */
   let amount = typedBefore?.amount ?? "";
+
+  /**
+   * Whether Max filled the amount in, since it was last typed: worked out
+   * from one side's balance, it doesn't come over a swap to the other, also
+   * after a lock or a reload, which keep it with the amount.
+   */
+  let isMaxAmount = typedBefore?.isMax === true;
+
+  /** What the open review shows, in LUX: it closes once that's not it. */
+  let reviewedLux = 0n;
+
+  /** @param {Event} event */
+  function typeAmount(event) {
+    amount = /** @type {HTMLInputElement} */ (event.currentTarget).value;
+    isMaxAmount = false;
+  }
 
   /** @type {string} */
   let lastWithdrawalTxHash = "";
@@ -299,6 +315,7 @@
       amount = toAmountText(
         all > keepForLater.lux ? all - keepForLater.lux : all,
       );
+      isMaxAmount = true;
       return;
     }
 
@@ -326,6 +343,7 @@
     amount = toAmountText(
       (evmDuskBalance.value - reserveWei) / EVM_TO_LUX_SCALE_FACTOR,
     );
+    isMaxAmount = true;
   }
 
   /**
@@ -547,6 +565,7 @@
       flipped = "";
       routeId = next.id;
       amount = "";
+      isMaxAmount = false;
       step = "form";
     }
   }
@@ -558,6 +577,13 @@
     if (back) {
       routeId = back.id;
       step = "form";
+
+      // A maximum is the other side's balance's: it doesn't come over.
+      if (isMaxAmount) {
+        amount = "";
+        isMaxAmount = false;
+      }
+
       flipped =
         back.kind === "migration"
           ? `From ${back.chain.name} to Dusk`
@@ -599,6 +625,7 @@
 
   function review() {
     isEditing = false;
+    reviewedLux = amountLux;
 
     if (isWithdrawing) {
       prepareWithdrawalReview();
@@ -648,6 +675,7 @@
       ? {
           amount: typedHere,
           gas: gasToKeep({ gasLimit, gasPrice }, defaultGas),
+          isMax: isMaxAmount,
           link: linkedRoute,
           routeId,
         }
@@ -698,6 +726,9 @@
     $depositActivityStore,
   );
   $: amountLux = readDuskInput(amount, language) ?? 0n;
+  // What arrives, as the To panel says it.
+  $: arrivingText =
+    amountLux === 0n ? "0" : formatDuskExact(amountLux, language);
   // Lux (1e9) in EVM base units (1e18).
   $: amountWei = amountLux * EVM_TO_LUX_SCALE_FACTOR;
   $: totalDepositLux = amountLux + fee;
@@ -740,6 +771,13 @@
   // A review needs its EVM wallet: without one, back to the form, which
   // offers to connect it.
   $: if (step === "review" && !isConnected) {
+    edit();
+  }
+
+  // What an open review shows never changes under the person: where what's
+  // sent changes, as a maximum asked for before it opened comes back, it
+  // closes, for that to be reviewed.
+  $: if (step === "review" && amountLux !== reviewedLux) {
     edit();
   }
 
@@ -787,7 +825,8 @@
     return unsubscribeAccount;
   });
 
-  $: ({ hideBalances, language } = $settingsStore);
+  // A flow the person started shows its figures, with balances hidden too.
+  $: ({ language } = $settingsStore);
   // The contract a deposit calls on Dusk, as the network's file names it.
   $: ({ name: networkName } = $nodeNetwork ?? { name: "" });
   $: depositContract = networkName ? configuredBridge().bridge : "";
@@ -861,13 +900,14 @@
           aria-describedby="bridge-balance-label bridge-balance"
           aria-invalid={amount !== "" && !isBalanceSufficient}
           autocomplete="off"
-          bind:value={amount}
           id="bridge-amount"
           inputmode="decimal"
           name="destination-amount"
+          on:input={typeAmount}
           placeholder="0"
           spellcheck="false"
           type="text"
+          value={amount}
         />
         <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
       </div>
@@ -880,11 +920,13 @@
             {#if !isWithdrawing}
               <BalanceValue
                 exact={formatDuskExact(unshieldedBalance, language)}
+                hidden={false}
                 value={formatDusk(unshieldedBalance, language)}
               /> DUSK
             {:else if evmDuskBalance}
               <BalanceValue
                 exact={formatDuskExact(evmLux(evmDuskBalance), language)}
+                hidden={false}
                 value={formatDusk(evmLux(evmDuskBalance), language)}
               /> DUSK
             {:else}
@@ -920,6 +962,7 @@
           {language}
           on:choose={(event) => {
             amount = event.detail;
+            isMaxAmount = false;
           }}
           text={amount}
         />
@@ -931,9 +974,7 @@
         </p>
       {:else if isDepositing && keepForLater.lux > 0n && amountLux > 0n && unshieldedBalance - totalDepositLux === keepForLater.lux}
         <p class="swap-note">
-          Max leaves {hideBalances
-            ? "the fee"
-            : `${formatFee(keepForLater.lux, language, { max: true })} DUSK`}
+          Max leaves {formatFee(keepForLater.lux, language, { max: true })} DUSK
           {keepForLater.why}.
         </p>
       {:else if amount !== "" && amountLux > 0n && isConnected && !isBalanceSufficient}
@@ -972,10 +1013,11 @@
         />
       </div>
       <div class="swap-amount">
-        <output class:swap-amount__empty={amountLux === 0n} for="bridge-amount"
-          >{amountLux === 0n
-            ? "0"
-            : formatDuskExact(amountLux, language)}</output
+        <output
+          class:swap-amount__empty={amountLux === 0n}
+          for="bridge-amount"
+          style:--figure-width={figureWidth(arrivingText)}
+          >{arrivingText}</output
         >
         <span class="swap-token"><NetworkMark id="duskDs" />DUSK</span>
       </div>
@@ -985,6 +1027,7 @@
           <span class="swap-foot__value"
             >+ <BalanceValue
               exact={formatDuskExact(incomingDepositLux, language)}
+              hidden={false}
               value={formatDusk(incomingDepositLux, language)}
             /> DUSK on its way</span
           >
@@ -1077,7 +1120,9 @@
       <dl class="route-review__rows">
         <div>
           <dt>Amount</dt>
-          <dd>{formatDuskExact(amountLux, language)} DUSK</dd>
+          <dd>
+            {formatDuskExact(amountLux, language)} DUSK
+          </dd>
         </div>
         <div>
           <dt>From</dt>
@@ -1155,7 +1200,7 @@
         disabled={isNextButtonDisabled || !isConnected}
         icon={{ path: mdiArrowUpBoldBoxOutline, position: "before" }}
         on:click={send}
-        text={`Bridge ${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK`}
+        text={`Bridge ${formatDuskExact(amountLux, language)} DUSK`}
         variant="primary"
       />
       <p class="route-review__final">Can't be undone.</p>
@@ -1173,7 +1218,7 @@
         onRetry={tryAgain}
         onSeen={keepSeenDeposit}
         {operation}
-        what={`${hideBalances ? BALANCE_MASK : formatDuskExact(amountLux, language)} DUSK to DuskEVM`}
+        what={`${formatDuskExact(amountLux, language)} DUSK to DuskEVM`}
       />
     </div>
   {:else}

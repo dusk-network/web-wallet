@@ -20,6 +20,7 @@ import { formatTime } from "@dusk-network/networks/format";
 import { shortenAddress } from "$lib/dusk/string";
 
 import { claimDay } from "$lib/bridge/claimDate";
+import { BALANCE_MASK } from "$lib/constants";
 
 import { TX_KIND } from "./constants";
 
@@ -33,6 +34,7 @@ import { TX_KIND } from "./constants";
  *   claims?: Map<string, import("$lib/bridge/withdrawals").WithdrawalClaim>,
  *   contactNames?: Map<string, string>,
  *   declined?: Readonly<Record<string, number>>,
+ *   hidden?: boolean,
  *   locale: string,
  *   net?: import("@dusk-network/networks").Network | null,
  *   walletNames?: Map<string, string>,
@@ -46,7 +48,9 @@ import { TX_KIND } from "./constants";
  * hashes, as the chain says (withdrawalClaims in $lib/bridge), `net` is
  * the network's file, for what it calls its routes' accounts, and
  * `walletNames` what the wallets here call their profiles' accounts and
- * addresses ($lib/wallets).
+ * addresses ($lib/wallets). `hidden` says balances are hidden: what a
+ * failed transaction paid is then hidden in its line, as its details hide
+ * it.
  *
  * @typedef {{
  *   claim: import("@dusk-network/networks/duskevm").ClaimDate | null,
@@ -428,7 +432,7 @@ export function describeRow(row, context) {
         : done;
   const bridge = icon === "bridge" && !failed ? bridgeOf(row, context) : null;
   const line = failed
-    ? `Failed · nothing sent · ${feeText(row, locale)}`
+    ? `Failed · nothing sent · ${feeText(row, locale, context.hidden)}`
     : bridge?.line
       ? `${verb} · ${bridge.line}`
       : verb;
@@ -463,13 +467,17 @@ const claimNoteOf = (bridge) =>
     : null;
 
 /**
- * The fee a row's sender paid, for its line.
+ * The fee a row's sender paid, for its line: its figure hidden while
+ * balances are.
  *
  * @param {ActivityRow} row
  * @param {string} locale
+ * @param {boolean} [hidden]
  */
-const feeText = (row, locale) =>
-  row.fee !== null ? `fee ${formatFee(row.fee, locale)} DUSK paid` : "no fee";
+const feeText = (row, locale, hidden = false) =>
+  row.fee !== null
+    ? `fee ${hidden ? BALANCE_MASK : formatFee(row.fee, locale)} DUSK paid`
+    : "no fee";
 
 /**
  * A row's amount: what it moved, signed by its direction, or what a bridge

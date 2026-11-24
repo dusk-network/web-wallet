@@ -596,7 +596,7 @@ describe("Keeping what's typed in a form that moves money", () => {
       sendProps.resolveName.mockReset();
     });
 
-    it("keeps Max's amount hidden with the balances, and edited gas, and which address of a name was picked", async () => {
+    it("keeps Max's amount, and edited gas, and which address of a name was picked, with balances hidden too", async () => {
       settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
       try {
@@ -615,6 +615,11 @@ describe("Keeping what's typed in a form that moves money", () => {
           await typed.findByRole("radio", { name: "Shielded address" }),
         );
         await fireEvent.click(typed.getByRole("button", { name: "Max" }));
+
+        const max = /** @type {HTMLInputElement} */ (
+          typed.getByRole("textbox", { name: "Amount" })
+        ).value;
+
         await fireEvent.click(typed.getByRole("button", { name: "Edit" }));
         await fireEvent.input(typed.getByLabelText(/gas limit/i), {
           target: { value: "30000000" },
@@ -623,12 +628,9 @@ describe("Keeping what's typed in a form that moves money", () => {
 
         const back = render(Send, sendProps);
 
-        // Not a figure of it.
-        expect(
-          /** @type {HTMLInputElement} */ (
-            back.getByRole("textbox", { name: "Amount" })
-          ).value,
-        ).not.toMatch(/\d/);
+        // The figure Max filled in, shown as it was.
+        expect(max).toMatch(/^\d/);
+        expect(back.getByRole("textbox", { name: "Amount" })).toHaveValue(max);
         expect(
           await back.findByRole("radio", { name: "Shielded address" }),
         ).toBeChecked();

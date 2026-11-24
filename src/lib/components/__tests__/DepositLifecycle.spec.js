@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/svelte";
 
+import { settingsStore } from "$lib/stores";
+
 import DepositLifecycle from "../EvmTransactions/DepositLifecycle.svelte";
 
 vi.mock("$lib/web3/walletConnection", () => ({
@@ -98,5 +100,34 @@ describe("DepositLifecycle", () => {
     );
 
     expect(detail(container, /^Fee$/)).toBe("0.001987516 DUSK");
+  });
+
+  it("should hide its fee while balances are hidden where it's browsed, in Transfers, and show it in the result of the deposit sent, a flow", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+    await act(() =>
+      history.state?.set({
+        rows: [{ fee: 1_987_516n, hash: "ab".repeat(32) }],
+      }),
+    );
+
+    try {
+      const browsed = render(DepositLifecycle, {
+        deposit: { ...deposit(), stage: "completed" },
+      });
+
+      expect(detail(browsed.container, /^Fee$/)).toMatch(/DUSK$/);
+      expect(detail(browsed.container, /^Fee$/)).not.toMatch(/\d/);
+      cleanup();
+
+      const sent = render(DepositLifecycle, {
+        deposit: { ...deposit(), stage: "completed" },
+        hidden: false,
+      });
+
+      expect(detail(sent.container, /^Fee$/)).toBe("0.001987516 DUSK");
+    } finally {
+      settingsStore.reset();
+      history.state?.set({ rows: [] });
+    }
   });
 });

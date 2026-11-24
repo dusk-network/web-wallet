@@ -417,6 +417,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+
+    /* Centred on the title, without making its row taller: the title sits
+       where every page's does. */
+    & > :global(.dusk-button) {
+      margin-block: -0.4rem;
+    }
   }
 
   .contacts__title {
@@ -639,6 +645,13 @@
     overflow-y: auto;
     border-left: 1px solid var(--calm-line2);
     background: var(--calm-panel);
+  }
+
+  /* The title as high as Staking's, at each width. */
+  @media (max-width: 79.99rem) {
+    .contacts__main {
+      padding-top: 2rem;
+    }
   }
 
   /* Narrow screens: the panel over the list, as a page of its own. */

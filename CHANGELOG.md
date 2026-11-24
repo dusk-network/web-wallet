@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Show amounts inside sends, stakes and other flows while balances are hidden, from the form and Max to the review and the result, and keep them hidden where you browse: Home, Activity, Staking's overview and what's held with Sozu, the Bridge's Transfers, saved requests, the tab's title, notifications and toasts
 - Put each stake's Unstake or Claim rewards beside its balance, quieter than the ways to stake, and on phones say what tells the two ways apart on their buttons, the full comparison behind Compare both
 - Call adding to a stake "Add to native stake" or "Add to Sozu stake", not "Stake more" and "Stake with Sozu", and put each way's button over its column in Staking's comparison
 - Cut the wallet's text to what each step needs, each warning said once where its risk is, in the words the Dusk apps share: Activity for the page called History, recovery phrase, public account, Fee up to, Details, and Sending, Waiting, Held, Not sent and Not confirmed for where a send is; a recipient shortened on the form and in full at Review, and own addresses shortened where a bridge pays out to one in full
@@ -55,6 +56,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Say a send's arrival in a notification and the tab's title as balances show when they show, also after waiting for the service worker
+- Close the Bridge's review if what it sends changes before it's sent, as a maximum asked for before it opened comes back, and carry no Max amount over a swap of From and To
+- Say a send's amount in the tab's title and in a notification as balances show then, hidden once they're hidden though they showed as it was sent
+- Hide what a failed transaction paid in Activity's and Home's rows and in what they read out while balances are hidden, as its details do
+- Say a look-alike contact's address where Home's Activity names it, as Activity does, and keep it and the warning whole in the search beside a long .dusk name
+- Read each way to stake with its terms, rates not promised included, and a Sozu stake's stDUSK before Unstake from Sozu, with a screen reader
+- Show 0, never a negative balance, in Shield's other field when more than the balance is typed
+- Hide each transfer's amount in the Bridge's Transfers list while balances are hidden, as its details do
+- Show a look-alike contact's warning and its address, and each transaction's time, privacy and fee, whole in Activity, the Activity panels on Home, Staking and Contacts and the search, on as many lines as they need, never cut short
+- Keep what arrives on the Bridge, Home's total and a transaction's amount in its details whole on one line, set smaller where they're long, never cut or broken inside the number
+- Keep Settings in reach in the top bar at 768 px while the network has a problem: the profile's pill no longer spills over it, and the problem's pill says the problem without the network's name, which its panel gives
+- Put Receive's Share address and Download QR one under the other where both don't fit, never off the screen
+- Centre a button's icon with its label, a banner's icon on its title and a profile's number in its pill, start a card's heading in line with what's under it, and give every page's title one height under the top bar
 - Say above the recovery phrase, wherever it's shown to be written down, to make sure no one can see the screen
 - Say a fee far above the network's price in one line beside it, as the Dusk Wallet extension says a site's: "High fee. It's 50 times the network's price.", from twice that price, whether the fee editor or custom gas in Settings set it; a price raised to what a busy network asks is never one
 - Say what a pasted message gets wrong against its link, as "The message says 0.002 DUSK; its link asks 0.15 DUSK.", and keep what was pasted in To
@@ -187,7 +201,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refuse a contact's or a profile's name with hidden characters, and show one saved before by their codes, with a note in Contacts
 - Say what came in on every Paid request, as "Its memo matches a payment of 0.02 DUSK", and on each payment of one paid twice
 - Say Sent back on a request's payment once it's sent back, with no Send back for it
-- Hide the amount Send back fills in while balances are hidden
 - Keep a request asked again after it's paid as the one there was, not a new Waiting one
 - Give the export's values in the wallet's currency, as Indian rupees, not always in euros
 - Keep the EVM wallet connected when Stay is chosen as the browser asks whether to leave

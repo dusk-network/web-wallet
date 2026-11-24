@@ -210,44 +210,152 @@ describe("Allocate", () => {
     expect(getReviewValues(container)[1]).toBe(feeAt(5n));
   });
 
-  it("should hide the balances while they're hidden, and show what the user types, checked against them", async () => {
+  it("should show both balances, what's left of them and every figure of its review while balances are hidden: it's a flow the person started", async () => {
+    vi.useFakeTimers({ toFake: ["performance"] });
     settingsStore.update((store) => ({ ...store, hideBalances: true }));
 
+    const shield = vi
+      .spyOn(walletStore, "shield")
+      .mockReturnValue(new Promise(() => {}));
     const { container, getByRole } = render(Allocate, baseProps);
     const publicInput = getByRole("textbox", { name: "Public amount" });
     const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
-    const nextButton = getByRole("button", { name: "Review" });
 
-    // Neither balance shows: 1,000 DUSK public, 2,000 DUSK shielded.
+    // 1,000 DUSK public, 2,000 DUSK shielded, as they are.
     expect(
       container.querySelector(".operation__label small"),
-    ).not.toHaveTextContent(/[0-9]/);
-    expect(publicInput).toHaveValue("");
-    expect(shieldedInput).toHaveValue("");
-
-    await fireEvent.input(publicInput, { target: { value: "3500" } });
-
-    // More than both balances: refused, and the other side, which would
-    // give the total away, still not shown.
-    expect(publicInput).toHaveValue("3500");
-    expect(shieldedInput).toHaveValue("");
-    expect(nextButton).toBeDisabled();
-    expect(container.querySelector(".banner--error")).toHaveTextContent(
-      /more than/i,
-    );
+    ).toHaveTextContent("2,000 of 2,000 spendable");
+    expect(publicInput).toHaveValue("1000");
+    expect(shieldedInput).toHaveValue("2000");
 
     await fireEvent.input(shieldedInput, { target: { value: "2500" } });
 
-    expect(shieldedInput).toHaveValue("2500");
-    expect(publicInput).toHaveValue("");
-    expect(nextButton).toBeEnabled();
+    // What's left of the public balance.
+    expect(publicInput).toHaveValue("500");
 
-    await fireEvent.click(nextButton);
+    await fireEvent.click(getByRole("button", { name: "Review" }));
 
     expect(getReviewValues(container)).toStrictEqual([
       "500 DUSK",
       "0.02 DUSK",
       "500.02 DUSK",
     ]);
+
+    await vi.advanceTimersByTimeAsync(CONFIRM_DELAY);
+    await fireEvent.click(getByRole("button", { name: "Shield 500 DUSK" }));
+
+    expect(shield).toHaveBeenCalledOnce();
+    expect(shield.mock.calls[0][0]).toBe(500_000_000_000n);
+  });
+
+  it("should show what moves when it's typed in Public too, while balances are hidden", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const { container, getByRole } = render(Allocate, {
+      ...baseProps,
+      shieldedBalance: {
+        spendable: 2_000_250_000_000n,
+        value: 2_000_250_000_000n,
+      },
+      unshieldedBalance: 1_000_500_000_000n,
+    });
+
+    // What stays public, typed: what moves is the 1,000.5 less it.
+    await fireEvent.input(getByRole("textbox", { name: "Public amount" }), {
+      target: { value: "250.25" },
+    });
+    await fireEvent.click(getByRole("button", { name: "Review" }));
+
+    expect(getReviewValues(container)).toStrictEqual([
+      "750.25 DUSK",
+      "0.02 DUSK",
+      "750.27 DUSK",
+    ]);
+    expect(
+      getByRole("button", { name: "Shield 750.25 DUSK" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should show what's typed on the review where it's all that moves, into a side that held nothing", async () => {
+    settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+    const shield = render(Allocate, {
+      ...baseProps,
+      shieldedBalance: { spendable: 0n, value: 0n },
+      unshieldedBalance: 1_000_500_000_000n,
+    });
+
+    await fireEvent.input(
+      shield.getByRole("textbox", { name: "Shielded amount" }),
+      { target: { value: "250.75" } },
+    );
+    await fireEvent.click(shield.getByRole("button", { name: "Review" }));
+
+    expect(getReviewValues(shield.container)).toStrictEqual([
+      "250.75 DUSK",
+      "0.02 DUSK",
+      "250.77 DUSK",
+    ]);
+    expect(
+      shield.getByRole("button", { name: "Shield 250.75 DUSK" }),
+    ).toBeInTheDocument();
+
+    cleanup();
+
+    const unshield = render(Allocate, {
+      ...baseProps,
+      shieldedBalance: {
+        spendable: 2_000_250_000_000n,
+        value: 2_000_250_000_000n,
+      },
+      unshieldedBalance: 0n,
+    });
+
+    await fireEvent.input(
+      unshield.getByRole("textbox", { name: "Public amount" }),
+      { target: { value: "100.5" } },
+    );
+    await fireEvent.click(unshield.getByRole("button", { name: "Review" }));
+
+    expect(getReviewValues(unshield.container)[0]).toBe("100.5 DUSK");
+    expect(
+      unshield.getByRole("button", { name: "Unshield 100.5 DUSK" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should never show a negative balance in the other field, however much more than the balance is typed", async () => {
+    const { container, getByRole } = render(Allocate, {
+      ...baseProps,
+      shieldedBalance: {
+        spendable: 2_000_250_000_000n,
+        value: 2_000_250_000_000n,
+      },
+      unshieldedBalance: 1_000_500_000_000n,
+    });
+    const publicInput = getByRole("textbox", { name: "Public amount" });
+    const shieldedInput = getByRole("textbox", { name: "Shielded amount" });
+
+    await fireEvent.input(shieldedInput, {
+      target: { value: "99999999.123456789" },
+    });
+
+    expect(shieldedInput).toHaveValue("99999999.123456789");
+    expect(publicInput).toHaveValue("0");
+    expect(container.querySelector(".banner--error")).toHaveTextContent(
+      /more than/i,
+    );
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
+
+    await fireEvent.input(publicInput, { target: { value: "3000.75" } });
+
+    expect(publicInput).toHaveValue("3000.75");
+    expect(shieldedInput).toHaveValue("0");
+    expect(getByRole("button", { name: "Review" })).toBeDisabled();
+
+    // Within the balance, what's left again.
+    await fireEvent.input(publicInput, { target: { value: "1000.75" } });
+
+    expect(shieldedInput).toHaveValue("2000");
+    expect(getByRole("button", { name: "Review" })).toBeEnabled();
   });
 });

@@ -19,7 +19,7 @@ import { activityFor, activityState, stopActivity } from "$lib/activity";
 import fixture from "$lib/activity/__tests__/fixtures/activity-testnet.json";
 import { fakeArchive } from "$lib/activity/__tests__/fixtures/fakeArchive";
 import TransactionStatus from "$lib/components/TransactionStatus/TransactionStatus.svelte";
-import { walletStore } from "$lib/stores";
+import { settingsStore, walletStore } from "$lib/stores";
 import { setNodeNetwork } from "$lib/stores/nodeNetwork";
 
 import { followArrivals } from "../arrivalFollowing";
@@ -625,6 +625,103 @@ describe("Being told when a transfer arrives", () => {
 
       expect(sends.followTransaction).toHaveBeenCalledOnce();
       stop = followArrivals();
+    });
+
+    it("tells of a send as balances show once it arrives: its amount hidden once they're hidden, though they showed as it was sent", async () => {
+      const { shown } = browser();
+      const hash = "8e".repeat(32);
+      /** @param {boolean} hidden */
+      const whatAs = (hidden) => `${hidden ? "••••" : "0.02"} DUSK to Lucas`;
+
+      await chooseArrivalNotice();
+
+      // Sent while balances showed; its Sent screen left before a block
+      // took it; balances hidden since.
+      render(TransactionStatus, {
+        hash,
+        tellArrival: true,
+        what: whatAs(false),
+        whatAs,
+      }).unmount();
+      settingsStore.update((store) => ({ ...store, hideBalances: true }));
+
+      try {
+        sends.followTransaction.mock.lastCall?.[1].onBlock({
+          blockHeight: 4_820_416n,
+          error: null,
+          fee: 1_854_795n,
+          timestamp: 1,
+        });
+
+        await vi.waitFor(() =>
+          expect(shown).toMatchObject([{ options: { tag: `send:${hash}` } }]),
+        );
+        // Neither the notification nor the tab's title says the amount.
+        expect(shown[0].title).toMatch(/\bDUSK to Lucas$/);
+        expect(shown[0].title).not.toMatch(/\d/);
+        expect(get(arrivalTitle)).not.toMatch(/\d/);
+      } finally {
+        settingsStore.update((store) => ({ ...store, hideBalances: false }));
+      }
+    });
+
+    it("decides what a notification of a send says as it shows, once the service worker it waits for is ready: hidden, if balances were hidden meanwhile", async () => {
+      // A page whose service worker isn't registered yet, as on a phone.
+      vi.resetModules();
+
+      const fresh = {
+        notice: await import("../arrivalNotice"),
+        send: await import("../sendArrival"),
+        settings: (await import("$lib/stores/settingsStore")).default,
+      };
+      /** @type {PromiseWithResolvers<any>} */
+      const ready = Promise.withResolvers();
+      /** @type {string[]} */
+      const shown = [];
+
+      class Registration {
+        /** @param {string} title */
+        async showNotification(title) {
+          shown.push(title);
+        }
+      }
+
+      browser();
+      onPhone();
+      vi.stubGlobal("ServiceWorkerRegistration", Registration);
+      Object.defineProperty(navigator, "serviceWorker", {
+        configurable: true,
+        value: {
+          addEventListener() {},
+          ready: ready.promise,
+          register: async () => new Registration(),
+          removeEventListener() {},
+        },
+      });
+
+      try {
+        await fresh.notice.chooseArrivalNotice();
+
+        // It arrives while balances show; they're hidden before the worker
+        // is ready.
+        fresh.send.tellSendEnd({
+          failed: false,
+          hash: "8f".repeat(32),
+          stillOpen: () => {},
+          what: (hidden) => `${hidden ? "••••" : "0.02"} DUSK to Lucas`,
+        });
+        fresh.settings.update((store) => ({ ...store, hideBalances: true }));
+        ready.resolve(new Registration());
+
+        await vi.waitFor(() => expect(shown).toHaveLength(1));
+
+        expect(shown[0]).toMatch(/\bDUSK to Lucas$/);
+        expect(shown[0]).not.toMatch(/\d/);
+        expect(get(fresh.notice.arrivalTitle)).not.toMatch(/\d/);
+      } finally {
+        fresh.settings.update((store) => ({ ...store, hideBalances: false }));
+        fresh.notice.stopArrivalNotice();
+      }
     });
 
     it("says nothing of a send under another wallet: its Sent screen left as that one opens", async () => {

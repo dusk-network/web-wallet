@@ -5,7 +5,7 @@
    * What an amount of DUSK comes to in the person's currency, as Settings
    * chooses it, at DUSK's price now, with the price's time: "≈ €1.82 · price
    * at 12:03". Nothing off mainnet, where DUSK has no value, nor for no
-   * amount, nor while balances hide it.
+   * amount. It's said in flows, which show their figures.
    */
   import { readable } from "svelte/store";
 
@@ -20,9 +20,6 @@
    */
   export let lux;
 
-  /** Whether the amount is hidden with the balances. */
-  export let hidden = false;
-
   /** @type {string | undefined} */
   export let className = undefined;
 
@@ -32,7 +29,7 @@
   $: ({ currency, language } = $settingsStore);
   // DUSK's price in Settings' currency, read again while an amount shows:
   // none asked for without one, and none for another as it's typed.
-  $: quote = hidden || !lux ? none : priceQuote(currency, $nodeNetwork);
+  $: quote = !lux ? none : priceQuote(currency, $nodeNetwork);
   $: text = inCurrency(lux, $quote, { language })?.text ?? "";
 </script>
 
