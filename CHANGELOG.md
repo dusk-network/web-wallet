@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep a setting changed in another tab, as balances hidden there, when this tab changes another one, as by folding Activity away: a tab no longer writes back what it read before
 - Keep 8 px between the Bridge's swap button and what's above and below it, which it touched or covered: Max, an account's Change and the To card's network, on every route and at every width
 - Send no notification of a transfer's end once Turn off is pressed, also one that waited for the wallet's service worker to be ready
 - Close the Bridge's review once its route, the EVM account or the profile changes, as its tab's link changes a route a link opened, and send a withdrawal from the EVM account and to the profile it was reviewed for or not at all, also where another is picked while the password is asked; carry no Max amount over to the other side however the route changes
