@@ -5,9 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { modeOf } from "./build.js";
 import {
-  MAINNET_SITE,
   REPOSITORY,
-  TESTNET_SITE,
+  SITES,
   attestationArgs,
   compareSite,
   fetchFrom,
@@ -369,29 +368,61 @@ describe("Verifying a deployment", () => {
       "--deny-self-hosted-runners",
     ]);
 
-    // Testnet from main, mainnet from its release's tag, nothing else.
-    expect(sourceRefOf(TESTNET_SITE, "2.0.0")).toBe("refs/heads/main");
-    expect(sourceRefOf(MAINNET_SITE, "2.0.0")).toBe(
+    // Testnet and devnet from main, mainnet from its release's tag, nothing
+    // else.
+    expect(sourceRefOf(SITES.testnet, "2.0.0")).toBe("refs/heads/main");
+    expect(sourceRefOf(SITES.devnet, "2.0.0")).toBe("refs/heads/main");
+    expect(sourceRefOf(SITES.mainnet, "2.0.0")).toBe(
       "refs/tags/web-wallet-v2.0.0",
     );
     expect(sourceRefOf(SITE.href, "2.0.0")).toBeNull();
     expect(
-      sourceRefOf("https://apps.devnet.dusk.network/wallet/", "2.0.0"),
+      sourceRefOf("https://apps.devnet.dusk.network/", "2.0.0"),
     ).toBeNull();
 
     // As the workflow deploys them, and as deployments.json lists them.
     const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
     const listed = JSON.parse(readFileSync("deployments.json", "utf8"));
 
-    expect(workflow).toContain(
-      `SITE: \${{ github.ref_type == 'tag' && '${MAINNET_SITE}' || '${TESTNET_SITE}' }}`,
-    );
     expect(workflow).toMatch(
       /branches: \["main"\]\n {4}tags: \["web-wallet-v\*"\]/,
     );
-    expect(Object.keys(listed)).toEqual(
-      expect.arrayContaining([MAINNET_SITE, TESTNET_SITE]),
+    expect(workflow).toContain(
+      `network: \${{ fromJSON(github.ref_type == 'tag' && '["mainnet"]' || '["testnet", "devnet"]') }}`,
     );
+    expect(workflow).toContain(
+      `SITE: \${{ matrix.network == 'mainnet' && '${SITES.mainnet}' || format('https://apps.{0}.dusk.network/wallet/', matrix.network) }}`,
+    );
+
+    for (const network of /** @type {const} */ (["testnet", "devnet"])) {
+      expect(SITES[network]).toBe(
+        `https://apps.${network}.dusk.network/wallet/`,
+      );
+    }
+
+    expect(Object.keys(listed)).toEqual(
+      expect.arrayContaining(Object.values(SITES)),
+    );
+  });
+
+  it("should deploy each network on its own, one deploy to it at a time, and every deploy behind the cloudflare environment", () => {
+    const workflow = readFileSync(".github/workflows/deploy.yml", "utf8");
+    const jobs = workflow.slice(workflow.indexOf("\njobs:\n"));
+
+    // Every job waits for the environment's approval, its token's gate.
+    expect(jobs.match(/^ {2}[\w-]+:$/gm)?.length).toBeGreaterThan(0);
+    expect(jobs.match(/^ {4}environment: cloudflare$/gm)?.length).toBe(
+      jobs.match(/^ {2}[\w-]+:$/gm)?.length,
+    );
+
+    // A group of its own for each network: a deploy to testnet neither
+    // waits for nor cancels one to devnet, and one failing stops no other.
+    expect(workflow).not.toMatch(/^concurrency:/m);
+    expect(jobs).toMatch(
+      /\n {4}concurrency:\n {6}group: deploy-\$\{\{ matrix\.network \}\}\n {6}cancel-in-progress: false\n/,
+    );
+    expect(jobs).toMatch(/\n {6}fail-fast: false\n/);
+    expect(jobs).toContain('wrangler deploy --env "$NETWORK"');
   });
 
   it("should have the Deploy workflow attest the manifest it builds, with GitHub's identity for it, before anything is deployed", () => {

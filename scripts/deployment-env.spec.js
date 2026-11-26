@@ -1,24 +1,44 @@
+import { networks } from "@dusk-network/networks";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import { BASE_PATH } from "../deploy/stage.js";
 import { envLines } from "./deployment-env.js";
+import { SITES } from "./verify-build.js";
 
 const deployments = JSON.parse(readFileSync("deployments.json", "utf8"));
-const TESTNET = "https://apps.testnet.dusk.network/wallet/";
+const TESTNET = SITES.testnet;
 
 describe("Building a deployment", () => {
   it("should give a site's settings in deployments.json as lines of KEY=value, and nothing else", () => {
-    const lines = envLines(deployments, TESTNET).split("\n");
+    for (const site of Object.values(SITES)) {
+      const lines = envLines(deployments, site).split("\n");
 
-    expect(lines.pop()).toBe("");
-    expect(
-      Object.fromEntries(lines.map((line) => line.split(/=(.*)/s, 2))),
-    ).toEqual(deployments[TESTNET]);
-    expect(lines).toContain("VITE_BASE_PATH=/wallet");
-    expect(lines).toContain("VITE_MIGRATE_CONTRACT=");
-    expect(lines).toEqual(lines.toSorted());
+      expect(lines.pop()).toBe("");
+      expect(
+        Object.fromEntries(lines.map((line) => line.split(/=(.*)/s, 2))),
+      ).toEqual(deployments[site]);
+      expect(lines).toContain("VITE_BASE_PATH=/wallet");
+      expect(lines).toContain("VITE_MIGRATE_CONTRACT=");
+      expect(lines).toEqual(lines.toSorted());
+    }
+  });
+
+  it("should build each network's site for its own node, the one its file in @dusk-network/networks names, which its policy lets in", () => {
+    for (const [network, site] of Object.entries(SITES)) {
+      const settings = deployments[site];
+      const node = new URL(
+        networks[/** @type {keyof typeof networks} */ (network)].urls.node,
+      ).origin;
+
+      expect(new URL(settings.VITE_NODE_URL).origin).toBe(node);
+      expect(new URL(settings.VITE_WALLET_NETWORK).origin).toBe(node);
+    }
+
+    expect(deployments[SITES.devnet].VITE_NODE_URL).toBe(
+      "https://devnet.nodes.dusk.network/",
+    );
   });
 
   it("should refuse a site deployments.json doesn't list, and a setting that isn't one line of a VITE_ one", () => {
@@ -65,10 +85,9 @@ describe("Building a deployment", () => {
       }),
     );
 
-    expect(sites).toEqual({
-      mainnet: "https://apps.dusk.network/wallet/",
-      testnet: TESTNET,
-    });
+    // As the Deploy workflow deploys them and scripts/verify-build.js
+    // checks them.
+    expect(sites).toEqual(SITES);
 
     for (const site of Object.values(sites)) {
       expect(deployments[site]?.VITE_BASE_PATH).toBe(BASE_PATH);

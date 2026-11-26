@@ -1,11 +1,11 @@
 name: Deploy
 
-# main goes to testnet, as it's pushed or the workflow is run on it: the
-# attestation names main. A release tag goes to mainnet, which stays on
-# DigitalOcean until the wallet's v2: only once the DEPLOY_MAINNET
+# main goes to testnet and devnet, as it's pushed or the workflow is run on
+# it: their attestations name main. A release tag goes to mainnet, which
+# stays on DigitalOcean until the wallet's v2: only once the DEPLOY_MAINNET
 # repository variable is "true", and the cloudflare environment takes
-# web-wallet-v* tags. Each is built with its site's settings in
-# deployments.json, as scripts/verify-build.js rebuilds it.
+# web-wallet-v* tags. Each network is its own build, with its site's
+# settings in deployments.json, as scripts/verify-build.js rebuilds it.
 on:
   push:
     branches: ["main"]
@@ -15,18 +15,24 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-${{ github.ref_type }}
-  cancel-in-progress: false
-
 jobs:
   deploy:
-    name: Deploy to ${{ github.ref_type == 'tag' && 'mainnet' || 'testnet' }}
+    name: Deploy to ${{ matrix.network }}
     if: >-
       (github.ref_type == 'branch' && github.ref_name == 'main') ||
       (github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'web-wallet-v') &&
       vars.DEPLOY_MAINNET == 'true')
+    strategy:
+      # Each network on its own: one that fails stops no other.
+      fail-fast: false
+      matrix:
+        network: ${{ fromJSON(github.ref_type == 'tag' && '["mainnet"]' || '["testnet", "devnet"]') }}
+    # One deploy to a network at a time, and one network's waits for no
+    # other's.
+    concurrency:
+      group: deploy-${{ matrix.network }}
+      cancel-in-progress: false
     # GitHub-hosted, for a clean machine around the Cloudflare token.
     runs-on: ubuntu-latest
     # The token is this environment's, which only main and web-wallet-v*
@@ -39,8 +45,10 @@ jobs:
       contents: read
       id-token: write
     env:
-      NETWORK: ${{ github.ref_type == 'tag' && 'mainnet' || 'testnet' }}
-      SITE: ${{ github.ref_type == 'tag' && 'https://apps.dusk.network/wallet/' || 'https://apps.testnet.dusk.network/wallet/' }}
+      NETWORK: ${{ matrix.network }}
+      # As wrangler.jsonc routes them: mainnet at apps.dusk.network, any
+      # other network at apps.<network>.dusk.network.
+      SITE: ${{ matrix.network == 'mainnet' && 'https://apps.dusk.network/wallet/' || format('https://apps.{0}.dusk.network/wallet/', matrix.network) }}
 
     steps:
       - name: Checkout repository
