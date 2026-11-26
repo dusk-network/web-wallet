@@ -29,6 +29,18 @@
         "EXPLORER": "https://explorer.testnet.dusk.network",
       },
     },
+    "devnet": {
+      "name": "web-wallet-devnet",
+      "routes": [
+        { "pattern": "apps.devnet.dusk.network", "custom_domain": true },
+      ],
+      "vars": {
+        // No build of the Dusk Wallet app opens devnet's links, so none is
+        // named, and /.well-known/assetlinks.json is a 404.
+        "ANDROID_CERTS": "",
+        "EXPLORER": "https://explorer.devnet.dusk.network",
+      },
+    },
     // Not deployed yet: mainnet moves with the wallet's v2 (.github/workflows/deploy.yml).
     "mainnet": {
       "name": "web-wallet-mainnet",

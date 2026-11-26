@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import * as module from "./worker.js";
@@ -13,7 +14,8 @@ const PAGE = "<!doctype html><title>Dusk Web Wallet</title>";
  *
  * @param {string} path
  * @param {RequestInit} [init]
- * @param {{ ANDROID_CERTS?: string }} [vars] The environment's, but EXPLORER
+ * @param {{ ANDROID_CERTS?: string, EXPLORER?: string }} [vars] The
+ * environment's, with testnet's EXPLORER unless they name one
  */
 const ask = async (path, init, vars = {}) => {
   /** @type {{ headers: Headers, method?: string, url: string }[]} */
@@ -119,6 +121,43 @@ describe("The wallet's Worker", () => {
     }
 
     expect((await ask("/explorers")).response.status).toBe(404);
+  });
+
+  it("should send what was the explorer's on to each network's own, and name no app for devnet's links, with the settings wrangler.jsonc gives each network", async () => {
+    const { config, error } = ts.parseConfigFileTextToJson(
+      "wrangler.jsonc",
+      readFileSync("wrangler.jsonc", "utf8"),
+    );
+    /** @type {Record<string, string>} */
+    const explorers = {
+      devnet: "https://explorer.devnet.dusk.network",
+      mainnet: "https://explorer.dusk.network",
+      testnet: "https://explorer.testnet.dusk.network",
+    };
+
+    expect(error).toBeUndefined();
+    expect(Object.keys(config.env).toSorted()).toEqual(
+      Object.keys(explorers).toSorted(),
+    );
+
+    for (const [network, { vars }] of Object.entries(config.env)) {
+      const { response } = await ask("/explorer/blocks?x=1", undefined, vars);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe(
+        `${explorers[network]}/explorer/blocks?x=1`,
+      );
+    }
+
+    const devnet = await ask(
+      "/.well-known/assetlinks.json",
+      undefined,
+      config.env.devnet.vars,
+    );
+
+    expect(config.env.devnet.vars.ANDROID_CERTS).toBe("");
+    expect(devnet.response.status).toBe(404);
+    expectOwnAnswer(devnet.response);
   });
 
   it("should name the Dusk Wallet app signed with the environment's certificates at the domain's root, for Android to open the wallet's links in it, and no app where it names none", async () => {

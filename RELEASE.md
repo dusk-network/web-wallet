@@ -124,12 +124,12 @@ git push origin web-wallet-v1.1.0
 Deploy the new version progressively through each environment:
 
 1. **Devnet**
-   - Deploy to development network, on DigitalOcean
+   - The development network has `main`: the Deploy workflow builds it and deploys it to Cloudflare as it's pushed, or run on `main` by hand, with devnet's settings
    - Verify functionality
    - Address any issues before proceeding
 
 2. **Testnet**
-   - Deploy to test network after devnet validation: the Deploy workflow builds `main` and deploys it to Cloudflare as it's pushed, or run on `main` by hand
+   - The test network has the same `main`, built with its own settings and deployed beside devnet's: test it once devnet is verified
    - Run comprehensive tests
    - Verify integrations with other systems
 
@@ -141,10 +141,10 @@ Deploy the new version progressively through each environment:
 
 If errors occur during deployment:
 
-- On Cloudflare, check the Deploy workflow's log; if it failed before deploying, run it again: nothing has changed on the site
+- On Cloudflare, check the network's job in the Deploy workflow's log; if it failed before deploying, run it again: nothing has changed on the site
 - On DigitalOcean, try rebuilding with the "clear cache" option enabled
 - Check build logs for specific errors
-- Verify the settings are correct: testnet's in `deployments.json`, the others' in their DigitalOcean spec too
+- Verify the settings are correct: devnet's and testnet's in `deployments.json`, mainnet's in its DigitalOcean spec too
 - Confirm that all dependencies are properly resolved
 
 ### 10. Final Validation
@@ -181,8 +181,8 @@ If critical issues are discovered after deployment:
 - [ ] Update CHANGELOG.md
 - [ ] Open and get approval on PR
 - [ ] Create and push annotated tag
-- [ ] Deploy to devnet and verify
-- [ ] Deploy to testnet and verify
+- [ ] Verify on devnet, which `main` deploys to
+- [ ] Verify on testnet, which `main` deploys to
 - [ ] Deploy to mainnet and verify
 - [ ] Final validation across environments
 - [ ] Announce release to stakeholders

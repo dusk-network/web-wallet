@@ -196,8 +196,9 @@ To run a local node different steps are needed, so please read the [related sect
 
 ## Deploying
 
-Testnet runs on Cloudflare (`wrangler.jsonc`), at
-`https://apps.testnet.dusk.network/wallet/`. Its address mustn't change:
+Testnet and devnet run on Cloudflare (`wrangler.jsonc`), at
+`https://apps.testnet.dusk.network/wallet/` and
+`https://apps.devnet.dusk.network/wallet/`. Their addresses mustn't change:
 browsers keep each wallet by its origin. Cloudflare serves `deploy/site/`:
 the build at `wallet/`, where `node deploy/stage.js` places it after
 `npm run build`, and the headers for it in `deploy/site/_headers`, which
@@ -216,18 +217,23 @@ no page has opens the wallet, which says what's there; a file under
 explorer's own domain; and `/.well-known/assetlinks.json` names the Dusk
 Wallet app on Android, signed with the certificates `ANDROID_CERTS` names in
 `wrangler.jsonc`, as the app that opens the wallet's request links (Android
-App Links). Testnet's is the test build's signing key; mainnet's is left for
-the release key, and until it's there the file is a 404. To serve a build the same way locally, place it, then
-run `deploy/node_modules/.bin/wrangler dev --env testnet`, with Wrangler from
-`npm ci --ignore-scripts --prefix deploy`.
+App Links). Testnet's is the test build's signing key. Devnet names none, as
+no build of the app opens its links, so its file is a 404, as mainnet's is
+until the release key is there. To serve a build the same way locally, build
+it with a network's settings and place it, then run
+`deploy/node_modules/.bin/wrangler dev --env testnet` (or `--env devnet`),
+with Wrangler from `npm ci --ignore-scripts --prefix deploy`.
 
 The Deploy workflow does it: a push to `main`, or a run of it on `main`, goes
-to testnet, built with the site's settings in `deployments.json`, and its
-build's attestation names `main`. Its Cloudflare token is a secret of the
-`cloudflare` environment, which only `main` and `web-wallet-v*` tags can use.
+to testnet and to devnet, each its own build with its site's settings in
+`deployments.json`, and each build's attestation names `main`. Each network's
+deploy runs on its own: one waits for no other's, and one failing stops no
+other. The Cloudflare token is a secret of the `cloudflare` environment,
+which only `main` and `web-wallet-v*` tags can use: every deploy goes through
+it.
 
-Mainnet and devnet stay on DigitalOcean for now; mainnet moves with the
-wallet's v2. The workflow deploys a `web-wallet-v*` tag to mainnet only once
+Mainnet stays on DigitalOcean for now, and moves with the wallet's v2. The
+workflow deploys a `web-wallet-v*` tag to mainnet only once
 the `DEPLOY_MAINNET` repository variable is `true` and the `cloudflare`
 environment takes those tags.
 
@@ -239,8 +245,8 @@ commit built, the mode and the `VITE_` settings it was built with, Node's and
 npm's versions, and every file's SHA-256. The footer's version on the setup
 page links to it. Vite builds every `VITE_` setting into the code, so none of
 them is a secret. `deployments.json` lists each deployment's settings.
-Testnet is built with its entry there; mainnet and devnet are still built with
-their DigitalOcean spec, so change theirs there with it.
+Testnet and devnet are built with their entries there; mainnet is still built
+with its DigitalOcean spec, so change its settings there with it.
 
 To rebuild what a site serves and compare, from a clone of this repository:
 
@@ -253,8 +259,9 @@ The Deploy workflow has GitHub attest each build's manifest
 with no key to keep. `--attested` checks it first with GitHub's CLI
 (`gh attestation verify`): that this repository's Deploy workflow built the
 manifest the site serves from the commit it names, on GitHub's own runners,
-from the ref it deploys that site from: `main` for testnet, the release's
-`web-wallet-v*` tag for mainnet. GitHub vouches for it, not the site.
+from the ref it deploys that site from: `main` for testnet and devnet, the
+release's `web-wallet-v*` tag for mainnet. GitHub vouches for it, not the
+site.
 
 The script builds the manifest's commit in a new worktree, with `npm ci` and
 `npm run build`, and checks every file, and every page at the addresses

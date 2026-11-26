@@ -12,8 +12,8 @@
  * --attested checks first, with GitHub's CLI (`gh attestation verify`), that
  * the repository's Deploy workflow attested the manifest as the site serves
  * it, built from the commit it names on GitHub's own runners, from the ref
- * the workflow deploys the site from: main for testnet, the release's tag
- * for mainnet. GitHub vouches for it, not the site.
+ * the workflow deploys the site from: main for testnet and devnet, the
+ * release's tag for mainnet. GitHub vouches for it, not the site.
  *
  *   node scripts/verify-build.js https://apps.dusk.network/wallet/ [--attested] [--keep]
  */
@@ -248,25 +248,36 @@ export const fetchFrom = async (address, { limit, to, get = fetch } = {}) => {
 /** The repository whose Deploy workflow attests each build's manifest. */
 export const REPOSITORY = new URL(pkg.homepage).pathname.slice(1);
 
-/** The sites the Deploy workflow deploys: testnet from main, mainnet from a release's tag. */
-export const TESTNET_SITE = "https://apps.testnet.dusk.network/wallet/";
-export const MAINNET_SITE = "https://apps.dusk.network/wallet/";
+/**
+ * The sites the Deploy workflow deploys, by network, as wrangler.jsonc
+ * routes them: testnet and devnet from main, mainnet from a release's tag.
+ */
+export const SITES = Object.freeze({
+  devnet: "https://apps.devnet.dusk.network/wallet/",
+  mainnet: "https://apps.dusk.network/wallet/",
+  testnet: "https://apps.testnet.dusk.network/wallet/",
+});
 
 /**
  * The ref the Deploy workflow builds a site from, which its attestation
- * names: main for testnet, the tag of the release its manifest says for
- * mainnet; null for a site it doesn't deploy.
+ * names: main for every network but mainnet, the tag of the release its
+ * manifest says for mainnet; null for a site it doesn't deploy.
  *
  * @param {string} site
  * @param {string} version The manifest's
  * @returns {string | null}
  */
-export const sourceRefOf = (site, version) =>
-  site === TESTNET_SITE
-    ? "refs/heads/main"
-    : site === MAINNET_SITE
-      ? `refs/tags/web-wallet-v${version}`
-      : null;
+export const sourceRefOf = (site, version) => {
+  const [network] = Object.entries(SITES).find(([, url]) => url === site) ?? [];
+
+  if (!network) {
+    return null;
+  }
+
+  return network === "mainnet"
+    ? `refs/tags/web-wallet-v${version}`
+    : "refs/heads/main";
+};
 
 /**
  * GitHub's CLI's arguments that check the repository's Deploy workflow
