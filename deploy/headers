@@ -8,7 +8,8 @@
 # svelte.config.js, from scripts/csp.js), which stage.js puts in place of
 # PAGE_POLICY: the wallet's own scripts alone, SvelteKit's inline ones by
 # their hashes, WebAssembly, what the wallet reads from, and frame-ancestors,
-# which a page's own policy can't say.
+# which a page's own policy can't say. On any network but mainnet, stage.js
+# adds X-Robots-Tag: noindex to /*, so search engines list mainnet's alone.
 /*
   Strict-Transport-Security: max-age=31536000
   X-Content-Type-Options: nosniff
