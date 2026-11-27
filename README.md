@@ -200,9 +200,11 @@ Testnet and devnet run on Cloudflare (`wrangler.jsonc`), at
 `https://apps.testnet.dusk.network/wallet/` and
 `https://apps.devnet.dusk.network/wallet/`. Their addresses mustn't change:
 browsers keep each wallet by its origin. Cloudflare serves `deploy/site/`:
-the build at `wallet/`, where `node deploy/stage.js` places it after
-`npm run build`, and the headers for it in `deploy/site/_headers`, which
-stage.js writes from `deploy/headers` with the build's Content-Security-Policy.
+the build at `wallet/`, where `NETWORK=testnet node deploy/stage.js` places
+it after `npm run build`, and the headers for it in `deploy/site/_headers`,
+which stage.js writes from `deploy/headers` with the build's
+Content-Security-Policy. Every network's pages but mainnet's also say
+`X-Robots-Tag: noindex`, so search engines list mainnet's alone.
 
 Every page carries that policy itself (SvelteKit's `kit.csp`, from
 `scripts/csp.js`), wherever it's hosted, and Cloudflare sends it as a header

@@ -3,6 +3,33 @@
   <head>
     <title>Dusk Web Wallet</title>
     <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="Send, receive and stake DUSK in your browser. Your recovery phrase stays on your device."
+    />
+    <!-- Mainnet's address, which every page and network points search
+      engines and link previews to. Off mainnet, deploy/stage.js keeps the
+      pages out of search results. -->
+    <link rel="canonical" href="https://apps.dusk.network/wallet/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Dusk" />
+    <meta property="og:title" content="Dusk Web Wallet" />
+    <meta
+      property="og:description"
+      content="Send, receive and stake DUSK in your browser. Your recovery phrase stays on your device."
+    />
+    <meta property="og:url" content="https://apps.dusk.network/wallet/" />
+    <meta
+      property="og:image"
+      content="https://apps.dusk.network/wallet/social.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Dusk Web Wallet: send, receive and stake DUSK in your browser. apps.dusk.network/wallet"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
       type="image/png"
@@ -24,6 +51,25 @@
     data-sveltekit-preload-code="viewport"
     data-sveltekit-preload-data="hover"
   >
+    <noscript>
+      <h1>Dusk Web Wallet</h1>
+      <p>
+        The official web wallet for the Dusk network. Create or restore a wallet
+        to send, receive and stake DUSK. Your recovery phrase stays on your
+        device. It needs JavaScript.
+      </p>
+      <p>
+        Official addresses: mainnet
+        <a href="https://apps.dusk.network/wallet/">apps.dusk.network/wallet</a
+        >, testnet
+        <a href="https://apps.testnet.dusk.network/wallet/"
+          >apps.testnet.dusk.network/wallet</a
+        >. All of Dusk's apps:
+        <a href="https://docs.dusk.network/learn/stay-safe/#official-apps"
+          >docs.dusk.network/learn/stay-safe</a
+        >.
+      </p>
+    </noscript>
     <div id="outer-container">%sveltekit.body%</div>
   </body>
 </html>

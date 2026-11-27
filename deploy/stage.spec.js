@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { BASE_PATH, stage } from "./stage.js";
+import { BASE_PATH, LISTED_NETWORK, stage } from "./stage.js";
 
 /** A page's own policy, as kit.csp writes it in its head, with its hash. */
 const head = (/** @type {string} */ hash) =>
@@ -92,11 +92,46 @@ describe("Placing the build where Cloudflare serves it", () => {
   it("should send the policy the build's pages carry as their header, with every page's hashes and frame-ancestors, which a page's own can't say", () => {
     const site = folder({});
 
-    stage(build(), site, headers());
+    stage(build(), site, headers(), LISTED_NETWORK);
 
     expect(readFileSync(join(site, "_headers"), "utf8")).toBe(
       "# Cloudflare's: the policy in place of PAGE_POLICY.\n/*\n  X-Frame-Options: DENY\n  Content-Security-Policy: frame-ancestors 'none'; default-src 'self'; connect-src 'self' https://testnet.nodes.dusk.network; script-src 'self' 'wasm-unsafe-eval' 'sha256-a1' 'sha256-b2'; style-src 'self' 'unsafe-inline'\n",
     );
+  });
+
+  it("should keep every network's pages but mainnet's out of search results, as one named none", () => {
+    for (const network of ["testnet", "devnet", undefined]) {
+      const site = folder({});
+
+      stage(build(), site, headers(), network);
+
+      expect(readFileSync(join(site, "_headers"), "utf8")).toMatch(
+        /^\/\*\n {2}X-Robots-Tag: noindex\n {2}X-Frame-Options: DENY\n/m,
+      );
+    }
+
+    const site = folder({});
+
+    stage(build(), site, headers(), "mainnet");
+
+    expect(readFileSync(join(site, "_headers"), "utf8")).not.toContain(
+      "X-Robots-Tag",
+    );
+  });
+
+  it("should refuse headers with no rule for every page off mainnet, as it couldn't say noindex", () => {
+    const site = folder({});
+    const pageless = join(
+      folder({
+        headers: "/wallet/*\n  Content-Security-Policy: PAGE_POLICY\n",
+      }),
+      "headers",
+    );
+
+    expect(() => stage(build(), site, pageless, "testnet")).toThrow(
+      "has no rule for every page, /*, to say noindex",
+    );
+    expect(filesIn(site)).toEqual([]);
   });
 
   it("should refuse a build whose page carries no policy, as one built without kit.csp, before anything is placed", () => {

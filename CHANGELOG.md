@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Describe the wallet to search engines and link previews: a description, a picture for shared links, and, without JavaScript, what the wallet is and its official addresses; testnet's and devnet's pages stay out of search results
 - Fold Home's Activity away where it's a column of its own, from 64rem, with a button at the end of its header: a slim rail keeps that button where it was, Home takes the width, and the same button opens it again, as this device remembers
 - Ask "Leave this payment?" before a Send with a payment in it is left, a link's or one typed, Stay the main answer
 - Cancel a send that waits on a network that doesn't answer, on its screen or from Home, which lists it until it goes out

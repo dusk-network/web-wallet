@@ -97,7 +97,8 @@ jobs:
           subject-path: build/build-manifest.json
 
       # Cloudflare serves deploy/site/: the build at wallet/, beside the
-      # headers for it.
+      # headers for it, which keep any network's pages but mainnet's out of
+      # search results.
       - name: Placing the build at /wallet/
         run: node deploy/stage.js
 
